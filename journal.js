@@ -597,6 +597,10 @@
     rd.readAsText(file);
   }
 
+  // expose a re-render hook so the cloud-sync layer can refresh the UI after
+  // pulling the user's data from Supabase.
+  window.Journal = { rerender: function () { try { render(); } catch (e) {} } };
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
 })();

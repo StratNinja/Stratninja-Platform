@@ -44,7 +44,7 @@ window.SNAuth = (function () {
 
   function user() { return currentUser; }
   function getClient() { return client; }
-  function onChange(cb) { listeners.push(cb); }
+  function onChange(cb) { listeners.push(cb); try { cb(currentUser); } catch (e) {} }
 
   return { init, signInWithGoogle, signOut, user, getClient, onChange, isCloud };
 })();
