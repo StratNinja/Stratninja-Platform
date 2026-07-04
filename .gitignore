@@ -1,0 +1,14 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/
+
+# local test artifacts
+*.csv
+snapshot.zip
+
+# secrets (do NOT commit private keys; the Supabase ANON key is public and lives in config.js)
+.env
+.env.local
