@@ -8,8 +8,8 @@
  * real security is enforced by Supabase Row-Level Security policies).
  */
 window.SN_CONFIG = {
-  SUPABASE_URL: "",       // e.g. "https://xxxxxxxx.supabase.co"
-  SUPABASE_ANON_KEY: "",  // e.g. "eyJhbGciOi..."
+  SUPABASE_URL: "https://iujeekdtimlmgwzzlauj.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1amVla2R0aW1sbWd3enpsYXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxODg5NTcsImV4cCI6MjA5ODc2NDk1N30.LLF0AJ3rx4Y3NBeLuki6lF6FEPZSWGrTnNsaWWT7ov4",
 };
 
 // cloud mode is active only when both values are provided

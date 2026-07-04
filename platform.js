@@ -36,9 +36,20 @@
   async function boot() {
     await SNAuth.init();
     const loginBtn = $("#googleBtn");
+    const isLocalhost = ["localhost", "127.0.0.1"].indexOf(location.hostname) >= 0;
     if (SNAuth.isCloud()) {
       loginBtn.querySelector(".lbl").textContent = "התחבר עם Google";
       loginBtn.onclick = () => SNAuth.signInWithGoogle();
+      // dev-only bypass so the UI stays testable locally before Google OAuth is set up
+      if (isLocalhost) {
+        const note = $("#modeNote");
+        if (note) {
+          note.classList.remove("hidden");
+          note.innerHTML = 'מצב ענן פעיל · <a href="#" id="devEnter" style="color:#b3a9e8">כניסה למצב פיתוח (ללא התחברות)</a>';
+          const dev = note.querySelector("#devEnter");
+          if (dev) dev.onclick = e => { e.preventDefault(); showApp(); };
+        }
+      }
     } else {
       loginBtn.querySelector(".lbl").textContent = "כניסה (מצב הדגמה)";
       loginBtn.onclick = () => showApp();
