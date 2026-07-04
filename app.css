@@ -27,13 +27,13 @@
 .panel h3 { margin: 0 0 14px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
 .muted { color: var(--muted); }
 
-/* TF candle badges */
+/* TF candle badges — TEXT = Strat type (2U/2D/1/3); COLOR = candle direction
+   (close vs open), independent of type. A red 2U = "conflict" candle. */
 .tf { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px;
   border-radius: 6px; font-size: 12px; font-weight: 700; padding: 0 6px; }
-.tf.u2 { background: rgba(22,184,119,.9); color: #04150e; }   /* 2U */
-.tf.d2 { background: rgba(224,82,79,.92); color: #1a0505; }   /* 2D */
-.tf.one { background: #3a4150; color: #cfd6e2; }              /* 1 inside */
-.tf.three { background: #6b5cf0; color: #fff; }               /* 3 outside */
+.tf.up { background: rgba(22,184,119,.9); color: #04150e; }    /* close > open */
+.tf.down { background: rgba(224,82,79,.92); color: #1a0505; }  /* close < open */
+.tf.doji { background: #3a4150; color: #cfd6e2; }             /* close ≈ open */
 
 /* indices table */
 .idx-table { width: 100%; border-collapse: collapse; font-size: 14px; }

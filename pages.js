@@ -7,16 +7,23 @@
   const $ = s => document.querySelector(s);
 
   // ---- tiny helpers ----
-  const TF = { "2U": "u2", "2D": "d2", "1": "one", "3": "three" };
-  function tf(v) { return '<span class="tf ' + (TF[v] || "one") + '">' + v + "</span>"; }
+  // a candle cell = { t: strat type "2U"/"2D"/"1"/"3", c: direction "up"/"down"/"doji" }
+  // color comes from direction (close vs open); text is the strat type.
+  function tf(cell) {
+    const c = cell && cell.c ? cell.c : "doji";
+    const t = cell && cell.t ? cell.t : "1";
+    return '<span class="tf ' + c + '">' + t + "</span>";
+  }
   const DEMO = '<div class="demo-flag">🧪 נתוני דמו — יחובר למפתח Polygon החי בשלב הבא</div>';
 
   // ---- DEMO datasets (structure mirrors the real feed) ----
+  // demo data — each cell carries {t: strat type, c: candle direction}.
+  // note the "conflict" cells (e.g. IWM monthly = 2U but red) that this scheme reveals.
   const INDICES = [
-    { sym: "SPY", name: "S&P 500", Y: "2U", Q: "1", M: "1", W: "2U", D: "3" },
-    { sym: "QQQ", name: "NASDAQ 100", Y: "2U", Q: "1", M: "1", W: "1", D: "2D" },
-    { sym: "IWM", name: "Russell 2000", Y: "2U", Q: "2U", M: "2U", W: "2U", D: "2D" },
-    { sym: "DIA", name: "Dow Jones", Y: "2U", Q: "2U", M: "2U", W: "2U", D: "2U" },
+    { sym: "SPY", name: "S&P 500", Y: { t: "2U", c: "up" }, Q: { t: "1", c: "up" }, M: { t: "1", c: "down" }, W: { t: "2U", c: "up" }, D: { t: "3", c: "down" } },
+    { sym: "QQQ", name: "NASDAQ 100", Y: { t: "2U", c: "up" }, Q: { t: "1", c: "up" }, M: { t: "1", c: "up" }, W: { t: "1", c: "down" }, D: { t: "2D", c: "down" } },
+    { sym: "IWM", name: "Russell 2000", Y: { t: "2U", c: "up" }, Q: { t: "2U", c: "up" }, M: { t: "2U", c: "down" }, W: { t: "2U", c: "up" }, D: { t: "2D", c: "down" } },
+    { sym: "DIA", name: "Dow Jones", Y: { t: "2U", c: "up" }, Q: { t: "2U", c: "up" }, M: { t: "2U", c: "up" }, W: { t: "2U", c: "down" }, D: { t: "2U", c: "up" } },
   ];
   const BREADTH_IDX = [
     { sym: "S5FD", desc: "מעל SMA50", val: "—" },
@@ -61,7 +68,13 @@
       '<div class="cols2">' +
         '<div class="panel"><h3>מדדים ראשיים</h3>' +
           '<table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th><th>Y</th><th>Q</th><th>M</th><th>W</th><th>D</th></tr></thead>' +
-          "<tbody>" + idxRows + "</tbody></table></div>" +
+          "<tbody>" + idxRows + "</tbody></table>" +
+          '<div class="muted" style="font-size:11px;margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">' +
+            '<span>הצבע = כיוון הנר · הטקסט = סוג Strat:</span>' +
+            '<span><span class="tf up" style="min-width:24px;height:18px">2U</span> סגירה מעל הפתיחה</span>' +
+            '<span><span class="tf down" style="min-width:24px;height:18px">2U</span> מתחת (קונפליקט)</span>' +
+            '<span><span class="tf doji" style="min-width:24px;height:18px">1</span> דוג\'י</span>' +
+          "</div></div>" +
         '<div class="panel"><h3>VIX <span class="muted" style="font-size:12px">תנודתיות</span></h3>' +
           '<div class="tile"><div class="k">מדד הפחד</div><div class="v muted">—</div></div>' +
           '<div class="muted" style="font-size:12px;margin-top:10px">VIX גבוה = פחד בשוק · נמוך = רוגע</div></div>' +
