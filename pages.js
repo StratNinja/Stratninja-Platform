@@ -6,6 +6,7 @@
 (function () {
   "use strict";
   const $ = s => document.querySelector(s);
+  let LIVE = null;  // live market snapshot from Supabase (null = show demo)
 
   // ---------- helpers ----------
   function cell(t, c) { return { t: t, c: c }; }
@@ -114,17 +115,29 @@
   function tfCells(t) { return "<td>" + tf(t.Y) + "</td><td>" + tf(t.Q) + "</td><td>" + tf(t.M) + "</td><td>" + tf(t.W) + "</td><td>" + tf(t.D) + "</td>"; }
 
   // ========== MARKET ==========
+  function liveBanner() {
+    if (LIVE && LIVE.updated) {
+      const d = new Date(LIVE.updated);
+      const hh = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+      return '<div class="demo-flag" style="background:rgba(22,184,119,.12);color:#7ee2b8;border-color:rgba(22,184,119,.3)">🟢 נתונים חיים · עודכן ' + hh + "</div>";
+    }
+    return DEMO;
+  }
   function renderMarket() {
-    const idxRows = INDICES.map(r =>
+    const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
+    const idxRows = idxSrc.map(r =>
       '<tr><td class="sym"><span class="tsym">' + r.sym + '</span> <span class="tname">' + r.name + "</span></td>" + tfCells(r) + "</tr>").join("");
     const dist = DIST.map(d => '<div class="tile"><div class="k"><span class="dot ' + d.dot + '"></span>' + d.k + '</div><div class="v">' + d.n + "</div></div>").join("");
     const breadth = BREADTH_IDX.map(b => '<div class="tile"><div class="k">' + b.sym + " · " + b.desc + '</div><div class="v muted">—</div></div>').join("");
     const rank = (arr, cls) => arr.map((s, i) => '<div class="lead-row ' + cls + '"><span>' + s + '</span><span class="rank">#' + (i + 1) + "</span></div>").join("");
+    const vixVal = (LIVE && LIVE.vix)
+      ? '<div class="v">' + LIVE.vix.level.toFixed(2) + '</div><div class="sub ' + (LIVE.vix.chg >= 0 ? "neg" : "pos") + '">' + (LIVE.vix.chg >= 0 ? "+" : "") + LIVE.vix.chg.toFixed(2) + "%</div>"
+      : '<div class="v muted">—</div>';
     return (
-      '<div class="page-head"><h1>סקירת שוק</h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' + DEMO +
+      '<div class="page-head"><h1>סקירת שוק</h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' + liveBanner() +
       '<div class="cols2">' +
         '<div class="panel"><h3>מדדים ראשיים</h3><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table>" + colorLegend() + "</div>" +
-        '<div class="panel"><h3>VIX <span class="muted" style="font-size:12px">תנודתיות</span></h3><div class="tile"><div class="k">מדד הפחד</div><div class="v muted">—</div></div><div class="muted" style="font-size:12px;margin-top:10px">VIX גבוה = פחד · נמוך = רוגע</div></div>' +
+        '<div class="panel"><h3>VIX <span class="muted" style="font-size:12px">תנודתיות</span></h3><div class="tile"><div class="k">מדד הפחד</div>' + vixVal + '</div><div class="muted" style="font-size:12px;margin-top:10px">VIX גבוה = פחד · נמוך = רוגע</div></div>' +
       "</div>" +
       '<div class="panel"><h3>התפלגות נרות S&P 500 (יומי)</h3><div class="tiles">' + dist + "</div></div>" +
       '<div class="panel"><h3>מדדי רוחב שוק (מאקרו · חישוב ידני)</h3><div class="tiles">' + breadth + "</div></div>" +
@@ -344,12 +357,26 @@
   }
   window.setPageExternal = setPage;
 
+  async function loadLive() {
+    try {
+      const cfg = window.SN_CONFIG;
+      if (!cfg || !cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return;
+      const url = cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.latest&select=data";
+      const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && j[0] && j[0].data) { LIVE = j[0].data; if (state.page === "market") reRender(); }
+    } catch (e) { /* keep demo data */ }
+  }
+
   function initNav() {
     document.querySelectorAll(".side-nav a").forEach(a => a.onclick = () => setPage(a.dataset.page));
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
     try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}
     setPage((PAGES[last] || last === "journal") ? last : "market");
+    loadLive();
+    setInterval(loadLive, 60000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initNav);
