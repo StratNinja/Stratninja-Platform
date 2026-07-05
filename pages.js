@@ -239,7 +239,57 @@
   }
 
   // ========== SCANNER ==========
-  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", sym: "", ftfc: false, priceMin: "", priceMax: "" };
+  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all" };
+  const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
+  const CAP_RANGES = { mega: [2e11, Infinity], large: [1e10, 2e11], mid: [2e9, 1e10], small: [3e8, 2e9], micro: [0, 3e8] };
+  function fmtCap(n) {
+    if (n == null) return "—";
+    if (n >= 1e12) return "$" + (n / 1e12).toFixed(2) + "T";
+    if (n >= 1e9) return "$" + (n / 1e9).toFixed(1) + "B";
+    if (n >= 1e6) return "$" + (n / 1e6).toFixed(0) + "M";
+    return "$" + n;
+  }
+  // ---- table sorting ----
+  const scanSort = { col: null, dir: -1 };   // dir: -1 desc (high→low), 1 asc
+  function dirRank(cell) { const c = cell && cell.c; return c === "up" ? 1 : c === "down" ? -1 : 0; }
+  function sortVal(t, col) {
+    if (col === "sym") return t.sym;
+    if (col === "price") return t.price;
+    if (col === "mc") return t.mc;
+    if (col === "chg") return t.chg;
+    if (col === "ftfc") return t.ftfc ? 1 : 0;
+    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return dirRank(t[col]);
+    const k = t.tech || {};
+    if (col === "rsi") return k.rsi;
+    if (col === "mfi") return k.mfi;
+    if (col === "rvol") return k.rvol;
+    if (col === "vol") return k.vol;
+    if (col === "dhi52") return k.dhi52;
+    if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
+    return null;
+  }
+  function sortRows(rows) {
+    if (!scanSort.col) return rows;
+    const col = scanSort.col, dir = scanSort.dir;
+    return rows.slice().sort((a, b) => {
+      let va = sortVal(a, col), vb = sortVal(b, col);
+      const na = va == null || va === "" || (typeof va === "number" && isNaN(va));
+      const nb = vb == null || vb === "" || (typeof vb === "number" && isNaN(vb));
+      if (na && nb) return 0; if (na) return 1; if (nb) return -1;   // blanks always last
+      if (typeof va === "string") return dir * va.localeCompare(vb);
+      return dir * (va - vb);
+    });
+  }
+  function onSortClick(col) {
+    if (scanSort.col === col) scanSort.dir *= -1;
+    else { scanSort.col = col; scanSort.dir = col === "sym" ? 1 : -1; }  // numbers high→low first
+    reRender();
+  }
+  function sortableTh(label, col, extra) {
+    const active = scanSort.col === col;
+    const arrow = active ? (scanSort.dir < 0 ? " ▼" : " ▲") : "";
+    return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
+  }
   const PRESETS = [
     { id: "hammerM", label: "🔨 פטיש חודשי", apply: (s, t) => { s.tfs = ["M"]; s.shape = "hammer"; } },
     { id: "shooterW", label: "⭐ כוכב נופל שבועי", apply: (s, t) => { s.tfs = ["W"]; s.shape = "shooter"; } },
@@ -250,7 +300,7 @@
   ];
   function resetScan() {
     scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
-    scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = "";
+    scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
     resetTech(); techState.techOpen = false;
   }
   function applyPreset(id) {
@@ -262,7 +312,7 @@
   function scanSource() {
     if (SCAN && SCAN.rows && SCAN.rows.length) {
       return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, price: r.p || (r.tech ? r.tech.px : 0),
-        chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0),
+        chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc,
         Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech }));
     }
     return TICKERS;
@@ -316,6 +366,7 @@
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option' + (scanState.sector === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
+        '<div class="fgrp"><label>שווי שוק</label><select id="scanCap">' + CAP_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.cap === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
         '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="scanReset">איפוס</button></div>' +
       "</div></div>";
@@ -367,7 +418,7 @@
 
     const techOn = techActive();
     const maLabel = techState.maType + techState.maPeriod;
-    const rows = filterRows(all);
+    const rows = sortRows(filterRows(all));
     const CAP = 300;
     const shown = rows.slice(0, CAP);
     const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
@@ -385,7 +436,7 @@
       return "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + '</span> <span class="tname">' + t.sector + "</span></td>" +
-        "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
+        "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
         techCells +
@@ -393,7 +444,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.tfs.length > 1 || cnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -402,11 +453,15 @@
         : '<div class="ins-empty">סַנֵּן לפי תבנית, טיימפריים, סקטור או פילטר טכני — ואציג לך עובדות מעניינות על מה שיצא. 🔍</div>') +
       "</div>";
 
-    const techHead = techOn ? "<th>RSI</th><th>MFI</th><th>RVOL</th><th>ווליום</th><th>Δ " + maLabel + "</th><th>Δ שיא52</th>" : "";
-    const nCols = techOn ? 16 : 10;
+    const head =
+      "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
+      sortableTh("Y", "Y") + sortableTh("Q", "Q") + sortableTh("M", "M") + sortableTh("W", "W") + sortableTh("D", "D") + sortableTh("FTFC", "ftfc") +
+      (techOn ? sortableTh("RSI", "rsi") + sortableTh("MFI", "mfi") + sortableTh("RVOL", "rvol") + sortableTh("ווליום", "vol") + sortableTh("Δ " + maLabel, "dma") + sortableTh("Δ שיא52", "dhi52") : "") +
+      "<th></th>";
+    const nCols = techOn ? 18 : 12;
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th>" + techHead + "<th></th></tr></thead><tbody>" +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" +
       (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
 
@@ -431,6 +486,10 @@
         const px = t.price || (t.tech ? t.tech.px : 0);
         if (scanState.priceMin !== "" && px < parseFloat(scanState.priceMin)) return false;
         if (scanState.priceMax !== "" && px > parseFloat(scanState.priceMax)) return false;
+      }
+      if (scanState.cap !== "all") {
+        const mc = t.mc, rng = CAP_RANGES[scanState.cap];
+        if (mc == null || (rng && (mc < rng[0] || mc >= rng[1]))) return false;
       }
       for (let i = 0; i < tfs.length; i++) {
         const c = t[tfs[i]] || t.D;
@@ -477,10 +536,12 @@
     const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; reRender(); };
     const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; reRender(); };
     const sym = $("#scanSym"); if (sym) sym.onchange = () => { scanState.sym = sym.value; reRender(); };
+    document.querySelectorAll("[data-sortcol]").forEach(th => th.onclick = () => onSortClick(th.dataset.sortcol));
+    const cap = $("#scanCap"); if (cap) cap.onchange = () => { scanState.cap = cap.value; reRender(); };
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); reRender(); };
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); scanSort.col = null; reRender(); };
     // technical controls
     const bind = (id, ev, fn) => { const e = $("#" + id); if (e) e[ev] = fn; };
     bind("techToggle", "onclick", () => { techState.techOpen = !techState.techOpen; reRender(); });
