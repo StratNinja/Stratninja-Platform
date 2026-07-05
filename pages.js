@@ -224,6 +224,37 @@
     }
     return TICKERS;
   }
+  function scanInsights(rows, universe) {
+    const n = rows.length;
+    if (!n) return [];
+    const facts = [];
+    const pctOf = k => Math.round(k / n * 100);
+    // sector concentration
+    const sec = {}; rows.forEach(r => { sec[r.sector] = (sec[r.sector] || 0) + 1; });
+    const topSec = Object.keys(sec).map(k => [k, sec[k]]).sort((a, b) => b[1] - a[1])[0];
+    if (topSec && topSec[0]) facts.push({ i: "🗂️", t: pctOf(topSec[1]) + "% מהתוצאות בסקטור <b>" + topSec[0] + "</b> (" + topSec[1] + " מניות)" });
+    // FTFC rate
+    const ftfc = rows.filter(r => r.ftfc).length;
+    if (ftfc) facts.push({ i: "🎯", t: pctOf(ftfc) + "% בהמשכיות-טיימפריימים מלאה (<b>FTFC</b>) — יישור חזק בין הזמנים" });
+    // daily direction bias
+    const green = rows.filter(r => (r.D || {}).c === "up").length, red = rows.filter(r => (r.D || {}).c === "down").length;
+    if (green || red) {
+      const dom = green >= red ? green : red;
+      facts.push({ i: green >= red ? "🟢" : "🔴", t: pctOf(dom) + "% מהנרות היומיים " + (green > red ? "ירוקים (הטיה שורית)" : red > green ? "אדומים (הטיה דובית)" : "מאוזנים") });
+    }
+    // most common daily pattern
+    const pat = {}; rows.forEach(r => { const t = (r.D || {}).t; if (t) pat[t] = (pat[t] || 0) + 1; });
+    const topPat = Object.keys(pat).map(k => [k, pat[k]]).sort((a, b) => b[1] - a[1])[0];
+    if (topPat) facts.push({ i: "📊", t: "התבנית היומית הנפוצה: <b>" + topPat[0] + "</b> ב-" + pctOf(topPat[1]) + "% מהתוצאות" });
+    // conflict candles (2U red / 2D green)
+    const conflict = rows.filter(r => { const d = r.D || {}; return (d.t === "2U" && d.c === "down") || (d.t === "2D" && d.c === "up"); }).length;
+    if (conflict) facts.push({ i: "⚔️", t: pctOf(conflict) + "% נרות ב<b>קונפליקט</b> (2U אדום / 2D ירוק) — סימן להיפוך אפשרי" });
+    // multi-TF confluence
+    if (scanState.tfs.length > 1) facts.push({ i: "⚡", t: "קונפלואנס: התבנית מתקיימת על <b>" + scanState.tfs.length + " טיימפריימים</b> בו-זמנית — סטאפ נדיר וחזק יותר" });
+    // selectivity
+    facts.push({ i: "🔎", t: "הסינון צימצם ל-<b>" + n + "</b> מתוך " + universe + " מניות (" + Math.round(n / universe * 100) + "% מהיקום)" });
+    return facts;
+  }
   function renderScanner() {
     const all = scanSource();
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
@@ -255,13 +286,25 @@
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
       "</tr>").join("");
 
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.tfs.length > 1;
+    const facts = filterActive ? scanInsights(rows, all.length) : [];
+    const insightsPanel =
+      '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
+      (facts.length
+        ? facts.map(f => '<div class="insight"><span class="ins-ico">' + f.i + '</span><span>' + f.t + "</span></div>").join("")
+        : '<div class="ins-empty">סַנֵּן לפי תבנית, טיימפריים או סקטור — ואציג לך עובדות מעניינות על מה שיצא. 🔍</div>') +
+      "</div>";
+
+    const resultsPanel =
+      '<div class="panel scan-results"><h3>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></h3>" +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th><th></th></tr></thead><tbody>" +
+      (shown.length ? body : '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
+      "</tbody></table></div>" + colorLegend() + "</div>";
+
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">חפש תבניות Strat — כולל קונפלואנס רב-טיימפריים</div></div>' + (isLive ? liveBanner() : DEMO) +
       filters +
-      '<div class="panel"><h3>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th><th></th></tr></thead><tbody>" +
-      (shown.length ? body : '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
-      "</tbody></table></div>" + colorLegend() + "</div>"
+      '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
     );
   }
   function filterRows(all) {
