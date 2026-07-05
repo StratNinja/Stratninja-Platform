@@ -81,6 +81,8 @@
   padding:7px 12px; font-size:13px; cursor:pointer; }
 .chip:hover { border-color:#3a4150; color:var(--ink); }
 .chip.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+.chip.preset { background:rgba(99,102,241,.12); border-color:rgba(99,102,241,.4); color:var(--ink); font-weight:600; }
+.chip.preset:hover { background:rgba(99,102,241,.22); border-color:var(--accent); color:#fff; }
 .fgrp select, .fgrp input { background:var(--bg); color:var(--ink); border:1px solid var(--line);
   border-radius:8px; padding:8px 10px; font-size:13px; min-width:120px; }
 

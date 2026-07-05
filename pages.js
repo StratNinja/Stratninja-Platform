@@ -240,9 +240,29 @@
 
   // ========== SCANNER ==========
   const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", sym: "", ftfc: false, priceMin: "", priceMax: "" };
+  const PRESETS = [
+    { id: "hammerM", label: "🔨 פטיש חודשי", apply: (s, t) => { s.tfs = ["M"]; s.shape = "hammer"; } },
+    { id: "shooterW", label: "⭐ כוכב נופל שבועי", apply: (s, t) => { s.tfs = ["W"]; s.shape = "shooter"; } },
+    { id: "broadVol", label: "⚡ היפוך התרחבות + ווליום", apply: (s, t) => { s.tfs = ["D"]; s.broad = "any"; t.volOn = true; t.volMin = 1000000; t.techOpen = true; } },
+    { id: "ftfcSma", label: "🎯 FTFC + מעל SMA200", apply: (s, t) => { s.ftfc = true; t.maOn = true; t.maRel = "above"; t.maPeriod = "200"; t.techOpen = true; } },
+    { id: "oversold", label: "📉 RSI מכירת יתר", apply: (s, t) => { s.tfs = ["D"]; t.rsiOn = true; t.rsiMin = 0; t.rsiMax = 30; t.techOpen = true; } },
+    { id: "runners", label: "🚀 קרוב לשיא 52ש׳ + ווליום", apply: (s, t) => { s.tfs = ["D"]; t.ext52 = "high"; t.ext52Pct = 3; t.rvolOn = true; t.rvolMin = 1.5; t.techOpen = true; } },
+  ];
+  function resetScan() {
+    scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
+    scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = "";
+    resetTech(); techState.techOpen = false;
+  }
+  function applyPreset(id) {
+    const p = PRESETS.find(x => x.id === id); if (!p) return;
+    resetScan();
+    p.apply(scanState, techState);
+    reRender();
+  }
   function scanSource() {
     if (SCAN && SCAN.rows && SCAN.rows.length) {
-      return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, price: r.p, chg: r.c,
+      return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, price: r.p || (r.tech ? r.tech.px : 0),
+        chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0),
         Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech }));
     }
     return TICKERS;
@@ -385,9 +405,13 @@
       (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
 
+    const presetBar =
+      '<div class="panel filters" style="padding-bottom:12px"><h3 style="margin:0 0 8px">⚡ סריקות מהירות <span class="muted" style="font-size:12px">לחיצה אחת = סטאפ מוכן</span></h3>' +
+      '<div class="chips">' + PRESETS.map(p => '<button class="chip preset" data-preset="' + p.id + '">' + p.label + "</button>").join("") + "</div></div>";
+
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">תבניות Strat + קונפלואנס רב-טיימפריים · עם פילטרים טכניים (SMA/RSI/ווליום) לשילוב</div></div>' + (isLive ? liveBanner() : DEMO) +
-      filters + techPanel +
+      presetBar + filters + techPanel +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
     );
   }
@@ -436,6 +460,7 @@
     });
   }
   function wireScanner() {
+    document.querySelectorAll("[data-preset]").forEach(b => b.onclick = () => applyPreset(b.dataset.preset));
     document.querySelectorAll("[data-tff]").forEach(b => b.onclick = () => { const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
@@ -446,10 +471,7 @@
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => {
-      scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = "";
-      resetTech(); reRender();
-    };
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); reRender(); };
     // technical controls
     const bind = (id, ev, fn) => { const e = $("#" + id); if (e) e[ev] = fn; };
     bind("techToggle", "onclick", () => { techState.techOpen = !techState.techOpen; reRender(); });
