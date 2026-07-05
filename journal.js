@@ -527,7 +527,7 @@
       field("מחיר יציאה", '<input id="m_xp" type="number" step="any" placeholder="ריק = פוזיציה פתוחה">') +
       field("תאריך כניסה", '<input id="m_ed" type="date">') +
       field("תאריך יציאה", '<input id="m_xd" type="date">') +
-      field("עמלות", '<input id="m_fee" type="number" step="any" value="0">') +
+      field("עמלות", '<input id="m_fee" type="number" step="any" value="' + lastFee() + '">') +
       field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?"></textarea>', true) +
       "</div>" +
       '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>' +
@@ -627,9 +627,12 @@
     p.className = "pnlpreview " + cls(t.pnl);
     p.textContent = "רווח/הפסד משוער: " + money(t.pnl, 2);
   }
+  // remember the last commission the user entered, so it prefills next time
+  function lastFee() { try { return localStorage.getItem("sn_last_fee") || "0"; } catch (e) { return "0"; } }
   function saveManual() {
     const m = readManual();
     if (!m.account) { alert("צריך לבחור/להזין חשבון"); return; }
+    try { localStorage.setItem("sn_last_fee", (m.fees == null ? "0" : String(m.fees))); } catch (e) {}
     if (!m.symbol) { alert("צריך סימבול"); return; }
     if (!m.entryDate) { alert("צריך תאריך כניסה"); return; }
     const t = E.manualToTrade(m);
@@ -664,7 +667,15 @@
     $("#importBtn").onclick = openImport;
     $("#manualBtn").onclick = () => openManual();
     $("#acctSel").onchange = e => { state.account = e.target.value; state.monthIdx = 999; render(); };
-    document.querySelectorAll(".tab").forEach(t => t.onclick = () => { state.tab = t.dataset.tab; render(); });
+    document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+      state.tab = t.dataset.tab;
+      render();
+      // on phones the stat cards are identical & tall — scroll to the tab's own view
+      if (window.innerWidth <= 640) {
+        const v = $("#view");
+        if (v && v.lastElementChild) v.lastElementChild.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
     $("#menuBtn").onclick = openMenu;
     state.monthIdx = 999;
     render();
