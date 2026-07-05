@@ -520,7 +520,7 @@
     for (const c of checks) {
       if (!c.date || !c.price || isNaN(c.price)) continue;
       try {
-        const r = await fetch(cfg.SUPABASE_URL + "/functions/v1/price-check?symbol=" + encodeURIComponent(sym) + "&date=" + c.date,
+        const r = await fetch(cfg.SUPABASE_URL + "/functions/v1/super-processor?symbol=" + encodeURIComponent(sym) + "&date=" + c.date,
           { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
         if (!r.ok) continue;
         const d = await r.json();
