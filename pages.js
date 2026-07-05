@@ -270,7 +270,7 @@
       '<div class="mkt-grid">' +
         '<div class="mkt-col">' +
           '<div class="mkt-top">' +
-            '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table>" + colorLegend() + "</div>" +
+            '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div>" + colorLegend() + "</div>" +
             '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>" +
           "</div>" +
           breadthBar() +
