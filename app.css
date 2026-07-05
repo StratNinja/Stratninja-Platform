@@ -208,12 +208,26 @@
 .vix-card .v { font-size: 30px; font-weight: 800; }
 .vix-card .sub { font-size: 13px; font-weight: 600; margin-top: 2px; }
 
+/* ===== market page compact layout ===== */
+.page-head.compact { margin-bottom: 10px; }
+.page-head.compact h1 { font-size: 22px; }
+.mkt-live { font-size: 12px; font-weight: 600; vertical-align: middle; margin-inline-start: 8px; color: var(--muted); }
+.mkt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; margin-bottom: 12px; }
+.mkt-col { display: flex; flex-direction: column; gap: 12px; }
+.mkt-col .mkt-top { margin-bottom: 0; }
+.mkt-col .panel { margin: 0; }
+.cols4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.cols4 .panel { margin: 0; }
+@media (max-width: 1000px) { .mkt-grid { grid-template-columns: 1fr; } .cols4 { grid-template-columns: repeat(2, 1fr); } }
+
 /* ===== Candle Map ===== */
-.cmap-table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+.cmap-table { width: 100%; border-collapse: separate; border-spacing: 0 5px; }
 .cmap-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; text-align: center; }
 .cmap-table td { text-align: center; padding: 0 4px; }
-.cmap-table .cm-type { font-weight: 800; font-size: 15px; color: var(--ink); text-align: start; width: 54px; }
-.cm-pill { display: block; padding: 8px 0; border-radius: 9px; color: #fff; font-weight: 800; font-size: 14px; min-width: 46px; }
+.cmap-table .cm-type { font-weight: 800; font-size: 14px; color: var(--ink); text-align: start; width: 50px; }
+.cm-pill { display: block; padding: 6px 0; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; min-width: 42px; }
+.cm-click { cursor: pointer; transition: .12s; }
+.cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }
 .cm-3g { background: #0e9f6e; } .cm-f2d { background: #84cc16; } .cm-2u { background: #22c55e; }
 .cm-1 { background: #3b82f6; } .cm-2d { background: #f27a7a; } .cm-f2u { background: #ef4444; } .cm-3r { background: #c62828; }
 

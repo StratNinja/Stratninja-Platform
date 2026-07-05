@@ -204,14 +204,16 @@
   }
   // ---- Candle Map (client-side breadth by candle type, from scanner data) ----
   const CMAP_ROWS = [
-    ["3G", "נר 3 ירוק · Outside שורי", "cm-3g"],
-    ["F2D", "2D שנכשל · שבר נמוך ונסגר ירוק (reclaim)", "cm-f2d"],
-    ["2U", "2 מעלה · המשך שורי", "cm-2u"],
-    ["1", "Inside · התכווצות/דשדוש", "cm-1"],
-    ["2D", "2 מטה · המשך דובי", "cm-2d"],
-    ["F2U", "2U שנכשל · שבר גבוה ונסגר אדום (rejection)", "cm-f2u"],
-    ["3R", "נר 3 אדום · Outside דובי", "cm-3r"],
+    ["3G", "3 GREEN — נר 3 חיצוני ירוק (Outside · התרחבות שורית)", "cm-3g"],
+    ["F2D", "Failed 2D — שבר את הנמוך ונסגר ירוק (reclaim · היפוך שורי)", "cm-f2d"],
+    ["2U", "2 UP — נר 2 מעלה (המשך שורי)", "cm-2u"],
+    ["1", "INSIDE — נר פנימי (התכווצות / דשדוש)", "cm-1"],
+    ["2D", "2 DOWN — נר 2 מטה (המשך דובי)", "cm-2d"],
+    ["F2U", "Failed 2U — שבר את הגבוה ונסגר אדום (rejection · היפוך דובי)", "cm-f2u"],
+    ["3R", "3 RED — נר 3 חיצוני אדום (Outside · התרחבות דובית)", "cm-3r"],
   ];
+  const CMAP_DESC = {}; CMAP_ROWS.forEach(r => CMAP_DESC[r[0]] = r[1]);
+  const TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
   function candleBucket(c) {
     if (!c) return "1";
     const t = c.t, col = c.c;
@@ -230,9 +232,25 @@
     const head = '<tr><th style="text-align:start">TYPE</th>' + cols.map(t => "<th>" + t + "</th>").join("") + "</tr>";
     const body = CMAP_ROWS.map(([key, desc, cls]) =>
       '<tr><td class="cm-type" title="' + desc + '">' + key + "</td>" +
-      cols.map(tf => '<td><span class="cm-pill ' + cls + '">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
-    return '<div class="panel"><h3>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + SCAN.rows.length + ' מניות · לפי סוג נר (שורי→דובי)</span></h3>' +
+      cols.map(tf => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + desc + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
+    return '<div class="panel"><h3>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + SCAN.rows.length + ' מניות · לחץ על מספר לרשימה</span></h3>' +
       '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div></div>";
+  }
+  function openCandleMapDrill(bucket, tfk) {
+    if (!(SCAN && SCAN.rows)) return;
+    const members = SCAN.rows.filter(r => candleBucket(r[tfk]) === bucket).sort((a, b) => a.s.localeCompare(b.s));
+    const title = (CMAP_DESC[bucket] || bucket).split(" — ")[0];
+    if (!members.length) { modal(bucket, '<div class="muted" style="padding:20px">אין מניות</div>'); return; }
+    const rows = members.map(r =>
+      "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s +
+      '</span></td><td class="tname" style="text-align:start">' + (r.sec || "") + "</td><td>" + money(r.p || 0) + "</td><td>" + tf(r[tfk], r.s, tfk) + "</td></tr>").join("");
+    const syms = members.map(r => r.s).join(", ");
+    modal("🗺️ " + title + " · " + (TF_HE[tfk] || tfk) + " · " + members.length + " מניות",
+      '<div class="note" style="margin-bottom:8px">' + (CMAP_DESC[bucket] || "") + "</div>" +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>נר ' + tfk + "</th></tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<button class="btn ghost" id="cmapCopy" style="margin-top:10px;font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button>");
+    const cp = $("#cmapCopy");
+    if (cp) cp.onclick = () => { copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + members.length; }); };
   }
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
@@ -245,21 +263,28 @@
       ? '<div class="v">' + LIVE.vix.level.toFixed(2) + '</div><div class="sub ' + (LIVE.vix.chg >= 0 ? "neg" : "pos") + '">' + (LIVE.vix.chg >= 0 ? "+" : "") + LIVE.vix.chg.toFixed(2) + "%</div>"
       : '<div class="v muted">—</div>';
     return (
-      '<div class="page-head"><h1>סקירת שוק</h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' + liveBanner() +
-      '<div class="mkt-top">' +
-        '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table>" + colorLegend() + "</div>" +
-        '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + '</div>' +
+      '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' +
+      '<div class="mkt-grid">' +
+        '<div class="mkt-col">' +
+          '<div class="mkt-top">' +
+            '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table>" + colorLegend() + "</div>" +
+            '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>" +
+          "</div>" +
+          breadthBar() +
+        "</div>" +
+        '<div class="mkt-col">' + candleMapPanel() + "</div>" +
       "</div>" +
-      breadthBar() +
-      candleMapPanel() +
-      '<div class="cols2"><div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(LIVE.sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
-      '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(LIVE.sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div></div>" +
-      '<div class="cols2"><div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((LIVE.leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
-      '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((LIVE.laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div></div>"
+      '<div class="cols4">' +
+        '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(LIVE.sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
+        '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(LIVE.sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
+        '<div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((LIVE.leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
+        '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((LIVE.laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div>" +
+      "</div>"
     );
   }
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
+    document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
   }
 
   // ========== S&P 500 BREADTH ==========
