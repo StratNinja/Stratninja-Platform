@@ -12,14 +12,20 @@
   // ---------- helpers ----------
   const SHAPE_HE = { doji: "דוג'י", hammer: "פטיש 🔨", shooter: "כוכב נופל ⭐", marubozu: "מרובוזו", spinning: "סביבון", normal: "נר רגיל", flat: "—" };
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
+  const BR_HE = { up: "היפוך התרחבות 🔼 (מלמטה)", down: "היפוך התרחבות 🔽 (מלמעלה)" };
+  const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך התרחבות"], ["up", "🔼 היפוך מלמטה (שורי)"], ["down", "🔽 היפוך מלמעלה (דובי)"]];
   function cell(t, c) { return { t: t, c: c }; }
   function tf(x, sym, tfl) {
     const c = x && x.c ? x.c : "doji";
     const t = x && x.t ? x.t : "1";
     const sh = x && x.sh ? x.sh : "";
-    const title = sh && SHAPE_HE[sh] ? ' title="' + SHAPE_HE[sh] + '"' : "";
+    const parts = [];
+    if (sh && SHAPE_HE[sh]) parts.push(SHAPE_HE[sh]);
+    if (x && x.br && BR_HE[x.br]) parts.push(BR_HE[x.br]);
+    const title = parts.length ? ' title="' + parts.join(" · ") + '"' : "";
+    const brMark = x && x.br ? ' style="text-decoration:underline dotted"' : "";
     const clk = sym ? ' clickable" data-chart="' + sym + '" data-tf="' + tfl + '"' : '"';
-    return '<span class="tf ' + c + clk + title + ">" + t + "</span>";
+    return '<span class="tf ' + c + clk + title + brMark + ">" + t + "</span>";
   }
   const DEMO = '<div class="demo-flag">🧪 נתוני דמו — יחובר למפתח Massive/Polygon החי בשלב הבא</div>';
   function money(v, d) { d = d == null ? 2 : d; return "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -233,7 +239,7 @@
   }
 
   // ========== SCANNER ==========
-  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", sector: "all", sym: "", ftfc: false, priceMin: "", priceMax: "" };
+  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", sym: "", ftfc: false, priceMin: "", priceMax: "" };
   function scanSource() {
     if (SCAN && SCAN.rows && SCAN.rows.length) {
       return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, price: r.p, chg: r.c,
@@ -286,6 +292,7 @@
         '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>היפוך התרחבות (Broadening)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option' + (scanState.sector === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
@@ -361,7 +368,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.tfs.length > 1 || cnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.tfs.length > 1 || cnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -401,6 +408,11 @@
         if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
         if (scanState.dir !== "all" && c.c !== scanState.dir) return false;
         if (scanState.shape !== "all" && (c.sh || "") !== scanState.shape) return false;
+        if (scanState.broad !== "off") {
+          const br = c.br || "";
+          if (scanState.broad === "any" && !br) return false;
+          if ((scanState.broad === "up" || scanState.broad === "down") && br !== scanState.broad) return false;
+        }
       }
       if (techOn) {
         const k = t.tech;
@@ -428,13 +440,14 @@
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
+    const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; reRender(); };
     const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; reRender(); };
     const sym = $("#scanSym"); if (sym) sym.onchange = () => { scanState.sym = sym.value; reRender(); };
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
     const reset = $("#scanReset"); if (reset) reset.onclick = () => {
-      scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = "";
+      scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = "";
       resetTech(); reRender();
     };
     // technical controls
