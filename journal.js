@@ -470,7 +470,8 @@
       field("עמלות", '<input id="m_fee" type="number" step="any" value="0">') +
       field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?"></textarea>', true) +
       "</div>" +
-      '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>';
+      '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>' +
+      '<div class="price-warn hidden" id="m_pricewarn"></div>';
     modal(existing ? "עריכת עסקה ידנית" : "הזנת עסקה ידנית", body, [
       { label: existing ? "עדכן עסקה" : "שמור עסקה", cls: "primary", fn: saveManual },
     ]);
@@ -485,6 +486,11 @@
     // live P&L preview
     const ids = ["m_asset", "m_dir", "m_qty", "m_ep", "m_xp", "m_fee"];
     ids.forEach(id => { const e = document.getElementById(id); e.oninput = updatePreview; e.onchange = updatePreview; });
+    // price-in-range validation (soft warning) — on change/blur to limit API calls
+    ["m_sym", "m_ed", "m_ep", "m_xd", "m_xp"].forEach(id => {
+      const e = document.getElementById(id);
+      if (e) { e.addEventListener("change", scheduleValidatePrices); e.addEventListener("blur", scheduleValidatePrices); }
+    });
     // new-account handling
     const acctSel = document.getElementById("m_acct");
     if (acctSel.tagName === "SELECT") acctSel.onchange = () => {
@@ -495,6 +501,43 @@
       }
     };
     updatePreview();
+  }
+  // ---- soft price validation (was the entered price within that day's range?) ----
+  let _priceTimer = null;
+  function scheduleValidatePrices() { clearTimeout(_priceTimer); _priceTimer = setTimeout(validateManualPrices, 450); }
+  async function validateManualPrices() {
+    const warnEl = document.getElementById("m_pricewarn");
+    if (!warnEl) return;
+    const cfg = window.SN_CONFIG;
+    const gv = id => { const e = document.getElementById(id); return e ? e.value : ""; };
+    const sym = (gv("m_sym") || "").toUpperCase().trim();
+    if (!cfg || !cfg.SUPABASE_URL || !sym) { warnEl.classList.add("hidden"); return; }
+    const checks = [
+      { label: "כניסה", price: parseFloat(gv("m_ep")), date: gv("m_ed") },
+      { label: "יציאה", price: parseFloat(gv("m_xp")), date: gv("m_xd") },
+    ];
+    const warns = [];
+    for (const c of checks) {
+      if (!c.date || !c.price || isNaN(c.price)) continue;
+      try {
+        const r = await fetch(cfg.SUPABASE_URL + "/functions/v1/price-check?symbol=" + encodeURIComponent(sym) + "&date=" + c.date,
+          { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+        if (!r.ok) continue;
+        const d = await r.json();
+        if (!d.found || d.low == null || d.high == null) continue;
+        const tol = 0.005, lo = d.low * (1 - tol), hi = d.high * (1 + tol);
+        if (c.price < lo || c.price > hi) {
+          warns.push("מחיר ה" + c.label + " (" + c.price + "$) מחוץ לטווח של " + sym + " ב-" + c.date +
+            " (נע בין " + d.low + "$ ל-" + d.high + "$)");
+        }
+      } catch (e) { /* function not deployed / offline — stay silent */ }
+    }
+    if (warns.length) {
+      warnEl.innerHTML = "⚠️ " + warns.join("<br>") + "<br><span style='opacity:.75;font-weight:400'>אפשר להמשיך בכל זאת — זו רק בדיקת ודאות.</span>";
+      warnEl.classList.remove("hidden");
+    } else {
+      warnEl.classList.add("hidden");
+    }
   }
   function field(label, control, full) {
     return '<div class="field' + (full ? " full" : "") + '"><label>' + label + "</label>" + control + "</div>";
