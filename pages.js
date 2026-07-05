@@ -7,6 +7,7 @@
   "use strict";
   const $ = s => document.querySelector(s);
   let LIVE = null;  // live market snapshot from Supabase (null = show demo)
+  let SCAN = null;  // live per-ticker scanner data (null = show demo)
 
   // ---------- helpers ----------
   function cell(t, c) { return { t: t, c: c }; }
@@ -215,95 +216,123 @@
   }
 
   // ========== SCANNER ==========
-  const scanState = { tf: "D", patterns: [], dir: "all", sector: "all", sym: "", ftfc: false };
+  const scanState = { tfs: ["D"], patterns: [], dir: "all", sector: "all", sym: "", ftfc: false };
+  function scanSource() {
+    if (SCAN && SCAN.rows && SCAN.rows.length) {
+      return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, price: r.p, chg: r.c,
+        Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc }));
+    }
+    return TICKERS;
+  }
   function renderScanner() {
-    const sectors = Array.from(new Set(TICKERS.map(t => t.sector)));
+    const all = scanSource();
+    const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
+    const sectors = Array.from(new Set(all.map(t => t.sector))).sort();
     const patBtn = p => '<button class="chip' + (scanState.patterns.indexOf(p) >= 0 ? " on" : "") + '" data-pat="' + p + '">' + p + "</button>";
-    const tfBtn = f => '<button class="chip' + (scanState.tf === f ? " on" : "") + '" data-tff="' + f + '">' + f + "</button>";
+    const tfBtn = f => '<button class="chip' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + "</button>";
     const dirBtn = (v, l) => '<button class="chip' + (scanState.dir === v ? " on" : "") + '" data-dir="' + v + '">' + l + "</button>";
     const filters =
-      '<div class="panel filters"><h3>פילטרים</h3><div class="frow">' +
-        '<div class="fgrp"><label>טיימפריים</label><div class="chips">' + ["D", "W", "M", "Q", "Y"].map(tfBtn).join("") + "</div></div>" +
+      '<div class="panel filters"><h3>פילטרים <span class="muted" style="font-size:12px">בחר כמה טיימפריימים = חיפוש קונפלואנס (התבנית מתקיימת על כולם)</span></h3><div class="frow">' +
+        '<div class="fgrp"><label>טיימפריימים · רב-בחירה</label><div class="chips">' + ["D", "W", "M", "Q", "Y"].map(tfBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option' + (scanState.sector === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
-        '<div class="fgrp"><label>FTFC</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "מלא ✓" : "הכל") + "</button></div>" +
+        '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
         '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="scanReset">איפוס</button></div>' +
       "</div></div>";
 
-    const rows = filteredTickers();
-    const body = rows.map(t =>
+    const rows = filterRows(all);
+    const CAP = 300;
+    const shown = rows.slice(0, CAP);
+    const body = shown.map(t =>
       "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
-        '<td class="sym"><span class="tsym">' + t.sym + '</span> <span class="tname">' + t.sector + "</span></td>" +
+        '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + '</span> <span class="tname">' + t.sector + "</span></td>" +
         "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
-        '<td class="muted">' + t.shape + "</td><td>" + t.atr.toFixed(1) + "</td><td>" + t.rvol.toFixed(1) + "</td>" +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
       "</tr>").join("");
 
     return (
-      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">חפש תבניות Strat לפי טיימפריים, סוג נר ותבנית</div></div>' + DEMO +
+      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">חפש תבניות Strat — כולל קונפלואנס רב-טיימפריים</div></div>' + (isLive ? liveBanner() : DEMO) +
       filters +
-      '<div class="panel"><h3>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + TICKERS.length + "</span></h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th><th>צורה</th><th>ATR</th><th>RVOL</th><th></th></tr></thead><tbody>" +
-      (rows.length ? body : '<tr><td colspan="14" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
+      '<div class="panel"><h3>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></h3>" +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th><th></th></tr></thead><tbody>" +
+      (shown.length ? body : '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>"
     );
   }
-  function filteredTickers() {
-    return TICKERS.filter(t => {
+  function filterRows(all) {
+    const tfs = scanState.tfs.length ? scanState.tfs : ["D"];
+    return all.filter(t => {
       if (scanState.sector !== "all" && t.sector !== scanState.sector) return false;
       if (scanState.sym && t.sym.indexOf(scanState.sym.toUpperCase()) < 0) return false;
       if (scanState.ftfc && !t.ftfc) return false;
-      const c = t[scanState.tf] || t.D;
-      if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
-      if (scanState.dir !== "all" && c.c !== scanState.dir) return false;
+      for (let i = 0; i < tfs.length; i++) {
+        const c = t[tfs[i]] || t.D;
+        if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
+        if (scanState.dir !== "all" && c.c !== scanState.dir) return false;
+      }
       return true;
     });
   }
   function wireScanner() {
-    document.querySelectorAll("[data-tff]").forEach(b => b.onclick = () => { scanState.tf = b.dataset.tff; reRender(); });
+    document.querySelectorAll("[data-tff]").forEach(b => b.onclick = () => { const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
     const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; reRender(); };
     const sym = $("#scanSym"); if (sym) sym.oninput = () => { scanState.sym = sym.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => { scanState.tf = "D"; scanState.patterns = []; scanState.dir = "all"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; reRender(); };
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => { scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; reRender(); };
   }
 
   // ========== SECTORS ==========
   function renderSectors() {
-    const seg = (b) => {
-      const tot = b.u2 + b.d2 + b.one + b.three || 1;
-      const w = n => (n / tot * 100).toFixed(1) + "%";
-      return '<div class="breadth"><span class="bseg up" style="width:' + w(b.u2) + '"></span><span class="bseg one" style="width:' + w(b.one) + '"></span><span class="bseg three" style="width:' + w(b.three) + '"></span><span class="bseg down" style="width:' + w(b.d2) + '"></span></div>';
-    };
-    const cards = SECTORS.map((s, i) =>
-      '<div class="panel sector-card" data-sector="' + i + '"><h3>' + s.name + ' <span class="muted" style="font-size:12px">' + s.etf + " · " + s.total + " מניות</span></h3>" +
-      ["D", "W", "M"].map(r => '<div class="brow"><span class="btf">' + r + "</span>" + seg(s.breadth[r]) + "</div>").join("") +
-      '<div class="bkey"><span><i class="up"></i>2U ' + s.breadth.D.u2 + "</span><span><i class='one'></i>1 " + s.breadth.D.one + "</span><span><i class='three'></i>3 " + s.breadth.D.three + "</span><span><i class='down'></i>2D " + s.breadth.D.d2 + "</span></div></div>"
-    ).join("");
-    return (
-      '<div class="page-head"><h1>סקטורים</h1><div class="sub">11 סקטורי SPDR · לחץ על סקטור לפירוט המניות והטיימפריימים</div></div>' + DEMO +
-      '<div class="sector-grid">' + cards + "</div>"
-    );
+    const live = LIVE && LIVE.sectors;
+    if (!live || !live.length) {
+      const seg = (b) => {
+        const tot = b.u2 + b.d2 + b.one + b.three || 1;
+        const w = n => (n / tot * 100).toFixed(1) + "%";
+        return '<div class="breadth"><span class="bseg up" style="width:' + w(b.u2) + '"></span><span class="bseg one" style="width:' + w(b.one) + '"></span><span class="bseg three" style="width:' + w(b.three) + '"></span><span class="bseg down" style="width:' + w(b.d2) + '"></span></div>';
+      };
+      const cards = SECTORS.map((s, i) =>
+        '<div class="panel sector-card" data-sector="' + i + '"><h3>' + s.name + ' <span class="muted" style="font-size:12px">' + s.etf + "</span></h3>" +
+        ["D", "W", "M"].map(r => '<div class="brow"><span class="btf">' + r + "</span>" + seg(s.breadth[r]) + "</div>").join("") + "</div>").join("");
+      return '<div class="page-head"><h1>סקטורים</h1><div class="sub">breadth + FTFC · לחץ על סקטור לפירוט</div></div>' + DEMO + '<div class="sector-grid">' + cards + "</div>";
+    }
+    const ftfcBySec = {};
+    if (SCAN && SCAN.rows) SCAN.rows.forEach(r => { if (r.ftfc) ftfcBySec[r.sec] = (ftfcBySec[r.sec] || 0) + 1; });
+    const cards = live.map(s => {
+      const ap = s.above / (s.total || 1) * 100;
+      const ftfc = ftfcBySec[s.name] || 0;
+      return '<div class="panel sector-card" data-sec="' + encodeURIComponent(s.name) + '"><h3>' + s.name + ' <span class="muted" style="font-size:12px">' + s.total + " מניות · " + pctSpanBare(s.chg) + "</span></h3>" +
+        '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
+        '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + s.above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + s.below + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
+    }).join("");
+    return '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">% מניות מעל הפתיחה + מספר מניות בהמשכיות-טיימפריימים מלאה · לחץ לפירוט</div></div>' + liveBanner() + '<div class="sector-grid">' + cards + "</div>";
   }
-  function wireSectors() { document.querySelectorAll(".sector-card").forEach(c => c.onclick = () => openSectorDrill(+c.dataset.sector)); }
+  function wireSectors() {
+    document.querySelectorAll(".sector-card").forEach(c => {
+      c.onclick = () => { if (c.dataset.sec) openSectorDrillLive(decodeURIComponent(c.dataset.sec)); else openSectorDrill(+c.dataset.sector); };
+    });
+  }
+  function openSectorDrillLive(secName) {
+    const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => r.sec === secName) : [];
+    if (!members.length) { modal(secName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
+    const rows = members.map(r => {
+      const t = { sym: r.s, Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
+      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p) + "</td><td>" + pct(r.c) + "</td>" + tfCells(t) + "<td>" + (r.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td></tr>";
+    }).join("");
+    modal(secName + " · " + members.length + " מניות", '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend());
+  }
   function openSectorDrill(idx) {
     const s = SECTORS[idx];
-    // demo: pick tickers "in" this sector (fallback to a rotating slice)
-    let members = TICKERS.filter(t => sectorMatch(t.sector, s.name));
-    if (!members.length) members = TICKERS.slice((idx * 3) % TICKERS.length).concat(TICKERS).slice(0, 8);
+    const members = TICKERS.slice(0, 8);
     const rows = members.map(t =>
-      "<tr><td>" + star(t.sym) + '</td><td class="sym"><span class="tsym">' + t.sym + '</span> <span class="tname">' + t.name + "</span></td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + "</tr>").join("");
+      "<tr><td>" + star(t.sym) + '</td><td class="sym"><span class="tsym">' + t.sym + "</span></td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + "</tr>").join("");
     modal(s.name + " · " + s.etf, '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "</tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend());
-  }
-  function sectorMatch(tSector, sName) {
-    const map = { "טכנולוגיה": "Technology", "פיננסים": "Financials", "בריאות": "Health Care", "אנרגיה": "Energy", "מוצרי צריכה מחזוריים": "Consumer Disc.", "תקשורת": "Communication" };
-    return map[sName] === tSector;
   }
 
   // ========== GAPPERS ==========
@@ -439,6 +468,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
+    if (state.page === "scanner" || state.page === "sectors") loadScanner();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
   }
   window.setPageExternal = setPage;
@@ -453,6 +483,21 @@
       const j = await r.json();
       if (j && j[0] && j[0].data) { LIVE = j[0].data; if (state.page === "market") reRender(); }
     } catch (e) { /* keep demo data */ }
+  }
+
+  let _scanLoaded = false;
+  async function loadScanner() {
+    if (_scanLoaded) return;
+    _scanLoaded = true;
+    try {
+      const cfg = window.SN_CONFIG;
+      if (!cfg || !cfg.SUPABASE_URL) return;
+      const url = cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.latest&select=data";
+      const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors") reRender(); }
+    } catch (e) { /* keep demo */ }
   }
 
   function initNav() {

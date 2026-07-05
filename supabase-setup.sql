@@ -39,3 +39,14 @@ alter table public.market_snapshot enable row level security;
 do $$ begin
   create policy "public read market" on public.market_snapshot for select using (true);
 exception when duplicate_object then null; end $$;
+
+-- 4) SCANNER DATA — per-ticker multi-TF candles + FTFC (server-fed) ----------
+create table if not exists public.scanner_data (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.scanner_data enable row level security;
+do $$ begin
+  create policy "public read scanner" on public.scanner_data for select using (true);
+exception when duplicate_object then null; end $$;
