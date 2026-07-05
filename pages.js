@@ -14,6 +14,9 @@
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
   const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
   const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"]];
+  // sector → SPDR sector ETF (the ETF that holds the stock)
+  const SECTOR_ETF = { "Technology": "XLK", "Financials": "XLF", "Health Care": "XLV", "Energy": "XLE", "Consumer Disc.": "XLY", "Communication": "XLC", "Industrials": "XLI", "Consumer Staples": "XLP", "Materials": "XLB", "Real Estate": "XLRE", "Utilities": "XLU" };
+  function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
   function cell(t, c) { return { t: t, c: c }; }
   function tf(x, sym, tfl) {
     const c = x && x.c ? x.c : "doji";
@@ -333,6 +336,7 @@
   function sortVal(t, col) {
     if (col === "sym") return t.sym;
     if (col === "sec") return t.sector;
+    if (col === "etf") return etfFor(t.sector);
     if (col === "price") return t.price;
     if (col === "mc") return t.mc;
     if (col === "chg") return t.chg;
@@ -450,41 +454,29 @@
     if (techState.techOpen) {
       techInner = !hasTech
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
-        : '<div class="frow">' +
-            '<div class="fgrp"><label>מרחק מממוצע נע ' + onChip(techState.maOn, "tMaOn", techState.maOn ? "פעיל ✓" : "כבוי") + '</label>' +
-              '<div class="chips" style="align-items:center">' +
-                '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
-                '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
-                '<select id="tMaRel">' + opt("near", techState.maRel, "קרוב עד ±") + opt("far", techState.maRel, "רחוק לפחות ±") + opt("above", techState.maRel, "מעל") + opt("below", techState.maRel, "מתחת") + '</select>' +
-                (techState.maRel === "near" || techState.maRel === "far" ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:70px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
-              "</div></div>" +
-            '<div class="fgrp"><label>RSI (14) ' + onChip(techState.rsiOn, "tRsiOn", techState.rsiOn ? "פעיל ✓" : "כבוי") + '</label>' +
-              '<div class="chips" style="align-items:center"><span class="muted">בין</span><input id="tRsiMin" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMin + '">' +
-              '<span class="muted">ל-</span><input id="tRsiMax" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMax + '"></div></div>' +
-            '<div class="fgrp"><label>MFI (14) · כסף חכם ' + onChip(techState.mfiOn, "tMfiOn", techState.mfiOn ? "פעיל ✓" : "כבוי") + '</label>' +
-              '<div class="chips" style="align-items:center"><span class="muted">בין</span><input id="tMfiMin" type="number" min="0" max="100" style="width:64px" value="' + techState.mfiMin + '">' +
-              '<span class="muted">ל-</span><input id="tMfiMax" type="number" min="0" max="100" style="width:64px" value="' + techState.mfiMax + '"></div></div>' +
-          "</div>" +
-          '<div class="frow">' +
-            '<div class="fgrp"><label>ווליום יחסי (RVOL) ' + onChip(techState.rvolOn, "tRvolOn", techState.rvolOn ? "פעיל ✓" : "כבוי") + '</label>' +
-              '<div class="chips" style="align-items:center"><span class="muted">לפחות</span><input id="tRvolMin" type="number" step="0.1" min="0" style="width:74px" value="' + techState.rvolMin + '"><span class="muted">×</span></div></div>' +
-            '<div class="fgrp"><label>ווליום מוחלט (היום) ' + onChip(techState.volOn, "tVolOn", techState.volOn ? "פעיל ✓" : "כבוי") + '</label>' +
-              '<div class="chips" style="align-items:center"><span class="muted">מעל</span><select id="tVolMin">' +
-                opt("500000", techState.volMin, "500K") + opt("1000000", techState.volMin, "1M") + opt("2000000", techState.volMin, "2M") +
-                opt("5000000", techState.volMin, "5M") + opt("10000000", techState.volMin, "10M") + opt("20000000", techState.volMin, "20M") +
-              "</select></div></div>" +
-            '<div class="fgrp"><label>ווליום ממוצע (נזילות) ' + onChip(techState.avgVolOn, "tAvgVolOn", techState.avgVolOn ? "פעיל ✓" : "כבוי") + '</label>' +
-              '<div class="chips" style="align-items:center"><span class="muted">מעל</span><select id="tAvgVolMin">' +
-                opt("300000", techState.avgVolMin, "300K") + opt("500000", techState.avgVolMin, "500K") + opt("1000000", techState.avgVolMin, "1M") +
-                opt("2000000", techState.avgVolMin, "2M") + opt("5000000", techState.avgVolMin, "5M") + opt("10000000", techState.avgVolMin, "10M") +
-              '</select><span class="muted">ב-</span><select id="tAvgVolPer">' + opt("30", techState.avgVolPeriod, "30 יום") + opt("90", techState.avgVolPeriod, "90 יום") + "</select></div></div>" +
-            '<div class="fgrp"><label>קרבה לשיא/שפל 52ש׳</label>' +
-              '<div class="chips" style="align-items:center"><select id="tExt52">' +
-                opt("off", techState.ext52, "כבוי") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
-              "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:64px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+        : '<div class="frow tech-row">' +
+            '<div class="fgrp"><label>מרחק מ־MA</label><div class="chips" style="align-items:center">' +
+              '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
+              '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
+              '<select id="tMaRel">' + opt("off", techState.maRel, "— הכל") + opt("near", techState.maRel, "קרוב ±") + opt("far", techState.maRel, "רחוק ±") + opt("above", techState.maRel, "מעל") + opt("below", techState.maRel, "מתחת") + '</select>' +
+              ((techState.maRel === "near" || techState.maRel === "far") ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
+            "</div></div>" +
+            '<div class="fgrp"><label>RSI</label><div class="chips" style="align-items:center"><input id="tRsiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMin + '"><span class="muted">–</span><input id="tRsiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMax + '"></div></div>' +
+            '<div class="fgrp"><label>MFI · כסף חכם</label><div class="chips" style="align-items:center"><input id="tMfiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMin + '"><span class="muted">–</span><input id="tMfiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMax + '"></div></div>' +
+            '<div class="fgrp"><label>RVOL ≥</label><input id="tRvolMin" type="number" step="0.1" min="0" placeholder="—" style="width:62px" value="' + techState.rvolMin + '"></div>' +
+            '<div class="fgrp"><label>ווליום ≥</label><select id="tVolMin">' +
+              opt("0", techState.volMin, "— הכל") + opt("500000", techState.volMin, "500K") + opt("1000000", techState.volMin, "1M") + opt("2000000", techState.volMin, "2M") +
+              opt("5000000", techState.volMin, "5M") + opt("10000000", techState.volMin, "10M") + opt("20000000", techState.volMin, "20M") + "</select></div>" +
+            '<div class="fgrp"><label>ממוצע ≥ (נזילות)</label><div class="chips" style="align-items:center"><select id="tAvgVolMin">' +
+              opt("0", techState.avgVolMin, "— הכל") + opt("300000", techState.avgVolMin, "300K") + opt("500000", techState.avgVolMin, "500K") + opt("1000000", techState.avgVolMin, "1M") +
+              opt("2000000", techState.avgVolMin, "2M") + opt("5000000", techState.avgVolMin, "5M") + opt("10000000", techState.avgVolMin, "10M") +
+              '</select><select id="tAvgVolPer">' + opt("30", techState.avgVolPeriod, "30י") + opt("90", techState.avgVolPeriod, "90י") + "</select></div></div>" +
+            '<div class="fgrp"><label>52ש׳</label><div class="chips" style="align-items:center"><select id="tExt52">' +
+              opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
+              "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>";
     }
-    const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">SMA/EMA · RSI · RVOL · ווליום · 52ש׳</span>';
+    const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">נטרלי · שנה ערך כדי לסנן</span>';
     const techPanel = '<div class="panel filters"><h3 id="techToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>📈 פילטרים טכניים' + techBadge + '</span><span style="font-size:14px">' + (techState.techOpen ? "▲" : "▼") + "</span></h3>" + techInner + "</div>";
 
     const techOn = techActive();
@@ -508,6 +500,7 @@
         "<td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
         '<td class="tname" style="text-align:start">' + t.sector + "</td>" +
+        "<td>" + (etfFor(t.sector) ? '<span class="tsym clickable etf-chip" data-chart="' + etfFor(t.sector) + '" data-tf="D">' + etfFor(t.sector) + "</span>" : '<span class="muted">—</span>') + "</td>" +
         "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
@@ -526,11 +519,11 @@
       "</div>";
 
     const head =
-      "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("סקטור", "sec") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
+      "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("סקטור", "sec") + sortableTh("ת\"ס", "etf") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
       sortableTh("Y", "Y") + sortableTh("Q", "Q") + sortableTh("M", "M") + sortableTh("W", "W") + sortableTh("D", "D") + sortableTh("FTFC", "ftfc") +
       (techOn ? sortableTh("RSI", "rsi") + sortableTh("MFI", "mfi") + sortableTh("RVOL", "rvol") + sortableTh("ווליום", "vol") + sortableTh("Δ " + maLabel, "dma") + sortableTh("Δ שיא52", "dhi52") : "") +
       "<th></th>";
-    const nCols = techOn ? 19 : 13;
+    const nCols = techOn ? 20 : 14;
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
       '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" +
@@ -574,7 +567,7 @@
       if (techOn) {
         const k = t.tech;
         if (!k) return false;
-        if (techState.maOn) {
+        if (techState.maRel !== "off") {
           const dmap = techState.maType === "EMA" ? k.dema : k.dsma;
           const d = dmap ? dmap[techState.maPeriod] : null;
           if (d == null) return false;
@@ -583,11 +576,12 @@
           if (techState.maRel === "above" && d <= 0) return false;
           if (techState.maRel === "below" && d >= 0) return false;
         }
-        if (techState.rsiOn && (k.rsi == null || k.rsi < techState.rsiMin || k.rsi > techState.rsiMax)) return false;
-        if (techState.mfiOn && (k.mfi == null || k.mfi < techState.mfiMin || k.mfi > techState.mfiMax)) return false;
-        if (techState.rvolOn && (k.rvol == null || k.rvol < techState.rvolMin)) return false;
-        if (techState.volOn && (!k.vol || k.vol < techState.volMin)) return false;
-        if (techState.avgVolOn) {
+        if ((techState.rsiMin > 0 || techState.rsiMax < 100) && (k.rsi == null || k.rsi < techState.rsiMin || k.rsi > techState.rsiMax)) return false;
+        if ((techState.mfiMin > 0 || techState.mfiMax < 100) && (k.mfi == null || k.mfi < techState.mfiMin || k.mfi > techState.mfiMax)) return false;
+        const rvmin = _rv();
+        if (rvmin > 0 && (k.rvol == null || k.rvol < rvmin)) return false;
+        if (techState.volMin > 0 && (!k.vol || k.vol < techState.volMin)) return false;
+        if (techState.avgVolMin > 0) {
           const av = techState.avgVolPeriod === "90" ? k.avol90 : k.avol30;
           if (av == null || av < techState.avgVolMin) return false;
         }
@@ -615,22 +609,16 @@
     // technical controls
     const bind = (id, ev, fn) => { const e = $("#" + id); if (e) e[ev] = fn; };
     bind("techToggle", "onclick", () => { techState.techOpen = !techState.techOpen; reRender(); });
-    bind("tMaOn", "onclick", () => { techState.maOn = !techState.maOn; reRender(); });
     bind("tMaType", "onchange", e => { techState.maType = e.target.value; reRender(); });
     bind("tMaPer", "onchange", e => { techState.maPeriod = e.target.value; reRender(); });
     bind("tMaRel", "onchange", e => { techState.maRel = e.target.value; reRender(); });
     bind("tMaPct", "onchange", e => { techState.maPct = parseFloat(e.target.value) || 0; reRender(); });
-    bind("tRsiOn", "onclick", () => { techState.rsiOn = !techState.rsiOn; reRender(); });
     bind("tRsiMin", "onchange", e => { techState.rsiMin = parseFloat(e.target.value) || 0; reRender(); });
-    bind("tRsiMax", "onchange", e => { techState.rsiMax = parseFloat(e.target.value) || 100; reRender(); });
-    bind("tMfiOn", "onclick", () => { techState.mfiOn = !techState.mfiOn; reRender(); });
+    bind("tRsiMax", "onchange", e => { techState.rsiMax = e.target.value === "" ? 100 : (parseFloat(e.target.value) || 0); reRender(); });
     bind("tMfiMin", "onchange", e => { techState.mfiMin = parseFloat(e.target.value) || 0; reRender(); });
-    bind("tMfiMax", "onchange", e => { techState.mfiMax = parseFloat(e.target.value) || 100; reRender(); });
-    bind("tRvolOn", "onclick", () => { techState.rvolOn = !techState.rvolOn; reRender(); });
-    bind("tRvolMin", "onchange", e => { techState.rvolMin = parseFloat(e.target.value) || 0; reRender(); });
-    bind("tVolOn", "onclick", () => { techState.volOn = !techState.volOn; reRender(); });
+    bind("tMfiMax", "onchange", e => { techState.mfiMax = e.target.value === "" ? 100 : (parseFloat(e.target.value) || 0); reRender(); });
+    bind("tRvolMin", "onchange", e => { techState.rvolMin = e.target.value; reRender(); });
     bind("tVolMin", "onchange", e => { techState.volMin = parseInt(e.target.value, 10) || 0; reRender(); });
-    bind("tAvgVolOn", "onclick", () => { techState.avgVolOn = !techState.avgVolOn; reRender(); });
     bind("tAvgVolMin", "onchange", e => { techState.avgVolMin = parseInt(e.target.value, 10) || 0; reRender(); });
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
@@ -645,25 +633,41 @@
   }
 
   // ========== technical filter state (used by the unified scanner above) ==========
+  // Technical filters are NEUTRAL by default — no on/off toggles. A filter becomes
+  // active automatically when its value differs from neutral (maRel≠off / RSI≠0-100 /
+  // MFI≠0-100 / RVOL>0 / volume>0 / avg-vol>0 / 52w≠off).
   const techState = {
     techOpen: false,
-    maOn: false, maType: "SMA", maPeriod: "50", maRel: "near", maPct: 2,
-    rsiOn: false, rsiMin: 0, rsiMax: 30,
-    mfiOn: false, mfiMin: 0, mfiMax: 20,
-    rvolOn: false, rvolMin: 1.5,
-    volOn: false, volMin: 1000000,
-    avgVolOn: false, avgVolPeriod: "30", avgVolMin: 1000000,
-    ext52: "off", ext52Pct: 3,      // off | high | low
+    maType: "SMA", maPeriod: "50", maRel: "off", maPct: 2,
+    rsiMin: 0, rsiMax: 100,
+    mfiMin: 0, mfiMax: 100,
+    rvolMin: "",
+    volMin: 0,
+    avgVolPeriod: "30", avgVolMin: 0,
+    ext52: "off", ext52Pct: 3,
   };
   const MA_PERIODS = ["10", "20", "50", "100", "150", "200"];
-  function techActive() { return techState.maOn || techState.rsiOn || techState.mfiOn || techState.rvolOn || techState.volOn || techState.avgVolOn || techState.ext52 !== "off"; }
-  function techActiveCount() { let n = 0; if (techState.maOn) n++; if (techState.rsiOn) n++; if (techState.mfiOn) n++; if (techState.rvolOn) n++; if (techState.volOn) n++; if (techState.avgVolOn) n++; if (techState.ext52 !== "off") n++; return n; }
+  function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
+  function techActive() {
+    return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
+      techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
+      techState.volMin > 0 || techState.avgVolMin > 0 || techState.ext52 !== "off";
+  }
+  function techActiveCount() {
+    let n = 0;
+    if (techState.maRel !== "off") n++;
+    if (techState.rsiMin > 0 || techState.rsiMax < 100) n++;
+    if (techState.mfiMin > 0 || techState.mfiMax < 100) n++;
+    if (_rv() > 0) n++;
+    if (techState.volMin > 0) n++;
+    if (techState.avgVolMin > 0) n++;
+    if (techState.ext52 !== "off") n++;
+    return n;
+  }
   function resetTech() {
-    techState.maOn = false; techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "near"; techState.maPct = 2;
-    techState.rsiOn = false; techState.rsiMin = 0; techState.rsiMax = 30;
-    techState.mfiOn = false; techState.mfiMin = 0; techState.mfiMax = 20;
-    techState.rvolOn = false; techState.rvolMin = 1.5; techState.volOn = false; techState.volMin = 1000000;
-    techState.avgVolOn = false; techState.avgVolPeriod = "30"; techState.avgVolMin = 1000000;
+    techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "off"; techState.maPct = 2;
+    techState.rsiMin = 0; techState.rsiMax = 100; techState.mfiMin = 0; techState.mfiMax = 100;
+    techState.rvolMin = ""; techState.volMin = 0; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
     techState.ext52 = "off"; techState.ext52Pct = 3;
   }
   function fmtVol(n) {

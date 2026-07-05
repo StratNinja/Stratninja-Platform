@@ -85,6 +85,11 @@
 .chip.preset:hover { background:rgba(99,102,241,.22); border-color:var(--accent); color:#fff; }
 .fgrp select, .fgrp input { background:var(--bg); color:var(--ink); border:1px solid var(--line);
   border-radius:8px; padding:8px 10px; font-size:13px; min-width:120px; }
+/* compact one-row technical filters */
+.tech-row { gap:10px 14px !important; margin-top:6px; }
+.tech-row .fgrp label { font-size:10.5px; }
+.tech-row select, .tech-row input { min-width:0; padding:6px 8px; font-size:12px; border-radius:7px; }
+.tech-row .chips { gap:5px; }
 
 /* ===== tables ===== */
 .tablewrap { overflow-x:auto; }
@@ -93,6 +98,7 @@
 .scan-table th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
 .scan-table td.sym { text-align:start; }
 .scan-table tbody tr:hover { background:var(--panel2); }
+.etf-chip { color:#7fa8ff; font-weight:700; font-size:12px; }
 .scan-table tr.sub-head td { background:var(--panel2); text-align:start; font-weight:800; font-size:12px;
   color:var(--ink); padding:9px 10px; border-top:1px solid var(--line); letter-spacing:.01em; }
 .scan-table tr.sub-head:hover td { background:var(--panel2); }
