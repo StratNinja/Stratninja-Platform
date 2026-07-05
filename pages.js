@@ -465,7 +465,10 @@
     const bg = document.createElement("div"); bg.className = "modal-bg"; bg.id = "pgModal";
     const m = document.createElement("div"); m.className = "modal wide";
     m.innerHTML = '<h2 style="display:flex;justify-content:space-between;align-items:center">' + title + '<button class="btn ghost" id="pgModalX">✕</button></h2>' + bodyHtml;
-    bg.appendChild(m); bg.onclick = e => { if (e.target === bg) closeModal(); };
+    bg.appendChild(m);
+    let downOnBg = false;
+    bg.addEventListener("mousedown", e => { downOnBg = (e.target === bg); });
+    bg.onclick = e => { if (e.target === bg && downOnBg) closeModal(); };
     document.body.appendChild(bg);
     m.querySelector("#pgModalX").onclick = closeModal;
     wireStars(m);

@@ -584,7 +584,9 @@
     (actions || []).forEach(a => { const b = el("button", "btn " + (a.cls || ""), a.label); b.onclick = a.fn; act.appendChild(b); });
     const close = el("button", "btn ghost", "סגור"); close.onclick = closeModal; act.appendChild(close);
     m.appendChild(act); bg.appendChild(m);
-    bg.onclick = e => { if (e.target === bg) closeModal(); };
+    let downOnBg = false;
+    bg.addEventListener("mousedown", e => { downOnBg = (e.target === bg); });
+    bg.onclick = e => { if (e.target === bg && downOnBg) closeModal(); };
     document.body.appendChild(bg);
   }
   function closeModal() { const b = $("#modalBg"); if (b) b.remove(); }
