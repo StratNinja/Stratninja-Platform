@@ -674,49 +674,55 @@
 
   // ========== SECTORS ==========
   function renderSectors() {
-    const live = LIVE && LIVE.sectors;
-    if (!live || !live.length) {
-      const seg = (b) => {
-        const tot = b.u2 + b.d2 + b.one + b.three || 1;
-        const w = n => (n / tot * 100).toFixed(1) + "%";
-        return '<div class="breadth"><span class="bseg up" style="width:' + w(b.u2) + '"></span><span class="bseg one" style="width:' + w(b.one) + '"></span><span class="bseg three" style="width:' + w(b.three) + '"></span><span class="bseg down" style="width:' + w(b.d2) + '"></span></div>';
-      };
-      const cards = SECTORS.map((s, i) =>
-        '<div class="panel sector-card" data-sector="' + i + '"><h3>' + s.name + ' <span class="muted" style="font-size:12px">' + s.etf + "</span></h3>" +
-        ["D", "W", "M"].map(r => '<div class="brow"><span class="btf">' + r + "</span>" + seg(s.breadth[r]) + "</div>").join("") + "</div>").join("");
-      return '<div class="page-head"><h1>סקטורים</h1><div class="sub">breadth + FTFC · לחץ על סקטור לפירוט</div></div>' + DEMO + '<div class="sector-grid">' + cards + "</div>";
+    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">חברי הסקטור האמיתיים · % ירוקים + המשכיות-טיימפריימים · לחץ לפירוט לפי תת-סקטור</div></div>';
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
+      return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
-    const ftfcBySec = {};
-    if (SCAN && SCAN.rows) SCAN.rows.forEach(r => { if (r.ftfc) ftfcBySec[r.sec] = (ftfcBySec[r.sec] || 0) + 1; });
-    const cards = live.map(s => {
-      const ap = s.above / (s.total || 1) * 100;
-      const ftfc = ftfcBySec[s.name] || 0;
-      return '<div class="panel sector-card" data-sec="' + encodeURIComponent(s.name) + '"><h3>' + s.name + ' <span class="muted" style="font-size:12px">' + s.total + " מניות · " + pctSpanBare(s.chg) + "</span></h3>" +
+    const bySec = {};
+    SCAN.rows.forEach(r => { const s = r.sec || "אחר"; (bySec[s] = bySec[s] || []).push(r); });
+    const liveMap = {}; if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => liveMap[s.name] = s);
+    const names = Object.keys(bySec).sort((a, b) => bySec[b].length - bySec[a].length);
+    const cards = names.map(name => {
+      const members = bySec[name];
+      const ftfc = members.filter(m => m.ftfc).length;
+      const green = members.filter(m => (m.D || {}).c === "up").length;
+      const lv = liveMap[name];
+      const above = lv ? lv.above : green;
+      const below = lv ? lv.below : (members.length - green);
+      const tot = (lv && lv.total) ? lv.total : members.length;
+      const ap = tot ? above / tot * 100 : 0;
+      const chgHtml = lv ? (" · " + pctSpanBare(lv.chg)) : "";
+      return '<div class="panel sector-card" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
-        '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + s.above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + s.below + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
+        '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + below + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
     }).join("");
-    return '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">% מניות מעל הפתיחה + מספר מניות בהמשכיות-טיימפריימים מלאה · לחץ לפירוט</div></div>' + liveBanner() + '<div class="sector-grid">' + cards + "</div>";
+    const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
+      ? liveBanner()
+      : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
+    return head + note + '<div class="sector-grid">' + cards + "</div>";
   }
   function wireSectors() {
     document.querySelectorAll(".sector-card").forEach(c => {
-      c.onclick = () => { if (c.dataset.sec) openSectorDrillLive(decodeURIComponent(c.dataset.sec)); else openSectorDrill(+c.dataset.sector); };
+      c.onclick = () => { if (c.dataset.sec) openSectorDrillLive(decodeURIComponent(c.dataset.sec)); };
     });
   }
   function openSectorDrillLive(secName) {
     const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => r.sec === secName) : [];
     if (!members.length) { modal(secName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
-    const rows = members.map(r => {
+    const rowHtml = r => {
       const t = { sym: r.s, Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
-      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p) + "</td><td>" + pct(r.c) + "</td>" + tfCells(t) + "<td>" + (r.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td></tr>";
-    }).join("");
-    modal(secName + " · " + members.length + " מניות", '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend());
-  }
-  function openSectorDrill(idx) {
-    const s = SECTORS[idx];
-    const members = TICKERS.slice(0, 8);
-    const rows = members.map(t =>
-      "<tr><td>" + star(t.sym) + '</td><td class="sym"><span class="tsym">' + t.sym + "</span></td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + "</tr>").join("");
-    modal(s.name + " · " + s.etf, '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "</tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend());
+      const chg = r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
+      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p || (r.tech ? r.tech.px : 0)) + "</td><td>" + pct(chg) + "</td>" + tfCells(t) + "<td>" + (r.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td></tr>";
+    };
+    // group by sub-sector (industry), largest first
+    const byInd = {};
+    members.forEach(r => { const k = r.ind || "אחר"; (byInd[k] = byInd[k] || []).push(r); });
+    const indNames = Object.keys(byInd).sort((a, b) => byInd[b].length - byInd[a].length);
+    const sections = indNames.map(ind =>
+      '<tr class="sub-head"><td colspan="10">🏭 ' + ind + ' <span class="muted" style="font-weight:400">(' + byInd[ind].length + ")</span></td></tr>" +
+      byInd[ind].map(rowHtml).join("")).join("");
+    modal(secName + " · " + members.length + " מניות · " + indNames.length + " תתי-סקטורים",
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th></tr></thead><tbody>" + sections + "</tbody></table></div>" + colorLegend());
   }
 
   // ========== GAPPERS ==========
