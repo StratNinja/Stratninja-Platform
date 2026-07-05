@@ -621,7 +621,7 @@
         '<div class="fgrp"><label>צבע נר</label><select id="alDir"><option value="any">הכל</option><option value="up">🟢 ירוק</option><option value="down">🔴 אדום</option></select></div>' +
         '<div class="fgrp"><label>שליחה אל</label><select id="alCh"><option value="email">מייל</option><option value="discord">דיסקורד</option></select></div>' +
         '<div class="fgrp" style="align-self:flex-end"><button class="btn primary" id="alAdd">הוסף התראה</button></div>' +
-      "</div><div class='note' style='margin-top:8px'>🔗 השליחה בפועל (מייל/דיסקורד) תחובר לבוט הדיסקורד הקיים בשלב הבא.</div></div>";
+      "</div><div class='note' style='margin-top:8px'>🟢 ההתראות פעילות — נשלחות לערוץ הדיסקורד בכל סריקה (עד כל ~15 דק' בשעות המסחר). כל סטאפ נשלח פעם ביום כדי לא להציף. \"מייל\" מנותב בינתיים לדיסקורד.</div></div>";
     const table = alerts.length
       ? "<div class='panel'><h3>ההתראות שלי <span class='muted' style='font-size:12px'>" + alerts.length + "</span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>TF</th><th>תבנית</th><th>ערוץ</th><th></th></tr></thead><tbody>" + rows + "</tbody></table></div></div>"
       : "<div class='panel'><div class='stub'><div class='big'>🔔</div><h2>אין עדיין התראות</h2><p>צור התראה למעלה כדי לקבל עדכון כשתבנית מבשילה.</p></div></div>";
