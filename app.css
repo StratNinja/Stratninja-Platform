@@ -142,3 +142,12 @@
 /* ===== gappers copy box ===== */
 .copybox { width: 100%; min-height: 70px; background: var(--bg); color: var(--ink); border: 1px solid var(--line);
   border-radius: 8px; padding: 10px; font-size: 13px; font-family: monospace; resize: vertical; margin-top: 8px; }
+
+/* ===== community CTA (top of every app page) ===== */
+.community-cta { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: linear-gradient(90deg, rgba(88,101,242,.18), rgba(124,108,240,.12));
+  border: 1px solid rgba(124,108,240,.4); border-radius: 12px; padding: 11px 18px; margin-bottom: 18px;
+  text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 600; transition: .15s; }
+.community-cta:hover { border-color: var(--accent); background: linear-gradient(90deg, rgba(88,101,242,.28), rgba(124,108,240,.2)); }
+.community-cta .cta-arrow { background: #5865F2; color: #fff; border-radius: 8px; padding: 5px 14px; font-size: 13px; white-space: nowrap; }
+@media (max-width: 600px) { .community-cta { font-size: 12px; padding: 9px 12px; } }
