@@ -271,6 +271,7 @@
   function renderScanner() {
     const all = scanSource();
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
+    const hasTech = all.some(t => t.tech);
     const sectors = Array.from(new Set(all.map(t => t.sector))).sort();
     const patBtn = p => '<button class="chip' + (scanState.patterns.indexOf(p) >= 0 ? " on" : "") + '" data-pat="' + p + '">' + p + "</button>";
     const tfBtn = f => '<button class="chip' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + "</button>";
@@ -286,42 +287,96 @@
         '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="scanReset">איפוס</button></div>' +
       "</div></div>";
 
+    // ---- technical filters (collapsible) ----
+    const opt = (v, cur, lbl) => '<option value="' + v + '"' + (String(cur) === String(v) ? " selected" : "") + ">" + (lbl == null ? v : lbl) + "</option>";
+    const onChip = (on, id, lbl) => '<button class="chip' + (on ? " on" : "") + '" id="' + id + '">' + lbl + "</button>";
+    const cnt = techActiveCount();
+    let techInner = "";
+    if (techState.techOpen) {
+      techInner = !hasTech
+        ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
+        : '<div class="frow">' +
+            '<div class="fgrp"><label>מרחק מממוצע נע ' + onChip(techState.maOn, "tMaOn", techState.maOn ? "פעיל ✓" : "כבוי") + '</label>' +
+              '<div class="chips" style="align-items:center">' +
+                '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
+                '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
+                '<select id="tMaRel">' + opt("near", techState.maRel, "קרוב עד ±") + opt("above", techState.maRel, "מעל") + opt("below", techState.maRel, "מתחת") + '</select>' +
+                (techState.maRel === "near" ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:70px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
+              "</div></div>" +
+            '<div class="fgrp"><label>RSI (14) ' + onChip(techState.rsiOn, "tRsiOn", techState.rsiOn ? "פעיל ✓" : "כבוי") + '</label>' +
+              '<div class="chips" style="align-items:center"><span class="muted">בין</span><input id="tRsiMin" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMin + '">' +
+              '<span class="muted">ל-</span><input id="tRsiMax" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMax + '"></div></div>' +
+          "</div>" +
+          '<div class="frow">' +
+            '<div class="fgrp"><label>ווליום יחסי (RVOL) ' + onChip(techState.rvolOn, "tRvolOn", techState.rvolOn ? "פעיל ✓" : "כבוי") + '</label>' +
+              '<div class="chips" style="align-items:center"><span class="muted">לפחות</span><input id="tRvolMin" type="number" step="0.1" min="0" style="width:74px" value="' + techState.rvolMin + '"><span class="muted">×</span></div></div>' +
+            '<div class="fgrp"><label>ווליום מוחלט (מניות) ' + onChip(techState.volOn, "tVolOn", techState.volOn ? "פעיל ✓" : "כבוי") + '</label>' +
+              '<div class="chips" style="align-items:center"><span class="muted">מעל</span><select id="tVolMin">' +
+                opt("500000", techState.volMin, "500K") + opt("1000000", techState.volMin, "1M") + opt("2000000", techState.volMin, "2M") +
+                opt("5000000", techState.volMin, "5M") + opt("10000000", techState.volMin, "10M") + opt("20000000", techState.volMin, "20M") +
+              "</select></div></div>" +
+            '<div class="fgrp"><label>קרבה לשיא/שפל 52ש׳</label>' +
+              '<div class="chips" style="align-items:center"><select id="tExt52">' +
+                opt("off", techState.ext52, "כבוי") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
+              "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:64px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+          "</div>";
+    }
+    const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">SMA/EMA · RSI · RVOL · ווליום · 52ש׳</span>';
+    const techPanel = '<div class="panel filters"><h3 id="techToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>📈 פילטרים טכניים' + techBadge + '</span><span style="font-size:14px">' + (techState.techOpen ? "▲" : "▼") + "</span></h3>" + techInner + "</div>";
+
+    const techOn = techActive();
+    const maLabel = techState.maType + techState.maPeriod;
     const rows = filterRows(all);
     const CAP = 300;
     const shown = rows.slice(0, CAP);
-    const body = shown.map(t =>
-      "<tr>" +
+    const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
+    const body = shown.map(t => {
+      const k = t.tech || {};
+      const dma = (k[dmapKey] || {})[techState.maPeriod];
+      const techCells = techOn
+        ? '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>" +
+          "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>" +
+          "<td>" + fmtVol(k.vol) + "</td>" +
+          "<td>" + dPct(dma) + "</td>" +
+          "<td>" + dPct(k.dhi52) + "</td>"
+        : "";
+      return "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + '</span> <span class="tname">' + t.sector + "</span></td>" +
         "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+        techCells +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
-      "</tr>").join("");
+      "</tr>";
+    }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.tfs.length > 1;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.tfs.length > 1 || cnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
       (facts.length
         ? facts.map(f => '<div class="insight"><span class="ins-ico">' + f.i + '</span><span>' + f.t + "</span></div>").join("")
-        : '<div class="ins-empty">סַנֵּן לפי תבנית, טיימפריים או סקטור — ואציג לך עובדות מעניינות על מה שיצא. 🔍</div>') +
+        : '<div class="ins-empty">סַנֵּן לפי תבנית, טיימפריים, סקטור או פילטר טכני — ואציג לך עובדות מעניינות על מה שיצא. 🔍</div>') +
       "</div>";
 
+    const techHead = techOn ? "<th>RSI</th><th>RVOL</th><th>ווליום</th><th>Δ " + maLabel + "</th><th>Δ שיא52</th>" : "";
+    const nCols = techOn ? 15 : 10;
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th><th></th></tr></thead><tbody>" +
-      (shown.length ? body : '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th>" + techHead + "<th></th></tr></thead><tbody>" +
+      (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
 
     return (
-      '<div class="page-head"><h1>סורק עסקאות · סטראט</h1><div class="sub">חפש תבניות Strat — כולל קונפלואנס רב-טיימפריים</div></div>' + (isLive ? liveBanner() : DEMO) +
-      filters +
+      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">תבניות Strat + קונפלואנס רב-טיימפריים · עם פילטרים טכניים (SMA/RSI/ווליום) לשילוב</div></div>' + (isLive ? liveBanner() : DEMO) +
+      filters + techPanel +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
     );
   }
   function filterRows(all) {
     const tfs = scanState.tfs.length ? scanState.tfs : ["D"];
+    const techOn = techActive();
     return all.filter(t => {
       if (scanState.sector !== "all" && t.sector !== scanState.sector) return false;
       if (scanState.sym && t.sym.indexOf(scanState.sym.toUpperCase()) < 0) return false;
@@ -331,6 +386,23 @@
         if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
         if (scanState.dir !== "all" && c.c !== scanState.dir) return false;
       }
+      if (techOn) {
+        const k = t.tech;
+        if (!k) return false;
+        if (techState.maOn) {
+          const dmap = techState.maType === "EMA" ? k.dema : k.dsma;
+          const d = dmap ? dmap[techState.maPeriod] : null;
+          if (d == null) return false;
+          if (techState.maRel === "near" && Math.abs(d) > techState.maPct) return false;
+          if (techState.maRel === "above" && d <= 0) return false;
+          if (techState.maRel === "below" && d >= 0) return false;
+        }
+        if (techState.rsiOn && (k.rsi == null || k.rsi < techState.rsiMin || k.rsi > techState.rsiMax)) return false;
+        if (techState.rvolOn && (k.rvol == null || k.rvol < techState.rvolMin)) return false;
+        if (techState.volOn && (!k.vol || k.vol < techState.volMin)) return false;
+        if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
+        if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
+      }
       return true;
     });
   }
@@ -339,157 +411,15 @@
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
     const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; reRender(); };
-    const sym = $("#scanSym"); if (sym) sym.oninput = () => { scanState.sym = sym.value; reRender(); };
+    const sym = $("#scanSym"); if (sym) sym.onchange = () => { scanState.sym = sym.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => { scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; reRender(); };
-    const copy = $("#scanCopy");
-    if (copy) copy.onclick = () => {
-      const rows = filterRows(scanSource());
-      const syms = rows.map(t => t.sym).join(", ");
-      const orig = copy.textContent;
-      copyToClipboard(syms, () => { copy.textContent = "✓ הועתקו " + rows.length; setTimeout(() => copy.textContent = orig, 1600); });
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => {
+      scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false;
+      resetTech(); reRender();
     };
-  }
-
-  // ========== TECHNICAL SCANNER ==========
-  const techState = {
-    maOn: true, maType: "SMA", maPeriod: "50", maRel: "near", maPct: 2,
-    rsiOn: false, rsiMin: 0, rsiMax: 30,
-    rvolOn: false, rvolMin: 1.5,
-    volOn: false, volMin: 1000000,
-    ext52: "off", ext52Pct: 3,      // off | high | low
-    sector: "all", sym: "",
-  };
-  const MA_PERIODS = ["10", "20", "50", "100", "150", "200"];
-  function fmtVol(n) {
-    if (n == null) return "—";
-    if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
-    if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
-    if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
-    return String(n);
-  }
-  function dPct(v) { return v == null ? "—" : '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
-  function rsiCls(v) { return v == null ? "" : (v >= 70 ? "neg" : v <= 30 ? "pos" : ""); }
-
-  function filterTechRows(all) {
-    return all.filter(t => {
-      const k = t.tech;
-      if (!k) return false;                                   // no technical data → not shown
-      if (techState.sector !== "all" && t.sector !== techState.sector) return false;
-      if (techState.sym && t.sym.indexOf(techState.sym.toUpperCase()) < 0) return false;
-      if (techState.maOn) {
-        const dmap = techState.maType === "EMA" ? k.dema : k.dsma;
-        const d = dmap ? dmap[techState.maPeriod] : null;
-        if (d == null) return false;
-        if (techState.maRel === "near" && Math.abs(d) > techState.maPct) return false;
-        if (techState.maRel === "above" && d <= 0) return false;
-        if (techState.maRel === "below" && d >= 0) return false;
-      }
-      if (techState.rsiOn) {
-        if (k.rsi == null || k.rsi < techState.rsiMin || k.rsi > techState.rsiMax) return false;
-      }
-      if (techState.rvolOn) {
-        if (k.rvol == null || k.rvol < techState.rvolMin) return false;
-      }
-      if (techState.volOn) {
-        if (!k.vol || k.vol < techState.volMin) return false;
-      }
-      if (techState.ext52 === "high") {
-        if (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct) return false;
-      } else if (techState.ext52 === "low") {
-        if (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct) return false;
-      }
-      return true;
-    });
-  }
-
-  function renderScannerTech() {
-    const all = scanSource();
-    const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
-    const hasTech = all.some(t => t.tech);
-    const sectors = Array.from(new Set(all.map(t => t.sector))).sort();
-    const opt = (v, cur, lbl) => '<option value="' + v + '"' + (String(cur) === String(v) ? " selected" : "") + ">" + (lbl == null ? v : lbl) + "</option>";
-    const onChip = (on, id, lbl) => '<button class="chip' + (on ? " on" : "") + '" id="' + id + '">' + lbl + "</button>";
-
-    const maLabel = techState.maType + techState.maPeriod;
-    const filters =
-      '<div class="panel filters"><h3>פילטרים טכניים <span class="muted" style="font-size:12px">שלב כמה תנאים — הסינון מיידי על כל היקום</span></h3>' +
-      // MA distance
-      '<div class="frow">' +
-        '<div class="fgrp"><label>מרחק מממוצע נע ' + onChip(techState.maOn, "tMaOn", techState.maOn ? "פעיל ✓" : "כבוי") + '</label>' +
-          '<div class="chips" style="align-items:center">' +
-            '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
-            '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
-            '<select id="tMaRel">' + opt("near", techState.maRel, "קרוב עד ±") + opt("above", techState.maRel, "מעל") + opt("below", techState.maRel, "מתחת") + '</select>' +
-            (techState.maRel === "near" ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:70px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
-          "</div></div>" +
-        // RSI
-        '<div class="fgrp"><label>RSI (14) ' + onChip(techState.rsiOn, "tRsiOn", techState.rsiOn ? "פעיל ✓" : "כבוי") + '</label>' +
-          '<div class="chips" style="align-items:center"><span class="muted">בין</span><input id="tRsiMin" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMin + '">' +
-          '<span class="muted">ל-</span><input id="tRsiMax" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMax + '"></div></div>' +
-      "</div>" +
-      '<div class="frow">' +
-        // RVOL
-        '<div class="fgrp"><label>ווליום יחסי (RVOL) ' + onChip(techState.rvolOn, "tRvolOn", techState.rvolOn ? "פעיל ✓" : "כבוי") + '</label>' +
-          '<div class="chips" style="align-items:center"><span class="muted">לפחות</span><input id="tRvolMin" type="number" step="0.1" min="0" style="width:74px" value="' + techState.rvolMin + '"><span class="muted">×</span></div></div>' +
-        // absolute volume
-        '<div class="fgrp"><label>ווליום מוחלט (מניות) ' + onChip(techState.volOn, "tVolOn", techState.volOn ? "פעיל ✓" : "כבוי") + '</label>' +
-          '<div class="chips" style="align-items:center"><span class="muted">מעל</span><select id="tVolMin">' +
-            opt("500000", techState.volMin, "500K") + opt("1000000", techState.volMin, "1M") + opt("2000000", techState.volMin, "2M") +
-            opt("5000000", techState.volMin, "5M") + opt("10000000", techState.volMin, "10M") + opt("20000000", techState.volMin, "20M") +
-          "</select></div></div>" +
-        // 52w proximity
-        '<div class="fgrp"><label>קרבה לשיא/שפל 52ש׳</label>' +
-          '<div class="chips" style="align-items:center"><select id="tExt52">' +
-            opt("off", techState.ext52, "כבוי") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
-          "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:64px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
-      "</div>" +
-      '<div class="frow">' +
-        '<div class="fgrp"><label>סקטור</label><select id="tSector"><option value="all">הכל</option>' + sectors.map(s => '<option' + (techState.sector === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>סימבול</label><input id="tSym" placeholder="AAPL" value="' + techState.sym + '"></div>' +
-        '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="tReset">איפוס</button></div>' +
-      "</div></div>";
-
-    if (!hasTech) {
-      return '<div class="page-head"><h1>סורק עסקאות · טכני</h1><div class="sub">סינון לפי ממוצעים נעים, RSI, ווליום וקרבה לשיא/שפל</div></div>' +
-        (isLive ? '<div class="demo-flag">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת. חזור בקרוב.</div>' : DEMO) + filters;
-    }
-
-    const rows = filterTechRows(all);
-    const CAP = 300;
-    const shown = rows.slice(0, CAP);
-    const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
-    const body = shown.map(t => {
-      const k = t.tech || {};
-      const dma = (k[dmapKey] || {})[techState.maPeriod];
-      return "<tr>" +
-        "<td>" + star(t.sym) + "</td>" +
-        '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + '</span> <span class="tname">' + t.sector + "</span></td>" +
-        "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
-        '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>" +
-        "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>" +
-        "<td>" + fmtVol(k.vol) + "</td>" +
-        "<td>" + dPct(dma) + "</td>" +
-        "<td>" + dPct(k.dhi52) + "</td>" +
-        '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
-      "</tr>";
-    }).join("");
-
-    const resultsPanel =
-      '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" +
-      (rows.length ? '<button class="btn ghost" id="tCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th><th>RSI</th><th>RVOL</th><th>ווליום</th><th>Δ ' + maLabel + "</th><th>Δ שיא52</th><th></th></tr></thead><tbody>" +
-      (shown.length ? body : '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
-      "</tbody></table></div></div>";
-
-    return (
-      '<div class="page-head"><h1>סורק עסקאות · טכני</h1><div class="sub">סינון לפי ממוצעים נעים, RSI, ווליום וקרבה לשיא/שפל · כמו TradingView</div></div>' +
-      (isLive ? liveBanner() : DEMO) + filters + resultsPanel
-    );
-  }
-
-  function wireScannerTech() {
+    // technical controls
     const bind = (id, ev, fn) => { const e = $("#" + id); if (e) e[ev] = fn; };
+    bind("techToggle", "onclick", () => { techState.techOpen = !techState.techOpen; reRender(); });
     bind("tMaOn", "onclick", () => { techState.maOn = !techState.maOn; reRender(); });
     bind("tMaType", "onchange", e => { techState.maType = e.target.value; reRender(); });
     bind("tMaPer", "onchange", e => { techState.maPeriod = e.target.value; reRender(); });
@@ -504,23 +434,42 @@
     bind("tVolMin", "onchange", e => { techState.volMin = parseInt(e.target.value, 10) || 0; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
     bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
-    bind("tSector", "onchange", e => { techState.sector = e.target.value; reRender(); });
-    bind("tSym", "onchange", e => { techState.sym = e.target.value; reRender(); });
-    bind("tReset", "onclick", () => {
-      techState.maOn = true; techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "near"; techState.maPct = 2;
-      techState.rsiOn = false; techState.rsiMin = 0; techState.rsiMax = 30;
-      techState.rvolOn = false; techState.rvolMin = 1.5; techState.volOn = false; techState.volMin = 1000000;
-      techState.ext52 = "off"; techState.ext52Pct = 3; techState.sector = "all"; techState.sym = "";
-      reRender();
-    });
-    const copy = $("#tCopy");
+    const copy = $("#scanCopy");
     if (copy) copy.onclick = () => {
-      const rows = filterTechRows(scanSource());
+      const rows = filterRows(scanSource());
       const syms = rows.map(t => t.sym).join(", ");
       const orig = copy.textContent;
       copyToClipboard(syms, () => { copy.textContent = "✓ הועתקו " + rows.length; setTimeout(() => copy.textContent = orig, 1600); });
     };
   }
+
+  // ========== technical filter state (used by the unified scanner above) ==========
+  const techState = {
+    techOpen: false,
+    maOn: false, maType: "SMA", maPeriod: "50", maRel: "near", maPct: 2,
+    rsiOn: false, rsiMin: 0, rsiMax: 30,
+    rvolOn: false, rvolMin: 1.5,
+    volOn: false, volMin: 1000000,
+    ext52: "off", ext52Pct: 3,      // off | high | low
+  };
+  const MA_PERIODS = ["10", "20", "50", "100", "150", "200"];
+  function techActive() { return techState.maOn || techState.rsiOn || techState.rvolOn || techState.volOn || techState.ext52 !== "off"; }
+  function techActiveCount() { let n = 0; if (techState.maOn) n++; if (techState.rsiOn) n++; if (techState.rvolOn) n++; if (techState.volOn) n++; if (techState.ext52 !== "off") n++; return n; }
+  function resetTech() {
+    techState.maOn = false; techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "near"; techState.maPct = 2;
+    techState.rsiOn = false; techState.rsiMin = 0; techState.rsiMax = 30;
+    techState.rvolOn = false; techState.rvolMin = 1.5; techState.volOn = false; techState.volMin = 1000000;
+    techState.ext52 = "off"; techState.ext52Pct = 3;
+  }
+  function fmtVol(n) {
+    if (n == null) return "—";
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + "B";
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
+    return String(n);
+  }
+  function dPct(v) { return v == null ? "—" : '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
+  function rsiCls(v) { return v == null ? "" : (v >= 70 ? "neg" : v <= 30 ? "pos" : ""); }
 
   // ========== SECTORS ==========
   function renderSectors() {
@@ -685,7 +634,6 @@
     market: { render: renderMarket, wire: wireMarket },
     sp500: { render: renderSp500, wire: null },
     scanner: { render: renderScanner, wire: wireScanner },
-    "scanner-tech": { render: renderScannerTech, wire: wireScannerTech },
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
@@ -706,7 +654,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
-    if (state.page === "scanner" || state.page === "scanner-tech" || state.page === "sectors") loadScanner();
+    if (state.page === "scanner" || state.page === "sectors") loadScanner();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
   }
   window.setPageExternal = setPage;
@@ -734,7 +682,7 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "scanner-tech" || state.page === "sectors") reRender(); }
+      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors") reRender(); }
     } catch (e) { /* keep demo */ }
   }
 
