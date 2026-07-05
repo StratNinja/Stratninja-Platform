@@ -1,9 +1,9 @@
-/* StratNinja Platform — cloud sync (journal + preferences).
+/* StratNinja Platform — cloud sync (journal + preferences), per-user.
  *
- * Keeps localStorage blobs in sync with per-user Supabase rows (RLS: own-row).
- * Generic over several {key -> table} mappings. The journal/prefs keep using
- * localStorage synchronously; we intercept writes (debounced push) and pull the
- * cloud copy on login (cloud wins; first login migrates local up), then re-render.
+ * The CLOUD is the single source of truth for a logged-in user. localStorage is
+ * only a working cache. Because localStorage is shared per-browser (not per-user),
+ * we CLEAR it whenever the logged-in user changes, then load that user's cloud row.
+ * We never migrate leftover local data up to a user (that caused cross-user leaks).
  */
 (function () {
   "use strict";
@@ -18,10 +18,11 @@
   ];
   const byKey = {}; SYNCS.forEach(s => { byKey[s.key] = s; s._timer = null; });
 
-  let client = null, userId = null, pulling = false;
+  let client = null, userId = null, currentUserId = "__init__", pulling = false;
   const origSet = localStorage.setItem.bind(localStorage);
   function safeParse(s) { try { return JSON.parse(s); } catch (e) { return null; } }
 
+  // intercept journal/prefs writes → debounced push (only while a user is active)
   localStorage.setItem = function (k, v) {
     origSet(k, v);
     const s = byKey[k];
@@ -30,6 +31,12 @@
       s._timer = setTimeout(() => pushOne(s), 900);
     }
   };
+
+  // reset local caches WITHOUT triggering a cloud push (origSet bypasses the patch)
+  function clearLocal() {
+    SYNCS.forEach(s => origSet(s.key, JSON.stringify(s.empty)));
+  }
+  function rerenderAll() { SYNCS.forEach(s => { try { s.rerender(); } catch (e) {} }); }
 
   async function pushOne(s) {
     if (!client || !userId) return;
@@ -47,10 +54,8 @@
       const { data, error } = await client.from(s.table).select("data").eq("user_id", userId).maybeSingle();
       if (error) { console.error("[cloudsync] pull " + s.table + ":", error.message); return; }
       const cloud = data ? data.data : null;
-      const local = safeParse(localStorage.getItem(s.key));
-      if (s.hasData(cloud)) origSet(s.key, JSON.stringify(cloud));       // cloud wins
-      else if (s.hasData(local)) { await pushOne(s); }                    // migrate local up
-      else origSet(s.key, JSON.stringify(s.empty));
+      // cloud is authoritative — set local to cloud (or empty). NO local→cloud migration.
+      origSet(s.key, JSON.stringify(s.hasData(cloud) ? cloud : s.empty));
       s.rerender();
     } catch (e) { console.error("[cloudsync] pull exception " + s.table + ":", e); }
   }
@@ -62,9 +67,25 @@
   }
 
   function onUser(user) {
+    const newId = user ? user.id : null;
+    if (newId === currentUserId) return;   // same user (e.g. token refresh) → nothing to do
+    currentUserId = newId;
+
+    // whoever was here before, wipe their local cache immediately so it can never
+    // bleed into the next user (guard with `pulling` so no push is triggered).
+    pulling = true;
+    SYNCS.forEach(s => clearTimeout(s._timer));
+    clearLocal();
+    rerenderAll();
+    pulling = false;
+
     if (user && window.SNAuth && window.SNAuth.getClient()) {
-      client = window.SNAuth.getClient(); userId = user.id; pullAll();
-    } else { client = null; userId = null; SYNCS.forEach(s => clearTimeout(s._timer)); }
+      client = window.SNAuth.getClient();
+      userId = newId;
+      pullAll();                            // load THIS user's cloud data
+    } else {
+      client = null; userId = null;         // logged out — stays cleared
+    }
   }
 
   function boot() {
