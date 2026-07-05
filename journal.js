@@ -524,7 +524,10 @@
           { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
         if (!r.ok) continue;
         const d = await r.json();
-        if (!d.found || d.low == null || d.high == null) continue;
+        if (!d.found || d.low == null || d.high == null) {
+          warns.push("אין נתוני מסחר ל-" + sym + " בתאריך ה" + c.label + " (" + c.date + ") — יום סגור / חג, או תאריך שגוי");
+          continue;
+        }
         const tol = 0.005, lo = d.low * (1 - tol), hi = d.high * (1 + tol);
         if (c.price < lo || c.price > hi) {
           warns.push("מחיר ה" + c.label + " (" + c.price + "$) מחוץ לטווח של " + sym + " ב-" + c.date +
