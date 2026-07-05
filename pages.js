@@ -20,6 +20,19 @@
   const DEMO = '<div class="demo-flag">🧪 נתוני דמו — יחובר למפתח Massive/Polygon החי בשלב הבא</div>';
   function money(v, d) { d = d == null ? 2 : d; return "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
   function pct(v) { const s = (v >= 0 ? "+" : "") + v.toFixed(2) + "%"; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + s + "</span>"; }
+  function copyToClipboard(text, done) {
+    const finish = () => { if (done) done(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(finish).catch(() => fallbackCopy(text, finish));
+    } else { fallbackCopy(text, finish); }
+  }
+  function fallbackCopy(text, done) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    ta.remove(); if (done) done();
+  }
   function star(sym) {
     const on = window.Prefs && window.Prefs.isFav(sym);
     return '<button class="starbtn' + (on ? " on" : "") + '" data-star="' + sym + '" title="מועדפים">' + (on ? "★" : "☆") + "</button>";
@@ -296,7 +309,7 @@
       "</div>";
 
     const resultsPanel =
-      '<div class="panel scan-results"><h3>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></h3>" +
+      '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
       '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th><th></th></tr></thead><tbody>" +
       (shown.length ? body : '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
@@ -329,6 +342,13 @@
     const sym = $("#scanSym"); if (sym) sym.oninput = () => { scanState.sym = sym.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
     const reset = $("#scanReset"); if (reset) reset.onclick = () => { scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; reRender(); };
+    const copy = $("#scanCopy");
+    if (copy) copy.onclick = () => {
+      const rows = filterRows(scanSource());
+      const syms = rows.map(t => t.sym).join(", ");
+      const orig = copy.textContent;
+      copyToClipboard(syms, () => { copy.textContent = "✓ הועתקו " + rows.length; setTimeout(() => copy.textContent = orig, 1600); });
+    };
   }
 
   // ========== SECTORS ==========
