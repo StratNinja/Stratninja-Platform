@@ -306,6 +306,9 @@
             '<div class="fgrp"><label>RSI (14) ' + onChip(techState.rsiOn, "tRsiOn", techState.rsiOn ? "פעיל ✓" : "כבוי") + '</label>' +
               '<div class="chips" style="align-items:center"><span class="muted">בין</span><input id="tRsiMin" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMin + '">' +
               '<span class="muted">ל-</span><input id="tRsiMax" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMax + '"></div></div>' +
+            '<div class="fgrp"><label>MFI (14) · כסף חכם ' + onChip(techState.mfiOn, "tMfiOn", techState.mfiOn ? "פעיל ✓" : "כבוי") + '</label>' +
+              '<div class="chips" style="align-items:center"><span class="muted">בין</span><input id="tMfiMin" type="number" min="0" max="100" style="width:64px" value="' + techState.mfiMin + '">' +
+              '<span class="muted">ל-</span><input id="tMfiMax" type="number" min="0" max="100" style="width:64px" value="' + techState.mfiMax + '"></div></div>' +
           "</div>" +
           '<div class="frow">' +
             '<div class="fgrp"><label>ווליום יחסי (RVOL) ' + onChip(techState.rvolOn, "tRvolOn", techState.rvolOn ? "פעיל ✓" : "כבוי") + '</label>' +
@@ -335,6 +338,7 @@
       const dma = (k[dmapKey] || {})[techState.maPeriod];
       const techCells = techOn
         ? '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>" +
+          '<td class="' + mfiCls(k.mfi) + '">' + (k.mfi == null ? "—" : k.mfi.toFixed(0)) + "</td>" +
           "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>" +
           "<td>" + fmtVol(k.vol) + "</td>" +
           "<td>" + dPct(dma) + "</td>" +
@@ -360,8 +364,8 @@
         : '<div class="ins-empty">סַנֵּן לפי תבנית, טיימפריים, סקטור או פילטר טכני — ואציג לך עובדות מעניינות על מה שיצא. 🔍</div>') +
       "</div>";
 
-    const techHead = techOn ? "<th>RSI</th><th>RVOL</th><th>ווליום</th><th>Δ " + maLabel + "</th><th>Δ שיא52</th>" : "";
-    const nCols = techOn ? 15 : 10;
+    const techHead = techOn ? "<th>RSI</th><th>MFI</th><th>RVOL</th><th>ווליום</th><th>Δ " + maLabel + "</th><th>Δ שיא52</th>" : "";
+    const nCols = techOn ? 16 : 10;
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
       '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th>" + techHead + "<th></th></tr></thead><tbody>" +
@@ -398,6 +402,7 @@
           if (techState.maRel === "below" && d >= 0) return false;
         }
         if (techState.rsiOn && (k.rsi == null || k.rsi < techState.rsiMin || k.rsi > techState.rsiMax)) return false;
+        if (techState.mfiOn && (k.mfi == null || k.mfi < techState.mfiMin || k.mfi > techState.mfiMax)) return false;
         if (techState.rvolOn && (k.rvol == null || k.rvol < techState.rvolMin)) return false;
         if (techState.volOn && (!k.vol || k.vol < techState.volMin)) return false;
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
@@ -428,6 +433,9 @@
     bind("tRsiOn", "onclick", () => { techState.rsiOn = !techState.rsiOn; reRender(); });
     bind("tRsiMin", "onchange", e => { techState.rsiMin = parseFloat(e.target.value) || 0; reRender(); });
     bind("tRsiMax", "onchange", e => { techState.rsiMax = parseFloat(e.target.value) || 100; reRender(); });
+    bind("tMfiOn", "onclick", () => { techState.mfiOn = !techState.mfiOn; reRender(); });
+    bind("tMfiMin", "onchange", e => { techState.mfiMin = parseFloat(e.target.value) || 0; reRender(); });
+    bind("tMfiMax", "onchange", e => { techState.mfiMax = parseFloat(e.target.value) || 100; reRender(); });
     bind("tRvolOn", "onclick", () => { techState.rvolOn = !techState.rvolOn; reRender(); });
     bind("tRvolMin", "onchange", e => { techState.rvolMin = parseFloat(e.target.value) || 0; reRender(); });
     bind("tVolOn", "onclick", () => { techState.volOn = !techState.volOn; reRender(); });
@@ -448,16 +456,18 @@
     techOpen: false,
     maOn: false, maType: "SMA", maPeriod: "50", maRel: "near", maPct: 2,
     rsiOn: false, rsiMin: 0, rsiMax: 30,
+    mfiOn: false, mfiMin: 0, mfiMax: 20,
     rvolOn: false, rvolMin: 1.5,
     volOn: false, volMin: 1000000,
     ext52: "off", ext52Pct: 3,      // off | high | low
   };
   const MA_PERIODS = ["10", "20", "50", "100", "150", "200"];
-  function techActive() { return techState.maOn || techState.rsiOn || techState.rvolOn || techState.volOn || techState.ext52 !== "off"; }
-  function techActiveCount() { let n = 0; if (techState.maOn) n++; if (techState.rsiOn) n++; if (techState.rvolOn) n++; if (techState.volOn) n++; if (techState.ext52 !== "off") n++; return n; }
+  function techActive() { return techState.maOn || techState.rsiOn || techState.mfiOn || techState.rvolOn || techState.volOn || techState.ext52 !== "off"; }
+  function techActiveCount() { let n = 0; if (techState.maOn) n++; if (techState.rsiOn) n++; if (techState.mfiOn) n++; if (techState.rvolOn) n++; if (techState.volOn) n++; if (techState.ext52 !== "off") n++; return n; }
   function resetTech() {
     techState.maOn = false; techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "near"; techState.maPct = 2;
     techState.rsiOn = false; techState.rsiMin = 0; techState.rsiMax = 30;
+    techState.mfiOn = false; techState.mfiMin = 0; techState.mfiMax = 20;
     techState.rvolOn = false; techState.rvolMin = 1.5; techState.volOn = false; techState.volMin = 1000000;
     techState.ext52 = "off"; techState.ext52Pct = 3;
   }
@@ -470,6 +480,7 @@
   }
   function dPct(v) { return v == null ? "—" : '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
   function rsiCls(v) { return v == null ? "" : (v >= 70 ? "neg" : v <= 30 ? "pos" : ""); }
+  function mfiCls(v) { return v == null ? "" : (v >= 80 ? "neg" : v <= 20 ? "pos" : ""); }
 
   // ========== SECTORS ==========
   function renderSectors() {
