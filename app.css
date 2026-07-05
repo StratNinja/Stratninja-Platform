@@ -116,3 +116,29 @@
 
 /* ===== wide modal ===== */
 .modal.wide { width:min(760px,95vw); }
+
+/* ===== clickable candle + charts ===== */
+.tf.clickable { cursor: pointer; }
+.tf.clickable:hover { outline: 2px solid rgba(255,255,255,.4); outline-offset: 1px; }
+.tsym.clickable { cursor: pointer; }
+.tsym.clickable:hover { text-decoration: underline; }
+
+/* ===== breadth bar (market overview) ===== */
+.breadth-panel.clickable { cursor: pointer; transition: border-color .12s; }
+.breadth-panel.clickable:hover { border-color: var(--accent); }
+.bigbreadth { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--panel2); }
+.bigbreadth.sm { height: 12px; border-radius: 5px; }
+.bigbreadth .bseg.up { background: var(--green); }
+.bigbreadth .bseg.down { background: var(--red); }
+
+/* ===== S&P 500 breadth page ===== */
+.sec-breadth h3 { margin-bottom: 10px; }
+.stkchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 12px; }
+.stkchip { font-size: 11px; font-weight: 600; padding: 3px 7px; border-radius: 5px; cursor: pointer; }
+.stkchip.up { background: var(--greenbg); color: var(--green); }
+.stkchip.down { background: var(--redbg); color: var(--red); }
+.stkchip:hover { outline: 1px solid rgba(255,255,255,.4); }
+
+/* ===== gappers copy box ===== */
+.copybox { width: 100%; min-height: 70px; background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px; font-size: 13px; font-family: monospace; resize: vertical; margin-top: 8px; }

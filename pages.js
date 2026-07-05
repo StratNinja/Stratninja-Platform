@@ -10,10 +10,11 @@
 
   // ---------- helpers ----------
   function cell(t, c) { return { t: t, c: c }; }
-  function tf(x) {
+  function tf(x, sym, tfl) {
     const c = x && x.c ? x.c : "doji";
     const t = x && x.t ? x.t : "1";
-    return '<span class="tf ' + c + '">' + t + "</span>";
+    const clk = sym ? ' clickable" data-chart="' + sym + '" data-tf="' + tfl + '"' : '"';
+    return '<span class="tf ' + c + clk + ">" + t + "</span>";
   }
   const DEMO = '<div class="demo-flag">🧪 נתוני דמו — יחובר למפתח Massive/Polygon החי בשלב הבא</div>';
   function money(v, d) { d = d == null ? 2 : d; return "$" + Number(v).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
@@ -112,9 +113,42 @@
 
   // ---------- shared renderers ----------
   function tfHeadCols() { return "<th>Y</th><th>Q</th><th>M</th><th>W</th><th>D</th>"; }
-  function tfCells(t) { return "<td>" + tf(t.Y) + "</td><td>" + tf(t.Q) + "</td><td>" + tf(t.M) + "</td><td>" + tf(t.W) + "</td><td>" + tf(t.D) + "</td>"; }
+  function tfCells(t) {
+    const s = t.sym;
+    return "<td>" + tf(t.Y, s, "Y") + "</td><td>" + tf(t.Q, s, "Q") + "</td><td>" + tf(t.M, s, "M") + "</td><td>" + tf(t.W, s, "W") + "</td><td>" + tf(t.D, s, "D") + "</td>";
+  }
+  function openChart(sym, tfl) {
+    const iv = ({ D: "D", W: "W", M: "M", Q: "M", Y: "M" })[tfl] || "D";
+    const src = "https://www.tradingview.com/widgetembed/?frameElementId=tvchart&symbol=" + encodeURIComponent(sym) +
+      "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=1&saveimage=0&timezone=America%2FNew_York";
+    modal(sym + " · " + tfl,
+      '<iframe src="' + src + '" style="width:100%;height:520px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe>' +
+      '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>');
+  }
+  function wireCharts(scope) {
+    (scope || document).querySelectorAll("[data-chart]").forEach(b => {
+      b.onclick = e => { e.stopPropagation(); openChart(b.dataset.chart, b.dataset.tf); };
+    });
+  }
 
   // ========== MARKET ==========
+  function pctSpan(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '" style="font-size:13px">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
+  function mkLead(items, cls, isSector) {
+    if (!items || !items.length) return '<div class="muted" style="padding:8px 12px;font-size:13px">ממתין לנתוני מסחר…</div>';
+    return items.map(x => {
+      const label = isSector ? x.name : (x.s + ' <span class="tname">' + (x.sec || "") + "</span>");
+      const chg = isSector ? x.chg : x.c;
+      return '<div class="lead-row ' + cls + '"><span>' + label + "</span>" + pctSpan(chg) + "</div>";
+    }).join("");
+  }
+  function breadthBar() {
+    const b = LIVE && LIVE.breadth;
+    if (!b || !b.total) return "";
+    const ap = (b.above / b.total * 100);
+    return '<div class="panel breadth-panel clickable" id="breadthBar"><h3>רוחב שוק · Breadth <span class="muted" style="font-size:12px">' + b.total + ' מניות · לחץ לפירוט לפי סקטור →</span></h3>' +
+      '<div class="bigbreadth"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
+      '<div class="bkey" style="margin-top:10px;font-size:13px"><span class="pos">🟢 ' + b.above + " מעל פתיחה</span><span class=\"neg\">🔴 " + b.below + ' מתחת</span><span class="muted">' + ap.toFixed(0) + "% ירוקים</span></div></div>";
+  }
   function liveBanner() {
     if (LIVE && LIVE.updated) {
       const d = new Date(LIVE.updated);
@@ -139,14 +173,39 @@
         '<div class="panel"><h3>מדדים ראשיים</h3><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table>" + colorLegend() + "</div>" +
         '<div class="panel"><h3>VIX <span class="muted" style="font-size:12px">תנודתיות</span></h3><div class="tile"><div class="k">מדד הפחד</div>' + vixVal + '</div><div class="muted" style="font-size:12px;margin-top:10px">VIX גבוה = פחד · נמוך = רוגע</div></div>' +
       "</div>" +
+      breadthBar() +
       '<div class="panel"><h3>התפלגות נרות S&P 500 (יומי)</h3><div class="tiles">' + dist + "</div></div>" +
-      '<div class="panel"><h3>מדדי רוחב שוק (מאקרו · חישוב ידני)</h3><div class="tiles">' + breadth + "</div></div>" +
-      '<div class="cols2"><div class="panel"><h3>🟢 סקטורים מובילים</h3>' + rank(["חומרי גלם · XLB", "תקשורת · XLC", "אנרגיה · XLE"], "up") + "</div>" +
-      '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + rank(["מוצרי צריכה · XLY", "בריאות · XLV", "שירותים · XLU"], "down") + "</div></div>" +
-      '<div class="cols2"><div class="panel"><h3>🟢 מניות מובילות</h3>' + rank(["SMCI", "PLTR", "MARA"], "up") + "</div>" +
-      '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + rank(["SNAP", "LCID", "NIO"], "down") + "</div></div>"
+      '<div class="cols2"><div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(LIVE.sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
+      '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(LIVE.sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div></div>" +
+      '<div class="cols2"><div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((LIVE.leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
+      '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((LIVE.laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div></div>"
     );
   }
+  function wireMarket() {
+    const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
+  }
+
+  // ========== S&P 500 BREADTH ==========
+  function renderSp500() {
+    const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
+    if (!secs || !secs.length) {
+      return '<div class="page-head"><h1>S&P 500 · רוחב שוק</h1><div class="sub">מניות לפי סקטור · מעל/מתחת למחיר הפתיחה</div></div>' +
+        '<div class="panel"><div class="stub"><div class="big">🗺️</div><h2>ממתין לנתוני מסחר</h2><p>ה-breadth מחושב בשעות המסחר (מעל/מתחת לפתיחת היום). חזור כשהשוק פתוח.</p></div></div>';
+    }
+    const b = LIVE.breadth;
+    const cards = secs.map(s => {
+      const ap = s.above / (s.total || 1) * 100;
+      const bar = '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>';
+      const chips = s.stocks.map(x =>
+        '<span class="stkchip ' + (x.ao ? "up" : "down") + ' clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.c + '%">' + x.s + "</span>").join("");
+      return '<div class="panel sec-breadth"><h3>' + s.name +
+        ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " מעל פתיחה · " + ap.toFixed(0) + "% ירוקים · " + pctSpanBare(s.chg) + "</span></h3>" +
+        bar + '<div class="stkchips">' + chips + "</div></div>";
+    }).join("");
+    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · לחץ על מניה לגרף</div></div>" +
+      liveBanner() + '<div class="sector-grid">' + cards + "</div>";
+  }
+  function pctSpanBare(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
   function colorLegend() {
     return '<div class="muted" style="font-size:11px;margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">' +
       '<span>הצבע = כיוון הנר · הטקסט = סוג Strat:</span>' +
@@ -249,13 +308,37 @@
 
   // ========== GAPPERS ==========
   function renderGappers() {
+    const g = LIVE && LIVE.gappers;
+    const head = '<div class="page-head"><h1>גאפרים</h1><div class="sub">מניות שפותחות בגאפ מעל 3% (מול סגירת אתמול)</div></div>';
+    if (g && (g.up.length || g.down.length)) {
+      const top5 = (arr, cls, title) => {
+        const rows = arr.slice(0, 5).map(x =>
+          "<tr><td>" + star(x.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span></td><td>" + money(x.price) + "</td><td class='" + cls + "'>" + (x.gd >= 0 ? "+" : "") + money(x.gd) + "</td><td>" + pct(x.gp) + "</td></tr>").join("");
+        return '<div class="panel"><h3>' + title + " · TOP 5 <span class='muted' style='font-size:12px'>מתוך " + arr.length + "</span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th><th style='text-align:start'>סימבול</th><th>מחיר</th><th>$Gap</th><th>%Gap</th></tr></thead><tbody>" + (rows || '<tr><td colspan="5" class="muted">—</td></tr>') + "</tbody></table></div></div>";
+      };
+      const copyBox = (arr, label) => {
+        const syms = arr.map(x => x.s).join(", ");
+        return '<div class="panel"><h3>' + label + ' <span class="muted" style="font-size:12px">' + arr.length + ' מניות</span> <button class="btn ghost" data-copy="' + label + '">📋 העתק הכל</button></h3><textarea class="copybox" readonly>' + syms + "</textarea></div>";
+      };
+      return head + liveBanner() +
+        '<div class="cols2">' + top5(g.up, "pos", "🟢 גאפ למעלה") + top5(g.down, "neg", "🔴 גאפ למטה") + "</div>" +
+        copyBox(g.up, "כל הגאפ-אפ >3%") + copyBox(g.down, "כל הגאפ-דאון >3%");
+    }
+    // demo fallback
     const tbl = (arr, cls, title) => {
-      const rows = arr.map(g =>
-        "<tr><td>" + star(g.sym) + '</td><td class="sym"><span class="tsym">' + g.sym + '</span> <span class="tname">' + g.name + "</span></td><td>" + money(g.price) + "</td><td class='" + cls + "'>" + (g.gd >= 0 ? "+" : "") + money(g.gd) + "</td><td>" + pct(g.gp) + "</td><td class='muted'>" + g.vol + "</td></tr>").join("");
-      return '<div class="panel"><h3>' + title + " <span class='muted' style='font-size:12px'>" + arr.length + "</span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th><th style='text-align:start'>סימבול</th><th>מחיר</th><th>$Gap</th><th>%Gap</th><th>נפח</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+      const rows = arr.map(x =>
+        "<tr><td>" + star(x.sym) + '</td><td class="sym"><span class="tsym">' + x.sym + '</span> <span class="tname">' + x.name + "</span></td><td>" + money(x.price) + "</td><td class='" + cls + "'>" + (x.gd >= 0 ? "+" : "") + money(x.gd) + "</td><td>" + pct(x.gp) + "</td><td class='muted'>" + x.vol + "</td></tr>").join("");
+      return '<div class="panel"><h3>' + title + "</h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th><th style='text-align:start'>סימבול</th><th>מחיר</th><th>$Gap</th><th>%Gap</th><th>נפח</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
     };
-    return '<div class="page-head"><h1>גאפרים</h1><div class="sub">גאפים בפרימרקט / אפטרמרקט</div></div>' + DEMO +
-      tbl(GAPPERS.up, "pos", "🟢 גאפ למעלה") + tbl(GAPPERS.down, "neg", "🔴 גאפ למטה");
+    return head + DEMO + '<div class="cols2">' + tbl(GAPPERS.up, "pos", "🟢 גאפ למעלה") + tbl(GAPPERS.down, "neg", "🔴 גאפ למטה") + "</div>";
+  }
+  function wireGappers() {
+    document.querySelectorAll("[data-copy]").forEach(b => {
+      b.onclick = () => {
+        const ta = b.closest(".panel").querySelector(".copybox");
+        if (ta) { ta.select(); try { document.execCommand("copy"); } catch (e) {} b.textContent = "✓ הועתק"; setTimeout(() => b.textContent = "📋 העתק הכל", 1500); }
+      };
+    });
   }
 
   // ========== FAVORITES ==========
@@ -314,6 +397,7 @@
     document.body.appendChild(bg);
     m.querySelector("#pgModalX").onclick = closeModal;
     wireStars(m);
+    wireCharts(m);
   }
   function closeModal() { const b = $("#pgModal"); if (b) b.remove(); }
 
@@ -332,10 +416,11 @@
 
   // ---------- router ----------
   const PAGES = {
-    market: { render: renderMarket, wire: null },
+    market: { render: renderMarket, wire: wireMarket },
+    sp500: { render: renderSp500, wire: null },
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
-    gappers: { render: renderGappers, wire: null },
+    gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
     alerts: { render: renderAlerts, wire: wireAlerts },
   };
@@ -346,6 +431,7 @@
     $("#page").innerHTML = p.render();
     if (p.wire) p.wire();
     wireStars($("#page"));
+    wireCharts($("#page"));
   }
 
   function setPage(name) {
