@@ -149,9 +149,30 @@
       '<iframe src="' + src + '" style="width:100%;height:520px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe>' +
       '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>');
   }
+  function openMultiChart(sym) {
+    const tfs = [["4H", "240"], ["D", "D"], ["W", "W"], ["M", "M"], ["Q", "3M"], ["Y", "12M"]];
+    // strat-type strip from the loaded scanner row (if available)
+    let strip = "";
+    if (SCAN && SCAN.rows) {
+      const r = SCAN.rows.find(x => x.s === sym);
+      if (r) strip = '<div class="mtf-strip">' + ["D", "W", "M", "Q", "Y"].map(k => '<span class="mtf-tf">' + k + " " + tf(r[k]) + "</span>").join("") + "</div>";
+    }
+    const cells = tfs.map(([lbl, iv]) => {
+      const src = "https://www.tradingview.com/widgetembed/?frameElementId=tv_" + lbl + "&symbol=" + encodeURIComponent(sym) +
+        "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=1&saveimage=0&timezone=America%2FNew_York";
+      return '<div class="mtf-cell"><div class="mtf-lbl">' + lbl + '</div><iframe src="' + src + '" loading="lazy" style="width:100%;height:220px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe></div>';
+    }).join("");
+    modal(sym + ' · כל הטיימפריימים 🥷',
+      strip + '<div class="mtf-grid">' + cells + "</div>" +
+      '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "mtf");
+  }
   function wireCharts(scope) {
     (scope || document).querySelectorAll("[data-chart]").forEach(b => {
-      b.onclick = e => { e.stopPropagation(); openChart(b.dataset.chart, b.dataset.tf); };
+      b.onclick = e => {
+        e.stopPropagation();
+        if (b.classList.contains("tsym")) openMultiChart(b.dataset.chart);
+        else openChart(b.dataset.chart, b.dataset.tf);
+      };
     });
   }
 
@@ -181,6 +202,38 @@
     }
     return DEMO;
   }
+  // ---- Candle Map (client-side breadth by candle type, from scanner data) ----
+  const CMAP_ROWS = [
+    ["3G", "נר 3 ירוק · Outside שורי", "cm-3g"],
+    ["F2D", "2D שנכשל · שבר נמוך ונסגר ירוק (reclaim)", "cm-f2d"],
+    ["2U", "2 מעלה · המשך שורי", "cm-2u"],
+    ["1", "Inside · התכווצות/דשדוש", "cm-1"],
+    ["2D", "2 מטה · המשך דובי", "cm-2d"],
+    ["F2U", "2U שנכשל · שבר גבוה ונסגר אדום (rejection)", "cm-f2u"],
+    ["3R", "נר 3 אדום · Outside דובי", "cm-3r"],
+  ];
+  function candleBucket(c) {
+    if (!c) return "1";
+    const t = c.t, col = c.c;
+    if (t === "3") return col === "up" ? "3G" : "3R";
+    if (t === "2U") return col === "down" ? "F2U" : "2U";
+    if (t === "2D") return col === "up" ? "F2D" : "2D";
+    return "1";
+  }
+  function candleMapPanel() {
+    const cols = ["D", "W", "M", "Q", "Y"];
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
+      return '<div class="panel"><h3>🗺️ Candle Map · התפלגות נרות</h3><div class="muted" style="padding:14px">טוען נתוני סורק…</div></div>';
+    }
+    const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
+    SCAN.rows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
+    const head = '<tr><th style="text-align:start">TYPE</th>' + cols.map(t => "<th>" + t + "</th>").join("") + "</tr>";
+    const body = CMAP_ROWS.map(([key, desc, cls]) =>
+      '<tr><td class="cm-type" title="' + desc + '">' + key + "</td>" +
+      cols.map(tf => '<td><span class="cm-pill ' + cls + '">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
+    return '<div class="panel"><h3>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + SCAN.rows.length + ' מניות · לפי סוג נר (שורי→דובי)</span></h3>' +
+      '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div></div>";
+  }
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
     const idxRows = idxSrc.map(r =>
@@ -193,12 +246,12 @@
       : '<div class="v muted">—</div>';
     return (
       '<div class="page-head"><h1>סקירת שוק</h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' + liveBanner() +
-      '<div class="cols2">' +
-        '<div class="panel"><h3>מדדים ראשיים</h3><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table>" + colorLegend() + "</div>" +
-        '<div class="panel"><h3>VIX <span class="muted" style="font-size:12px">תנודתיות</span></h3><div class="tile"><div class="k">מדד הפחד</div>' + vixVal + '</div><div class="muted" style="font-size:12px;margin-top:10px">VIX גבוה = פחד · נמוך = רוגע</div></div>' +
+      '<div class="mkt-top">' +
+        '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table>" + colorLegend() + "</div>" +
+        '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + '</div>' +
       "</div>" +
       breadthBar() +
-      '<div class="panel"><h3>התפלגות נרות S&P 500 (יומי)</h3><div class="tiles">' + dist + "</div></div>" +
+      candleMapPanel() +
       '<div class="cols2"><div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(LIVE.sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
       '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(LIVE.sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div></div>" +
       '<div class="cols2"><div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((LIVE.leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
@@ -290,28 +343,14 @@
     const arrow = active ? (scanSort.dir < 0 ? " ▼" : " ▲") : "";
     return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
   }
-  const PRESETS = [
-    { id: "hammerM", label: "🔨 פטיש חודשי", apply: (s, t) => { s.tfs = ["M"]; s.shape = "hammer"; } },
-    { id: "shooterW", label: "⭐ כוכב נופל שבועי", apply: (s, t) => { s.tfs = ["W"]; s.shape = "shooter"; } },
-    { id: "broadVol", label: "⚡ היפוך שבועי + ווליום", apply: (s, t) => { s.tfs = ["W"]; s.broad = "any"; t.volOn = true; t.volMin = 1000000; t.techOpen = true; } },
-    { id: "ftfcSma", label: "🎯 FTFC + מעל SMA200", apply: (s, t) => { s.ftfc = true; t.maOn = true; t.maRel = "above"; t.maPeriod = "200"; t.techOpen = true; } },
-    { id: "oversold", label: "📉 RSI מכירת יתר", apply: (s, t) => { s.tfs = ["D"]; t.rsiOn = true; t.rsiMin = 0; t.rsiMax = 30; t.techOpen = true; } },
-    { id: "runners", label: "🚀 קרוב לשיא 52ש׳ + ווליום", apply: (s, t) => { s.tfs = ["D"]; t.ext52 = "high"; t.ext52Pct = 3; t.rvolOn = true; t.rvolMin = 1.5; t.techOpen = true; } },
-  ];
   function resetScan() {
     scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
     scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
     resetTech(); techState.techOpen = false;
   }
-  function applyPreset(id) {
-    const p = PRESETS.find(x => x.id === id); if (!p) return;
-    resetScan();
-    p.apply(scanState, techState);
-    reRender();
-  }
   function scanSource() {
     if (SCAN && SCAN.rows && SCAN.rows.length) {
-      return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, price: r.p || (r.tech ? r.tech.px : 0),
+      return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
         chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc,
         Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech }));
     }
@@ -326,6 +365,10 @@
     const sec = {}; rows.forEach(r => { sec[r.sector] = (sec[r.sector] || 0) + 1; });
     const topSec = Object.keys(sec).map(k => [k, sec[k]]).sort((a, b) => b[1] - a[1])[0];
     if (topSec && topSec[0]) facts.push({ i: "🗂️", t: pctOf(topSec[1]) + "% מהתוצאות בסקטור <b>" + topSec[0] + "</b> (" + topSec[1] + " מניות)" });
+    // sub-sector (industry) concentration
+    const ind = {}; rows.forEach(r => { if (r.ind) ind[r.ind] = (ind[r.ind] || 0) + 1; });
+    const topInd = Object.keys(ind).map(k => [k, ind[k]]).sort((a, b) => b[1] - a[1])[0];
+    if (topInd && topInd[1] >= 2) facts.push({ i: "🏭", t: pctOf(topInd[1]) + "% בתת-סקטור <b>" + topInd[0] + "</b> (" + topInd[1] + " מניות)" });
     // FTFC rate
     const ftfc = rows.filter(r => r.ftfc).length;
     if (ftfc) facts.push({ i: "🎯", t: pctOf(ftfc) + "% בהמשכיות-טיימפריימים מלאה (<b>FTFC</b>) — יישור חזק בין הזמנים" });
@@ -465,13 +508,9 @@
       (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
 
-    const presetBar =
-      '<div class="panel filters" style="padding-bottom:12px"><h3 style="margin:0 0 8px">⚡ סריקות מהירות <span class="muted" style="font-size:12px">לחיצה אחת = סטאפ מוכן</span></h3>' +
-      '<div class="chips">' + PRESETS.map(p => '<button class="chip preset" data-preset="' + p.id + '">' + p.label + "</button>").join("") + "</div></div>";
-
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">תבניות Strat + קונפלואנס רב-טיימפריים · עם פילטרים טכניים (SMA/RSI/ווליום) לשילוב</div></div>' + (isLive ? liveBanner() : DEMO) +
-      presetBar + filters + techPanel +
+      filters + techPanel +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
     );
   }
@@ -528,7 +567,6 @@
     });
   }
   function wireScanner() {
-    document.querySelectorAll("[data-preset]").forEach(b => b.onclick = () => applyPreset(b.dataset.preset));
     document.querySelectorAll("[data-tff]").forEach(b => b.onclick = () => { const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
@@ -736,10 +774,10 @@
   }
 
   // ---------- modal (pages-local) ----------
-  function modal(title, bodyHtml) {
+  function modal(title, bodyHtml, extraCls) {
     closeModal();
     const bg = document.createElement("div"); bg.className = "modal-bg"; bg.id = "pgModal";
-    const m = document.createElement("div"); m.className = "modal wide";
+    const m = document.createElement("div"); m.className = "modal wide" + (extraCls ? " " + extraCls : "");
     m.innerHTML = '<h2 style="display:flex;justify-content:space-between;align-items:center">' + title + '<button class="btn ghost" id="pgModalX">✕</button></h2>' + bodyHtml;
     bg.appendChild(m);
     let downOnBg = false;
@@ -790,7 +828,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
-    if (state.page === "scanner" || state.page === "sectors") loadScanner();
+    if (state.page === "scanner" || state.page === "sectors" || state.page === "market") loadScanner();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
   }
   window.setPageExternal = setPage;
@@ -818,7 +856,7 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors") reRender(); }
+      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors" || state.page === "market") reRender(); }
     } catch (e) { /* keep demo */ }
   }
 
