@@ -676,7 +676,7 @@
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
-    alerts: { render: renderAlerts, wire: wireAlerts },
+    // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
   };
   const state = { page: "market" };
 
