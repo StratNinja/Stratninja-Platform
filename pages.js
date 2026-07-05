@@ -307,6 +307,7 @@
   function dirRank(cell) { const c = cell && cell.c; return c === "up" ? 1 : c === "down" ? -1 : 0; }
   function sortVal(t, col) {
     if (col === "sym") return t.sym;
+    if (col === "sec") return t.sector;
     if (col === "price") return t.price;
     if (col === "mc") return t.mc;
     if (col === "chg") return t.chg;
@@ -478,7 +479,8 @@
         : "";
       return "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
-        '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + '</span> <span class="tname">' + t.sector + "</span></td>" +
+        '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
+        '<td class="tname" style="text-align:start">' + t.sector + "</td>" +
         "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
@@ -497,11 +499,11 @@
       "</div>";
 
     const head =
-      "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
+      "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("סקטור", "sec") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
       sortableTh("Y", "Y") + sortableTh("Q", "Q") + sortableTh("M", "M") + sortableTh("W", "W") + sortableTh("D", "D") + sortableTh("FTFC", "ftfc") +
       (techOn ? sortableTh("RSI", "rsi") + sortableTh("MFI", "mfi") + sortableTh("RVOL", "rvol") + sortableTh("ווליום", "vol") + sortableTh("Δ " + maLabel, "dma") + sortableTh("Δ שיא52", "dhi52") : "") +
       "<th></th>";
-    const nCols = techOn ? 18 : 12;
+    const nCols = techOn ? 19 : 13;
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
       '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" +
