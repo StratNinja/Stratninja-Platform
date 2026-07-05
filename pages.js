@@ -12,8 +12,8 @@
   // ---------- helpers ----------
   const SHAPE_HE = { doji: "דוג'י", hammer: "פטיש 🔨", shooter: "כוכב נופל ⭐", marubozu: "מרובוזו", spinning: "סביבון", normal: "נר רגיל", flat: "—" };
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
-  const BR_HE = { up: "היפוך התרחבות 🔼 (מלמטה)", down: "היפוך התרחבות 🔽 (מלמעלה)" };
-  const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך התרחבות"], ["up", "🔼 היפוך מלמטה (שורי)"], ["down", "🔽 היפוך מלמעלה (דובי)"]];
+  const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
+  const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"]];
   function cell(t, c) { return { t: t, c: c }; }
   function tf(x, sym, tfl) {
     const c = x && x.c ? x.c : "doji";
@@ -243,7 +243,7 @@
   const PRESETS = [
     { id: "hammerM", label: "🔨 פטיש חודשי", apply: (s, t) => { s.tfs = ["M"]; s.shape = "hammer"; } },
     { id: "shooterW", label: "⭐ כוכב נופל שבועי", apply: (s, t) => { s.tfs = ["W"]; s.shape = "shooter"; } },
-    { id: "broadVol", label: "⚡ היפוך התרחבות + ווליום", apply: (s, t) => { s.tfs = ["D"]; s.broad = "any"; t.volOn = true; t.volMin = 1000000; t.techOpen = true; } },
+    { id: "broadVol", label: "⚡ היפוך שבועי + ווליום", apply: (s, t) => { s.tfs = ["W"]; s.broad = "any"; t.volOn = true; t.volMin = 1000000; t.techOpen = true; } },
     { id: "ftfcSma", label: "🎯 FTFC + מעל SMA200", apply: (s, t) => { s.ftfc = true; t.maOn = true; t.maRel = "above"; t.maPeriod = "200"; t.techOpen = true; } },
     { id: "oversold", label: "📉 RSI מכירת יתר", apply: (s, t) => { s.tfs = ["D"]; t.rsiOn = true; t.rsiMin = 0; t.rsiMax = 30; t.techOpen = true; } },
     { id: "runners", label: "🚀 קרוב לשיא 52ש׳ + ווליום", apply: (s, t) => { s.tfs = ["D"]; t.ext52 = "high"; t.ext52Pct = 3; t.rvolOn = true; t.rvolMin = 1.5; t.techOpen = true; } },
@@ -312,7 +312,7 @@
         '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>היפוך התרחבות (Broadening)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>היפוך (Reversal)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option' + (scanState.sector === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
