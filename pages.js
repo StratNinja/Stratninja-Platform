@@ -317,7 +317,7 @@
   }
 
   // ========== SCANNER ==========
-  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all" };
+  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all" };
   const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
   const CAP_RANGES = { mega: [2e11, Infinity], large: [1e10, 2e11], mid: [2e9, 1e10], small: [3e8, 2e9], micro: [0, 3e8] };
   function fmtCap(n) {
@@ -371,7 +371,7 @@
   }
   function resetScan() {
     scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
-    scanState.sector = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
+    scanState.sector = "all"; scanState.subsec = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
     resetTech(); techState.techOpen = false;
   }
   function scanSource() {
@@ -422,6 +422,7 @@
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const hasTech = all.some(t => t.tech);
     const sectors = Array.from(new Set(all.map(t => t.sector))).sort();
+    const subsectors = Array.from(new Set(all.filter(t => scanState.sector === "all" || t.sector === scanState.sector).map(t => t.ind).filter(Boolean))).sort();
     const patBtn = p => '<button class="chip' + (scanState.patterns.indexOf(p) >= 0 ? " on" : "") + '" data-pat="' + p + '">' + p + "</button>";
     const tfBtn = f => '<button class="chip' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + "</button>";
     const dirBtn = (v, l) => '<button class="chip' + (scanState.dir === v ? " on" : "") + '" data-dir="' + v + '">' + l + "</button>";
@@ -433,6 +434,7 @@
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>היפוך (Reversal)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option' + (scanState.sector === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option' + (scanState.subsec === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp"><label>שווי שוק</label><select id="scanCap">' + CAP_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.cap === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
@@ -453,8 +455,8 @@
               '<div class="chips" style="align-items:center">' +
                 '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
                 '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
-                '<select id="tMaRel">' + opt("near", techState.maRel, "קרוב עד ±") + opt("above", techState.maRel, "מעל") + opt("below", techState.maRel, "מתחת") + '</select>' +
-                (techState.maRel === "near" ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:70px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
+                '<select id="tMaRel">' + opt("near", techState.maRel, "קרוב עד ±") + opt("far", techState.maRel, "רחוק לפחות ±") + opt("above", techState.maRel, "מעל") + opt("below", techState.maRel, "מתחת") + '</select>' +
+                (techState.maRel === "near" || techState.maRel === "far" ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:70px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
               "</div></div>" +
             '<div class="fgrp"><label>RSI (14) ' + onChip(techState.rsiOn, "tRsiOn", techState.rsiOn ? "פעיל ✓" : "כבוי") + '</label>' +
               '<div class="chips" style="align-items:center"><span class="muted">בין</span><input id="tRsiMin" type="number" min="0" max="100" style="width:64px" value="' + techState.rsiMin + '">' +
@@ -514,7 +516,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -546,6 +548,7 @@
     const techOn = techActive();
     return all.filter(t => {
       if (scanState.sector !== "all" && t.sector !== scanState.sector) return false;
+      if (scanState.subsec !== "all" && t.ind !== scanState.subsec) return false;
       if (scanState.sym && t.sym.indexOf(scanState.sym.toUpperCase()) < 0) return false;
       if (scanState.ftfc && !t.ftfc) return false;
       if (scanState.priceMin !== "" || scanState.priceMax !== "") {
@@ -576,6 +579,7 @@
           const d = dmap ? dmap[techState.maPeriod] : null;
           if (d == null) return false;
           if (techState.maRel === "near" && Math.abs(d) > techState.maPct) return false;
+          if (techState.maRel === "far" && Math.abs(d) < techState.maPct) return false;
           if (techState.maRel === "above" && d <= 0) return false;
           if (techState.maRel === "below" && d >= 0) return false;
         }
@@ -599,7 +603,8 @@
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
     const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; reRender(); };
-    const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; reRender(); };
+    const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; scanState.subsec = "all"; reRender(); };
+    const subsec = $("#scanSubsec"); if (subsec) subsec.onchange = () => { scanState.subsec = subsec.value; reRender(); };
     const sym = $("#scanSym"); if (sym) sym.onchange = () => { scanState.sym = sym.value; reRender(); };
     document.querySelectorAll("[data-sortcol]").forEach(th => th.onclick = () => onSortClick(th.dataset.sortcol));
     const cap = $("#scanCap"); if (cap) cap.onchange = () => { scanState.cap = cap.value; reRender(); };
@@ -706,7 +711,17 @@
       c.onclick = () => { if (c.dataset.sec) openSectorDrillLive(decodeURIComponent(c.dataset.sec)); };
     });
   }
-  function openSectorDrillLive(secName) {
+  let secSort = { col: null, dir: -1 };
+  function secSortVal(r, col) {
+    if (col === "sym") return r.s;
+    if (col === "price") return r.p || (r.tech ? r.tech.px : 0);
+    if (col === "chg") return r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
+    if (col === "ftfc") return r.ftfc ? 1 : 0;
+    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return dirRank(r[col]);
+    return null;
+  }
+  function openSectorDrillLive(secName) { secSort = { col: null, dir: -1 }; renderSecDrill(secName); }
+  function renderSecDrill(secName) {
     const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => r.sec === secName) : [];
     if (!members.length) { modal(secName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
     const rowHtml = r => {
@@ -714,15 +729,35 @@
       const chg = r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
       return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p || (r.tech ? r.tech.px : 0)) + "</td><td>" + pct(chg) + "</td>" + tfCells(t) + "<td>" + (r.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td></tr>";
     };
-    // group by sub-sector (industry), largest first
-    const byInd = {};
-    members.forEach(r => { const k = r.ind || "אחר"; (byInd[k] = byInd[k] || []).push(r); });
+    const th = (label, col, start) => {
+      const arrow = secSort.col === col ? (secSort.dir < 0 ? " ▼" : " ▲") : "";
+      return '<th class="sortable" data-ssort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>";
+    };
+    const head = "<th></th>" + th("סימבול", "sym", true) + th("מחיר", "price") + th("%", "chg") + th("Y", "Y") + th("Q", "Q") + th("M", "M") + th("W", "W") + th("D", "D") + th("FTFC", "ftfc");
+    const byInd = {}; members.forEach(r => { const k = r.ind || "אחר"; (byInd[k] = byInd[k] || []).push(r); });
     const indNames = Object.keys(byInd).sort((a, b) => byInd[b].length - byInd[a].length);
-    const sections = indNames.map(ind =>
-      '<tr class="sub-head"><td colspan="10">🏭 ' + ind + ' <span class="muted" style="font-weight:400">(' + byInd[ind].length + ")</span></td></tr>" +
-      byInd[ind].map(rowHtml).join("")).join("");
-    modal(secName + " · " + members.length + " מניות · " + indNames.length + " תתי-סקטורים",
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th>FTFC</th></tr></thead><tbody>" + sections + "</tbody></table></div>" + colorLegend());
+    let body, sub;
+    if (!secSort.col) {
+      body = indNames.map(ind => '<tr class="sub-head"><td colspan="10">🏭 ' + ind + ' <span class="muted" style="font-weight:400">(' + byInd[ind].length + ")</span></td></tr>" + byInd[ind].map(rowHtml).join("")).join("");
+      sub = indNames.length + " תתי-סקטורים · לחץ כותרת למיון";
+    } else {
+      const sorted = members.slice().sort((a, b) => {
+        let va = secSortVal(a, secSort.col), vb = secSortVal(b, secSort.col);
+        const na = va == null || va === "" || (typeof va === "number" && isNaN(va)), nb = vb == null || vb === "" || (typeof vb === "number" && isNaN(vb));
+        if (na && nb) return 0; if (na) return 1; if (nb) return -1;
+        if (typeof va === "string") return secSort.dir * va.localeCompare(vb);
+        return secSort.dir * (va - vb);
+      });
+      body = sorted.map(rowHtml).join("");
+      sub = "ממוין · לחץ שוב להפוך · לחץ סקטור מחדש לקיבוץ תתי-סקטורים";
+    }
+    modal(secName + " · " + members.length + " מניות · " + sub,
+      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table></div>" + colorLegend());
+    document.querySelectorAll("[data-ssort]").forEach(h => h.onclick = () => {
+      const c = h.dataset.ssort;
+      if (secSort.col === c) secSort.dir *= -1; else { secSort.col = c; secSort.dir = c === "sym" ? 1 : -1; }
+      renderSecDrill(secName);
+    });
   }
 
   // ========== GAPPERS ==========
