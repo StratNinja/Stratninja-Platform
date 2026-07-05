@@ -346,11 +346,16 @@
           '<div class="frow">' +
             '<div class="fgrp"><label>ווליום יחסי (RVOL) ' + onChip(techState.rvolOn, "tRvolOn", techState.rvolOn ? "פעיל ✓" : "כבוי") + '</label>' +
               '<div class="chips" style="align-items:center"><span class="muted">לפחות</span><input id="tRvolMin" type="number" step="0.1" min="0" style="width:74px" value="' + techState.rvolMin + '"><span class="muted">×</span></div></div>' +
-            '<div class="fgrp"><label>ווליום מוחלט (מניות) ' + onChip(techState.volOn, "tVolOn", techState.volOn ? "פעיל ✓" : "כבוי") + '</label>' +
+            '<div class="fgrp"><label>ווליום מוחלט (היום) ' + onChip(techState.volOn, "tVolOn", techState.volOn ? "פעיל ✓" : "כבוי") + '</label>' +
               '<div class="chips" style="align-items:center"><span class="muted">מעל</span><select id="tVolMin">' +
                 opt("500000", techState.volMin, "500K") + opt("1000000", techState.volMin, "1M") + opt("2000000", techState.volMin, "2M") +
                 opt("5000000", techState.volMin, "5M") + opt("10000000", techState.volMin, "10M") + opt("20000000", techState.volMin, "20M") +
               "</select></div></div>" +
+            '<div class="fgrp"><label>ווליום ממוצע (נזילות) ' + onChip(techState.avgVolOn, "tAvgVolOn", techState.avgVolOn ? "פעיל ✓" : "כבוי") + '</label>' +
+              '<div class="chips" style="align-items:center"><span class="muted">מעל</span><select id="tAvgVolMin">' +
+                opt("300000", techState.avgVolMin, "300K") + opt("500000", techState.avgVolMin, "500K") + opt("1000000", techState.avgVolMin, "1M") +
+                opt("2000000", techState.avgVolMin, "2M") + opt("5000000", techState.avgVolMin, "5M") + opt("10000000", techState.avgVolMin, "10M") +
+              '</select><span class="muted">ב-</span><select id="tAvgVolPer">' + opt("30", techState.avgVolPeriod, "30 יום") + opt("90", techState.avgVolPeriod, "90 יום") + "</select></div></div>" +
             '<div class="fgrp"><label>קרבה לשיא/שפל 52ש׳</label>' +
               '<div class="chips" style="align-items:center"><select id="tExt52">' +
                 opt("off", techState.ext52, "כבוי") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
@@ -453,6 +458,10 @@
         if (techState.mfiOn && (k.mfi == null || k.mfi < techState.mfiMin || k.mfi > techState.mfiMax)) return false;
         if (techState.rvolOn && (k.rvol == null || k.rvol < techState.rvolMin)) return false;
         if (techState.volOn && (!k.vol || k.vol < techState.volMin)) return false;
+        if (techState.avgVolOn) {
+          const av = techState.avgVolPeriod === "90" ? k.avol90 : k.avol30;
+          if (av == null || av < techState.avgVolMin) return false;
+        }
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
         if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
       }
@@ -490,6 +499,9 @@
     bind("tRvolMin", "onchange", e => { techState.rvolMin = parseFloat(e.target.value) || 0; reRender(); });
     bind("tVolOn", "onclick", () => { techState.volOn = !techState.volOn; reRender(); });
     bind("tVolMin", "onchange", e => { techState.volMin = parseInt(e.target.value, 10) || 0; reRender(); });
+    bind("tAvgVolOn", "onclick", () => { techState.avgVolOn = !techState.avgVolOn; reRender(); });
+    bind("tAvgVolMin", "onchange", e => { techState.avgVolMin = parseInt(e.target.value, 10) || 0; reRender(); });
+    bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
     bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
     const copy = $("#scanCopy");
@@ -509,16 +521,18 @@
     mfiOn: false, mfiMin: 0, mfiMax: 20,
     rvolOn: false, rvolMin: 1.5,
     volOn: false, volMin: 1000000,
+    avgVolOn: false, avgVolPeriod: "30", avgVolMin: 1000000,
     ext52: "off", ext52Pct: 3,      // off | high | low
   };
   const MA_PERIODS = ["10", "20", "50", "100", "150", "200"];
-  function techActive() { return techState.maOn || techState.rsiOn || techState.mfiOn || techState.rvolOn || techState.volOn || techState.ext52 !== "off"; }
-  function techActiveCount() { let n = 0; if (techState.maOn) n++; if (techState.rsiOn) n++; if (techState.mfiOn) n++; if (techState.rvolOn) n++; if (techState.volOn) n++; if (techState.ext52 !== "off") n++; return n; }
+  function techActive() { return techState.maOn || techState.rsiOn || techState.mfiOn || techState.rvolOn || techState.volOn || techState.avgVolOn || techState.ext52 !== "off"; }
+  function techActiveCount() { let n = 0; if (techState.maOn) n++; if (techState.rsiOn) n++; if (techState.mfiOn) n++; if (techState.rvolOn) n++; if (techState.volOn) n++; if (techState.avgVolOn) n++; if (techState.ext52 !== "off") n++; return n; }
   function resetTech() {
     techState.maOn = false; techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "near"; techState.maPct = 2;
     techState.rsiOn = false; techState.rsiMin = 0; techState.rsiMax = 30;
     techState.mfiOn = false; techState.mfiMin = 0; techState.mfiMax = 20;
     techState.rvolOn = false; techState.rvolMin = 1.5; techState.volOn = false; techState.volMin = 1000000;
+    techState.avgVolOn = false; techState.avgVolPeriod = "30"; techState.avgVolMin = 1000000;
     techState.ext52 = "off"; techState.ext52Pct = 3;
   }
   function fmtVol(n) {
