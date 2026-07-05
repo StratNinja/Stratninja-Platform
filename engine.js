@@ -207,24 +207,28 @@ window.Engine = (function () {
     const mult = m.assetType === "option" ? 100 : 1;
     const qty = Math.abs(parseFloat(m.qty) || 0);
     const entry = parseFloat(m.entryPrice) || 0;
-    const exit = parseFloat(m.exitPrice) || 0;
+    // No exit price entered => the position is still OPEN (unrealized).
+    const hasExit = m.exitPrice !== "" && m.exitPrice != null && !isNaN(parseFloat(m.exitPrice));
+    const exit = hasExit ? parseFloat(m.exitPrice) : 0;
     const fees = Math.abs(parseFloat(m.fees) || 0);
-    const gross = (m.direction === "short" ? (entry - exit) : (exit - entry)) * qty * mult;
+    const gross = hasExit ? (m.direction === "short" ? (entry - exit) : (exit - entry)) * qty * mult : 0;
     return {
       id: m.id || ("m" + Date.now() + Math.floor(Math.random() * 1000)),
       source: "manual",
+      open: !hasExit,
       account: m.account,
       symbol: (m.symbol || "").toUpperCase().trim(),
       assetType: m.assetType || "stock",
       direction: m.direction || "long",
       qty: qty,
+      mult: mult,
       entryPrice: entry,
-      exitPrice: exit,
+      exitPrice: hasExit ? exit : null,
       entryDate: m.entryDate,
-      exitDate: m.exitDate || m.entryDate,
-      grossPnl: round(gross, 2),
+      exitDate: hasExit ? (m.exitDate || m.entryDate) : null,
+      grossPnl: hasExit ? round(gross, 2) : 0,
       fees: round(fees, 2),
-      pnl: round(gross - fees, 2),
+      pnl: hasExit ? round(gross - fees, 2) : 0,
       notes: m.notes || "",
       tags: m.tags || [],
     };

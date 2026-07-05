@@ -94,8 +94,33 @@
     const csvFills = Store.getFills().filter(f => (f.account || "").trim() === acct);
     const { trades, openPositions } = E.computeTrades(csvFills);
     const manual = Store.getManual().filter(m => (m.account || "").trim() === acct).map(E.manualToTrade);
-    const all = trades.concat(manual);
-    return { trades: all, openPositions };
+    const manualClosed = manual.filter(t => !t.open);
+    const manualOpen = manual.filter(t => t.open);
+    const all = trades.concat(manualClosed);
+    return { trades: all, openPositions, manualOpen };
+  }
+
+  // ---- live prices for Unrealized P&L (from the scanner_data snapshot) ----
+  let livePrices = null, livePricesTs = 0;
+  async function ensureLivePrices() {
+    if (livePrices && Date.now() - livePricesTs < 120000) return livePrices;
+    const cfg = window.SN_CONFIG;
+    if (!cfg || !cfg.SUPABASE_URL) return {};
+    try {
+      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.latest&select=data",
+        { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return livePrices || {};
+      const j = await r.json();
+      const rows = (j && j[0] && j[0].data && j[0].data.rows) || [];
+      const map = {};
+      rows.forEach(x => { const p = x.p || (x.tech ? x.tech.px : 0); if (p) map[x.s] = p; });
+      livePrices = map; livePricesTs = Date.now();
+      return map;
+    } catch (e) { return livePrices || {}; }
+  }
+  function unrealizedPnl(t, cp) {
+    const gross = (t.direction === "short" ? (t.entryPrice - cp) : (cp - t.entryPrice)) * t.qty * (t.mult || 1);
+    return gross - (t.fees || 0);
   }
 
   // ---- Rendering ---------------------------------------------------------
@@ -109,13 +134,48 @@
     renderAccountBar();
     if (!accts.length) { root.appendChild(emptyState()); return; }
 
-    const { trades, openPositions } = tradesForAccount();
+    const { trades, openPositions, manualOpen } = tradesForAccount();
 
     root.appendChild(renderStatCards(trades));
+    if (manualOpen && manualOpen.length) root.appendChild(renderOpenPositions(manualOpen));
     root.appendChild(renderAssetBreakdown(trades));
     if (state.tab === "calendar") root.appendChild(renderCalendar(trades));
     else if (state.tab === "equity") root.appendChild(renderEquity(trades));
     else if (state.tab === "trades") root.appendChild(renderTrades(trades, openPositions));
+
+    // load live prices once, then re-render so Unrealized P&L fills in
+    if (manualOpen && manualOpen.length && !livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
+  }
+
+  function renderOpenPositions(openTrades) {
+    const wrap = el("div", "panel open-pos");
+    let totUn = 0, haveAll = true;
+    const rows = openTrades.map(t => {
+      const cp = livePrices ? livePrices[t.symbol] : null;
+      let pnlHtml, cpHtml;
+      if (cp != null) {
+        const un = unrealizedPnl(t, cp); totUn += un;
+        pnlHtml = '<span class="' + cls(un) + '">' + money(un, 2) + "</span>";
+        cpHtml = money(cp, 2);
+      } else { haveAll = false; pnlHtml = '<span class="muted">' + (livePrices ? "אין מחיר" : "טוען…") + "</span>"; cpHtml = "—"; }
+      return "<tr data-editopen='" + t.id + "' style='cursor:pointer'><td class='sym'>" + t.symbol +
+        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
+        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
+        "<td><button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button></td></tr>";
+    }).join("");
+    const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
+    wrap.innerHTML =
+      '<h3>📌 פוזיציות פתוחות · Unrealized P&L <span class="muted" style="font-size:12px">מחיר חי מהסורק · לחץ על שורה לעדכון/סגירה</span></h3>' +
+      "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>מחיר נוכחי</th><th>Unrealized</th><th></th></tr></thead>" +
+      "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='5' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>";
+    // wire: click row or close button -> open the edit form (add exit price to close)
+    wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => editOpenTrade(tr.dataset.editopen));
+    wrap.querySelectorAll("[data-closepos]").forEach(b => b.onclick = e => { e.stopPropagation(); editOpenTrade(b.dataset.closepos); });
+    return wrap;
+  }
+  function editOpenTrade(id) {
+    const m = Store.getManual().find(x => x.id === id);
+    if (m) openManual(E.manualToTrade(m));
   }
 
   function emptyState() {
@@ -464,7 +524,7 @@
       field("כיוון", '<select id="m_dir"><option value="long">לונג</option><option value="short">שורט</option></select>') +
       field("כמות", '<input id="m_qty" type="number" step="any" placeholder="100">') +
       field("מחיר כניסה", '<input id="m_ep" type="number" step="any">') +
-      field("מחיר יציאה", '<input id="m_xp" type="number" step="any">') +
+      field("מחיר יציאה", '<input id="m_xp" type="number" step="any" placeholder="ריק = פוזיציה פתוחה">') +
       field("תאריך כניסה", '<input id="m_ed" type="date">') +
       field("תאריך יציאה", '<input id="m_xd" type="date">') +
       field("עמלות", '<input id="m_fee" type="number" step="any" value="0">') +
@@ -559,6 +619,11 @@
     const t = E.manualToTrade(readManual());
     const p = document.getElementById("m_preview");
     if (!p) return;
+    if (t.open) {
+      p.className = "pnlpreview";
+      p.textContent = "📌 פוזיציה פתוחה — טרם נסגרה. ה-Unrealized P&L יוצג ביומן לפי מחיר חי.";
+      return;
+    }
     p.className = "pnlpreview " + cls(t.pnl);
     p.textContent = "רווח/הפסד משוער: " + money(t.pnl, 2);
   }
