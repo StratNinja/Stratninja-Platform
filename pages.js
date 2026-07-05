@@ -782,13 +782,12 @@
         '<div class="cols2">' + top5(g.up, "pos", "🟢 גאפ למעלה") + top5(g.down, "neg", "🔴 גאפ למטה") + "</div>" +
         copyBox(g.up, "כל הגאפ-אפ >3%") + copyBox(g.down, "כל הגאפ-דאון >3%");
     }
-    // demo fallback
-    const tbl = (arr, cls, title) => {
-      const rows = arr.map(x =>
-        "<tr><td>" + star(x.sym) + '</td><td class="sym"><span class="tsym">' + x.sym + '</span> <span class="tname">' + x.name + "</span></td><td>" + money(x.price) + "</td><td class='" + cls + "'>" + (x.gd >= 0 ? "+" : "") + money(x.gd) + "</td><td>" + pct(x.gp) + "</td><td class='muted'>" + x.vol + "</td></tr>").join("");
-      return '<div class="panel"><h3>' + title + "</h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th><th style='text-align:start'>סימבול</th><th>מחיר</th><th>$Gap</th><th>%Gap</th><th>נפח</th></tr></thead><tbody>" + rows + "</tbody></table></div></div>";
-    };
-    return head + DEMO + '<div class="cols2">' + tbl(GAPPERS.up, "pos", "🟢 גאפ למעלה") + tbl(GAPPERS.down, "neg", "🔴 גאפ למטה") + "</div>";
+    // no gappers right now — honest empty state (market closed / nothing gapping >3%)
+    const note = (LIVE && LIVE.updated)
+      ? '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 מחובר לנתונים חיים · אין כרגע מניות בגאפ מעל 3%</div>'
+      : DEMO;
+    return head + note +
+      '<div class="panel"><div class="stub"><div class="big">⚡</div><h2>אין גאפרים כרגע</h2><p>גאפרים מחושבים <b>בזמן אמת בשעות המסחר</b> — מניות שפותחות מעל/מתחת ל-3% מסגירת אתמול. חזור כשהשוק פתוח והרשימה תתמלא אוטומטית.</p></div></div>';
   }
   function wireGappers() {
     document.querySelectorAll("[data-copy]").forEach(b => {
