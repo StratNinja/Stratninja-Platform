@@ -17,6 +17,65 @@
   // sector → SPDR sector ETF (the ETF that holds the stock)
   const SECTOR_ETF = { "Technology": "XLK", "Financials": "XLF", "Health Care": "XLV", "Energy": "XLE", "Consumer Disc.": "XLY", "Communication": "XLC", "Industrials": "XLI", "Consumer Staples": "XLP", "Materials": "XLB", "Real Estate": "XLRE", "Utilities": "XLU" };
   function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
+  // sub-sector (industry) → closest tradeable ETF, matched by keyword (ordered specific→general).
+  // Validated against all 171 live industries; unmapped ones are genuine ETF/macro categories.
+  const INDUSTRY_ETF_KW = [
+    ["SMH", ["semiconductor", "מוליכים למחצה", "שבבי", "וחומרה ל-ai", "חומרה ל-ai"]],
+    ["XBI", ["biotechnology", "ביוטכנולוגיה", "עריכה גנטית"]],
+    ["IHI", ["medical devices", "מכשור רפואי"]],
+    ["IHF", ["שירותי בריאות", "ביטוח רפואי", "healthcare plans"]],
+    ["IGV", ["software", "saas", "וענן", "תוכנת ai", "פלטפורמות"]],
+    ["CIBR", ["סייבר", "cyber", "אבטחת רשת", "אבטחת מידע"]],
+    ["QTUM", ["קוונט", "quantum"]],
+    ["BOTZ", ["בינה מלאכותית", "robotics"]],
+    ["FINX", ["פינטק", "fintech"]],
+    ["VNQ", ["נדל", "reit", "real estate"]],
+    ["XOP", ["e&p"]],
+    ["OIH", ["equipment & services"]],
+    ["AMLP", ["midstream"]],
+    ["ICLN", ["אנרגיה מתחדשת", "renewable", "clean energy"]],
+    ["KRE", ["banks - regional", "בנקים אזוריים"]],
+    ["KBE", ["banks - diversified", "banks", "בנקים"]],
+    ["KIE", ["ביטוח", "insurance"]],
+    ["IAI", ["בורסות", "ברוקרים", "broker", "exchange"]],
+    ["BLOK", ["בלוקצ", "blockchain", "קריפטו", "crypto", "כורי"]],
+    ["GDX", ["gold", "זהב", "מתכות יקרות", "כריית מתכות"]],
+    ["URA", ["אורניום", "uranium", "גרעין", "nuclear"]],
+    ["LIT", ["ליתיום", "lithium", "מתכות נדירות"]],
+    ["XME", ["מתכות תעשייתיות", "industrial metals", "other industrial metals", "mining"]],
+    ["DRIV", ["רכב", "auto parts", "auto "]],
+    ["ITA", ["חלל", "ביטחון", "aerospace", "defense"]],
+    ["IYT", ["תחבורה", "לוגיסטיקה", "transport", "logistic", "freight", "railroad", "trucking", "airline"]],
+    ["IBUY", ["מסחר אלקטרוני", "e-commerce", "online retail"]],
+    ["PEJ", ["תיירות", "פנאי", "leisure", "gambling", "hotel", "travel"]],
+    ["XRT", ["קמעונאות", "apparel retail", "retail"]],
+    ["FDN", ["internet content", "internet"]],
+    ["XLC", ["מדיה", "תקשורת", "telecom", "entertainment", "communication"]],
+    ["ITB", ["בנייה", "homebuild", "building products", "building materials"]],
+    ["XLP", ["מזון", "משקאות", "packaged foods", "צריכה בסיסי", "מוצרי בית", "טיפוח", "staples", "beverage"]],
+    ["XLB", ["כימיקלים", "chemicals", "packaging", "containers"]],
+    ["GRID", ["חשמול"]],
+    ["XLU", ["utilities", "electric"]],
+    ["MOO", ["חקלאות", "agricult"]],
+    ["ARKK", ["צמיחה גבוהה", "מומנטום"]],
+    ["FXI", ["סין", "china"]],
+    ["SRVR", ["מרכזי נתונים", "data center"]],
+    ["XLE", ["אנרגיה", "oil & gas", "נפט"]],
+    ["XLV", ["בריאות", "health", "diagnostics", "pharma"]],
+    ["XLI", ["תעופה", "תעשייה", "industrial", "business services", "machinery"]],
+    ["XLK", ["טכנולוגיה", "technology", "electronic components", "information technology"]],
+    ["XLF", ["פיננסים", "financ", "asset management", "credit", "מנהלי נכסים"]],
+  ];
+  function indEtf(ind) {
+    if (!ind) return "";
+    const s = String(ind).toLowerCase();
+    for (let i = 0; i < INDUSTRY_ETF_KW.length; i++) {
+      const kws = INDUSTRY_ETF_KW[i][1];
+      for (let j = 0; j < kws.length; j++) { if (s.indexOf(kws[j].toLowerCase()) >= 0) return INDUSTRY_ETF_KW[i][0]; }
+    }
+    return "";
+  }
+  function etfChip(t) { return t ? '<span class="tsym clickable etf-chip" data-chart="' + t + '" title="תעודת סל · לחץ לגרף">' + t + "</span>" : ""; }
   function cell(t, c) { return { t: t, c: c }; }
   function tf(x, sym, tfl) {
     const c = x && x.c ? x.c : "doji";
@@ -446,11 +505,14 @@
   }
   function pctSpanBare(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
   function colorLegend() {
-    return '<div class="muted" style="font-size:11px;margin-top:12px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">' +
-      '<span>הצבע = כיוון הנר · הטקסט = סוג Strat:</span>' +
-      '<span>' + tf(cell("2U", "up")) + ' סגירה מעל הפתיחה</span>' +
-      '<span>' + tf(cell("2U", "down")) + ' מתחת (קונפליקט)</span>' +
-      '<span>' + tf(cell("1", "doji")) + " דוג'י</span></div>";
+    return '<div class="muted" style="font-size:11px;margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">' +
+      '<span><b>צבע</b> = כיוון הנר: 🟢 סגירה מעל הפתיחה · 🔴 סגירה מתחת</span>' +
+      '<span><b>ספרה</b> = סוג נר לפי Strat —</span>' +
+      '<span>' + tf(cell("1", "doji")) + ' נר פנימי (Inside · לא פרץ את השיא/שפל של הנר הקודם)</span>' +
+      '<span>' + tf(cell("2U", "up")) + ' שיא חדש בלבד</span>' +
+      '<span>' + tf(cell("2D", "down")) + ' שפל חדש בלבד</span>' +
+      '<span>' + tf(cell("3", "up")) + ' נר חיצוני (Outside · פרץ גם שיא וגם שפל)</span>' +
+    "</div>";
   }
 
   // ========== SCANNER ==========
@@ -837,19 +899,50 @@
       const tot = (lv && lv.total) ? lv.total : members.length;
       const ap = tot ? above / tot * 100 : 0;
       const chgHtml = lv ? (" · " + pctSpanBare(lv.chg)) : "";
-      return '<div class="panel sector-card" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
+      return '<div class="panel sector-card" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + below + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
     }).join("");
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
-    return head + note + '<div class="sector-grid">' + cards + "</div>";
+
+    // ---- sub-sectors (industries) breadth section ----
+    const byInd = {};
+    SCAN.rows.forEach(r => { const k = (r.ind || "").trim(); if (k) (byInd[k] = byInd[k] || []).push(r); });
+    const indNames = Object.keys(byInd).filter(k => byInd[k].length >= 4).sort((a, b) => byInd[b].length - byInd[a].length);
+    const subCards = indNames.map(name => {
+      const mem = byInd[name];
+      const tot = mem.length;
+      const green = mem.filter(m => (m.D || {}).c === "up").length;
+      const ap = tot ? green / tot * 100 : 0;
+      const ftfc = mem.filter(m => m.ftfc).length;
+      const parentSec = mem[0].sec || "";
+      return '<div class="panel subsec-card" data-subsec="' + encodeURIComponent(name) + '" data-sec="' + encodeURIComponent(parentSec) + '">' +
+        '<h3>' + name + " " + etfChip(indEtf(name)) + ' <span class="muted" style="font-size:11px">' + tot + "</span></h3>" +
+        '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
+        '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + green + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + (tot - green) + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
+    }).join("");
+    const subSection = indNames.length
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים</h2><div class="sub">' + indNames.length + ' תתי-סקטורים (4+ מניות) · הצבע לפי הנר היומי · לחץ על כרטיס לסינון בסורק · לחץ על תעודת-הסל לגרף</div></div><div class="subsec-grid">' + subCards + "</div>"
+      : "";
+
+    return head + note + '<div class="sector-grid">' + cards + "</div>" + subSection;
   }
   function wireSectors() {
     document.querySelectorAll(".sector-card").forEach(c => {
       c.onclick = () => { if (c.dataset.sec) openSectorDrillLive(decodeURIComponent(c.dataset.sec)); };
     });
+    // sub-sector card → open the scanner filtered to that sub-sector
+    document.querySelectorAll(".subsec-card").forEach(c => {
+      c.onclick = () => {
+        resetScan(); scanSort.col = null;
+        scanState.sector = decodeURIComponent(c.dataset.sec || "all") || "all";
+        scanState.subsec = decodeURIComponent(c.dataset.subsec || "all") || "all";
+        setPage("scanner");
+      };
+    });
+    wireCharts(document); // ETF chips on sector + sub-sector cards
   }
   let secSort = { col: null, dir: -1 };
   function secSortVal(r, col) {
