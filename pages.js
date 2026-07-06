@@ -926,7 +926,8 @@
         '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + green + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + (tot - green) + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
     }).join("");
     const subSection = indNames.length
-      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים</h2><div class="sub">' + indNames.length + ' תתי-סקטורים (4+ מניות) · הצבע לפי הנר היומי · לחץ על כרטיס לסינון בסורק · לחץ על תעודת-הסל לגרף</div></div><div class="subsec-grid">' + subCards + "</div>"
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים</h2><div class="sub">' + indNames.length + ' תתי-סקטורים (4+ מניות) · הצבע לפי הנר היומי · לחץ על כרטיס לצפייה במניות · לחץ על תעודת-הסל לגרף</div>' +
+        '<div class="sub" style="margin-top:6px;font-size:12px;opacity:.85">ⓘ החלוקה לתתי-סקטורים היא <b>נושאית</b> (לפי הראייה של StratNinja) ולא בהכרח לפי הסיווג התקני (GICS). תעודות-הסל הן הקירוב הסחיר הקרוב ביותר.</div></div><div class="subsec-grid">' + subCards + "</div>"
       : "";
 
     return head + note + '<div class="sector-grid">' + cards + "</div>" + subSection;
