@@ -181,11 +181,14 @@
     const shown = rows.slice(0, GCAP);
     if (!shown.length) { modal("📊 תצוגת גרפים", '<div class="note" style="padding:24px;text-align:center">אין תוצאות לפילטרים האלה.</div>', "chartgrid"); return; }
     let curTf = derived;
+    function cgSrc(sym, tf) {
+      return "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(sym) + "&symbol=" + encodeURIComponent(sym) +
+        "&interval=" + (CG_IV[tf] || "D") + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York";
+    }
     function cellsHtml(tf) {
-      const iv = CG_IV[tf] || "D";
+      // charts are NOT rendered upfront — each is a placeholder that loads its iframe only
+      // when it scrolls into view (see observeGrid), so the first row appears in ~2s instead of ~20s.
       return shown.map(t => {
-        const src = "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(t.sym) + "&symbol=" + encodeURIComponent(t.sym) +
-          "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York";
         return '<div class="cg-cell">' +
           '<div class="cg-head">' + star(t.sym) +
             '<span class="cg-sym tsym clickable" data-chart="' + t.sym + '" title="כל הטיימפריימים">' + t.sym + "</span>" +
@@ -193,7 +196,7 @@
             '<span class="cg-price">' + money(t.price) + " " + pct(t.chg) + "</span>" +
             '<a class="cg-tv" href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(t.sym) + '" target="_blank" rel="noopener" title="פתח ב-TradingView">↗</a>' +
           "</div>" +
-          '<iframe src="' + src + '" loading="lazy" class="cg-frame" allowfullscreen></iframe>' +
+          '<div class="cg-frame cg-ph" data-src="' + cgSrc(t.sym, tf) + '"><span class="cg-spin"></span></div>' +
         "</div>";
       }).join("");
     }
@@ -205,15 +208,48 @@
       '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button></div>';
     modal("📊 תצוגת גרפים", '<div class="cg-bar">' + tfSel + dens + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curTf) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
+    const scroller = document.querySelector(".modal.chartgrid");
+
+    // ---- progressive, staggered chart loading (only when a cell scrolls into view) ----
+    const loadQueue = []; let pumping = false, io = null;
+    function realizePh(ph) {
+      if (!ph || ph.dataset.done) return;
+      ph.dataset.done = "1";
+      const f = document.createElement("iframe");
+      f.className = "cg-frame"; f.src = ph.dataset.src; f.setAttribute("allowfullscreen", "");
+      f.setAttribute("loading", "lazy");
+      ph.replaceWith(f);
+    }
+    function pump() {
+      if (pumping) return; pumping = true;
+      (function next() {
+        if (!loadQueue.length) { pumping = false; return; }
+        realizePh(loadQueue.shift());
+        setTimeout(next, 110); // stagger so the browser isn't hit with 9 heavy iframes at once
+      })();
+    }
+    function observeGrid() {
+      if (io) io.disconnect();
+      if (!("IntersectionObserver" in window)) { // very old browser fallback: just load all
+        grid.querySelectorAll(".cg-ph").forEach(realizePh); return;
+      }
+      io = new IntersectionObserver(entries => {
+        entries.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); loadQueue.push(e.target); } });
+        pump();
+      }, { root: scroller || null, rootMargin: "400px 0px", threshold: 0.01 });
+      grid.querySelectorAll(".cg-ph").forEach(ph => io.observe(ph));
+    }
+    observeGrid();
+
     // density toggle
     document.querySelectorAll("[data-cg]").forEach(b => b.onclick = () => {
       if (grid) grid.className = "cg-grid cg-" + b.dataset.cg;
       document.querySelectorAll("[data-cg]").forEach(x => x.classList.toggle("on", x === b));
     });
-    // manual timeframe selector — rebuilds the charts in place
+    // manual timeframe selector — rebuilds the charts in place (re-observes for lazy loading)
     document.querySelectorAll("[data-cgtf]").forEach(b => b.onclick = () => {
       curTf = b.dataset.cgtf;
-      if (grid) { grid.innerHTML = cellsHtml(curTf); wireStars(grid); wireCharts(grid); }
+      if (grid) { loadQueue.length = 0; grid.innerHTML = cellsHtml(curTf); wireStars(grid); wireCharts(grid); observeGrid(); }
       document.querySelectorAll("[data-cgtf]").forEach(x => x.classList.toggle("on", x === b));
     });
   }
