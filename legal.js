@@ -64,7 +64,7 @@
     const year = new Date().getFullYear();
     return '<footer class="site-footer">' +
       '<div class="sf-top">' +
-        '<div class="sf-brand"><span class="sf-logo">SN</span><span><b>StratNinja</b><span class="sf-tag">The Strat Scanner</span></span></div>' +
+        '<div class="sf-brand"><img src="favicon.svg" class="sf-logo-img" alt="StratNinja"><span><b>StratNinja</b><span class="sf-tag">The Strat Scanner</span></span></div>' +
         '<nav class="sf-links">' + LINKS.map(l => '<a href="#" data-legal="' + l[0] + '">' + l[1] + "</a>").join("") + "</nav>" +
         '<div class="sf-social">' + SOCIAL + "</div>" +
       "</div>" +

@@ -225,6 +225,46 @@
     if (t === "2D") return col === "up" ? "F2D" : "2D";
     return "1";
   }
+  const _CM_BUCKET_HE = { "3G": "3 ירוק (התרחבות שורית)", "F2D": "היפוך 2D (reclaim)", "2U": "2U (המשך שורי)", "1": "Inside", "2D": "2D (המשך דובי)", "F2U": "היפוך 2U (rejection)", "3R": "3 אדום (התרחבות דובית)" };
+  const _CM_TF_HE = { D: "היומי", W: "השבועי", M: "החודשי", Q: "הרבעוני", Y: "השנתי" };
+  let _cmFacts = [], _cmTimer = null;
+  function candleMapFacts() {
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) return [];
+    const rows = SCAN.rows, facts = [], pc = (a, b) => Math.round(a / b * 100);
+    ["Y", "M", "W"].forEach(tf => {
+      const byB = {};
+      rows.forEach(r => { const b = candleBucket(r[tf]); (byB[b] = byB[b] || []).push(r); });
+      Object.keys(byB).forEach(bk => {
+        const arr = byB[bk];
+        if (arr.length < 8) return;
+        const sec = {}; arr.forEach(r => { if (r.sec) sec[r.sec] = (sec[r.sec] || 0) + 1; });
+        const top = Object.keys(sec).map(k => [k, sec[k]]).sort((a, b) => b[1] - a[1])[0];
+        if (top && top[1] / arr.length >= 0.28)
+          facts.push("מבין <b>" + arr.length + "</b> המניות עם נר <b>" + _CM_BUCKET_HE[bk] + "</b> בטיימפריים " + _CM_TF_HE[tf] + " — <b>" + pc(top[1], arr.length) + "%</b> מסקטור <b>" + top[0] + "</b>.");
+        const ind = {}; arr.forEach(r => { if (r.ind) ind[r.ind] = (ind[r.ind] || 0) + 1; });
+        const ti = Object.keys(ind).map(k => [k, ind[k]]).sort((a, b) => b[1] - a[1])[0];
+        if (ti && ti[1] >= 5 && ti[1] / arr.length >= 0.2)
+          facts.push("<b>" + pc(ti[1], arr.length) + "%</b> מהמניות עם נר <b>" + _CM_BUCKET_HE[bk] + "</b> " + _CM_TF_HE[tf] + " הן בתת-סקטור <b>" + ti[0] + "</b>.");
+      });
+    });
+    const dayG = rows.filter(r => (r.D || {}).c === "up").length;
+    facts.push("היום <b>" + pc(dayG, rows.length) + "%</b> מהמניות בנר יומי ירוק — " + (dayG / rows.length >= 0.55 ? "הטיה שורית רחבה 🟢" : dayG / rows.length <= 0.45 ? "הטיה דובית 🔴" : "שוק מאוזן ⚖️") + ".");
+    const secTot = {}, secG = {};
+    rows.forEach(r => { if (r.sec) { secTot[r.sec] = (secTot[r.sec] || 0) + 1; if ((r.D || {}).c === "up") secG[r.sec] = (secG[r.sec] || 0) + 1; } });
+    const secRank = Object.keys(secTot).filter(s => secTot[s] >= 6).map(s => [s, (secG[s] || 0) / secTot[s]]).sort((a, b) => b[1] - a[1]);
+    if (secRank.length) {
+      facts.push("הסקטור הכי שורי היום: <b>" + secRank[0][0] + "</b> (<b>" + Math.round(secRank[0][1] * 100) + "%</b> מהמניות בירוק).");
+      const last = secRank[secRank.length - 1];
+      facts.push("הסקטור הכי דובי היום: <b>" + last[0] + "</b> (רק <b>" + Math.round(last[1] * 100) + "%</b> בירוק).");
+    }
+    const ftfc = rows.filter(r => r.ftfc).length;
+    if (ftfc) facts.push("<b>" + ftfc + "</b> מניות בהמשכיות-טיימפריימים מלאה (FTFC) — יישור חזק בין הזמנים.");
+    ["W", "M"].forEach(tf => {
+      const ins = rows.filter(r => (r[tf] || {}).t === "1").length;
+      if (ins / rows.length >= 0.2) facts.push("<b>" + pc(ins, rows.length) + "%</b> מהמניות בנר <b>Inside</b> בטיימפריים " + _CM_TF_HE[tf] + " — התכווצות לפני תנועה.");
+    });
+    return facts;
+  }
   function candleMapPanel() {
     const cols = ["D", "W", "M", "Q", "Y"];
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
@@ -236,8 +276,13 @@
     const body = CMAP_ROWS.map(([key, desc, cls]) =>
       '<tr><td class="cm-type" title="' + desc + '">' + key + "</td>" +
       cols.map(tf => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + desc + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
+    _cmFacts = candleMapFacts();
+    const firstFact = _cmFacts.length ? _cmFacts[Math.floor(Math.random() * _cmFacts.length)] : "";
+    const insightBox = _cmFacts.length
+      ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="cmInsightText">' + firstFact + "</span></div>"
+      : "";
     return '<div class="panel"><h3>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + SCAN.rows.length + ' מניות · לחץ על מספר לרשימה</span></h3>' +
-      '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div></div>";
+      '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div>" + insightBox + "</div>";
   }
   function openCandleMapDrill(bucket, tfk) {
     if (!(SCAN && SCAN.rows)) return;
@@ -288,6 +333,18 @@
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
+    // rotating "did you know" Candle Map insight
+    if (_cmTimer) { clearInterval(_cmTimer); _cmTimer = null; }
+    if (_cmFacts && _cmFacts.length > 1) {
+      let idx = _cmFacts.indexOf((document.getElementById("cmInsightText") || {}).innerHTML);
+      _cmTimer = setInterval(() => {
+        const el = document.getElementById("cmInsightText");
+        if (!el) { clearInterval(_cmTimer); _cmTimer = null; return; }
+        idx = (idx + 1) % _cmFacts.length;
+        el.style.opacity = "0";
+        setTimeout(() => { el.innerHTML = _cmFacts[idx]; el.style.opacity = "1"; }, 250);
+      }, 6500);
+    }
   }
 
   // ========== S&P 500 BREADTH ==========

@@ -23,20 +23,19 @@
 <section id="landing">
   <header class="lp-header">
     <div class="brand">
-      <div class="logo">SN</div>
+      <img src="favicon.svg" class="brand-ico" alt="StratNinja">
       <div><b>StratNinja</b> <span class="tag">Scanner</span></div>
     </div>
     <div class="lp-nav">
-      <a href="#features">תכונות</a>
       <button class="btn primary sm" onclick="document.getElementById('googleBtn').click()">התחברות</button>
     </div>
   </header>
 
   <div class="hero">
-    <div class="hero-badge">🥷 פלטפורמת The Strat של StratNinja</div>
+    <div class="hero-badge">פלטפורמת The Strat של StratNinja</div>
     <h1>סרוק את השוק<br><span class="grad">כמו נינג'ה</span></h1>
     <p class="hero-sub">
-      סקירת שוק בזמן אמת, סורק תבניות Strat, סקטורים, גאפרים, מועדפים אישיים והתראות —
+      סקירת שוק בזמן אמת, סורק תבניות Strat, סקטורים, גאפרים ומועדפים אישיים —
       והכול במקום אחד. בנוסף: יומן מסחר אישי לניתוח הביצועים שלך.
     </p>
     <button class="btn google" id="googleBtn">
@@ -47,10 +46,14 @@
     <div class="hero-trust">חינם להתחלה · הנתונים שלך פרטיים · בלי כרטיס אשראי</div>
   </div>
 
+  <div class="hero-photo-wrap">
+    <img src="hero.jpg" class="hero-photo" alt="StratNinja — Adi Koriat" onerror="this.parentElement.remove()">
+  </div>
+
   <div class="features" id="features">
     <div class="fcard"><div class="fico">📊</div><h3>סקירת שוק</h3><p>מדדים, סקטורים, מדדי רוחב ו-VIX — תמונת שוק מלאה בזמן אמת לפי The Strat.</p></div>
     <div class="fcard"><div class="fico">🔍</div><h3>סורק תבניות</h3><p>חפש תבניות Strat לפי טיימפריים, סוג נר וצורה — כולל סורקי קהילה.</p></div>
-    <div class="fcard"><div class="fico">⭐</div><h3>מועדפים והתראות</h3><p>בחר מניות למעקב וקבל התראות למייל או לדיסקורד כשתבנית מבשילה.</p></div>
+    <div class="fcard"><div class="fico">⭐</div><h3>מועדפים אישיים</h3><p>בחר מניות למעקב וצור רשימת מעקב אישית שנשמרת בענן.</p></div>
     <div class="fcard"><div class="fico">📅</div><h3>יומן מסחר</h3><p>העלה דוח ברוקר וקבל דשבורד רווח/הפסד, לוח שנה וסטטיסטיקות.</p></div>
   </div>
 
@@ -61,7 +64,7 @@
 <div id="appRoot" class="hidden">
   <div class="scanner-app">
     <aside class="sidebar">
-      <div class="side-brand"><div class="logo">SN</div><div><b>StratNinja</b><div class="tag">Scanner</div></div></div>
+      <div class="side-brand"><img src="favicon.svg" class="brand-ico" alt="StratNinja"><div><b>StratNinja</b><div class="tag">Scanner</div></div></div>
       <nav class="side-nav">
         <a data-page="market" class="active">📊 <span class="lbl">סקירת שוק</span></a>
         <a data-page="sp500">🗺️ <span class="lbl">S&P 500</span></a>

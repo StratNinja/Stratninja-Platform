@@ -1,6 +1,14 @@
 /* StratNinja Platform — scanner app shell (sidebar + pages) */
 .scanner-app { display: flex; min-height: 100vh; }
 
+/* brand icon (3-candle favicon replaces the SN gradient) */
+.brand-ico { width: 34px; height: 34px; border-radius: 8px; display: block; flex-shrink: 0; }
+.sf-logo-img { width: 30px; height: 30px; border-radius: 7px; display: block; }
+/* landing founder photo */
+.hero-photo-wrap { max-width: 720px; margin: 6px auto 0; padding: 0 20px; }
+.hero-photo { width: 100%; border-radius: 18px; display: block; box-shadow: 0 14px 44px rgba(0,0,0,.55); border: 1px solid var(--line); }
+@media (max-width: 640px) { .hero-photo-wrap { padding: 0 14px; } .hero-photo { border-radius: 14px; } }
+
 /* ===== accessibility widget (כפתור נגישות) ===== */
 #a11yBtn { position: fixed; bottom: 18px; inset-inline-end: 18px; inset-inline-start: auto; z-index: 4000;
   width: 50px; height: 50px; border-radius: 50%; background: #1a56db; color: #fff; border: 2px solid #fff;
@@ -358,6 +366,11 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .cm-pill { display: block; padding: 6px 0; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; min-width: 42px; }
 .cm-click { cursor: pointer; transition: .12s; }
 .cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }
+.cm-insight { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 11px 14px; border-radius: 10px;
+  background: rgba(99,102,241,.1); border: 1px solid rgba(99,102,241,.28); font-size: 13px; line-height: 1.6; min-height: 20px; }
+.cm-insight .cm-bulb { font-size: 17px; flex-shrink: 0; }
+#cmInsightText { transition: opacity .25s; }
+#cmInsightText b { color: var(--ink); }
 .cm-3g { background: #0e9f6e; } .cm-f2d { background: #84cc16; } .cm-2u { background: #22c55e; }
 .cm-1 { background: #3b82f6; } .cm-2d { background: #f27a7a; } .cm-f2u { background: #ef4444; } .cm-3r { background: #c62828; }
 
