@@ -76,6 +76,9 @@
     return "";
   }
   function etfChip(t) { return t ? '<span class="tsym clickable etf-chip" data-chart="' + t + '" title="תעודת סל · לחץ לגרף">' + t + "</span>" : ""; }
+  // broad SPDR sector ETFs — must NOT appear as a sub-sector tag (that would just duplicate the sector's own ETF)
+  const SECTOR_ETF_VALS = Object.keys(SECTOR_ETF).map(function (k) { return SECTOR_ETF[k]; });
+  function subEtfFor(ind) { const e = indEtf(ind); return (e && SECTOR_ETF_VALS.indexOf(e) < 0) ? e : ""; }
   function cell(t, c) { return { t: t, c: c }; }
   function tf(x, sym, tfl) {
     const c = x && x.c ? x.c : "doji";
@@ -921,7 +924,7 @@
       const ftfc = mem.filter(m => m.ftfc).length;
       const parentSec = mem[0].sec || "";
       return '<div class="panel subsec-card" data-subsec="' + encodeURIComponent(name) + '" data-sec="' + encodeURIComponent(parentSec) + '">' +
-        '<h3>' + name + " " + etfChip(indEtf(name)) + ' <span class="muted" style="font-size:11px">' + tot + "</span></h3>" +
+        '<h3>' + name + " " + etfChip(subEtfFor(name)) + ' <span class="muted" style="font-size:11px">' + tot + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + green + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + (tot - green) + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
     }).join("");
@@ -988,7 +991,7 @@
       body = sortMembers().map(rowHtml).join("");
       sub = "ממוין · לחץ שוב להפוך · לחץ סקטור מחדש לקיבוץ תתי-סקטורים";
     }
-    const etf = isSub ? indEtf(indFilter) : etfFor(secName);
+    const etf = isSub ? subEtfFor(indFilter) : etfFor(secName);
     const bar = '<div class="drill-bar"><button class="btn ghost" id="drillGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
       (etf ? '<span class="muted" style="font-size:12px">תעודת סל:</span>' + etfChip(etf) : "") + "</div>";
     modal(displayName + " · " + members.length + " מניות · " + sub,
