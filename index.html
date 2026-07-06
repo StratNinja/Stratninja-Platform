@@ -46,10 +46,6 @@
     <div class="hero-trust">חינם להתחלה · הנתונים שלך פרטיים · בלי כרטיס אשראי</div>
   </div>
 
-  <div class="hero-photo-wrap">
-    <img src="hero.jpg" class="hero-photo" alt="StratNinja — Adi Koriat" onerror="this.parentElement.remove()">
-  </div>
-
   <div class="features" id="features">
     <div class="fcard"><div class="fico">📊</div><h3>סקירת שוק</h3><p>מדדים, סקטורים, מדדי רוחב ו-VIX — תמונת שוק מלאה בזמן אמת לפי The Strat.</p></div>
     <div class="fcard"><div class="fico">🔍</div><h3>סורק תבניות</h3><p>חפש תבניות Strat לפי טיימפריים, סוג נר וצורה — כולל סורקי קהילה.</p></div>
@@ -75,6 +71,7 @@
         <!-- <a data-page="alerts">🔔 <span class="lbl">התראות</span></a> --> <!-- hidden per Adi 2026-07-05; re-enable on request -->
 
         <a data-page="journal">📅 <span class="lbl">יומן מסחר</span></a>
+        <a class="side-about" onclick="openLegal('about')">👤 <span class="lbl">עליי</span></a>
       </nav>
       <div class="side-foot">
         <div class="social-row">
@@ -130,5 +127,25 @@
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>
 <script src="a11y.js"></script>
+
+<!-- back-to-top floating button (shows on scroll, app pages) -->
+<button id="backTop" aria-label="חזרה למעלה" title="חזרה למעלה">↑</button>
+<script>
+(function () {
+  var btn = document.getElementById("backTop");
+  if (!btn) return;
+  function onScroll() {
+    var app = document.getElementById("appRoot");
+    var inApp = app && !app.classList.contains("hidden");
+    if (inApp && window.scrollY > 480) btn.classList.add("show");
+    else btn.classList.remove("show");
+  }
+  btn.addEventListener("click", function () {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+})();
+</script>
 </body>
 </html>

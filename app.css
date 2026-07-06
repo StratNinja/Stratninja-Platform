@@ -16,6 +16,17 @@
   display: flex; align-items: center; justify-content: center; }
 #a11yBtn:hover { background: #1e40af; transform: scale(1.05); }
 #a11yBtn:focus-visible { outline: 3px solid #ffd400; outline-offset: 2px; }
+
+/* back-to-top button — sits just above the accessibility button (bottom-left in RTL) */
+#backTop { position: fixed; bottom: 78px; inset-inline-end: 18px; inset-inline-start: auto; z-index: 3900;
+  width: 46px; height: 46px; border-radius: 50%; background: rgba(30,35,48,.92); color: #cfc7ff;
+  border: 1px solid rgba(124,108,240,.55); font-size: 22px; font-weight: 700; line-height: 1; cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  box-shadow: 0 4px 16px rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center;
+  opacity: 0; visibility: hidden; transform: translateY(10px); transition: opacity .2s, transform .2s, visibility .2s; }
+#backTop.show { opacity: 1; visibility: visible; transform: translateY(0); }
+#backTop:hover { background: rgba(124,108,240,.9); color: #fff; transform: translateY(-2px); }
+#backTop:focus-visible { outline: 3px solid #ffd400; outline-offset: 2px; }
 #a11yPanel { position: fixed; bottom: 78px; inset-inline-end: 18px; inset-inline-start: auto; z-index: 4000; width: 262px;
   background: #fff; color: #14181f; border-radius: 14px; box-shadow: 0 12px 34px rgba(0,0,0,.5); padding: 14px; }
 #a11yPanel[hidden] { display: none; }
