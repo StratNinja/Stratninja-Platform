@@ -989,7 +989,7 @@
   }
 
   function initNav() {
-    document.querySelectorAll(".side-nav a").forEach(a => a.onclick = () => setPage(a.dataset.page));
+    document.querySelectorAll(".side-nav a[data-page]").forEach(a => a.onclick = () => setPage(a.dataset.page));
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
     try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}
