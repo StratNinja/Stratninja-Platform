@@ -400,6 +400,30 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 @media (max-width: 900px) { .mtf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .mtf-grid { grid-template-columns: 1fr; } }
 
+/* ===== scanner chart-grid view (TradingView-style) ===== */
+.modal.chartgrid { max-width: 1500px; width: 97vw; }
+.modal.chartgrid h2 { position: sticky; top: -22px; z-index: 5; background: var(--panel); margin: -4px 0 10px; padding: 8px 0; }
+.cg-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+.cg-dens { display: flex; align-items: center; gap: 6px; }
+.cg-dens .chip { min-width: 30px; text-align: center; }
+.cg-grid { display: grid; gap: 10px; }
+.cg-grid.cg-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cg-grid.cg-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cg-grid.cg-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.cg-cell { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.cg-head { display: flex; align-items: center; gap: 7px; padding: 6px 9px; font-size: 13px; }
+.cg-head [data-star] { cursor: pointer; }
+.cg-sym { font-weight: 700; cursor: pointer; }
+.cg-sym:hover { color: var(--accent, #7c6cf0); }
+.cg-name { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.cg-price { font-size: 12px; white-space: nowrap; }
+.cg-tv { margin-inline-start: 4px; color: var(--muted); text-decoration: none; font-size: 14px; }
+.cg-tv:hover { color: var(--ink); }
+.cg-frame { width: 100%; height: 260px; border: 0; background: #131722; display: block; }
+.cg-grid.cg-4 .cg-frame { height: 230px; }
+@media (max-width: 900px) { .cg-grid.cg-3, .cg-grid.cg-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .cg-grid { grid-template-columns: 1fr !important; } }
+
 /* ===== social links (sidebar footer) ===== */
 .social-row { display: flex; gap: 8px; justify-content: center; padding: 4px 0 12px; }
 .social { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px;

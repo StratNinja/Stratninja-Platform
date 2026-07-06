@@ -169,6 +169,43 @@
       strip + '<div class="mtf-grid">' + cells + "</div>" +
       '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "mtf");
   }
+  // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
+  const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
+  const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+  function openScannerGrid() {
+    // if several TFs are selected → use the LOWEST (shortest) one; order low→high = D,W,M,Q,Y
+    const order = ["D", "W", "M", "Q", "Y"];
+    const tf = order.find(x => scanState.tfs.indexOf(x) >= 0) || "D";
+    const iv = CG_IV[tf] || "D";
+    const rows = sortRows(filterRows(scanSource()));
+    const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
+    const shown = rows.slice(0, GCAP);
+    if (!shown.length) { modal("📊 תצוגת גרפים", '<div class="note" style="padding:24px;text-align:center">אין תוצאות לפילטרים האלה.</div>', "chartgrid"); return; }
+    const cells = shown.map(t => {
+      const src = "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(t.sym) + "&symbol=" + encodeURIComponent(t.sym) +
+        "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York";
+      return '<div class="cg-cell">' +
+        '<div class="cg-head">' + star(t.sym) +
+          '<span class="cg-sym tsym clickable" data-chart="' + t.sym + '" title="כל הטיימפריימים">' + t.sym + "</span>" +
+          '<span class="cg-name">' + (t.name || t.ind || t.sector || "") + "</span>" +
+          '<span class="cg-price">' + money(t.price) + " " + pct(t.chg) + "</span>" +
+          '<a class="cg-tv" href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(t.sym) + '" target="_blank" rel="noopener" title="פתח ב-TradingView">↗</a>' +
+        "</div>" +
+        '<iframe src="' + src + '" loading="lazy" class="cg-frame" allowfullscreen></iframe>' +
+      "</div>";
+    }).join("");
+    const more = rows.length > GCAP ? ' · מוצגות ' + GCAP + " הראשונות מתוך " + rows.length : "";
+    const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
+      '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button></div>';
+    const bar = '<div class="cg-bar"><span class="muted" style="font-size:13px">טיימפריים: <b style="color:var(--ink)">' + CG_TF_HE[tf] +
+      "</b> · " + shown.length + " מניות" + more + ' · הגרפים נטענים תוך כדי גלילה</span>' + dens + "</div>";
+    modal('📊 תצוגת גרפים · ' + CG_TF_HE[tf], bar + '<div class="cg-grid cg-3" id="cgGrid">' + cells + "</div>", "chartgrid");
+    const grid = $("#cgGrid");
+    document.querySelectorAll("[data-cg]").forEach(b => b.onclick = () => {
+      if (grid) grid.className = "cg-grid cg-" + b.dataset.cg;
+      document.querySelectorAll("[data-cg]").forEach(x => x.classList.toggle("on", x === b));
+    });
+  }
   function wireCharts(scope) {
     (scope || document).querySelectorAll("[data-chart]").forEach(b => {
       b.onclick = e => {
@@ -582,7 +619,7 @@
       "<th></th>";
     const nCols = techOn ? 20 : 14;
     const resultsPanel =
-      '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button>" : "") + "</h3>" +
+      '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<span style="display:flex;gap:8px"><button class="btn ghost" id="scanGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button><button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button></span>" : "") + "</h3>" +
       '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" +
       (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
@@ -680,6 +717,8 @@
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
     bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
+    const grid = $("#scanGrid");
+    if (grid) grid.onclick = () => openScannerGrid();
     const copy = $("#scanCopy");
     if (copy) copy.onclick = () => {
       const rows = filterRows(scanSource());
