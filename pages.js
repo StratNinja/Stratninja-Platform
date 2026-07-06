@@ -343,7 +343,7 @@
         idx = (idx + 1) % _cmFacts.length;
         el.style.opacity = "0";
         setTimeout(() => { el.innerHTML = _cmFacts[idx]; el.style.opacity = "1"; }, 250);
-      }, 6500);
+      }, 10000);
     }
   }
 
