@@ -231,14 +231,16 @@
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
   const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
-  function openScannerGrid() {
+  function openScannerGrid() { openChartGrid(sortRows(filterRows(scanSource())), {}); }
+  // generic chart-grid: takes a list of rows ({sym, price, chg, name/ind/sector}) and shows them as a TV grid
+  function openChartGrid(rows, opts) {
+    opts = opts || {};
     // if several TFs are selected → default to the LOWEST (shortest) one; order low→high = D,W,M,Q,Y
     const order = ["D", "W", "M", "Q", "Y"];
-    const derived = order.find(x => scanState.tfs.indexOf(x) >= 0) || "D";
-    const rows = sortRows(filterRows(scanSource()));
+    const derived = opts.tf || (order.find(x => scanState.tfs.indexOf(x) >= 0) || "D");
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
     const shown = rows.slice(0, GCAP);
-    if (!shown.length) { modal("📊 תצוגת גרפים", '<div class="note" style="padding:24px;text-align:center">אין תוצאות לפילטרים האלה.</div>', "chartgrid"); return; }
+    if (!shown.length) { modal("📊 תצוגת גרפים", '<div class="note" style="padding:24px;text-align:center">אין מניות להצגה.</div>', "chartgrid"); return; }
     let curTf = derived;
     function cgSrc(sym, tf) {
       return "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(sym) + "&symbol=" + encodeURIComponent(sym) +
@@ -265,7 +267,7 @@
       '<span class="muted" style="font-size:12px">· ' + shown.length + " מניות" + more + "</span></div>";
     const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
       '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button></div>';
-    modal("📊 תצוגת גרפים", '<div class="cg-bar">' + tfSel + dens + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curTf) + "</div>", "chartgrid");
+    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + dens + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curTf) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
@@ -933,14 +935,9 @@
     document.querySelectorAll(".sector-card").forEach(c => {
       c.onclick = () => { if (c.dataset.sec) openSectorDrillLive(decodeURIComponent(c.dataset.sec)); };
     });
-    // sub-sector card → open the scanner filtered to that sub-sector
+    // sub-sector card → open a drill with that sub-sector's stocks (like a sector drill)
     document.querySelectorAll(".subsec-card").forEach(c => {
-      c.onclick = () => {
-        resetScan(); scanSort.col = null;
-        scanState.sector = decodeURIComponent(c.dataset.sec || "all") || "all";
-        scanState.subsec = decodeURIComponent(c.dataset.subsec || "all") || "all";
-        setPage("scanner");
-      };
+      c.onclick = () => { if (c.dataset.subsec) openSubDrillLive(decodeURIComponent(c.dataset.subsec)); };
     });
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }
@@ -953,10 +950,13 @@
     if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return dirRank(r[col]);
     return null;
   }
-  function openSectorDrillLive(secName) { secSort = { col: null, dir: -1 }; renderSecDrill(secName); }
-  function renderSecDrill(secName) {
-    const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => r.sec === secName) : [];
-    if (!members.length) { modal(secName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
+  function openSectorDrillLive(secName) { secSort = { col: null, dir: -1 }; renderSecDrill(secName, null); }
+  function openSubDrillLive(subName) { secSort = { col: null, dir: -1 }; renderSecDrill(null, subName); }
+  function renderSecDrill(secName, indFilter) {
+    const isSub = !!indFilter;
+    const displayName = isSub ? indFilter : secName;
+    const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => isSub ? r.ind === indFilter : r.sec === secName) : [];
+    if (!members.length) { modal(displayName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
     const rowHtml = r => {
       const t = { sym: r.s, Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
       const chg = r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
@@ -967,29 +967,37 @@
       return '<th class="sortable" data-ssort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>";
     };
     const head = "<th></th>" + th("סימבול", "sym", true) + th("מחיר", "price") + th("%", "chg") + th("Y", "Y") + th("Q", "Q") + th("M", "M") + th("W", "W") + th("D", "D") + th("FTFC", "ftfc");
-    const byInd = {}; members.forEach(r => { const k = r.ind || "אחר"; (byInd[k] = byInd[k] || []).push(r); });
-    const indNames = Object.keys(byInd).sort((a, b) => byInd[b].length - byInd[a].length);
+    const sortMembers = () => members.slice().sort((a, b) => {
+      let va = secSortVal(a, secSort.col), vb = secSortVal(b, secSort.col);
+      const na = va == null || va === "" || (typeof va === "number" && isNaN(va)), nb = vb == null || vb === "" || (typeof vb === "number" && isNaN(vb));
+      if (na && nb) return 0; if (na) return 1; if (nb) return -1;
+      if (typeof va === "string") return secSort.dir * va.localeCompare(vb);
+      return secSort.dir * (va - vb);
+    });
     let body, sub;
-    if (!secSort.col) {
+    if (isSub) {
+      body = (secSort.col ? sortMembers() : members).map(rowHtml).join("");
+      sub = "לחץ כותרת למיון";
+    } else if (!secSort.col) {
+      const byInd = {}; members.forEach(r => { const k = r.ind || "אחר"; (byInd[k] = byInd[k] || []).push(r); });
+      const indNames = Object.keys(byInd).sort((a, b) => byInd[b].length - byInd[a].length);
       body = indNames.map(ind => '<tr class="sub-head"><td colspan="10">🏭 ' + ind + ' <span class="muted" style="font-weight:400">(' + byInd[ind].length + ")</span></td></tr>" + byInd[ind].map(rowHtml).join("")).join("");
       sub = indNames.length + " תתי-סקטורים · לחץ כותרת למיון";
     } else {
-      const sorted = members.slice().sort((a, b) => {
-        let va = secSortVal(a, secSort.col), vb = secSortVal(b, secSort.col);
-        const na = va == null || va === "" || (typeof va === "number" && isNaN(va)), nb = vb == null || vb === "" || (typeof vb === "number" && isNaN(vb));
-        if (na && nb) return 0; if (na) return 1; if (nb) return -1;
-        if (typeof va === "string") return secSort.dir * va.localeCompare(vb);
-        return secSort.dir * (va - vb);
-      });
-      body = sorted.map(rowHtml).join("");
+      body = sortMembers().map(rowHtml).join("");
       sub = "ממוין · לחץ שוב להפוך · לחץ סקטור מחדש לקיבוץ תתי-סקטורים";
     }
-    modal(secName + " · " + members.length + " מניות · " + sub,
-      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table></div>" + colorLegend());
+    const etf = isSub ? indEtf(indFilter) : etfFor(secName);
+    const bar = '<div class="drill-bar"><button class="btn ghost" id="drillGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
+      (etf ? '<span class="muted" style="font-size:12px">תעודת סל:</span>' + etfChip(etf) : "") + "</div>";
+    modal(displayName + " · " + members.length + " מניות · " + sub,
+      bar + '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table></div>" + colorLegend());
+    const gbtn = $("#drillGrid");
+    if (gbtn) gbtn.onclick = () => openChartGrid(members.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: displayName });
     document.querySelectorAll("[data-ssort]").forEach(h => h.onclick = () => {
       const c = h.dataset.ssort;
       if (secSort.col === c) secSort.dir *= -1; else { secSort.col = c; secSort.dir = c === "sym" ? 1 : -1; }
-      renderSecDrill(secName);
+      renderSecDrill(secName, indFilter);
     });
   }
 

@@ -209,6 +209,7 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .subsec-card:hover { transform:translateY(-2px); border-color:#3a4150; }
 .subsec-card h3 { font-size:14px; margin:0 0 10px; }
 @media (max-width:640px) { .subsec-grid { grid-template-columns:1fr; } }
+.drill-bar { display:flex; align-items:center; gap:10px; margin:0 0 12px; flex-wrap:wrap; }
 .brow { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
 .btf { width:18px; color:var(--muted); font-size:12px; font-weight:700; }
 .breadth { flex:1; display:flex; height:14px; border-radius:5px; overflow:hidden; background:var(--panel2); }
