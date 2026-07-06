@@ -210,8 +210,10 @@
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
-    // ---- progressive, staggered chart loading (only when a cell scrolls into view) ----
-    const loadQueue = []; let pumping = false, io = null;
+    // ---- lazy chart loading: each chart loads the moment its cell scrolls into view ----
+    // Visible charts load IN PARALLEL (no artificial stagger) — the first iframe downloads the
+    // TradingView library, the rest reuse it from cache, so the whole visible screen fills quickly.
+    let io = null;
     function realizePh(ph) {
       if (!ph || ph.dataset.done) return;
       ph.dataset.done = "1";
@@ -220,23 +222,14 @@
       f.setAttribute("loading", "lazy");
       ph.replaceWith(f);
     }
-    function pump() {
-      if (pumping) return; pumping = true;
-      (function next() {
-        if (!loadQueue.length) { pumping = false; return; }
-        realizePh(loadQueue.shift());
-        setTimeout(next, 110); // stagger so the browser isn't hit with 9 heavy iframes at once
-      })();
-    }
     function observeGrid() {
       if (io) io.disconnect();
       if (!("IntersectionObserver" in window)) { // very old browser fallback: just load all
         grid.querySelectorAll(".cg-ph").forEach(realizePh); return;
       }
       io = new IntersectionObserver(entries => {
-        entries.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); loadQueue.push(e.target); } });
-        pump();
-      }, { root: scroller || null, rootMargin: "400px 0px", threshold: 0.01 });
+        entries.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); realizePh(e.target); } });
+      }, { root: scroller || null, rootMargin: "250px 0px", threshold: 0.01 });
       grid.querySelectorAll(".cg-ph").forEach(ph => io.observe(ph));
     }
     observeGrid();
@@ -249,7 +242,7 @@
     // manual timeframe selector — rebuilds the charts in place (re-observes for lazy loading)
     document.querySelectorAll("[data-cgtf]").forEach(b => b.onclick = () => {
       curTf = b.dataset.cgtf;
-      if (grid) { loadQueue.length = 0; grid.innerHTML = cellsHtml(curTf); wireStars(grid); wireCharts(grid); observeGrid(); }
+      if (grid) { grid.innerHTML = cellsHtml(curTf); wireStars(grid); wireCharts(grid); observeGrid(); }
       document.querySelectorAll("[data-cgtf]").forEach(x => x.classList.toggle("on", x === b));
     });
   }
