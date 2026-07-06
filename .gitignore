@@ -12,3 +12,15 @@ snapshot.zip
 # secrets (do NOT commit private keys; the Supabase ANON key is public and lives in config.js)
 .env
 .env.local
+*secret*
+*client_secret*
+*.har
+*.pem
+*.key
+
+# never sweep in stray user folders / binaries
+Downloads/
+node_modules/
+*.exe
+*.zip
+*.mp4

@@ -66,6 +66,10 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .legal-body b { color: var(--ink); }
 .legal-date { font-size: 12px !important; color: var(--muted) !important; margin-top: 8px !important; }
 .legal-social { display: flex; gap: 10px; margin-top: 6px; }
+.about-photo { width: 100%; border-radius: 14px; margin: 0 0 16px; display: block; border: 1px solid var(--line); }
+.about-cta { display: inline-block; margin: 6px 0 4px; padding: 10px 18px; border-radius: 10px; font-weight: 700; font-size: 13px;
+  background: linear-gradient(90deg, rgba(88,101,242,.9), rgba(124,108,240,.85)); color: #fff !important; text-decoration: none; }
+.about-cta:hover { filter: brightness(1.1); }
 
 @media (max-width: 640px) {
   .sf-top { flex-direction: column; align-items: flex-start; gap: 14px; }
