@@ -343,9 +343,9 @@
   }
   function liveBanner() {
     if (LIVE && LIVE.updated) {
-      const d = new Date(LIVE.updated);
-      const hh = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
-      return '<div class="demo-flag" style="background:rgba(22,184,119,.12);color:#7ee2b8;border-color:rgba(22,184,119,.3)">🟢 נתונים חיים · עודכן ' + hh + "</div>";
+      const hh = d => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+      const scanTxt = (SCAN && SCAN.updated) ? ' · <span title="מחירי המניות בסורק מתעדכנים כל 15 דקות">מחירי מניות ' + hh(new Date(SCAN.updated)) + "</span>" : "";
+      return '<div class="demo-flag" style="background:rgba(22,184,119,.12);color:#7ee2b8;border-color:rgba(22,184,119,.3)" title="מדדים/שוק מתעדכנים כל 3 דקות · סורק המניות כל 15 דקות (בשעות המסחר)">🟢 נתונים חיים · שוק עודכן ' + hh(new Date(LIVE.updated)) + scanTxt + "</div>";
     }
     return DEMO;
   }
@@ -1418,22 +1418,28 @@
     updateSync();
     wireCharts(el);
   }
-  // freshness + next-sync countdown shown at the end of the ticker (updated every second)
+  // freshness + next-scan countdown at the end of the ticker (updated every second).
+  // Reflects the SERVER scan cadence — market snapshot every 3 min, ticker prices refreshed with it.
   function updateSync() {
     const s = document.getElementById("ltSync");
     if (!s) return;
     const now = Date.now();
     const upd = (LIVE && LIVE.updated) ? new Date(LIVE.updated) : null;
-    const next = _liveTs ? Math.max(0, 60 - Math.floor((now - _liveTs) / 1000)) : 0;
-    const nextTxt = Math.floor(next / 60) + ":" + String(next % 60).padStart(2, "0");
     if (!upd) { s.innerHTML = '<span class="lt-dot zero"></span><span class="muted">טוען נתונים…</span>'; return; }
-    const ageMin = Math.floor((now - upd.getTime()) / 60000);
-    const dot = ageMin <= 5 ? "pos" : "stale";
-    const timeTxt = upd.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
-    const fresh = ageMin <= 5 ? "נתונים חיים" : ("נכון ל-" + timeTxt);
-    s.innerHTML = '<span class="lt-dot ' + dot + '" title="הנתונים מדויקים נכון ל-' + timeTxt + '"></span>' +
-      '<span class="lt-fresh">🕐 ' + fresh + "</span>" +
-      '<span class="muted lt-next">· סנכרון בעוד ' + nextTxt + "</span>";
+    const hhmm = d => d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+    const scanTime = (SCAN && SCAN.updated) ? new Date(SCAN.updated) : null;
+    const tip = "מחירי מדדים/שוק מתעדכנים כל 3 דקות · סורק המניות כל 15 דקות (בשעות המסחר בלבד)."
+      + " מדדים נכון ל-" + upd.toLocaleString("he-IL")
+      + (scanTime ? " · מחירי מניות (סורק) נכון ל-" + scanTime.toLocaleString("he-IL") : "");
+    const ageMin = (now - upd.getTime()) / 60000;
+    if (ageMin > 8) {   // stale — market closed / no recent scan
+      s.innerHTML = '<span class="lt-dot stale" title="' + tip + '"></span><span class="lt-fresh">🕐 נכון ל-' + hhmm(upd) + '</span><span class="muted lt-next">· השוק סגור</span>';
+      return;
+    }
+    const CAD = 3 * 60 * 1000;   // matches the */3 market-snapshot cron
+    const next = Math.ceil(now / CAD) * CAD - now;
+    const nextTxt = Math.floor(next / 60000) + ":" + String(Math.floor(next / 1000) % 60).padStart(2, "0");
+    s.innerHTML = '<span class="lt-dot pos" title="' + tip + '"></span><span class="lt-fresh">🕐 עודכן ' + hhmm(upd) + '</span><span class="muted lt-next">· סריקה הבאה ~' + nextTxt + '</span>';
   }
   window._snUpdateTicker = updateTicker;
   function initNav() {
