@@ -149,11 +149,17 @@
 
   function renderOpenPositions(openTrades) {
     const wrap = el("div", "panel open-pos");
-    let totUn = 0, haveAll = true;
+    let totUn = 0, haveAll = true, hasOpt = false;
     const rows = openTrades.map(t => {
-      const cp = livePrices ? livePrices[t.symbol] : null;
+      const isOpt = t.assetType === "option";
+      // live prices are STOCK prices — they are NOT an option's premium, so we cannot
+      // compute a meaningful Unrealized P&L for an open option from them. Show it only for stocks.
+      const cp = (!isOpt && livePrices) ? livePrices[t.symbol] : null;
       let pnlHtml, cpHtml;
-      if (cp != null) {
+      if (isOpt) {
+        hasOpt = true; cpHtml = '<span class="muted">—</span>';
+        pnlHtml = '<span class="muted" title="אין מחיר אופציה חי בסורק — ה-P&amp;L יחושב בסגירה לפי מחיר היציאה">לא זמין ⓘ</span>';
+      } else if (cp != null) {
         const un = unrealizedPnl(t, cp); totUn += un;
         pnlHtml = '<span class="' + cls(un) + '">' + money(un, 2) + "</span>";
         cpHtml = money(cp, 2);
@@ -164,8 +170,9 @@
         "<td><button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button></td></tr>";
     }).join("");
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
+    const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — ה-P&L שלהן יחושב בסגירה</span>' : "";
     wrap.innerHTML =
-      '<h3>📌 פוזיציות פתוחות · Unrealized P&L <span class="muted" style="font-size:12px">מחיר חי מהסורק · לחץ על שורה לעדכון/סגירה</span></h3>' +
+      '<h3>📌 פוזיציות פתוחות · Unrealized P&L <span class="muted" style="font-size:12px">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span></h3>" +
       "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>מחיר נוכחי</th><th>Unrealized</th><th></th></tr></thead>" +
       "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='5' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>";
     // wire: click row or close button -> open the edit form (add exit price to close)
@@ -571,6 +578,7 @@
     const cfg = window.SN_CONFIG;
     const gv = id => { const e = document.getElementById(id); return e ? e.value : ""; };
     const sym = (gv("m_sym") || "").toUpperCase().trim();
+    const isOpt = gv("m_asset") === "option"; // option premium isn't the stock's price → skip the range check
     if (!cfg || !cfg.SUPABASE_URL || !sym) { warnEl.classList.add("hidden"); return; }
     const checks = [
       { label: "כניסה", price: parseFloat(gv("m_ep")), date: gv("m_ed") },
@@ -589,7 +597,7 @@
           continue;
         }
         const tol = 0.005, lo = d.low * (1 - tol), hi = d.high * (1 + tol);
-        if (c.price < lo || c.price > hi) {
+        if (!isOpt && (c.price < lo || c.price > hi)) {
           warns.push("מחיר ה" + c.label + " (" + c.price + "$) מחוץ לטווח של " + sym + " ב-" + c.date +
             " (נע בין " + d.low + "$ ל-" + d.high + "$)");
         }
@@ -621,9 +629,12 @@
     if (!p) return;
     if (t.open) {
       p.className = "pnlpreview";
-      p.textContent = "📌 פוזיציה פתוחה — טרם נסגרה. ה-Unrealized P&L יוצג ביומן לפי מחיר חי.";
+      p.textContent = t.assetType === "option"
+        ? "📌 פוזיציה פתוחה — טרם נסגרה. לאופציות אין מחיר חי, אז ה-P&L יחושב בסגירה (לפי מחיר היציאה ×100)."
+        : "📌 פוזיציה פתוחה — טרם נסגרה. ה-Unrealized P&L יוצג ביומן לפי מחיר חי.";
       return;
     }
+
     p.className = "pnlpreview " + cls(t.pnl);
     p.textContent = "רווח/הפסד משוער: " + money(t.pnl, 2);
   }
