@@ -1046,7 +1046,7 @@
     atrpMin: "",                 // ATR as % of price ≥
     chgMin: "", chgMax: "",      // daily % move, from–to (signed)
   };
-  const MA_PERIODS = ["10", "20", "50", "100", "150", "200"];
+  const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
@@ -1253,6 +1253,64 @@
     wireCharts($("#page"));
   }
 
+  // ========== SMA COMPRESSION ==========
+  const SMA_ALL = ["5", "10", "20", "50", "100", "150", "200"];
+  const smaState = { periods: ["10", "20", "50", "100", "200"], maxSpread: "" };
+  function smaSpread(t, sel) {
+    const k = t.tech && t.tech.dsma;
+    if (!k) return null;
+    const vals = sel.map(p => k[p]).filter(v => v != null);
+    if (vals.length < 2) return null;
+    return Math.max.apply(null, vals) - Math.min.apply(null, vals);
+  }
+  function smaRows() {
+    const sel = smaState.periods.filter(Boolean);
+    let rows = scanSource().map(t => ({ t: t, sp: smaSpread(t, sel) })).filter(x => x.sp != null);
+    const maxSp = parseFloat(smaState.maxSpread);
+    if (!isNaN(maxSp) && maxSp > 0) rows = rows.filter(x => x.sp <= maxSp);
+    rows.sort((a, b) => a.sp - b.sp);
+    return rows;
+  }
+  function renderSmaCompression() {
+    const head0 = '<div class="page-head"><h1>📉 דחיסת ממוצעים · SMA Compression</h1><div class="sub">מניות שבהן הממוצעים הנבחרים <b>הכי צפופים</b> (התכווצות → לרוב לפני תנועה חדה) · + המרחק של כל ממוצע מהמחיר</div></div>';
+    const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
+    const hasTech = scanSource().some(t => t.tech && t.tech.dsma);
+    const sel = smaState.periods.filter(Boolean);
+    const slot = i => { const cur = smaState.periods[i] || ""; return '<select data-smaslot="' + i + '"><option value="">— ריק</option>' + SMA_ALL.map(p => '<option value="' + p + '"' + (cur === p ? " selected" : "") + ">SMA" + p + "</option>").join("") + "</select>"; };
+    const controls = '<div class="panel filters"><h3>הגדרות דחיסה <span class="muted" style="font-size:12px">בחר עד 5 ממוצעים (5–200) · אפשר להשאיר ריק</span></h3><div class="frow">' +
+      '<div class="fgrp"><label>ממוצעים</label><div class="chips">' + [0, 1, 2, 3, 4].map(slot).join("") + "</div></div>" +
+      '<div class="fgrp"><label>דחיסה מקס׳ (%)</label><input id="smaMax" type="number" step="0.5" min="0" placeholder="הכל" style="width:80px" value="' + smaState.maxSpread + '"></div>' +
+      '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="smaReset">איפוס</button></div>' +
+      "</div></div>";
+    if (!hasTech) return head0 + controls + '<div class="panel"><div class="note" style="margin:6px 0">⏳ נתוני הממוצעים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
+    if (sel.length < 2) return head0 + controls + '<div class="panel"><div class="stub"><div class="big">📉</div><h2>בחר לפחות 2 ממוצעים</h2><p>בחר את הממוצעים שביניהם לבדוק דחיסה (למשל 20 · 50 · 100 · 200).</p></div></div>';
+    const rows = smaRows();
+    const CAP = 300, shown = rows.slice(0, CAP);
+    const body = shown.map(x => {
+      const t = x.t, k = t.tech.dsma || {};
+      return "<tr><td>" + star(t.sym) + "</td>" +
+        '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
+        '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td>" +
+        '<td class="sma-spread"><b>' + x.sp.toFixed(2) + "%</b></td>" +
+        sel.map(p => "<td>" + dPct(k[p]) + "</td>").join("") +
+        "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+        '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
+    }).join("");
+    const head = "<th></th><th style='text-align:start'>סימבול</th><th style='text-align:start'>סקטור</th><th>מחיר</th><th title='טווח הממוצעים כאחוז מהמחיר — קטן = צפוף'>דחיסה ▲</th>" + sel.map(p => "<th>SMA" + p + "</th>").join("") + "<th>FTFC</th><th></th>";
+    const nCols = 6 + sel.length;
+    const results = '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " · מהצפוף לרחב</span></span>" + (rows.length ? '<button class="btn ghost" id="smaCopy" style="font-size:12px;font-weight:600">📋 העתק ' + Math.min(rows.length, CAP) + " טיקרים</button>" : "") + "</h3>" +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות</td></tr>') + "</tbody></table></div></div>";
+    return head0 + (isLive ? liveBanner() : DEMO) + controls + results;
+  }
+  function wireSmaCompression() {
+    document.querySelectorAll("[data-smaslot]").forEach(s => s.onchange = () => { smaState.periods[+s.dataset.smaslot] = s.value; reRender(); });
+    const mx = $("#smaMax"); if (mx) mx.onchange = () => { smaState.maxSpread = mx.value; reRender(); };
+    const rst = $("#smaReset"); if (rst) rst.onclick = () => { smaState.periods = ["10", "20", "50", "100", "200"]; smaState.maxSpread = ""; reRender(); };
+    wireCharts($("#page")); wireStars($("#page"));
+    const cp = $("#smaCopy");
+    if (cp) cp.onclick = () => { const syms = smaRows().slice(0, 300).map(x => x.t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
+  }
+
   // ========== FAVORITES ==========
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
@@ -1336,6 +1394,7 @@
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
+    smacompression: { render: renderSmaCompression, wire: wireSmaCompression },
     favorites: { render: renderFavorites, wire: wireFavorites },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
   };
@@ -1354,7 +1413,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
-    if (state.page === "scanner" || state.page === "sectors" || state.page === "market") loadScanner();
+    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "smacompression") loadScanner();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
   }
   window.setPageExternal = setPage;
@@ -1382,7 +1441,7 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors" || state.page === "market") reRender(); }
+      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "smacompression") reRender(); }
     } catch (e) { /* keep demo */ }
   }
 
@@ -1453,6 +1512,29 @@
     updateTicker();
     setInterval(updateTicker, 60000);
     setInterval(updateSync, 1000);
+    startCtaRotator();
+  }
+  // rotating motivational lines in the "join community" banner
+  const CTA_MSGS = [
+    '<span class="cta-trophy">🏆</span> הצטרף לקהילת הדיסקורד של StratNinja',
+    "רוצה סוף־סוף להבין מה קורה בגרפים? 📊 בוא לקהילה",
+    "להיות לבד בשוק ההון זה קשה — בוא תסחור עם קהילה 🤝",
+    "עוד מתלבט אם להיכנס לעסקה? תתייעץ עם הקהילה קודם 💬",
+    "סטאפים, ניתוחים ולייבים כל יום — בקהילת StratNinja 🥷",
+    "נינג׳ות לא סוחרות לבד ⚔️ הצטרף לדיסקורד",
+    "חדשות בוקר, סורקים וכלים אוטומטיים — הכל בקהילה 🚀",
+  ];
+  function startCtaRotator() {
+    const el = document.getElementById("ctaText");
+    if (!el) return;
+    let i = 0;
+    setInterval(() => {
+      const e = document.getElementById("ctaText");
+      if (!e) return;
+      i = (i + 1) % CTA_MSGS.length;
+      e.style.transition = "opacity .35s"; e.style.opacity = "0";
+      setTimeout(() => { e.innerHTML = CTA_MSGS[i]; e.style.opacity = "1"; }, 350);
+    }, 8000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initNav);

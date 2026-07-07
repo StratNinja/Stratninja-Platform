@@ -196,6 +196,8 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 /* add/remove result columns */
 .col-picker { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 12px; }
 .col-picker .col-chip { font-size:12px; padding:4px 10px; }
+.sma-spread { color:#8fb4ff; }
+.sma-spread b { font-weight:800; }
 /* manual-trade image attach (paste / upload chart screenshot) */
 .img-zone { position:relative; border:1.5px dashed var(--line); border-radius:10px; min-height:78px;
   display:flex; align-items:center; justify-content:center; cursor:pointer; padding:10px; transition:border-color .12s, background .12s; }
