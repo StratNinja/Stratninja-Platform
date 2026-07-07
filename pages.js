@@ -521,7 +521,12 @@
   }
 
   // ========== SCANNER ==========
-  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all" };
+  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, mtf: newMtf() };
+  // multi-timeframe per-TF conditions: {D:{t,c}, W:{t,c}, ...}  (t = bar type "1/2U/2D/3", c = color "up/down", "" = any)
+  const MTF_TFS = ["D", "W", "M", "Q", "Y"];
+  const MTF_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+  function newMtf() { const o = {}; ["D", "W", "M", "Q", "Y"].forEach(function (k) { o[k] = { t: "", c: "" }; }); return o; }
+  function mtfActiveCount() { let n = 0; MTF_TFS.forEach(function (k) { if (scanState.mtf[k].t || scanState.mtf[k].c) n++; }); return n; }
   const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
   const CAP_RANGES = { mega: [2e11, Infinity], large: [1e10, 2e11], mid: [2e9, 1e10], small: [3e8, 2e9], micro: [0, 3e8] };
   function fmtCap(n) {
@@ -586,6 +591,7 @@
   function resetScan() {
     scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
     scanState.sector = "all"; scanState.subsec = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
+    scanState.mtf = newMtf();
     resetTech(); techState.techOpen = false;
   }
   function scanSource() {
@@ -689,6 +695,19 @@
     const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">נטרלי · שנה ערך כדי לסנן</span>';
     const techPanel = '<div class="panel filters"><h3 id="techToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>📈 פילטרים טכניים' + techBadge + '</span><span style="font-size:14px">' + (techState.techOpen ? "▲" : "▼") + "</span></h3>" + techInner + "</div>";
 
+    // ---- multi-timeframe (MTF) analysis: a separate bar-type+color condition per timeframe ----
+    const mtfCnt = mtfActiveCount();
+    const mtfTypeSel = tf => '<select data-mtft="' + tf + '">' + ["", "1", "2U", "2D", "3"].map(v => '<option value="' + v + '"' + (scanState.mtf[tf].t === v ? " selected" : "") + ">" + (v === "" ? "— כל" : v) + "</option>").join("") + "</select>";
+    const mtfColorSel = tf => '<select data-mtfc="' + tf + '">' + [["", "— כל"], ["up", "🟢 ירוק"], ["down", "🔴 אדום"]].map(o => '<option value="' + o[0] + '"' + (scanState.mtf[tf].c === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
+    let mtfInner = "";
+    if (scanState.mtfOpen) {
+      mtfInner = '<div class="mtf-rows">' + MTF_TFS.map(tf =>
+        '<div class="mtf-cond"><span class="mtf-tf-lbl">' + MTF_TF_HE[tf] + "</span>" + mtfTypeSel(tf) + mtfColorSel(tf) + "</div>").join("") + "</div>" +
+        '<div class="note" style="margin-top:8px;font-size:11px">💡 בחר סוג נר וצבע לכל טיימפריים בנפרד — <b>כולם צריכים להתקיים יחד</b>. לדוגמה: חודשי = <b>2U</b>, יומי = <b>2D + 🟢</b> (2D בקונפליקט). קונפליקט = 2D ירוק / 2U אדום. תנאים אלה מצטרפים לשאר הפילטרים.</div>';
+    }
+    const mtfBadge = mtfCnt ? ' <span class="badge-ftfc">' + mtfCnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">תנאי נפרד לכל טיימפריים</span>';
+    const mtfPanel = '<div class="panel filters"><h3 id="mtfToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>🔀 ניתוח מרובה-זמן (MTF)' + mtfBadge + '</span><span style="font-size:14px">' + (scanState.mtfOpen ? "▲" : "▼") + "</span></h3>" + mtfInner + "</div>";
+
     const techOn = techActive();
     const maLabel = techState.maType + techState.maPeriod;
     const rows = sortRows(filterRows(all));
@@ -719,7 +738,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt || mtfCnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -742,7 +761,7 @@
 
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">תבניות Strat + קונפלואנס רב-טיימפריים · עם פילטרים טכניים (SMA/RSI/ווליום) לשילוב</div></div>' + (isLive ? liveBanner() : DEMO) +
-      filters + techPanel +
+      filters + mtfPanel + techPanel +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
     );
   }
@@ -774,6 +793,15 @@
           if ((scanState.broad === "up" || scanState.broad === "down") && br !== scanState.broad) return false;
         }
       }
+      // multi-timeframe (MTF): a separate per-TF condition (type + color), all must hold together (AND)
+      for (let m = 0; m < MTF_TFS.length; m++) {
+        const tf = MTF_TFS[m], cond = scanState.mtf[tf];
+        if (!cond || (!cond.t && !cond.c)) continue;
+        const cell = t[tf];
+        if (!cell) return false;
+        if (cond.t && cell.t !== cond.t) return false;
+        if (cond.c && cell.c !== cond.c) return false;
+      }
       if (techOn) {
         const k = t.tech;
         if (!k) return false;
@@ -803,6 +831,10 @@
   }
   function wireScanner() {
     document.querySelectorAll("[data-tff]").forEach(b => b.onclick = () => { const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
+    // multi-timeframe (MTF) controls
+    { const mt = $("#mtfToggle"); if (mt) mt.onclick = () => { scanState.mtfOpen = !scanState.mtfOpen; reRender(); }; }
+    document.querySelectorAll("[data-mtft]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtft].t = s.value; reRender(); });
+    document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };

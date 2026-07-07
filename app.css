@@ -210,6 +210,11 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .subsec-card h3 { font-size:14px; margin:0 0 10px; }
 @media (max-width:640px) { .subsec-grid { grid-template-columns:1fr; } }
 .drill-bar { display:flex; align-items:center; gap:10px; margin:0 0 12px; flex-wrap:wrap; }
+/* multi-timeframe (MTF) condition builder */
+.mtf-rows { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; margin-top:10px; }
+.mtf-cond { display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+.mtf-tf-lbl { font-weight:700; font-size:13px; min-width:50px; }
+.mtf-cond select { flex:1; min-width:0; }
 .brow { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
 .btf { width:18px; color:var(--muted); font-size:12px; font-weight:700; }
 .breadth { flex:1; display:flex; height:14px; border-radius:5px; overflow:hidden; background:var(--panel2); }
