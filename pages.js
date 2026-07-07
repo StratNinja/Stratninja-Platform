@@ -560,38 +560,42 @@
         '<div class="panel"><div class="stub"><div class="big">🗺️</div><h2>ממתין לנתוני מסחר</h2><p>המפה מחושבת בשעות המסחר (מעל/מתחת לפתיחת היום). חזור כשהשוק פתוח.</p></div></div>';
     }
     const b = LIVE.breadth;
-    const secItems = secs.map(s => ({ value: s.stocks.reduce((a, x) => a + (x.mc || 0), 0) || (s.total || 1), s: s }));
-    const secRects = squarify(secItems, 0, 0, 100, 100);
-    let tiles = "";
-    secRects.forEach(sr => {
-      const sec = sr.item.s, ap = sec.above / (sec.total || 1) * 100;
-      const showHead = sr.h > 3.4 && sr.w > 6;
-      const headH = showHead ? Math.min(2.6, sr.h * 0.16) : 0;
-      if (showHead) tiles += '<div class="tm-head" style="left:' + sr.x + "%;top:" + sr.y + "%;width:" + sr.w + "%;height:" + headH + '%">' + sec.name + " · " + ap.toFixed(0) + "%↑</div>";
-      const stItems = sec.stocks.map(x => ({ value: (x.mc || 1), st: x }));
-      squarify(stItems, sr.x, sr.y + headH, sr.w, sr.h - headH).forEach(tr => {
-        const st = tr.item.st, area = tr.w * tr.h;
-        const fc = area > 26 ? " f3" : area > 7 ? " f2" : " f1";
-        const showSym = tr.w > 2 && tr.h > 2.1;
-        const showChg = tr.w > 3.4 && tr.h > 3.6;
-        const cs = (st.c >= 0 ? "+" : "") + (st.c == null ? 0 : st.c).toFixed(1) + "%";
-        tiles += '<div class="tm-tile clickable' + fc + '" data-chart="' + st.s + '" data-tf="D" title="' + st.s + " " + cs + '" style="left:' + tr.x + "%;top:" + tr.y + "%;width:" + tr.w + "%;height:" + tr.h + "%;background:" + chgColor(st.c) + '">' +
-          (showSym ? '<span class="tm-sym">' + st.s + "</span>" + (showChg ? '<span class="tm-chg">' + cs + "</span>" : "") : "") + "</div>";
-      });
-    });
-    const legend = '<div class="muted" style="font-size:11px;margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">' +
-      '<span><b>גודל</b> = שווי שוק</span><span><b>צבע</b> = תנועה יומית:</span>' +
-      '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(3) + '"></i> עלייה חזקה</span>' +
-      '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(0) + '"></i> ניטרלי</span>' +
-      '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(-3) + '"></i> ירידה חזקה</span></div>';
     _spFacts = sp500Facts();
     const firstFact = _spFacts.length ? _spFacts[Math.floor(Math.random() * _spFacts.length)] : "";
     const insightBox = _spFacts.length ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="spInsightText">' + firstFact + "</span></div>" : "";
-    return '<div class="page-head"><h1>S&P 500 · מפת שוק</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · גודל=שווי שוק, צבע=תנועה · לחץ על מניה לגרף</div></div>" +
-      insightBox + liveBanner() + '<div class="tm-wrap">' + tiles + "</div>" + legend;
+    const mvChip = x => {
+      const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(1) + "%";
+      return '<span class="mv-chip clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " " + cs + '" style="background:' + chgColor(x.c) + '">' + x.s + " <b>" + cs + "</b></span>";
+    };
+    const cards = secs.slice().sort((a, c) => (c.above / (c.total || 1)) - (a.above / (a.total || 1))).map(s => {
+      const ap = s.above / (s.total || 1) * 100;
+      const st = s.stocks.slice().sort((x, y) => (y.c == null ? 0 : y.c) - (x.c == null ? 0 : x.c));
+      const gain = st.slice(0, 6), lose = st.slice(-6).reverse();
+      return '<div class="panel sector-card sp-card" data-spdrill="' + encodeURIComponent(s.name) + '">' +
+        "<h3>" + s.name + " " + etfChip(etfFor(s.name)) + ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " מעל פתיחה · " + ap.toFixed(0) + "% · " + pctSpanBare(s.chg) + "</span></h3>" +
+        '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
+        '<div class="mv-row"><span class="mv-lbl">🟢 מובילים</span>' + gain.map(mvChip).join("") + "</div>" +
+        '<div class="mv-row"><span class="mv-lbl">🔴 חלשים</span>' + lose.map(mvChip).join("") + "</div>" +
+        '<div class="mv-more">' + s.total + " מניות · לחץ להצגת כולן ←</div></div>";
+    }).join("");
+    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · המובילים/החלשים לפי תנועה יומית · לחץ על סקטור לכל המניות</div></div>" +
+      insightBox + liveBanner() + '<div class="sector-grid">' + cards + "</div>";
+  }
+  function renderSp500Drill(secName) {
+    const s = ((LIVE && LIVE.sectors) || []).find(x => x.name === secName);
+    if (!s) return;
+    const st = s.stocks.slice().sort((a, b) => (b.c == null ? 0 : b.c) - (a.c == null ? 0 : a.c));
+    const rows = st.map(x => {
+      const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(2) + "%";
+      return "<tr><td class='sym'><span class='tsym clickable' data-chart='" + x.s + "' data-tf='D'>" + x.s + "</span>" + (x.ind ? ' <span class="tname">' + x.ind + "</span>" : "") + "</td><td>" + (x.ao ? "🟢" : "🔴") + "</td><td class='" + (x.c > 0 ? "pos" : x.c < 0 ? "neg" : "") + "'>" + cs + "</td><td>" + fmtCap(x.mc) + "</td></tr>";
+    }).join("");
+    const ap = s.above / (s.total || 1) * 100;
+    modal(s.name + " · " + s.above + "/" + s.total + " מעל פתיחה (" + ap.toFixed(0) + "%)",
+      "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>מעל פתיחה</th><th>תנועה</th><th>שווי</th></tr></thead><tbody>" + rows + "</tbody></table></div>");
   }
   function wireSp500() {
     wireCharts(document);
+    document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill)));
     if (_spTimer) { clearInterval(_spTimer); _spTimer = null; }
     if (_spFacts && _spFacts.length > 1) {
       let idx = _spFacts.indexOf((document.getElementById("spInsightText") || {}).innerHTML);
