@@ -534,6 +534,15 @@
   // ---- table sorting ----
   const scanSort = { col: null, dir: -1 };   // dir: -1 desc (high→low), 1 asc
   function dirRank(cell) { const c = cell && cell.c; return c === "up" ? 1 : c === "down" ? -1 : 0; }
+  // rank a Strat timeframe cell by bar TYPE (2U > 3 > 2D > 1), color as tiebreak — so sorting a TF
+  // column groups by pattern: 2U (new high) at the top, 1 (inside) at the bottom. null = no data → last.
+  function tfRank(cell) {
+    if (!cell || !cell.t) return null;
+    const base = ({ "2U": 4, "3": 3, "2D": 2, "1": 1 })[cell.t];
+    if (base == null) return null;
+    const dir = cell.c === "up" ? 1 : cell.c === "down" ? -1 : 0;
+    return base * 3 + dir;
+  }
   function sortVal(t, col) {
     if (col === "sym") return t.sym;
     if (col === "sec") return t.sector;
@@ -542,7 +551,7 @@
     if (col === "mc") return t.mc;
     if (col === "chg") return t.chg;
     if (col === "ftfc") return t.ftfc ? 1 : 0;
-    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return dirRank(t[col]);
+    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(t[col]);
     const k = t.tech || {};
     if (col === "rsi") return k.rsi;
     if (col === "mfi") return k.mfi;
@@ -951,7 +960,7 @@
     if (col === "price") return r.p || (r.tech ? r.tech.px : 0);
     if (col === "chg") return r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
     if (col === "ftfc") return r.ftfc ? 1 : 0;
-    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return dirRank(r[col]);
+    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(r[col]);
     return null;
   }
   function openSectorDrillLive(secName) { secSort = { col: null, dir: -1 }; renderSecDrill(secName, null); }
