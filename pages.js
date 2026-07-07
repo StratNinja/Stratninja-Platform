@@ -19,6 +19,7 @@
   function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
   const SECTOR_HE = { "Technology": "טכנולוגיה", "Financials": "פיננסים", "Health Care": "בריאות", "Energy": "אנרגיה", "Consumer Disc.": "צריכה מחזורית", "Communication": "תקשורת", "Industrials": "תעשייה", "Consumer Staples": "צריכה בסיסית", "Materials": "חומרי גלם", "Real Estate": 'נדל"ן', "Utilities": "תשתיות", "Crypto": "קריפטו", "אחר": "אחר" };
   function secHe(name) { return SECTOR_HE[name] || name; }
+  function escAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;"); }
   // sub-sector (industry) → closest tradeable ETF, matched by keyword (ordered specific→general).
   // Validated against all 171 live industries; unmapped ones are genuine ETF/macro categories.
   const INDUSTRY_ETF_KW = [
@@ -584,17 +585,40 @@
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · המובילים/החלשים לפי תנועה יומית · לחץ על סקטור לכל המניות</div></div>" +
       insightBox + liveBanner() + '<div class="sector-grid">' + cards + "</div>";
   }
+  let spDrillSort = { col: "c", dir: -1 };
+  function spDrillVal(x, col) {
+    if (col === "sym") return x.s;
+    if (col === "ao") return x.ao ? 1 : 0;
+    if (col === "c") return x.c == null ? -999 : x.c;
+    if (col === "mc") return x.mc || 0;
+    return 0;
+  }
   function renderSp500Drill(secName) {
     const s = ((LIVE && LIVE.sectors) || []).find(x => x.name === secName);
     if (!s) return;
-    const st = s.stocks.slice().sort((a, b) => (b.c == null ? 0 : b.c) - (a.c == null ? 0 : a.c));
+    const col = spDrillSort.col, dir = spDrillSort.dir;
+    const st = s.stocks.slice().sort((a, b) => {
+      const va = spDrillVal(a, col), vb = spDrillVal(b, col);
+      if (typeof va === "string") return dir * va.localeCompare(vb);
+      return dir * (va - vb);
+    });
+    const th = (label, c, start) => { const arrow = spDrillSort.col === c ? (spDrillSort.dir < 0 ? " ▼" : " ▲") : ""; return '<th class="sortable" data-spsort="' + c + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>"; };
     const rows = st.map(x => {
       const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(2) + "%";
       return "<tr><td class='sym'><span class='tsym clickable' data-chart='" + x.s + "' data-tf='D'>" + x.s + "</span>" + (x.ind ? ' <span class="tname">' + x.ind + "</span>" : "") + "</td><td>" + (x.ao ? "🟢" : "🔴") + "</td><td class='" + (x.c > 0 ? "pos" : x.c < 0 ? "neg" : "") + "'>" + cs + "</td><td>" + fmtCap(x.mc) + "</td></tr>";
     }).join("");
     const ap = s.above / (s.total || 1) * 100;
+    const syms = st.map(x => x.s).join(", ");
     modal(secHe(s.name) + " · " + s.above + "/" + s.total + " מעל פתיחה (" + ap.toFixed(0) + "%)",
-      "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>מעל פתיחה</th><th>תנועה</th><th>שווי</th></tr></thead><tbody>" + rows + "</tbody></table></div>");
+      '<div class="drill-bar"><button class="btn ghost" id="spCopy" style="font-size:12px;font-weight:600">📋 העתק ' + st.length + " טיקרים</button><span class=\"muted\" style=\"font-size:12px\">לחץ על כותרת למיון</span></div>" +
+      "<div class='tablewrap'><table class='scan-table'><thead><tr>" + th("סימבול", "sym", true) + th("מעל פתיחה", "ao") + th("תנועה", "c") + th("שווי", "mc") + "</tr></thead><tbody>" + rows + "</tbody></table></div>");
+    document.querySelectorAll("[data-spsort]").forEach(h => h.onclick = () => {
+      const c = h.dataset.spsort;
+      if (spDrillSort.col === c) spDrillSort.dir *= -1; else { spDrillSort.col = c; spDrillSort.dir = c === "sym" ? 1 : -1; }
+      renderSp500Drill(secName);
+    });
+    const cp = $("#spCopy");
+    if (cp) cp.onclick = () => copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + st.length; setTimeout(() => cp.textContent = "📋 העתק " + st.length + " טיקרים", 1600); });
   }
   function wireSp500() {
     wireCharts(document);
@@ -759,8 +783,8 @@
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>היפוך (Reversal)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option' + (scanState.sector === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option' + (scanState.subsec === s ? " selected" : "") + ">" + s + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.sector === s ? " selected" : "") + ">" + s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.subsec === s ? " selected" : "") + ">" + s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp"><label>שווי שוק</label><select id="scanCap">' + CAP_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.cap === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
@@ -1168,11 +1192,14 @@
     }
     const etf = isSub ? subEtfFor(indFilter) : etfFor(secName);
     const bar = '<div class="drill-bar"><button class="btn ghost" id="drillGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
+      '<button class="btn ghost" id="drillCopy" style="font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button>" +
       (etf ? '<span class="muted" style="font-size:12px">תעודת סל:</span>' + etfChip(etf) : "") + "</div>";
     modal(displayName + " · " + members.length + " מניות · " + sub,
       bar + '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + body + "</tbody></table></div>" + colorLegend());
     const gbtn = $("#drillGrid");
     if (gbtn) gbtn.onclick = () => openChartGrid(members.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: displayName });
+    const cbtn = $("#drillCopy");
+    if (cbtn) cbtn.onclick = () => copyToClipboard(members.map(r => r.s).join(", "), () => { cbtn.textContent = "✓ הועתקו " + members.length; setTimeout(() => cbtn.textContent = "📋 העתק " + members.length + " טיקרים", 1600); });
     document.querySelectorAll("[data-ssort]").forEach(h => h.onclick = () => {
       const c = h.dataset.ssort;
       if (secSort.col === c) secSort.dir *= -1; else { secSort.col = c; secSort.dir = c === "sym" ? 1 : -1; }
