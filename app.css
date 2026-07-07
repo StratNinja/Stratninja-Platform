@@ -301,6 +301,11 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .lt-sym { font-weight: 800; font-size: 12px; letter-spacing: .04em; color: var(--muted); }
 .lt-px { font-weight: 700; color: var(--ink); }
 .lt-item .pos { color: var(--green); font-weight: 700; } .lt-item .neg { color: var(--red); font-weight: 700; } .lt-item .zero { color: var(--muted); }
+.lt-sync { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; margin-inline-start: auto; white-space: nowrap; }
+.lt-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.lt-dot.pos { background: var(--green); box-shadow: 0 0 6px rgba(22,184,119,.7); } .lt-dot.stale { background: #e0b341; } .lt-dot.zero { background: var(--muted); }
+.lt-fresh { color: var(--ink); font-weight: 600; } .lt-next { color: var(--muted); }
+.idx-table .idx-chg { font-weight: 600; white-space: nowrap; text-align: center; }
 .community-cta .cta-text, .community-cta .cta-arrow { position: relative; z-index: 2; }
 .cta-trophy { display: inline-block; animation: trophy-bounce 1.4s ease-in-out infinite; transform-origin: bottom center; }
 @keyframes trophy-bounce { 0%,100% { transform: translateY(0) rotate(-8deg) scale(1); } 50% { transform: translateY(-4px) rotate(8deg) scale(1.12); } }

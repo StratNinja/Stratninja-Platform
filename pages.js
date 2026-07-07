@@ -447,14 +447,15 @@
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
     const idxRows = idxSrc.map(r =>
-      '<tr><td class="sym"><span class="tsym clickable" data-chart="' + r.sym + '" data-tf="D">' + r.sym + '</span> <span class="tname">' + r.name + "</span></td>" + tfCells(r) + "</tr>").join("");
+      '<tr><td class="sym"><span class="tsym clickable" data-chart="' + r.sym + '" data-tf="D">' + r.sym + '</span> <span class="tname">' + r.name + "</span></td>" +
+      '<td class="idx-chg">' + (r.chg != null ? pctSpanBare(r.chg) : '<span class="muted">—</span>') + "</td>" + tfCells(r) + "</tr>").join("");
     const dist = DIST.map(d => '<div class="tile"><div class="k"><span class="dot ' + d.dot + '"></span>' + d.k + '</div><div class="v">' + d.n + "</div></div>").join("");
     const breadth = BREADTH_IDX.map(b => '<div class="tile"><div class="k">' + b.sym + " · " + b.desc + '</div><div class="v muted">—</div></div>').join("");
     const rank = (arr, cls) => arr.map((s, i) => '<div class="lead-row ' + cls + '"><span>' + s + '</span><span class="rank">#' + (i + 1) + "</span></div>").join("");
     const vixVal = (LIVE && LIVE.vix)
       ? '<div class="v">' + LIVE.vix.level.toFixed(2) + '</div><div class="sub ' + (LIVE.vix.chg >= 0 ? "neg" : "pos") + '">' + (LIVE.vix.chg >= 0 ? "+" : "") + LIVE.vix.chg.toFixed(2) + "%</div>"
       : '<div class="v muted">—</div>';
-    const idxPanel = '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div></div>";
+    const idxPanel = '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th><th>% יומי</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div></div>";
     const vixCard = '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>";
     return (
       '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' +
@@ -1208,22 +1209,26 @@
   }
 
   // ========== GAPPERS ==========
+  let gapSort = { col: "gp", dir: -1 };
+  function gapVal(x, col) {
+    if (col === "sym") return x.s;
+    if (col === "price") return x.price || 0;
+    if (col === "gd") return x.gd || 0;
+    return x.gp || 0; // gp
+  }
   function renderGappers() {
     const g = LIVE && LIVE.gappers;
-    const head = '<div class="page-head"><h1>גאפרים</h1><div class="sub">מניות שפותחות בגאפ מעל 3% (מול סגירת אתמול)</div></div>';
+    const head = '<div class="page-head"><h1>גאפרים</h1><div class="sub">מניות שפותחות בגאפ מעל 3% (מול סגירת אתמול) · לחץ על כותרת למיון</div></div>';
     if (g && (g.up.length || g.down.length)) {
-      const top5 = (arr, cls, title) => {
-        const rows = arr.slice(0, 5).map(x =>
+      const gapTh = (label, col, start) => { const arrow = gapSort.col === col ? (gapSort.dir < 0 ? " ▼" : " ▲") : ""; return '<th class="sortable" data-gapsort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>"; };
+      const gapTable = (arr, cls, title) => {
+        const sorted = arr.slice().sort((a, b) => { const va = gapVal(a, gapSort.col), vb = gapVal(b, gapSort.col); if (typeof va === "string") return gapSort.dir * va.localeCompare(vb); return gapSort.dir * (va - vb); });
+        const rows = sorted.map(x =>
           "<tr><td>" + star(x.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span></td><td>" + money(x.price) + "</td><td class='" + cls + "'>" + (x.gd >= 0 ? "+" : "") + money(x.gd) + "</td><td>" + pct(x.gp) + "</td></tr>").join("");
-        return '<div class="panel"><h3>' + title + " · TOP 5 <span class='muted' style='font-size:12px'>מתוך " + arr.length + "</span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th><th style='text-align:start'>סימבול</th><th>מחיר</th><th>$Gap</th><th>%Gap</th></tr></thead><tbody>" + (rows || '<tr><td colspan="5" class="muted">—</td></tr>') + "</tbody></table></div></div>";
-      };
-      const copyBox = (arr, label) => {
-        const syms = arr.map(x => x.s).join(", ");
-        return '<div class="panel"><h3>' + label + ' <span class="muted" style="font-size:12px">' + arr.length + ' מניות</span> <button class="btn ghost" data-copy="' + label + '">📋 העתק הכל</button></h3><textarea class="copybox" readonly>' + syms + "</textarea></div>";
+        return '<div class="panel"><h3>' + title + ' <span class="muted" style="font-size:12px">' + arr.length + " מניות</span> <button class=\"btn ghost\" data-gapcopy=\"" + encodeURIComponent(arr.map(x => x.s).join(", ")) + "\" style=\"font-size:12px;font-weight:600\">📋 העתק " + arr.length + "</button></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th>" + gapTh("סימבול", "sym", true) + gapTh("מחיר", "price") + gapTh("$Gap", "gd") + gapTh("%Gap", "gp") + "</tr></thead><tbody>" + (rows || '<tr><td colspan="5" class="muted">—</td></tr>') + "</tbody></table></div></div>";
       };
       return head + liveBanner() +
-        '<div class="cols2">' + top5(g.up, "pos", "🟢 גאפ למעלה") + top5(g.down, "neg", "🔴 גאפ למטה") + "</div>" +
-        copyBox(g.up, "כל הגאפ-אפ >3%") + copyBox(g.down, "כל הגאפ-דאון >3%");
+        '<div class="cols2">' + gapTable(g.up, "pos", "🟢 גאפ למעלה") + gapTable(g.down, "neg", "🔴 גאפ למטה") + "</div>";
     }
     // no gappers right now — honest empty state (market closed / nothing gapping >3%)
     const note = (LIVE && LIVE.updated)
@@ -1233,12 +1238,16 @@
       '<div class="panel"><div class="stub"><div class="big">⚡</div><h2>אין גאפרים כרגע</h2><p>גאפרים מחושבים <b>בזמן אמת בשעות המסחר</b> — מניות שפותחות מעל/מתחת ל-3% מסגירת אתמול. חזור כשהשוק פתוח והרשימה תתמלא אוטומטית.</p></div></div>';
   }
   function wireGappers() {
-    document.querySelectorAll("[data-copy]").forEach(b => {
-      b.onclick = () => {
-        const ta = b.closest(".panel").querySelector(".copybox");
-        if (ta) { ta.select(); try { document.execCommand("copy"); } catch (e) {} b.textContent = "✓ הועתק"; setTimeout(() => b.textContent = "📋 העתק הכל", 1500); }
-      };
+    document.querySelectorAll("[data-gapsort]").forEach(h => h.onclick = () => {
+      const c = h.dataset.gapsort;
+      if (gapSort.col === c) gapSort.dir *= -1; else { gapSort.col = c; gapSort.dir = c === "sym" ? 1 : -1; }
+      reRender();
     });
+    document.querySelectorAll("[data-gapcopy]").forEach(b => b.onclick = () => {
+      const syms = decodeURIComponent(b.dataset.gapcopy), orig = b.textContent;
+      copyToClipboard(syms, () => { b.textContent = "✓ הועתק"; setTimeout(() => b.textContent = orig, 1500); });
+    });
+    wireCharts($("#page"));
   }
 
   // ========== FAVORITES ==========
@@ -1355,7 +1364,7 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { LIVE = j[0].data; updateTicker(); if (state.page === "market") reRender(); }
+      if (j && j[0] && j[0].data) { LIVE = j[0].data; _liveTs = Date.now(); updateTicker(); if (state.page === "market") reRender(); }
     } catch (e) { /* keep demo data */ }
   }
 
@@ -1375,7 +1384,7 @@
   }
 
   // ---- persistent live ticker (SPY / QQQ / BTC) ----
-  let _btc = null, _btcTs = 0;
+  let _btc = null, _btcTs = 0, _liveTs = 0;
   async function fetchBtc() {
     if (_btc && Date.now() - _btcTs < 45000) return _btc;
     try {
@@ -1394,15 +1403,34 @@
   async function updateTicker() {
     const el = document.getElementById("liveTicker");
     if (!el) return;
-    const idx = (LIVE && LIVE.indices) ? LIVE.indices : [];
+    const btc = await fetchBtc();                                  // await BEFORE reading LIVE
+    const idx = (LIVE && LIVE.indices) ? LIVE.indices : [];        // read LIVE after await → no race
     const spy = idx.find(x => x.sym === "SPY"), qqq = idx.find(x => x.sym === "QQQ");
-    const btc = await fetchBtc();
     let html = "";
     if (spy) html += tickerItem("SPY", "S&P 500", spy.price, spy.chg);
     if (qqq) html += tickerItem("QQQ", "NASDAQ 100", qqq.price, qqq.chg);
     if (btc) html += tickerItem("BTC", "Bitcoin", btc.price, btc.chg, "BINANCE:BTCUSD");
+    html += '<span class="lt-sync" id="ltSync"></span>';
     el.innerHTML = html || '<span class="muted" style="font-size:12px;padding-inline-start:4px">טוען מחירים…</span>';
+    updateSync();
     wireCharts(el);
+  }
+  // freshness + next-sync countdown shown at the end of the ticker (updated every second)
+  function updateSync() {
+    const s = document.getElementById("ltSync");
+    if (!s) return;
+    const now = Date.now();
+    const upd = (LIVE && LIVE.updated) ? new Date(LIVE.updated) : null;
+    const next = _liveTs ? Math.max(0, 60 - Math.floor((now - _liveTs) / 1000)) : 0;
+    const nextTxt = Math.floor(next / 60) + ":" + String(next % 60).padStart(2, "0");
+    if (!upd) { s.innerHTML = '<span class="lt-dot zero"></span><span class="muted">טוען נתונים…</span>'; return; }
+    const ageMin = Math.floor((now - upd.getTime()) / 60000);
+    const dot = ageMin <= 5 ? "pos" : "stale";
+    const timeTxt = upd.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+    const fresh = ageMin <= 5 ? "נתונים חיים" : ("נכון ל-" + timeTxt);
+    s.innerHTML = '<span class="lt-dot ' + dot + '" title="הנתונים מדויקים נכון ל-' + timeTxt + '"></span>' +
+      '<span class="lt-fresh">🕐 ' + fresh + "</span>" +
+      '<span class="muted lt-next">· סנכרון בעוד ' + nextTxt + "</span>";
   }
   window._snUpdateTicker = updateTicker;
   function initNav() {
@@ -1415,6 +1443,7 @@
     setInterval(loadLive, 60000);
     updateTicker();
     setInterval(updateTicker, 60000);
+    setInterval(updateSync, 1000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initNav);
