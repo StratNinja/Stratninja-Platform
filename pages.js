@@ -17,6 +17,8 @@
   // sector → SPDR sector ETF (the ETF that holds the stock)
   const SECTOR_ETF = { "Technology": "XLK", "Financials": "XLF", "Health Care": "XLV", "Energy": "XLE", "Consumer Disc.": "XLY", "Communication": "XLC", "Industrials": "XLI", "Consumer Staples": "XLP", "Materials": "XLB", "Real Estate": "XLRE", "Utilities": "XLU" };
   function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
+  const SECTOR_HE = { "Technology": "טכנולוגיה", "Financials": "פיננסים", "Health Care": "בריאות", "Energy": "אנרגיה", "Consumer Disc.": "צריכה מחזורית", "Communication": "תקשורת", "Industrials": "תעשייה", "Consumer Staples": "צריכה בסיסית", "Materials": "חומרי גלם", "Real Estate": 'נדל"ן', "Utilities": "תשתיות", "Crypto": "קריפטו", "אחר": "אחר" };
+  function secHe(name) { return SECTOR_HE[name] || name; }
   // sub-sector (industry) → closest tradeable ETF, matched by keyword (ordered specific→general).
   // Validated against all 171 live industries; unmapped ones are genuine ETF/macro categories.
   const INDUSTRY_ETF_KW = [
@@ -325,7 +327,7 @@
   function mkLead(items, cls, isSector) {
     if (!items || !items.length) return '<div class="muted" style="padding:8px 12px;font-size:13px">ממתין לנתוני מסחר…</div>';
     return items.map(x => {
-      const label = isSector ? x.name : x.s;
+      const label = isSector ? (secHe(x.name) + (etfFor(x.name) ? " " + etfChip(etfFor(x.name)) : "")) : x.s;
       const chg = isSector ? x.chg : x.c;
       return '<div class="lead-row ' + cls + '"><span>' + label + "</span>" + pctSpan(chg) + "</div>";
     }).join("");
