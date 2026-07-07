@@ -210,6 +210,21 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .subsec-card h3 { font-size:14px; margin:0 0 10px; }
 @media (max-width:640px) { .subsec-grid { grid-template-columns:1fr; } }
 .drill-bar { display:flex; align-items:center; gap:10px; margin:0 0 12px; flex-wrap:wrap; }
+/* ===== S&P 500 treemap (Finviz-style market map) ===== */
+.tm-wrap { position:relative; width:100%; height:82vh; min-height:560px; border-radius:10px; overflow:hidden; background:#0a0d13; border:1px solid var(--line); }
+.tm-tile { position:absolute; box-sizing:border-box; border:1px solid rgba(0,0,0,.45); overflow:hidden; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.05; text-align:center;
+  color:#f4f7fc; text-shadow:0 1px 2px rgba(0,0,0,.55); }
+.tm-tile:hover { outline:2px solid #fff; outline-offset:-2px; z-index:4; }
+.tm-sym { font-weight:800; letter-spacing:.02em; }
+.tm-chg { font-size:.8em; opacity:.9; margin-top:1px; }
+.tm-tile.f1 .tm-sym { font-size:9px; } .tm-tile.f1 .tm-chg { display:none; }
+.tm-tile.f2 .tm-sym { font-size:12px; }
+.tm-tile.f3 .tm-sym { font-size:16px; }
+.tm-head { position:absolute; box-sizing:border-box; display:flex; align-items:center; padding:0 7px;
+  font-size:11px; font-weight:800; color:#dbe1ec; background:rgba(0,0,0,.4); border-bottom:1px solid rgba(255,255,255,.08);
+  overflow:hidden; white-space:nowrap; text-overflow:ellipsis; z-index:2; pointer-events:none; }
+@media (max-width:640px){ .tm-wrap { height:88vh; } }
 /* multi-timeframe (MTF) condition builder */
 .mtf-rows { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; margin-top:10px; }
 .mtf-cond { display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }

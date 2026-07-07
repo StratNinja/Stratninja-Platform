@@ -489,24 +489,73 @@
   }
 
   // ========== S&P 500 BREADTH ==========
+  // color a tile by daily % move: neutral → green (up) / red (down); darker = stronger move
+  function chgColor(c) {
+    const m = Math.max(-3, Math.min(3, c == null ? 0 : c)) / 3; // -1..1
+    const N = [40, 46, 58], G = [20, 168, 110], R = [222, 55, 55];
+    const tgt = m >= 0 ? G : R, t = Math.abs(m);
+    return "rgb(" + Math.round(N[0] + (tgt[0] - N[0]) * t) + "," + Math.round(N[1] + (tgt[1] - N[1]) * t) + "," + Math.round(N[2] + (tgt[2] - N[2]) * t) + ")";
+  }
+  // squarified treemap (Bruls et al.) — lays out items by .value inside rect [X,Y,W,H]; returns [{item,x,y,w,h}]
+  function _worst(areas, side) {
+    let sum = 0, mn = Infinity, mx = 0;
+    for (const a of areas) { sum += a; if (a < mn) mn = a; if (a > mx) mx = a; }
+    if (sum <= 0) return Infinity;
+    const s2 = side * side, sum2 = sum * sum;
+    return Math.max(s2 * mx / sum2, sum2 / (s2 * mn));
+  }
+  function squarify(items, X, Y, W, H) {
+    const data = items.filter(d => d.value > 0).slice().sort((a, b) => b.value - a.value);
+    const out = [];
+    const total = data.reduce((s, d) => s + d.value, 0);
+    if (total <= 0 || W <= 0 || H <= 0) return out;
+    const scale = (W * H) / total;
+    const areas = data.map(d => d.value * scale);
+    let x = X, y = Y, w = W, h = H, i = 0;
+    while (i < areas.length) {
+      const side = Math.min(w, h);
+      let row = [areas[i]], j = i + 1;
+      while (j < areas.length && _worst(row.concat(areas[j]), side) <= _worst(row, side)) { row.push(areas[j]); j++; }
+      const rowSum = row.reduce((a, b) => a + b, 0), thick = rowSum / side;
+      if (w >= h) { let py = y; for (let k = i; k < j; k++) { const len = areas[k] / thick; out.push({ item: data[k], x: x, y: py, w: thick, h: len }); py += len; } x += thick; w -= thick; }
+      else { let px = x; for (let k = i; k < j; k++) { const len = areas[k] / thick; out.push({ item: data[k], x: px, y: y, w: len, h: thick }); px += len; } y += thick; h -= thick; }
+      i = j;
+    }
+    return out;
+  }
   function renderSp500() {
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
     if (!secs || !secs.length) {
-      return '<div class="page-head"><h1>S&P 500 · רוחב שוק</h1><div class="sub">מניות לפי סקטור · מעל/מתחת למחיר הפתיחה</div></div>' +
-        '<div class="panel"><div class="stub"><div class="big">🗺️</div><h2>ממתין לנתוני מסחר</h2><p>ה-breadth מחושב בשעות המסחר (מעל/מתחת לפתיחת היום). חזור כשהשוק פתוח.</p></div></div>';
+      return '<div class="page-head"><h1>S&P 500 · מפת שוק</h1><div class="sub">מניות לפי סקטור · גודל = שווי שוק · צבע = תנועה יומית</div></div>' +
+        '<div class="panel"><div class="stub"><div class="big">🗺️</div><h2>ממתין לנתוני מסחר</h2><p>המפה מחושבת בשעות המסחר (מעל/מתחת לפתיחת היום). חזור כשהשוק פתוח.</p></div></div>';
     }
     const b = LIVE.breadth;
-    const cards = secs.map(s => {
-      const ap = s.above / (s.total || 1) * 100;
-      const bar = '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>';
-      const chips = s.stocks.map(x =>
-        '<span class="stkchip ' + (x.ao ? "up" : "down") + ' clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.c + '%">' + x.s + "</span>").join("");
-      return '<div class="panel sec-breadth"><h3>' + s.name +
-        ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " מעל פתיחה · " + ap.toFixed(0) + "% ירוקים · " + pctSpanBare(s.chg) + "</span></h3>" +
-        bar + '<div class="stkchips">' + chips + "</div></div>";
-    }).join("");
-    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · לחץ על מניה לגרף</div></div>" +
-      liveBanner() + '<div class="sector-grid">' + cards + "</div>";
+    const secItems = secs.map(s => ({ value: s.stocks.reduce((a, x) => a + (x.mc || 0), 0) || (s.total || 1), s: s }));
+    const secRects = squarify(secItems, 0, 0, 100, 100);
+    let tiles = "";
+    secRects.forEach(sr => {
+      const sec = sr.item.s, ap = sec.above / (sec.total || 1) * 100;
+      const showHead = sr.h > 3.4 && sr.w > 6;
+      const headH = showHead ? Math.min(2.6, sr.h * 0.16) : 0;
+      if (showHead) tiles += '<div class="tm-head" style="left:' + sr.x + "%;top:" + sr.y + "%;width:" + sr.w + "%;height:" + headH + '%">' + sec.name + " · " + ap.toFixed(0) + "%↑</div>";
+      const stItems = sec.stocks.map(x => ({ value: (x.mc || 1), st: x }));
+      squarify(stItems, sr.x, sr.y + headH, sr.w, sr.h - headH).forEach(tr => {
+        const st = tr.item.st, area = tr.w * tr.h;
+        const fc = area > 26 ? " f3" : area > 7 ? " f2" : " f1";
+        const showSym = tr.w > 2 && tr.h > 2.1;
+        const showChg = tr.w > 3.4 && tr.h > 3.6;
+        const cs = (st.c >= 0 ? "+" : "") + (st.c == null ? 0 : st.c).toFixed(1) + "%";
+        tiles += '<div class="tm-tile clickable' + fc + '" data-chart="' + st.s + '" data-tf="D" title="' + st.s + " " + cs + '" style="left:' + tr.x + "%;top:" + tr.y + "%;width:" + tr.w + "%;height:" + tr.h + "%;background:" + chgColor(st.c) + '">' +
+          (showSym ? '<span class="tm-sym">' + st.s + "</span>" + (showChg ? '<span class="tm-chg">' + cs + "</span>" : "") : "") + "</div>";
+      });
+    });
+    const legend = '<div class="muted" style="font-size:11px;margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;align-items:center">' +
+      '<span><b>גודל</b> = שווי שוק</span><span><b>צבע</b> = תנועה יומית:</span>' +
+      '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(3) + '"></i> עלייה חזקה</span>' +
+      '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(0) + '"></i> ניטרלי</span>' +
+      '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(-3) + '"></i> ירידה חזקה</span></div>';
+    return '<div class="page-head"><h1>S&P 500 · מפת שוק</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · גודל=שווי שוק, צבע=תנועה · לחץ על מניה לגרף</div></div>" +
+      liveBanner() + '<div class="tm-wrap">' + tiles + "</div>" + legend;
   }
   function pctSpanBare(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
   function colorLegend() {
@@ -1180,7 +1229,7 @@
   // ---------- router ----------
   const PAGES = {
     market: { render: renderMarket, wire: wireMarket },
-    sp500: { render: renderSp500, wire: null },
+    sp500: { render: renderSp500, wire: () => wireCharts(document) },
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
