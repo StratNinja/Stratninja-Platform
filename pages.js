@@ -690,6 +690,8 @@
             '<div class="fgrp"><label>52ש׳</label><div class="chips" style="align-items:center"><select id="tExt52">' +
               opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+            '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
+            '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
           "</div>";
     }
     const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">נטרלי · שנה ערך כדי לסנן</span>';
@@ -782,6 +784,13 @@
         const mc = t.mc, rng = CAP_RANGES[scanState.cap];
         if (mc == null || (rng && (mc < rng[0] || mc >= rng[1]))) return false;
       }
+      // daily % move (signed, from–to) — uses the always-present change field, not the tech block
+      if (_chgActive()) {
+        const cg = t.chg == null ? (t.tech ? t.tech.chg : null) : t.chg;
+        if (cg == null) return false;
+        if (techState.chgMin !== "" && cg < parseFloat(techState.chgMin)) return false;
+        if (techState.chgMax !== "" && cg > parseFloat(techState.chgMax)) return false;
+      }
       for (let i = 0; i < tfs.length; i++) {
         const c = t[tfs[i]] || t.D;
         if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
@@ -825,6 +834,7 @@
         }
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
         if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
+        if (_atrp() > 0 && (k.atrp == null || k.atrp < _atrp())) return false;
       }
       return true;
     });
@@ -865,6 +875,9 @@
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
     bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
+    bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
+    bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
+    bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
     const grid = $("#scanGrid");
     if (grid) grid.onclick = () => openScannerGrid();
     const copy = $("#scanCopy");
@@ -889,13 +902,18 @@
     volMin: 0,
     avgVolPeriod: "30", avgVolMin: 0,
     ext52: "off", ext52Pct: 3,
+    atrpMin: "",                 // ATR as % of price ≥
+    chgMin: "", chgMax: "",      // daily % move, from–to (signed)
   };
   const MA_PERIODS = ["10", "20", "50", "100", "150", "200"];
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
+  function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
+  function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
   function techActive() {
     return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
-      techState.volMin > 0 || techState.avgVolMin > 0 || techState.ext52 !== "off";
+      techState.volMin > 0 || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
+      _atrp() > 0 || _chgActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -906,6 +924,8 @@
     if (techState.volMin > 0) n++;
     if (techState.avgVolMin > 0) n++;
     if (techState.ext52 !== "off") n++;
+    if (_atrp() > 0) n++;
+    if (_chgActive()) n++;
     return n;
   }
   function resetTech() {
@@ -913,6 +933,7 @@
     techState.rsiMin = 0; techState.rsiMax = 100; techState.mfiMin = 0; techState.mfiMax = 100;
     techState.rvolMin = ""; techState.volMin = 0; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
     techState.ext52 = "off"; techState.ext52Pct = 3;
+    techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = "";
   }
   function fmtVol(n) {
     if (n == null) return "—";
