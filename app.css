@@ -196,6 +196,15 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 /* add/remove result columns */
 .col-picker { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 12px; }
 .col-picker .col-chip { font-size:12px; padding:4px 10px; }
+/* manual-trade image attach (paste / upload chart screenshot) */
+.img-zone { position:relative; border:1.5px dashed var(--line); border-radius:10px; min-height:78px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer; padding:10px; transition:border-color .12s, background .12s; }
+.img-zone:hover, .img-zone.drag { border-color:var(--accent); background:rgba(124,108,240,.06); }
+.img-zone-empty { color:var(--muted); font-size:13px; text-align:center; }
+.img-preview { max-width:100%; max-height:260px; border-radius:8px; display:block; }
+.img-clear { position:absolute; top:6px; inset-inline-end:6px; background:rgba(0,0,0,.6); color:#fff; border:none;
+  border-radius:50%; width:24px; height:24px; cursor:pointer; font-size:13px; line-height:1; z-index:2; }
+.img-clear:hover { background:var(--red); }
 
 /* ===== tables ===== */
 .tablewrap { overflow-x:auto; }

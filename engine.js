@@ -231,6 +231,7 @@ window.Engine = (function () {
       pnl: hasExit ? round(gross - fees, 2) : 0,
       notes: m.notes || "",
       tags: m.tags || [],
+      img: m.img || null,
     };
   }
 

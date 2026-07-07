@@ -167,7 +167,8 @@
       return "<tr data-editopen='" + t.id + "' style='cursor:pointer'><td class='sym'>" + t.symbol +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
-        "<td><button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button></td></tr>";
+        "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
+          "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button></td></tr>";
     }).join("");
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — ה-P&L שלהן יחושב בסגירה</span>' : "";
@@ -178,6 +179,7 @@
     // wire: click row or close button -> open the edit form (add exit price to close)
     wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => editOpenTrade(tr.dataset.editopen));
     wrap.querySelectorAll("[data-closepos]").forEach(b => b.onclick = e => { e.stopPropagation(); editOpenTrade(b.dataset.closepos); });
+    wrap.querySelectorAll("[data-img]").forEach(b => b.onclick = e => { e.stopPropagation(); const t = openTrades.find(x => x.id === b.dataset.img); if (t && t.img) viewTradeImg(t); });
     return wrap;
   }
   function editOpenTrade(id) {
@@ -350,6 +352,7 @@
   }
   function tradeRow(t) {
     const actions =
+      (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
       (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
       '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>';
     return "<tr><td>" + t.symbol + '</td><td><span class="pill ' + t.direction + '">' +
@@ -368,6 +371,13 @@
     container.querySelectorAll("button[data-del]").forEach(b => {
       b.onclick = () => deleteTrade(byId[b.dataset.del], reopen);
     });
+    container.querySelectorAll("button[data-img]").forEach(b => {
+      b.onclick = e => { e.stopPropagation(); const t = byId[b.dataset.img]; if (t && t.img) viewTradeImg(t); };
+    });
+  }
+  function viewTradeImg(t) {
+    modal("📷 " + t.symbol + " · צילום גרף", '<img src="' + t.img + '" alt="צילום גרף" style="max-width:100%;max-height:70vh;border-radius:8px;display:block;margin:0 auto">' +
+      (t.notes ? '<div class="note" style="margin-top:10px">' + t.notes + "</div>" : ""), []);
   }
   function deleteTrade(t, reopen) {
     if (!t) return;
@@ -449,6 +459,7 @@
         '<td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td>" +
         '<td><span class="pill src">' + (t.source === "manual" ? "ידני" : "CSV") + "</span></td>" +
         "<td>" +
+          (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
           (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
           '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>' +
         "</td>" +
@@ -514,6 +525,45 @@
     if (errs.length) console.warn("Import warnings:", errs);
   }
 
+  // ---- Manual entry: attached chart image (paste / upload) ---------------
+  let manualImg = null;  // data URL of the attached image (null = none)
+  function _compressImg(dataUrl, cb) {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1100; let w = img.width, h = img.height;
+      if (Math.max(w, h) > MAX) { const s = MAX / Math.max(w, h); w = Math.round(w * s); h = Math.round(h * s); }
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      try { cb(cv.toDataURL("image/jpeg", 0.72)); } catch (e) { cb(dataUrl); }
+    };
+    img.onerror = () => cb(null);
+    img.src = dataUrl;
+  }
+  function _readImgFile(file) {
+    if (!file || file.type.indexOf("image") !== 0) return;
+    const r = new FileReader();
+    r.onload = () => _compressImg(r.result, setManualImg);
+    r.readAsDataURL(file);
+  }
+  function setManualImg(dataUrl) {
+    manualImg = dataUrl || null;
+    const prev = document.getElementById("m_imgpreview"), empty = document.getElementById("m_imgempty"), clr = document.getElementById("m_imgclear");
+    if (!prev) return;
+    if (manualImg) { prev.src = manualImg; prev.classList.remove("hidden"); if (empty) empty.classList.add("hidden"); if (clr) clr.classList.remove("hidden"); }
+    else { prev.removeAttribute("src"); prev.classList.add("hidden"); if (empty) empty.classList.remove("hidden"); if (clr) clr.classList.add("hidden"); }
+  }
+  let _pasteHooked = false;
+  function _hookPaste() {
+    if (_pasteHooked) return; _pasteHooked = true;
+    document.addEventListener("paste", e => {
+      if (!document.getElementById("m_imgzone")) return;  // only while the manual modal is open
+      const items = (e.clipboardData && e.clipboardData.items) || [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type && items[i].type.indexOf("image") === 0) { const f = items[i].getAsFile(); if (f) { e.preventDefault(); _readImgFile(f); return; } }
+      }
+    });
+  }
+
   // ---- Manual entry modal ------------------------------------------------
   function openManual(existing) {
     manualEditId = existing && existing.source === "manual" ? existing.id : null;
@@ -536,6 +586,13 @@
       field("תאריך יציאה", '<input id="m_xd" type="date">') +
       field("עמלות", '<input id="m_fee" type="number" step="any" value="' + lastFee() + '">') +
       field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?"></textarea>', true) +
+      field("📷 צילום גרף (אופציונלי)",
+        '<div id="m_imgzone" class="img-zone" tabindex="0">' +
+          '<input type="file" id="m_imgfile" accept="image/*" style="display:none">' +
+          '<div class="img-zone-empty" id="m_imgempty">גרור / הדבק (Ctrl+V) / לחץ להעלאת צילום מסך של הגרף</div>' +
+          '<img id="m_imgpreview" class="img-preview hidden" alt="צילום גרף">' +
+          '<button type="button" id="m_imgclear" class="img-clear hidden" title="הסר תמונה">✕</button>' +
+        "</div>", true) +
       "</div>" +
       '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>' +
       '<div class="price-warn hidden" id="m_pricewarn"></div>';
@@ -567,6 +624,20 @@
         else acctSel.selectedIndex = 0;
       }
     };
+    // image attach (paste / drag / upload)
+    manualImg = (existing && existing.img) || null;
+    _hookPaste();
+    const zone = document.getElementById("m_imgzone"), imgFile = document.getElementById("m_imgfile");
+    if (zone && imgFile) {
+      zone.onclick = e => { if (e.target.id !== "m_imgclear") imgFile.click(); };
+      imgFile.onchange = () => { if (imgFile.files && imgFile.files[0]) _readImgFile(imgFile.files[0]); };
+      zone.ondragover = e => { e.preventDefault(); zone.classList.add("drag"); };
+      zone.ondragleave = () => zone.classList.remove("drag");
+      zone.ondrop = e => { e.preventDefault(); zone.classList.remove("drag"); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) _readImgFile(f); };
+      const clr = document.getElementById("m_imgclear");
+      if (clr) clr.onclick = e => { e.stopPropagation(); setManualImg(null); };
+      setManualImg(manualImg);
+    }
     updatePreview();
   }
   // ---- soft price validation (was the entered price within that day's range?) ----
@@ -621,6 +692,7 @@
       symbol: g("m_sym"), assetType: g("m_asset"), direction: g("m_dir"),
       qty: g("m_qty"), entryPrice: g("m_ep"), exitPrice: g("m_xp"),
       entryDate: g("m_ed"), exitDate: g("m_xd") || g("m_ed"), fees: g("m_fee"), notes: g("m_notes"),
+      img: manualImg || undefined,
     };
   }
   function updatePreview() {
