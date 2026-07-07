@@ -624,6 +624,8 @@
 
   // ========== SCANNER ==========
   const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, mtf: newMtf() };
+  // optional result columns the user can add/remove (independent of the filters)
+  const colState = { rsi: false, mfi: false, rvol: false, vol: false, atrp: false, dma: false, dhi52: false };
   // multi-timeframe per-TF conditions: {D:{t,c}, W:{t,c}, ...}  (t = bar type "1/2U/2D/3", c = color "up/down", "" = any)
   const MTF_TFS = ["D", "W", "M", "Q", "Y"];
   const MTF_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
@@ -665,6 +667,7 @@
     if (col === "rvol") return k.rvol;
     if (col === "vol") return k.vol;
     if (col === "dhi52") return k.dhi52;
+    if (col === "atrp") return k.atrp;
     if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
     return null;
   }
@@ -818,17 +821,21 @@
     const CAP = 300;
     const shown = rows.slice(0, CAP);
     const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
+    // optional result columns — shown if the user toggled them on OR the matching filter is active
+    const optCols = [
+      { key: "rsi", th: "RSI", cell: k => '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>", active: techState.rsiMin > 0 || techState.rsiMax < 100 },
+      { key: "mfi", th: "MFI", cell: k => '<td class="' + mfiCls(k.mfi) + '">' + (k.mfi == null ? "—" : k.mfi.toFixed(0)) + "</td>", active: techState.mfiMin > 0 || techState.mfiMax < 100 },
+      { key: "rvol", th: "RVOL", cell: k => "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>", active: _rv() > 0 },
+      { key: "vol", th: "ווליום", cell: k => "<td>" + fmtVol(k.vol) + "</td>", active: techState.volMin > 0 },
+      { key: "atrp", th: "ATR%", cell: k => "<td>" + (k.atrp == null ? "—" : k.atrp.toFixed(2) + "%") + "</td>", active: _atrp() > 0 },
+      { key: "dma", th: "Δ " + maLabel, cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
+      { key: "dhi52", th: "Δ שיא52", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
+    ];
+    const visCols = optCols.filter(c => colState[c.key] || c.active);
     const body = shown.map(t => {
       const k = t.tech || {};
       const dma = (k[dmapKey] || {})[techState.maPeriod];
-      const techCells = techOn
-        ? '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>" +
-          '<td class="' + mfiCls(k.mfi) + '">' + (k.mfi == null ? "—" : k.mfi.toFixed(0)) + "</td>" +
-          "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>" +
-          "<td>" + fmtVol(k.vol) + "</td>" +
-          "<td>" + dPct(dma) + "</td>" +
-          "<td>" + dPct(k.dhi52) + "</td>"
-        : "";
+      const techCells = visCols.map(c => c.cell(k, dma)).join("");
       return "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
@@ -854,11 +861,13 @@
     const head =
       "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("סקטור", "sec") + sortableTh("ת\"ס", "etf") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
       sortableTh("Y", "Y") + sortableTh("Q", "Q") + sortableTh("M", "M") + sortableTh("W", "W") + sortableTh("D", "D") + sortableTh("FTFC", "ftfc") +
-      (techOn ? sortableTh("RSI", "rsi") + sortableTh("MFI", "mfi") + sortableTh("RVOL", "rvol") + sortableTh("ווליום", "vol") + sortableTh("Δ " + maLabel, "dma") + sortableTh("Δ שיא52", "dhi52") : "") +
+      visCols.map(c => sortableTh(c.th, c.key)).join("") +
       "<th></th>";
-    const nCols = techOn ? 20 : 14;
+    const nCols = 14 + visCols.length;
+    const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
+      optCols.map(c => '<button class="chip col-chip' + ((colState[c.key] || c.active) ? " on" : "") + '" data-col="' + c.key + '"' + (c.active ? ' title="מוצג אוטומטית — פילטר פעיל"' : "") + ">" + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
-      '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<span style="display:flex;gap:8px"><button class="btn ghost" id="scanGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button><button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button></span>" : "") + "</h3>" +
+      '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<span style="display:flex;gap:8px"><button class="btn ghost" id="scanGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button><button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button></span>" : "") + "</h3>" + colChips +
       '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" +
       (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
@@ -980,6 +989,7 @@
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
+    document.querySelectorAll("[data-col]").forEach(b => b.onclick = () => { colState[b.dataset.col] = !colState[b.dataset.col]; reRender(); });
     const grid = $("#scanGrid");
     if (grid) grid.onclick = () => openScannerGrid();
     const copy = $("#scanCopy");

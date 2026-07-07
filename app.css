@@ -178,6 +178,24 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .tech-row .fgrp label { font-size:10.5px; }
 .tech-row select, .tech-row input { min-width:0; padding:6px 8px; font-size:12px; border-radius:7px; }
 .tech-row .chips { gap:5px; }
+/* unified custom dropdown look across ALL scanner filter panels (filters / MTF / technical) */
+.filters select {
+  -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  background-color:var(--bg); color:var(--ink);
+  border:1px solid var(--line); border-radius:8px;
+  padding:8px 12px 8px 30px; font-size:13px; line-height:1.25; cursor:pointer;
+  background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%239aa3b2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:left 10px center;
+  transition:border-color .12s, box-shadow .12s;
+}
+.filters select:hover { border-color:#3a4150; }
+.filters select:focus, .filters select:focus-visible { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px rgba(124,108,240,.22); }
+.filters select option { background:var(--panel); color:var(--ink); }
+.tech-row select { padding:6px 8px 6px 26px; background-position:left 8px center; }
+.mtf-cond select { padding:7px 10px 7px 26px; background-position:left 8px center; }
+/* add/remove result columns */
+.col-picker { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 12px; }
+.col-picker .col-chip { font-size:12px; padding:4px 10px; }
 
 /* ===== tables ===== */
 .tablewrap { overflow-x:auto; }
