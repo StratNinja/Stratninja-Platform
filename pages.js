@@ -453,23 +453,24 @@
     const vixVal = (LIVE && LIVE.vix)
       ? '<div class="v">' + LIVE.vix.level.toFixed(2) + '</div><div class="sub ' + (LIVE.vix.chg >= 0 ? "neg" : "pos") + '">' + (LIVE.vix.chg >= 0 ? "+" : "") + LIVE.vix.chg.toFixed(2) + "%</div>"
       : '<div class="v muted">—</div>';
+    const idxPanel = '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div></div>";
+    const vixCard = '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>";
     return (
       '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' +
-      '<div class="mkt-grid">' +
-        '<div class="mkt-col">' +
-          '<div class="mkt-top">' +
-            '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div>" + colorLegend() + "</div>" +
-            '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>" +
+      '<div class="mkt-dash">' +
+        '<div class="mkt-dash-top">' +
+          '<div class="mkt-dash-left">' +
+            '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
+            breadthBar() +
           "</div>" +
-          breadthBar() +
+          '<div class="mkt-dash-right">' + candleMapPanel() + "</div>" +
         "</div>" +
-        '<div class="mkt-col">' + candleMapPanel() + "</div>" +
-      "</div>" +
-      '<div class="cols4">' +
-        '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(LIVE.sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
-        '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(LIVE.sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
-        '<div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((LIVE.leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
-        '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((LIVE.laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div>" +
+        '<div class="mkt-dash-bottom">' +
+          '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(LIVE.sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
+          '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(LIVE.sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
+          '<div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((LIVE.leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
+          '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((LIVE.laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div>" +
+        "</div>" +
       "</div>"
     );
   }
@@ -534,18 +535,18 @@
     const pc = (a, t) => t ? Math.round(a / t * 100) : 0;
     if (b && b.total) facts.push("🟢 <b>" + b.above + "</b> מתוך " + b.total + " מניות מעל מחיר הפתיחה (<b>" + pc(b.above, b.total) + "%</b> מהשוק).");
     const big = secs.filter(s => s.total >= 10).slice().sort((x, y) => pc(y.above, y.total) - pc(x.above, x.total));
-    if (big[0]) facts.push("הסקטור הכי <b>חזק</b> היום: <b>" + big[0].name + "</b> — " + pc(big[0].above, big[0].total) + "% מעל הפתיחה (" + big[0].above + "/" + big[0].total + ").");
-    if (big.length > 1) { const w = big[big.length - 1]; facts.push("הסקטור הכי <b>חלש</b> היום: <b>" + w.name + "</b> — רק " + pc(w.above, w.total) + "% מעל הפתיחה."); }
+    if (big[0]) facts.push("הסקטור הכי <b>חזק</b> היום: <b>" + secHe(big[0].name) + "</b> — " + pc(big[0].above, big[0].total) + "% מעל הפתיחה (" + big[0].above + "/" + big[0].total + ").");
+    if (big.length > 1) { const w = big[big.length - 1]; facts.push("הסקטור הכי <b>חלש</b> היום: <b>" + secHe(w.name) + "</b> — רק " + pc(w.above, w.total) + "% מעל הפתיחה."); }
     const totAbove = secs.reduce((a, s) => a + s.above, 0);
     const topGreen = secs.slice().sort((x, y) => y.above - x.above)[0];
-    if (topGreen && totAbove) facts.push("<b>" + Math.round(topGreen.above / totAbove * 100) + "%</b> מכלל המניות שמעל הפתיחה הן מסקטור <b>" + topGreen.name + "</b> (" + topGreen.above + " מניות).");
+    if (topGreen && totAbove) facts.push("<b>" + Math.round(topGreen.above / totAbove * 100) + "%</b> מכלל המניות שמעל הפתיחה הן מסקטור <b>" + secHe(topGreen.name) + "</b> (" + topGreen.above + " מניות).");
     // sub-sector (industry) breadth
     const byInd = {};
     secs.forEach(s => (s.stocks || []).forEach(x => { const k = (x.ind || "").trim(); if (!k) return; const o = byInd[k] || (byInd[k] = { a: 0, t: 0, sec: s.name }); o.t++; if (x.ao) o.a++; }));
     const inds = Object.keys(byInd).map(k => ({ ind: k, a: byInd[k].a, t: byInd[k].t, sec: byInd[k].sec })).filter(o => o.t >= 6);
     if (inds.length) {
       const strong = inds.slice().sort((x, y) => (y.a / y.t) - (x.a / x.t))[0];
-      facts.push("<b>" + strong.a + "</b> מניות מתת-סקטור <b>" + strong.ind + "</b> (" + strong.sec + ") מעל מחיר הפתיחה — <b>" + pc(strong.a, strong.t) + "%</b> מהתת-סקטור.");
+      facts.push("<b>" + strong.a + "</b> מניות מתת-סקטור <b>" + strong.ind + "</b> (" + secHe(strong.sec) + ") מעל מחיר הפתיחה — <b>" + pc(strong.a, strong.t) + "%</b> מהתת-סקטור.");
       const weak = inds.slice().sort((x, y) => (x.a / x.t) - (y.a / y.t))[0];
       if (weak && weak.ind !== strong.ind) facts.push("תת-סקטור <b>" + weak.ind + "</b> חלש היום — רק " + pc(weak.a, weak.t) + "% מעל הפתיחה.");
     }
@@ -574,7 +575,7 @@
       const st = s.stocks.slice().sort((x, y) => (y.c == null ? 0 : y.c) - (x.c == null ? 0 : x.c));
       const gain = st.slice(0, 6), lose = st.slice(-6).reverse();
       return '<div class="panel sector-card sp-card" data-spdrill="' + encodeURIComponent(s.name) + '">' +
-        "<h3>" + s.name + " " + etfChip(etfFor(s.name)) + ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " מעל פתיחה · " + ap.toFixed(0) + "% · " + pctSpanBare(s.chg) + "</span></h3>" +
+        "<h3>" + secHe(s.name) + " " + etfChip(etfFor(s.name)) + ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " מעל פתיחה · " + ap.toFixed(0) + "% · " + pctSpanBare(s.chg) + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="mv-row"><span class="mv-lbl">🟢 מובילים</span>' + gain.map(mvChip).join("") + "</div>" +
         '<div class="mv-row"><span class="mv-lbl">🔴 חלשים</span>' + lose.map(mvChip).join("") + "</div>" +
@@ -592,7 +593,7 @@
       return "<tr><td class='sym'><span class='tsym clickable' data-chart='" + x.s + "' data-tf='D'>" + x.s + "</span>" + (x.ind ? ' <span class="tname">' + x.ind + "</span>" : "") + "</td><td>" + (x.ao ? "🟢" : "🔴") + "</td><td class='" + (x.c > 0 ? "pos" : x.c < 0 ? "neg" : "") + "'>" + cs + "</td><td>" + fmtCap(x.mc) + "</td></tr>";
     }).join("");
     const ap = s.above / (s.total || 1) * 100;
-    modal(s.name + " · " + s.above + "/" + s.total + " מעל פתיחה (" + ap.toFixed(0) + "%)",
+    modal(secHe(s.name) + " · " + s.above + "/" + s.total + " מעל פתיחה (" + ap.toFixed(0) + "%)",
       "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>מעל פתיחה</th><th>תנועה</th><th>שווי</th></tr></thead><tbody>" + rows + "</tbody></table></div>");
   }
   function wireSp500() {
