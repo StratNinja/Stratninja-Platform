@@ -325,7 +325,7 @@
   function mkLead(items, cls, isSector) {
     if (!items || !items.length) return '<div class="muted" style="padding:8px 12px;font-size:13px">ממתין לנתוני מסחר…</div>';
     return items.map(x => {
-      const label = isSector ? x.name : (x.s + ' <span class="tname">' + (x.sec || "") + "</span>");
+      const label = isSector ? x.name : x.s;
       const chg = isSector ? x.chg : x.c;
       return '<div class="lead-row ' + cls + '"><span>' + label + "</span>" + pctSpan(chg) + "</div>";
     }).join("");
