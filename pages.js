@@ -650,8 +650,9 @@
 
   // ========== SCANNER ==========
   const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, mtf: newMtf() };
-  // optional result columns the user can add/remove (independent of the filters)
-  const colState = { rsi: false, mfi: false, rvol: false, vol: false, atrp: false, dma: false, dhi52: false };
+  // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
+  // true/false = explicit user choice (so removal always sticks, even for filter columns).
+  const colState = {};
   // multi-timeframe per-TF conditions: {D:{t,c}, W:{t,c}, ...}  (t = bar type "1/2U/2D/3", c = color "up/down", "" = any)
   const MTF_TFS = ["D", "W", "M", "Q", "Y"];
   const MTF_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
@@ -857,7 +858,9 @@
       { key: "dma", th: "Δ " + maLabel, cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
     ];
-    const visCols = optCols.filter(c => colState[c.key] || c.active);
+    // a filter becoming active auto-adds its column (once); the user can still remove it via the chip
+    optCols.forEach(c => { if (c.active && colState[c.key] == null) colState[c.key] = true; });
+    const visCols = optCols.filter(c => colState[c.key]);
     const body = shown.map(t => {
       const k = t.tech || {};
       const dma = (k[dmapKey] || {})[techState.maPeriod];
@@ -891,7 +894,7 @@
       "<th></th>";
     const nCols = 14 + visCols.length;
     const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
-      optCols.map(c => '<button class="chip col-chip' + ((colState[c.key] || c.active) ? " on" : "") + '" data-col="' + c.key + '"' + (c.active ? ' title="מוצג אוטומטית — פילטר פעיל"' : "") + ">" + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
+      optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '"' + (c.active ? ' title="פילטר פעיל על העמודה"' : "") + ">" + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<span style="display:flex;gap:8px"><button class="btn ghost" id="scanGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button><button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button></span>" : "") + "</h3>" + colChips +
       '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" +
