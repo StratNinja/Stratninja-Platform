@@ -1328,7 +1328,7 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { LIVE = j[0].data; if (state.page === "market") reRender(); }
+      if (j && j[0] && j[0].data) { LIVE = j[0].data; updateTicker(); if (state.page === "market") reRender(); }
     } catch (e) { /* keep demo data */ }
   }
 
@@ -1347,6 +1347,37 @@
     } catch (e) { /* keep demo */ }
   }
 
+  // ---- persistent live ticker (SPY / QQQ / BTC) ----
+  let _btc = null, _btcTs = 0;
+  async function fetchBtc() {
+    if (_btc && Date.now() - _btcTs < 45000) return _btc;
+    try {
+      const r = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true");
+      if (r.ok) { const j = await r.json(); if (j && j.bitcoin) { _btc = { price: j.bitcoin.usd, chg: j.bitcoin.usd_24h_change }; _btcTs = Date.now(); } }
+    } catch (e) { /* keep last */ }
+    return _btc;
+  }
+  function tickerItem(sym, name, price, chg, chartSym) {
+    const c = chg == null ? 0 : chg;
+    const cls = c > 0 ? "pos" : c < 0 ? "neg" : "zero";
+    const cs = (c >= 0 ? "+" : "") + c.toFixed(2) + "%";
+    const pxTxt = price == null ? "—" : "$" + Number(price).toLocaleString("en-US", { maximumFractionDigits: price >= 1000 ? 0 : 2 });
+    return '<span class="lt-item tsym clickable" data-chart="' + (chartSym || sym) + '" data-tf="D" title="' + name + '"><b class="lt-sym">' + sym + "</b><span class=\"lt-px\">" + pxTxt + '</span><span class="' + cls + '">' + cs + "</span></span>";
+  }
+  async function updateTicker() {
+    const el = document.getElementById("liveTicker");
+    if (!el) return;
+    const idx = (LIVE && LIVE.indices) ? LIVE.indices : [];
+    const spy = idx.find(x => x.sym === "SPY"), qqq = idx.find(x => x.sym === "QQQ");
+    const btc = await fetchBtc();
+    let html = "";
+    if (spy) html += tickerItem("SPY", "S&P 500", spy.price, spy.chg);
+    if (qqq) html += tickerItem("QQQ", "NASDAQ 100", qqq.price, qqq.chg);
+    if (btc) html += tickerItem("BTC", "Bitcoin", btc.price, btc.chg, "BINANCE:BTCUSD");
+    el.innerHTML = html || '<span class="muted" style="font-size:12px;padding-inline-start:4px">טוען מחירים…</span>';
+    wireCharts(el);
+  }
+  window._snUpdateTicker = updateTicker;
   function initNav() {
     document.querySelectorAll(".side-nav a[data-page]").forEach(a => a.onclick = () => setPage(a.dataset.page));
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
@@ -1355,6 +1386,8 @@
     setPage((PAGES[last] || last === "journal") ? last : "market");
     loadLive();
     setInterval(loadLive, 60000);
+    updateTicker();
+    setInterval(updateTicker, 60000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initNav);

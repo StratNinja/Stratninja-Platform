@@ -292,7 +292,15 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 @media (max-width: 600px) { .community-cta { font-size: 12px; padding: 9px 12px; } }
 
 /* ===== community CTA — sticky so it follows on scroll + confetti animation ===== */
-.community-cta { position: sticky; top: 10px; z-index: 30; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.community-cta { position: sticky; top: 44px; z-index: 30; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+/* persistent live price ticker (SPY / QQQ / BTC) */
+.live-ticker { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 7px 14px; margin-bottom: 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; position: sticky; top: 0; z-index: 32; min-height: 34px; }
+.lt-item { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.lt-item:hover { opacity: .82; }
+.lt-sym { font-weight: 800; font-size: 12px; letter-spacing: .04em; color: var(--muted); }
+.lt-px { font-weight: 700; color: var(--ink); }
+.lt-item .pos { color: var(--green); font-weight: 700; } .lt-item .neg { color: var(--red); font-weight: 700; } .lt-item .zero { color: var(--muted); }
 .community-cta .cta-text, .community-cta .cta-arrow { position: relative; z-index: 2; }
 .cta-trophy { display: inline-block; animation: trophy-bounce 1.4s ease-in-out infinite; transform-origin: bottom center; }
 @keyframes trophy-bounce { 0%,100% { transform: translateY(0) rotate(-8deg) scale(1); } 50% { transform: translateY(-4px) rotate(8deg) scale(1.12); } }
