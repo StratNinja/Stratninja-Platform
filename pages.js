@@ -523,6 +523,36 @@
     }
     return out;
   }
+  // rotating "did you know?" facts for the market map — sector + sub-sector breadth insights
+  let _spFacts = [], _spTimer = null;
+  function sp500Facts() {
+    const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
+    if (!secs || !secs.length) return [];
+    const b = LIVE.breadth, facts = [];
+    const pc = (a, t) => t ? Math.round(a / t * 100) : 0;
+    if (b && b.total) facts.push("🟢 <b>" + b.above + "</b> מתוך " + b.total + " מניות מעל מחיר הפתיחה (<b>" + pc(b.above, b.total) + "%</b> מהשוק).");
+    const big = secs.filter(s => s.total >= 10).slice().sort((x, y) => pc(y.above, y.total) - pc(x.above, x.total));
+    if (big[0]) facts.push("הסקטור הכי <b>חזק</b> היום: <b>" + big[0].name + "</b> — " + pc(big[0].above, big[0].total) + "% מעל הפתיחה (" + big[0].above + "/" + big[0].total + ").");
+    if (big.length > 1) { const w = big[big.length - 1]; facts.push("הסקטור הכי <b>חלש</b> היום: <b>" + w.name + "</b> — רק " + pc(w.above, w.total) + "% מעל הפתיחה."); }
+    const totAbove = secs.reduce((a, s) => a + s.above, 0);
+    const topGreen = secs.slice().sort((x, y) => y.above - x.above)[0];
+    if (topGreen && totAbove) facts.push("<b>" + Math.round(topGreen.above / totAbove * 100) + "%</b> מכלל המניות שמעל הפתיחה הן מסקטור <b>" + topGreen.name + "</b> (" + topGreen.above + " מניות).");
+    // sub-sector (industry) breadth
+    const byInd = {};
+    secs.forEach(s => (s.stocks || []).forEach(x => { const k = (x.ind || "").trim(); if (!k) return; const o = byInd[k] || (byInd[k] = { a: 0, t: 0, sec: s.name }); o.t++; if (x.ao) o.a++; }));
+    const inds = Object.keys(byInd).map(k => ({ ind: k, a: byInd[k].a, t: byInd[k].t, sec: byInd[k].sec })).filter(o => o.t >= 6);
+    if (inds.length) {
+      const strong = inds.slice().sort((x, y) => (y.a / y.t) - (x.a / x.t))[0];
+      facts.push("<b>" + strong.a + "</b> מניות מתת-סקטור <b>" + strong.ind + "</b> (" + strong.sec + ") מעל מחיר הפתיחה — <b>" + pc(strong.a, strong.t) + "%</b> מהתת-סקטור.");
+      const weak = inds.slice().sort((x, y) => (x.a / x.t) - (y.a / y.t))[0];
+      if (weak && weak.ind !== strong.ind) facts.push("תת-סקטור <b>" + weak.ind + "</b> חלש היום — רק " + pc(weak.a, weak.t) + "% מעל הפתיחה.");
+    }
+    // mega-cap breadth
+    const all = []; secs.forEach(s => (s.stocks || []).forEach(x => { if (x.mc) all.push(x); }));
+    const mega = all.sort((x, y) => y.mc - x.mc).slice(0, 12);
+    if (mega.length >= 6) facts.push("מבין <b>12 החברות הגדולות</b> בשוק, <b>" + mega.filter(x => x.ao).length + "</b> מעל מחיר הפתיחה.");
+    return facts;
+  }
   function renderSp500() {
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
     if (!secs || !secs.length) {
@@ -554,8 +584,25 @@
       '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(3) + '"></i> עלייה חזקה</span>' +
       '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(0) + '"></i> ניטרלי</span>' +
       '<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:' + chgColor(-3) + '"></i> ירידה חזקה</span></div>';
+    _spFacts = sp500Facts();
+    const firstFact = _spFacts.length ? _spFacts[Math.floor(Math.random() * _spFacts.length)] : "";
+    const insightBox = _spFacts.length ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="spInsightText">' + firstFact + "</span></div>" : "";
     return '<div class="page-head"><h1>S&P 500 · מפת שוק</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · גודל=שווי שוק, צבע=תנועה · לחץ על מניה לגרף</div></div>" +
-      liveBanner() + '<div class="tm-wrap">' + tiles + "</div>" + legend;
+      insightBox + liveBanner() + '<div class="tm-wrap">' + tiles + "</div>" + legend;
+  }
+  function wireSp500() {
+    wireCharts(document);
+    if (_spTimer) { clearInterval(_spTimer); _spTimer = null; }
+    if (_spFacts && _spFacts.length > 1) {
+      let idx = _spFacts.indexOf((document.getElementById("spInsightText") || {}).innerHTML);
+      _spTimer = setInterval(() => {
+        const el = document.getElementById("spInsightText");
+        if (!el) { clearInterval(_spTimer); _spTimer = null; return; }
+        idx = (idx + 1) % _spFacts.length;
+        el.style.opacity = "0";
+        setTimeout(() => { el.innerHTML = _spFacts[idx]; el.style.opacity = "1"; }, 250);
+      }, 10000);
+    }
   }
   function pctSpanBare(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
   function colorLegend() {
@@ -1229,7 +1276,7 @@
   // ---------- router ----------
   const PAGES = {
     market: { render: renderMarket, wire: wireMarket },
-    sp500: { render: renderSp500, wire: () => wireCharts(document) },
+    sp500: { render: renderSp500, wire: wireSp500 },
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
