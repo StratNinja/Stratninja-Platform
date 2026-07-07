@@ -257,15 +257,15 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 
 /* ===== community CTA (top of every app page) ===== */
 .community-cta { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  background: linear-gradient(90deg, rgba(88,101,242,.18), rgba(124,108,240,.12));
+  background: linear-gradient(90deg, rgba(88,101,242,.18), rgba(124,108,240,.12)), var(--panel);
   border: 1px solid rgba(124,108,240,.4); border-radius: 12px; padding: 11px 18px; margin-bottom: 18px;
   text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 600; transition: .15s; }
 .community-cta:hover { border-color: var(--accent); background: linear-gradient(90deg, rgba(88,101,242,.28), rgba(124,108,240,.2)); }
 .community-cta .cta-arrow { background: #5865F2; color: #fff; border-radius: 8px; padding: 5px 14px; font-size: 13px; white-space: nowrap; }
 @media (max-width: 600px) { .community-cta { font-size: 12px; padding: 9px 12px; } }
 
-/* ===== community CTA — confetti + trophy animation ===== */
-.community-cta { position: relative; overflow: hidden; }
+/* ===== community CTA — sticky so it follows on scroll + confetti animation ===== */
+.community-cta { position: sticky; top: 10px; z-index: 30; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
 .community-cta .cta-text, .community-cta .cta-arrow { position: relative; z-index: 2; }
 .cta-trophy { display: inline-block; animation: trophy-bounce 1.4s ease-in-out infinite; transform-origin: bottom center; }
 @keyframes trophy-bounce { 0%,100% { transform: translateY(0) rotate(-8deg) scale(1); } 50% { transform: translateY(-4px) rotate(8deg) scale(1.12); } }
