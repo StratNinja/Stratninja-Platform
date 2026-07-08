@@ -45,6 +45,15 @@
       this._write(d);
     },
     clearAll() { this._write({ fills: [], manual: [] }); },
+    /* rename an account across all its fills + manual trades */
+    renameAccount(oldName, newName) {
+      const on = (oldName || "").trim(), nn = (newName || "").trim();
+      if (!on || !nn || on === nn) return;
+      const d = this._read();
+      d.fills.forEach(f => { if ((f.account || "").trim() === on) f.account = nn; });
+      d.manual.forEach(m => { if ((m.account || "").trim() === on) m.account = nn; });
+      this._write(d);
+    },
     exportData() { return this._read(); },
     /* merge a backup object into storage without clobbering existing data */
     importData(obj) {
@@ -954,7 +963,14 @@
     modal("הגדרות / נתונים", body, [
       { label: "⬇️ ייצוא גיבוי", cls: "primary", fn: exportBackup },
       { label: "⬆️ שחזור מגיבוי", cls: "", fn: () => { const inp = $("#restoreInput"); inp.onchange = () => { if (inp.files[0]) restoreBackup(inp.files[0]); }; inp.click(); } },
-      { label: "מחק חשבון נוכחי", cls: "", fn: () => { if (state.account && confirm("למחוק את כל הנתונים של " + state.account + "?")) { Store.clearAccount(state.account); state.account = null; closeModal(); render(); toast("נמחק"); } } },
+      { label: "✏️ שנה שם חשבון", cls: "", fn: () => {
+          if (!state.account || state.account === ALL) { alert("בחר חשבון ספציפי (לא 'כל החשבונות') כדי לשנות את שמו."); return; }
+          const nn = (prompt('שם חדש לחשבון "' + state.account + '":', state.account) || "").trim();
+          if (!nn || nn === state.account) return;
+          if (Store.accounts().indexOf(nn) >= 0) { alert("כבר קיים חשבון בשם הזה — בחר שם אחר."); return; }
+          Store.renameAccount(state.account, nn); state.account = nn; closeModal(); render(); toast("שם החשבון עודכן ל-" + nn);
+        } },
+      { label: "מחק חשבון נוכחי", cls: "", fn: () => { if (state.account && state.account !== ALL && confirm("למחוק את כל הנתונים של " + state.account + "?")) { Store.clearAccount(state.account); state.account = null; closeModal(); render(); toast("נמחק"); } } },
       { label: "מחק הכול", cls: "", fn: () => { if (confirm("למחוק את כל הנתונים מכל החשבונות?")) { Store.clearAll(); state.account = null; closeModal(); render(); toast("הכול נמחק"); } } },
     ]);
   }

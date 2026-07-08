@@ -640,19 +640,26 @@
       const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(1) + "%";
       return '<span class="mv-chip clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " " + cs + '" style="background:' + chgColor(x.c) + '">' + x.s + " <b>" + cs + "</b></span>";
     };
-    const cards = secs.slice().sort((a, c) => (c.above / (c.total || 1)) - (a.above / (a.total || 1))).map(s => {
+    const spCard = s => {
       const ap = s.above / (s.total || 1) * 100;
       const st = s.stocks.slice().sort((x, y) => (y.c == null ? 0 : y.c) - (x.c == null ? 0 : x.c));
-      const gain = st.slice(0, 6), lose = st.slice(-6).reverse();
+      const gain = st.slice(0, 4), lose = st.slice(-4).reverse();
       return '<div class="panel sector-card sp-card" data-spdrill="' + encodeURIComponent(s.name) + '">' +
-        "<h3>" + secHe(s.name) + " " + etfChip(etfFor(s.name)) + ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " מעל פתיחה · " + ap.toFixed(0) + "% · " + pctSpanBare(s.chg) + "</span></h3>" +
+        "<h3>" + secHe(s.name) + " " + etfChip(etfFor(s.name)) + ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " · " + ap.toFixed(0) + "% · " + pctSpanBare(s.chg) + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="mv-row"><span class="mv-lbl">🟢 מובילים</span>' + gain.map(mvChip).join("") + "</div>" +
         '<div class="mv-row"><span class="mv-lbl">🔴 חלשים</span>' + lose.map(mvChip).join("") + "</div>" +
         '<div class="mv-more">' + s.total + " מניות · לחץ להצגת כולן ←</div></div>";
-    }).join("");
-    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + " מתחת · המובילים/החלשים לפי תנועה יומית · לחץ על סקטור לכל המניות</div></div>" +
-      insightBox + liveBanner() + '<div class="sector-grid">' + cards + "</div>";
+    };
+    // split sectors into 3 columns by breadth (% above open): BULL (right) · neutral · BEAR (left)
+    const withAp = secs.map(s => ({ s, ap: s.above / (s.total || 1) * 100 }));
+    const spBull = withAp.filter(o => o.ap >= 55).sort((a, c) => c.ap - a.ap);
+    const spMid = withAp.filter(o => o.ap >= 45 && o.ap < 55).sort((a, c) => c.ap - a.ap);
+    const spBear = withAp.filter(o => o.ap < 45).sort((a, c) => a.ap - c.ap);
+    const spColHtml = (title, cls, arr) => '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+      (arr.length ? arr.map(o => spCard(o.s)).join("") : '<div class="muted" style="padding:12px;font-size:12px;text-align:center">אין כרגע</div>') + "</div>";
+    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · מחולק ל-3 לפי רוחב: <b>BULL</b> (55%+ מעל פתיחה) · <b>בין לבין</b> · <b>BEAR</b> (מתחת 45%). לחץ על סקטור לכל המניות.</div></div>' +
+      insightBox + liveBanner() + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
   }
   let spDrillSort = { col: "c", dir: -1 };
   function spDrillVal(x, col) {
