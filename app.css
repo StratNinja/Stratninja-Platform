@@ -115,6 +115,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .side-nav a:hover { background: var(--panel2); color: var(--ink); }
 .side-nav a.active { background: var(--accentbg); color: #cfc7ff; font-weight: 600; }
 .side-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); }
+.side-nav-sec { margin-bottom: 12px; }
 
 /* main content */
 .main { flex: 1; padding: 24px 28px; min-width: 0; }

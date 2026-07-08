@@ -74,6 +74,8 @@
   let manualEditId = null;  // when editing a manual trade, its id; null = adding new
   const OPEN_WARN = 5;      // discipline nudge: warn at this many concurrent open positions
   let _lastOpenCount = 0;   // to fire the crossing popup only once per crossing
+  let openPosMin = false;   // collapse the open-positions panel
+  try { openPosMin = localStorage.getItem("sn_openpos_min") === "1"; } catch (e) {}
 
   // ---- Helpers -----------------------------------------------------------
   const $ = sel => document.querySelector(sel);
@@ -212,10 +214,16 @@
     }).join("");
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — ה-P&L שלהן יחושב בסגירה</span>' : "";
+    const count = openTrades.length;
+    const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
+    const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
-      '<h3>📌 פוזיציות פתוחות · Unrealized P&L <span class="muted" style="font-size:12px">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span></h3>" +
-      "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>מחיר נוכחי</th><th>Unrealized</th><th></th></tr></thead>" +
-      "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='5' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>";
+      "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
+        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + toggleBtn + "</h3>" +
+      (openPosMin ? "" :
+        "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>מחיר נוכחי</th><th>Unrealized</th><th></th></tr></thead>" +
+        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='5' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>");
+    { const tg = wrap.querySelector("#openPosToggle"); if (tg) tg.onclick = () => { openPosMin = !openPosMin; try { localStorage.setItem("sn_openpos_min", openPosMin ? "1" : "0"); } catch (e) {} render(); }; }
     // wire: click row or close button -> open the edit form (add exit price to close)
     wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => editOpenTrade(tr.dataset.editopen));
     wrap.querySelectorAll("[data-closepos]").forEach(b => b.onclick = e => { e.stopPropagation(); editOpenTrade(b.dataset.closepos); });
