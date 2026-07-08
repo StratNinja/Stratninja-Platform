@@ -476,9 +476,17 @@
     if (!ms) return '<div class="panel mkt-pulse"><span class="mp-mode">📡 מה עולה עכשיו</span><span class="muted">התחבר לנתונים חיים</span></div>';
     const idx = ms.idx.map(i => '<span class="mp-idx"><b>' + i.sym + "</b> " + pctSpanBare(i.chg) + "</span>").join("");
     const vix = ms.vix ? '<span class="mp-idx"><b>VIX</b> ' + ms.vix.level.toFixed(1) + "</span>" : "";
-    const br = (ms.br && ms.br.total) ? '<span class="mp-idx">רוחב <span class="pos">' + ms.br.above + '</span>/<span class="neg">' + ms.br.below + "</span></span>" : "";
+    // breadth gauge — a mini bar, pushed to the far (left) end, opposite the mode label
+    let breadth = "";
+    if (ms.br && ms.br.total) {
+      const ap = (ms.br.above / ms.br.total * 100);
+      breadth = '<div class="mp-breadth clickable" id="pulseBreadth" title="רוחב שוק — לחץ לפירוט לפי סקטור">' +
+        '<span class="mp-brlbl">רוחב שוק</span>' +
+        '<span class="mp-brbar"><span class="mp-brup" style="width:' + ap.toFixed(1) + '%"></span></span>' +
+        '<span class="mp-brnum"><span class="pos">' + ms.br.above + '</span>/<span class="neg">' + ms.br.below + "</span></span></div>";
+    }
     return '<div class="panel mkt-pulse ' + ms.cls + '"><div class="mp-left"><span class="mp-mode">' + ms.emoji + " " + ms.mode + '</span><span class="mp-sess">' + sess + "</span></div>" +
-      '<div class="mp-strip">' + idx + vix + br + "</div></div>";
+      '<div class="mp-strip">' + idx + vix + "</div>" + breadth + "</div>";
   }
   // gappers TOP-3 up/down for the market page (full list stays on the gappers channel)
   function gappersMini() {
@@ -515,7 +523,6 @@
         '<div class="mkt-dash-top">' +
           '<div class="mkt-dash-left">' +
             '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
-            breadthBar() +
           "</div>" +
           '<div class="mkt-dash-right">' + candleMapPanel() + "</div>" +
         "</div>" +
@@ -532,6 +539,7 @@
   }
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
+    { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => setPage("gappers"); }
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
     document.querySelectorAll("[data-uni]").forEach(el => el.onclick = () => {

@@ -583,8 +583,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 
 /* ===== market overview — compact single-screen dashboard ===== */
 .mkt-dash { display: grid; grid-template-rows: auto auto; gap: 10px; }
-.mkt-dash-top { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 10px; align-items: start; }
-.mkt-dash-left { display: grid; grid-template-rows: auto auto; gap: 10px; align-content: start; }
+.mkt-dash-top { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 10px; align-items: stretch; }
+.mkt-dash-left { display: grid; grid-template-rows: 1fr; gap: 10px; align-content: stretch; }
+.mkt-dash-left .mkt-idx-row { height: 100%; }
 .mkt-idx-row { display: grid; grid-template-columns: minmax(0,1fr) 148px; gap: 10px; align-items: stretch; }
 .mkt-dash-right { min-width: 0; }
 .mkt-dash-bottom { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; align-items: stretch; }
@@ -628,9 +629,16 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt-pulse .mp-left { display: flex; flex-direction: column; gap: 2px; }
 .mkt-pulse .mp-mode { font-weight: 800; font-size: 16px; }
 .mkt-pulse .mp-sess { font-size: 12px; color: var(--muted); }
-.mkt-pulse .mp-strip { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-inline-start: auto; }
+.mkt-pulse .mp-strip { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
 .mkt-pulse .mp-idx { font-size: 13px; background: rgba(255,255,255,.04); padding: 4px 10px; border-radius: 8px; }
 .mkt-pulse .mp-idx b { color: #c3ccdd; margin-inline-end: 4px; }
+/* breadth gauge — pushed to the far (left) end, opposite the mode label */
+.mkt-pulse .mp-breadth { margin-inline-start: auto; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.mkt-pulse .mp-brlbl { font-size: 12px; color: var(--muted); font-weight: 600; }
+.mkt-pulse .mp-brbar { width: 84px; height: 8px; border-radius: 5px; overflow: hidden; background: #e0524f; display: inline-block; }
+.mkt-pulse .mp-brup { display: block; height: 100%; background: #26b06b; }
+.mkt-pulse .mp-brnum { font-size: 13px; font-weight: 700; }
+.mkt-pulse .mp-breadth:hover .mp-brlbl { color: var(--ink); }
 /* gappers mini — full-width section on the market page */
 .gappers-mini { margin-top: 4px; }
 .gappers-mini .gm-head { display: flex; align-items: center; justify-content: space-between; margin: 0; }
