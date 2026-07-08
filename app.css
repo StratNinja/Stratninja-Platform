@@ -498,6 +498,9 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .cmap-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 6px; text-align: center; }
 .cmap-table td { text-align: center; padding: 0 4px; }
 .cmap-table .cm-type { font-weight: 800; font-size: 14px; color: var(--ink); text-align: start; width: 50px; }
+.cmap-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
+.cm-uni-wrap { display: inline-flex; gap: 4px; }
+.cm-uni { font-size: 11px; padding: 3px 10px; }
 .cm-pill { display: block; padding: 6px 0; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; min-width: 42px; }
 .cm-click { cursor: pointer; transition: .12s; }
 .cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }

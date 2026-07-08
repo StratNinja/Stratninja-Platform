@@ -372,9 +372,16 @@
   const _CM_BUCKET_HE = { "3G": "3 ירוק (התרחבות שורית)", "F2D": "היפוך 2D (reclaim)", "2U": "2U (המשך שורי)", "1": "Inside", "2D": "2D (המשך דובי)", "F2U": "היפוך 2U (rejection)", "3R": "3 אדום (התרחבות דובית)" };
   const _CM_TF_HE = { D: "היומי", W: "השבועי", M: "החודשי", Q: "הרבעוני", Y: "השנתי" };
   let _cmFacts = [], _cmTimer = null;
+  let cmapUniverse = "sp500";   // "sp500" (default, clean) | "all" (full coverage for discovery)
+  function cmapRows() {
+    const all = (SCAN && SCAN.rows) || [];
+    if (cmapUniverse === "sp500") { const sp = all.filter(r => r.sp); if (sp.length) return sp; }
+    return all;
+  }
   function candleMapFacts() {
-    if (!(SCAN && SCAN.rows && SCAN.rows.length)) return [];
-    const rows = SCAN.rows, facts = [], pc = (a, b) => Math.round(a / b * 100);
+    const rows = cmapRows();
+    if (!rows.length) return [];
+    const facts = [], pc = (a, b) => Math.round(a / b * 100);
     ["Y", "M", "W"].forEach(tf => {
       const byB = {};
       rows.forEach(r => { const b = candleBucket(r[tf]); (byB[b] = byB[b] || []).push(r); });
@@ -414,8 +421,9 @@
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return '<div class="panel"><h3>🗺️ Candle Map · התפלגות נרות</h3><div class="muted" style="padding:14px">טוען נתוני סורק…</div></div>';
     }
+    const cmRows = cmapRows();
     const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
-    SCAN.rows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
+    cmRows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
     const head = '<tr><th style="text-align:start">TYPE</th>' + cols.map(t => "<th>" + t + "</th>").join("") + "</tr>";
     const body = CMAP_ROWS.map(([key, desc, cls]) =>
       '<tr><td class="cm-type" title="' + desc + '">' + key + "</td>" +
@@ -425,12 +433,15 @@
     const insightBox = _cmFacts.length
       ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="cmInsightText">' + firstFact + "</span></div>"
       : "";
-    return '<div class="panel"><h3>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + SCAN.rows.length + ' מניות · לחץ על מספר לרשימה</span></h3>' +
+    const uni = '<span class="cm-uni-wrap">' +
+      '<button class="chip cm-uni' + (cmapUniverse === "sp500" ? " on" : "") + '" data-cmuni="sp500">S&P 500</button>' +
+      '<button class="chip cm-uni' + (cmapUniverse === "all" ? " on" : "") + '" data-cmuni="all">הכל</button></span>';
+    return '<div class="panel"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימה</span></span>' + uni + "</h3>" +
       '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div>" + insightBox + "</div>";
   }
   function openCandleMapDrill(bucket, tfk) {
     if (!(SCAN && SCAN.rows)) return;
-    const members = SCAN.rows.filter(r => candleBucket(r[tfk]) === bucket).sort((a, b) => a.s.localeCompare(b.s));
+    const members = cmapRows().filter(r => candleBucket(r[tfk]) === bucket).sort((a, b) => a.s.localeCompare(b.s));
     const title = (CMAP_DESC[bucket] || bucket).split(" — ")[0];
     if (!members.length) { modal(bucket, '<div class="muted" style="padding:20px">אין מניות</div>'); return; }
     const rows = members.map(r =>
@@ -479,6 +490,7 @@
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
+    document.querySelectorAll("[data-cmuni]").forEach(el => el.onclick = () => { cmapUniverse = el.dataset.cmuni; reRender(); });
     // rotating "did you know" Candle Map insight
     if (_cmTimer) { clearInterval(_cmTimer); _cmTimer = null; }
     if (_cmFacts && _cmFacts.length > 1) {
