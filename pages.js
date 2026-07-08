@@ -1255,7 +1255,7 @@
 
   // ========== SMA COMPRESSION ==========
   const SMA_ALL = ["5", "10", "20", "50", "100", "150", "200"];
-  const smaState = { periods: ["10", "20", "50", "100", "200"], maxSpread: "" };
+  const smaState = { periods: ["5", "10", "20", "50", "100", "200"], maxSpread: "" };
   function smaSpread(t, sel) {
     const k = t.tech && t.tech.dsma;
     if (!k) return null;
@@ -1277,8 +1277,8 @@
     const hasTech = scanSource().some(t => t.tech && t.tech.dsma);
     const sel = smaState.periods.filter(Boolean);
     const slot = i => { const cur = smaState.periods[i] || ""; return '<select data-smaslot="' + i + '"><option value="">— ריק</option>' + SMA_ALL.map(p => '<option value="' + p + '"' + (cur === p ? " selected" : "") + ">SMA" + p + "</option>").join("") + "</select>"; };
-    const controls = '<div class="panel filters"><h3>הגדרות דחיסה <span class="muted" style="font-size:12px">בחר עד 5 ממוצעים (5–200) · אפשר להשאיר ריק</span></h3><div class="frow">' +
-      '<div class="fgrp"><label>ממוצעים</label><div class="chips">' + [0, 1, 2, 3, 4].map(slot).join("") + "</div></div>" +
+    const controls = '<div class="panel filters"><h3>הגדרות דחיסה <span class="muted" style="font-size:12px">בחר עד 6 ממוצעים (5–200) · אפשר להשאיר ריק</span></h3><div class="frow">' +
+      '<div class="fgrp"><label>ממוצעים</label><div class="chips">' + [0, 1, 2, 3, 4, 5].map(slot).join("") + "</div></div>" +
       '<div class="fgrp"><label>דחיסה מקס׳ (%)</label><input id="smaMax" type="number" step="0.5" min="0" placeholder="הכל" style="width:80px" value="' + smaState.maxSpread + '"></div>' +
       '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="smaReset">איפוס</button></div>' +
       "</div></div>";
@@ -1305,14 +1305,14 @@
   function wireSmaCompression() {
     document.querySelectorAll("[data-smaslot]").forEach(s => s.onchange = () => { smaState.periods[+s.dataset.smaslot] = s.value; reRender(); });
     const mx = $("#smaMax"); if (mx) mx.onchange = () => { smaState.maxSpread = mx.value; reRender(); };
-    const rst = $("#smaReset"); if (rst) rst.onclick = () => { smaState.periods = ["10", "20", "50", "100", "200"]; smaState.maxSpread = ""; reRender(); };
+    const rst = $("#smaReset"); if (rst) rst.onclick = () => { smaState.periods = ["5", "10", "20", "50", "100", "200"]; smaState.maxSpread = ""; reRender(); };
     wireCharts($("#page")); wireStars($("#page"));
     const cp = $("#smaCopy");
     if (cp) cp.onclick = () => { const syms = smaRows().slice(0, 300).map(x => x.t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
   }
 
   // ========== BOLLINGER BANDS ==========
-  const bollingerState = { mode: "sq" };
+  const bollingerState = { mode: "sq", maxSq: "" };
   const BB_MODES = [
     { k: "sq", t: "התכווצות (Squeeze)" },
     { k: "up", t: "פריצת רצועה עליונה" },
@@ -1330,15 +1330,22 @@
     const m = bollingerState.mode;
     if (m === "up") { rows = rows.filter(t => t.tech.bbp != null && t.tech.bbp >= 100); rows.sort((a, b) => b.tech.bbp - a.tech.bbp); }
     else if (m === "low") { rows = rows.filter(t => t.tech.bbp != null && t.tech.bbp <= 0); rows.sort((a, b) => a.tech.bbp - b.tech.bbp); }
-    else { rows = rows.filter(t => t.tech.bbsq != null); rows.sort((a, b) => a.tech.bbsq - b.tech.bbsq); }
+    else {
+      rows = rows.filter(t => t.tech.bbsq != null);
+      const mx = parseFloat(bollingerState.maxSq);
+      if (!isNaN(mx) && mx > 0) rows = rows.filter(t => t.tech.bbsq <= mx);
+      rows.sort((a, b) => a.tech.bbsq - b.tech.bbsq);
+    }
     return rows;
   }
   function renderBollinger() {
     const head0 = '<div class="page-head"><h1>🎈 בולינגר · Bollinger Bands</h1><div class="sub">רצועות בולינגר (20, 2σ) · דחיסה (Squeeze) לפני פריצה · מיקום המחיר ברצועות (%B) · רוחב הרצועות</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const hasTech = scanSource().some(t => t.tech && t.tech.bbw != null);
+    const showSq = bollingerState.mode === "sq" || bollingerState.mode === "all";
     const controls = '<div class="panel filters"><h3>מצב סינון</h3><div class="frow"><div class="fgrp"><label>מצב</label><select id="bbMode">' +
-      BB_MODES.map(o => '<option value="' + o.k + '"' + (bollingerState.mode === o.k ? " selected" : "") + ">" + o.t + "</option>").join("") + "</select></div></div>" +
+      BB_MODES.map(o => '<option value="' + o.k + '"' + (bollingerState.mode === o.k ? " selected" : "") + ">" + o.t + "</option>").join("") + "</select></div>" +
+      (showSq ? '<div class="fgrp"><label>דחיסה עד (%)</label><input id="bbMaxSq" type="number" step="5" min="0" max="100" placeholder="הכל" style="width:80px" value="' + bollingerState.maxSq + '"></div>' : "") + "</div>" +
       '<div class="note" style="margin-top:6px">🎈 <b>%B</b> = מיקום המחיר ברצועות: 0 = רצועה תחתונה, 100 = עליונה, מעל 100 = פרץ מעל. <b>רוחב</b> = מרחק הרצועות כאחוז מהמחיר. <b>דחיסה</b> = אחוז הימים ב-6 החודשים האחרונים שבהם הרצועות היו צרות יותר — נמוך = הרצועות הכי צמודות עכשיו (התכווצות לפני תנועה).</div></div>';
     if (!hasTech) return head0 + controls + '<div class="panel"><div class="note" style="margin:6px 0">⏳ נתוני בולינגר ייטענו מהסורק. רגע ומתעדכן.</div></div>';
     const rows = bbRows();
@@ -1362,13 +1369,14 @@
   }
   function wireBollinger() {
     const md = $("#bbMode"); if (md) md.onchange = () => { bollingerState.mode = md.value; reRender(); };
+    const msq = $("#bbMaxSq"); if (msq) msq.onchange = () => { bollingerState.maxSq = msq.value; reRender(); };
     wireCharts($("#page")); wireStars($("#page"));
     const cp = $("#bbCopy");
     if (cp) cp.onclick = () => { const syms = bbRows().slice(0, 300).map(t => t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
   }
 
   // ========== SWING HIGHS & LOWS ==========
-  const swingState = { mode: "nearHi" };
+  const swingState = { mode: "nearHi", maxDist: "" };
   const SW_MODES = [
     { k: "nearHi", t: "קרוב לשיא סווינג" },
     { k: "brokeHi", t: "פרצו שיא סווינג" },
@@ -1377,10 +1385,12 @@
   ];
   function swRows() {
     const m = swingState.mode;
+    const mx = parseFloat(swingState.maxDist);
+    const capNear = (v) => isNaN(mx) || mx <= 0 || Math.abs(v) <= mx;
     let rows = scanSource().filter(t => t.tech && (t.tech.swhi_d != null || t.tech.swlo_d != null));
-    if (m === "nearHi") { rows = rows.filter(t => t.tech.swhi_d != null); rows.sort((a, b) => Math.abs(a.tech.swhi_d) - Math.abs(b.tech.swhi_d)); }
+    if (m === "nearHi") { rows = rows.filter(t => t.tech.swhi_d != null && capNear(t.tech.swhi_d)); rows.sort((a, b) => Math.abs(a.tech.swhi_d) - Math.abs(b.tech.swhi_d)); }
     else if (m === "brokeHi") { rows = rows.filter(t => t.tech.swhi_d != null && t.tech.swhi_d > 0); rows.sort((a, b) => a.tech.swhi_d - b.tech.swhi_d); }
-    else if (m === "nearLo") { rows = rows.filter(t => t.tech.swlo_d != null); rows.sort((a, b) => Math.abs(a.tech.swlo_d) - Math.abs(b.tech.swlo_d)); }
+    else if (m === "nearLo") { rows = rows.filter(t => t.tech.swlo_d != null && capNear(t.tech.swlo_d)); rows.sort((a, b) => Math.abs(a.tech.swlo_d) - Math.abs(b.tech.swlo_d)); }
     else { rows = rows.filter(t => t.tech.swlo_d != null && t.tech.swlo_d < 0); rows.sort((a, b) => b.tech.swlo_d - a.tech.swlo_d); }
     return rows;
   }
@@ -1388,8 +1398,10 @@
     const head0 = '<div class="page-head"><h1>〽️ סווינג · Swing Highs & Lows</h1><div class="sub">רמות השיא והתחתית האחרונות (pivot של 5 נרות מכל צד) + מרחק המחיר מכל רמה · תמיכה/התנגדות ופריצות</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const hasTech = scanSource().some(t => t.tech && (t.tech.swhi_d != null || t.tech.swlo_d != null));
+    const isNear = swingState.mode === "nearHi" || swingState.mode === "nearLo";
     const controls = '<div class="panel filters"><h3>מצב סינון</h3><div class="frow"><div class="fgrp"><label>מצב</label><select id="swMode">' +
-      SW_MODES.map(o => '<option value="' + o.k + '"' + (swingState.mode === o.k ? " selected" : "") + ">" + o.t + "</option>").join("") + "</select></div></div>" +
+      SW_MODES.map(o => '<option value="' + o.k + '"' + (swingState.mode === o.k ? " selected" : "") + ">" + o.t + "</option>").join("") + "</select></div>" +
+      (isNear ? '<div class="fgrp"><label>מרחק מקס׳ (%)</label><input id="swMaxDist" type="number" step="0.5" min="0" placeholder="הכל" style="width:80px" value="' + swingState.maxDist + '"></div>' : "") + "</div>" +
       '<div class="note" style="margin-top:6px">〽️ <b>שיא סווינג</b> = הפיבוט הגבוה האחרון (נר שגבוה מ-5 נרות מכל צד) — התנגדות מעל. <b>תחתית סווינג</b> = הפיבוט הנמוך האחרון — תמיכה מתחת. המרחק הוא באחוזים: חיובי = המחיר מעל הרמה, שלילי = מתחת.</div></div>';
     if (!hasTech) return head0 + controls + '<div class="panel"><div class="note" style="margin:6px 0">⏳ נתוני הסווינג ייטענו מהסורק. רגע ומתעדכן.</div></div>';
     const rows = swRows();
@@ -1411,6 +1423,7 @@
   }
   function wireSwing() {
     const md = $("#swMode"); if (md) md.onchange = () => { swingState.mode = md.value; reRender(); };
+    const mdst = $("#swMaxDist"); if (mdst) mdst.onchange = () => { swingState.maxDist = mdst.value; reRender(); };
     wireCharts($("#page")); wireStars($("#page"));
     const cp = $("#swCopy");
     if (cp) cp.onclick = () => { const syms = swRows().slice(0, 300).map(t => t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
@@ -1624,12 +1637,14 @@
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [
     '<span class="cta-trophy">🏆</span> הצטרף לקהילת הדיסקורד של StratNinja',
-    "רוצה סוף־סוף להבין מה קורה בגרפים? 📊 בוא לקהילה",
-    "להיות לבד בשוק ההון זה קשה — בוא תסחור עם קהילה 🤝",
-    "עוד מתלבט אם להיכנס לעסקה? תתייעץ עם הקהילה קודם 💬",
-    "סטאפים, ניתוחים ולייבים כל יום — בקהילת StratNinja 🥷",
-    "נינג׳ות לא סוחרות לבד ⚔️ הצטרף לדיסקורד",
-    "חדשות בוקר, סורקים וכלים אוטומטיים — הכל בקהילה 🚀",
+    "רוצה סוף־סוף להבין מה באמת קורה בגרפים? 📊",
+    "לסחור לבד זה יקר — טעות אחת מכסה שנה של קהילה 🤝",
+    "עוד מתלבט על העסקה? תשמע דעה שנייה לפני שתלחץ 💬",
+    "סטאפים, ניתוחים ולייבים — כל יום, בזמן אמת 🥷",
+    "נינג׳ות לא סוחרות לבד ⚔️ בוא תצטרף",
+    "חדשות בוקר, סורקים וכלים אוטומטיים — הכל במקום אחד 🚀",
+    "השוק לא מחכה לאף אחד — אתה עדיין בחוץ? ⏰",
+    "המנויים כבר בפנים. אתה עדיין קורא באנרים 👀",
   ];
   function startCtaRotator() {
     const el = document.getElementById("ctaText");
