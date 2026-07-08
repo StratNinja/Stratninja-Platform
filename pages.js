@@ -961,7 +961,10 @@
         const ctx = c.getContext("2d");
         const scale = Math.max(S / img.width, S / img.height);   // cover
         const w = img.width * scale, h = img.height * scale;
-        ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);       // center-crop, no distortion
+        // focus point: 0=left .. 0.5=center .. 1=right. FOCUS_X<0.5 reveals more of the
+        // LEFT of the photo → the subject appears shifted RIGHT in the circle.
+        const FOCUS_X = 0.3, FOCUS_Y = 0.5;
+        ctx.drawImage(img, -(w - S) * FOCUS_X, -(h - S) * FOCUS_Y, w, h);
         _heroSquare = c.toDataURL("image/png");
       } catch (e) { _heroSquare = null; }
       cb(_heroSquare);
