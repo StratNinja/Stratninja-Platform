@@ -1979,6 +1979,63 @@
     fetchScanner();
   }
 
+  // ---- floating Hebrew news feed ----
+  let NEWS = null, _newsMin = false;
+  try { _newsMin = localStorage.getItem("sn_news_min") === "1"; } catch (e) {}
+  async function loadNews() {
+    try {
+      const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return;
+      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.news&select=data",
+        { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && j[0] && j[0].data) { NEWS = j[0].data; renderNewsFeed(); }
+    } catch (e) {}
+  }
+  function newsSession() {
+    try {
+      const et = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const m = et.getHours() * 60 + et.getMinutes(), wd = et.getDay();
+      if (wd === 0 || wd === 6) return "🔴 השוק סגור (סופ״ש)";
+      if (m >= 240 && m < 570) return "🟡 פרה-מרקט";
+      if (m >= 570 && m < 960) return "🟢 שוק פתוח";
+      if (m >= 960 && m < 1200) return "🟡 אפטר-מרקט";
+      return "🔴 השוק סגור";
+    } catch (e) { return ""; }
+  }
+  function timeAgoHe(iso) {
+    if (!iso) return "";
+    const d = new Date(iso.length <= 19 ? iso + "Z" : iso), s = (Date.now() - d.getTime()) / 1000;
+    if (isNaN(s)) return "";
+    if (s < 90) return "עכשיו";
+    if (s < 3600) return "לפני " + Math.round(s / 60) + " ד׳";
+    if (s < 86400) return "לפני " + Math.round(s / 3600) + " ש׳";
+    return "לפני " + Math.round(s / 86400) + " י׳";
+  }
+  function renderNewsFeed() {
+    const box = document.getElementById("newsFeed");
+    if (!box || !NEWS) return;
+    box.classList.remove("hidden");
+    if (_newsMin) {
+      box.className = "news-feed min";
+      box.innerHTML = '<button class="nf-pill" id="nfExpand">🗞️ חדשות · ' + ((NEWS.cards || []).length) + "</button>";
+      const ex = document.getElementById("nfExpand"); if (ex) ex.onclick = () => { _newsMin = false; try { localStorage.setItem("sn_news_min", "0"); } catch (e) {} renderNewsFeed(); };
+      return;
+    }
+    box.className = "news-feed";
+    const list = (NEWS.cards || []).map(c =>
+      '<a class="nf-item" href="' + escAttr(c.url || "#") + '" target="_blank" rel="noopener">' +
+      '<div class="nf-he">' + (c.he || c.en || "") + "</div>" +
+      '<div class="nf-meta">' + ((c.tk || []).slice(0, 3).map(t => '<span class="nf-tk">' + escAttr(t) + "</span>").join("")) +
+      '<span class="nf-src">' + escAttr(c.pub || "") + "</span><span class=\"nf-time\">" + timeAgoHe(c.ts) + "</span></div></a>").join("");
+    box.innerHTML =
+      '<div class="nf-head"><span class="nf-title">🗞️ חדשות בזמן אמת</span>' +
+      '<button class="nf-min" id="nfMin" title="מזער">–</button></div>' +
+      '<div class="nf-status">' + newsSession() + " · עודכן " + timeAgoHe(NEWS.updated) + "</div>" +
+      '<div class="nf-list">' + (list || '<div class="muted" style="padding:12px">אין חדשות כרגע.</div>') + "</div>";
+    const mn = document.getElementById("nfMin"); if (mn) mn.onclick = () => { _newsMin = true; try { localStorage.setItem("sn_news_min", "1"); } catch (e) {} renderNewsFeed(); };
+  }
+
   // ---- persistent live ticker (SPY / QQQ / BTC) ----
   let _btc = null, _btcTs = 0, _liveTs = 0;
   async function fetchBtc() {
@@ -2050,6 +2107,8 @@
     setInterval(updateSync, 1000);
     startCtaRotator();
     { const cam = document.getElementById("shareCam"); if (cam) { cam.classList.remove("hidden"); cam.onclick = () => captureShare(); } }
+    loadNews();
+    setInterval(loadNews, 300000);   // refresh the news feed every 5 min
   }
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [

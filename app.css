@@ -247,6 +247,26 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
   display:flex; align-items:center; justify-content:center; transition:transform .12s; }
 .share-cam:hover { transform:scale(1.08); }
 .share-cam.hidden { display:none; }
+/* floating Hebrew news feed */
+.news-feed { position:fixed; inset-block-end:74px; inset-inline-start:18px; inset-inline-end:auto; z-index:3800;
+  width:min(340px, calc(100vw - 36px)); background:var(--panel); border:1px solid var(--line); border-radius:14px;
+  box-shadow:0 10px 34px rgba(0,0,0,.45); overflow:hidden; }
+.news-feed.hidden { display:none; }
+.news-feed.min { width:auto; background:none; border:none; box-shadow:none; }
+.nf-pill { background:linear-gradient(135deg,#5865f2,#7c6cf0); color:#fff; border:none; cursor:pointer;
+  font-weight:700; font-size:13px; padding:9px 15px; border-radius:22px; box-shadow:0 4px 14px rgba(0,0,0,.35); }
+.nf-head { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; border-bottom:1px solid var(--line); }
+.nf-title { font-weight:800; font-size:14px; }
+.nf-min { background:rgba(255,255,255,.06); border:none; color:var(--ink); width:26px; height:26px; border-radius:7px; cursor:pointer; font-size:17px; line-height:1; }
+.nf-status { font-size:11px; color:var(--muted); padding:7px 14px; border-bottom:1px solid var(--line); }
+.nf-list { max-height:52vh; overflow-y:auto; }
+.nf-item { display:block; padding:11px 14px; border-bottom:1px solid rgba(255,255,255,.05); text-decoration:none; color:var(--ink); transition:background .12s; }
+.nf-item:hover { background:rgba(255,255,255,.045); }
+.nf-he { font-size:13px; line-height:1.45; font-weight:600; }
+.nf-meta { display:flex; align-items:center; gap:6px; margin-top:6px; flex-wrap:wrap; }
+.nf-tk { font-size:10px; font-weight:700; background:rgba(90,140,255,.16); color:#9db9ff; padding:2px 7px; border-radius:6px; }
+.nf-src { font-size:10px; color:var(--muted); }
+.nf-time { font-size:10px; color:var(--muted); margin-inline-start:auto; }
 /* journal discipline nudge */
 .discipline-warn { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px;
   border:1px solid rgba(224,179,65,.5); background:rgba(224,179,65,.1); }
