@@ -224,6 +224,18 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .nj-why-ico { font-size:15px; flex-shrink:0; }
 .td-tbl-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin:0; }
 .ext-hours { color:#e0b341; font-size:11px; font-weight:600; white-space:nowrap; }
+/* preset × favorites alerts */
+#alertBell { position:relative; }
+.al-badge { display:none; position:absolute; top:-4px; inset-inline-end:-4px; min-width:16px; height:16px; padding:0 4px; border-radius:8px;
+  background:#e0524f; color:#fff; font-size:10px; font-weight:800; align-items:center; justify-content:center; line-height:16px; }
+.al-prow, .al-frow { display:flex; align-items:center; gap:10px; padding:8px 11px; border-radius:9px; background:rgba(255,255,255,.03); margin:6px 0; }
+.al-toggle { margin-inline-start:auto; font-size:12px; }
+.al-frow .al-time { margin-inline-start:auto; font-size:11px; }
+.al-plist, .al-flist { max-height:230px; overflow:auto; }
+.sn-toast { position:fixed; inset-block-end:24px; inset-inline-start:50%; transform:translate(-50%,20px); z-index:9999;
+  background:linear-gradient(90deg, rgba(88,101,242,.97), rgba(124,108,240,.95)); color:#fff; font-weight:700; font-size:14px;
+  padding:12px 20px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.4); opacity:0; transition:.3s; pointer-events:none; max-width:90vw; }
+.sn-toast.show { opacity:1; transform:translate(-50%,0); }
 /* what-to-check-now (daily briefing) */
 .td-mode { font-size:20px; font-weight:800; margin:2px 0 10px; }
 .td-mode.pos { color:#4fe39b; } .td-mode.neg { color:#ff6b7a; } .td-mode.zero { color:#e0c760; }

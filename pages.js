@@ -720,6 +720,80 @@
     scanState.mtf = s.mtf ? JSON.parse(JSON.stringify(s.mtf)) : newMtf();
     Object.keys(techState).forEach(k => { if (k === "techOpen") return; if (t[k] !== undefined) techState[k] = t[k]; });
   }
+
+  // ---- preset × favorites ALERTS (client-side; reuses the real filter, no server duplication) ----
+  function evalPreset(preset) {
+    if (!preset || !preset.cfg) return [];
+    const snapS = JSON.parse(JSON.stringify(scanState)), snapT = JSON.parse(JSON.stringify(techState));
+    let syms = [];
+    try { applyScanConfig(preset.cfg); syms = filterRows(scanSource()).map(t => t.sym); } catch (e) { syms = []; }
+    Object.keys(snapS).forEach(k => { scanState[k] = snapS[k]; });
+    Object.keys(snapT).forEach(k => { techState[k] = snapT[k]; });
+    return syms;
+  }
+  function requestNotifyPerm() { try { if (window.Notification && Notification.permission === "default") Notification.requestPermission(); } catch (e) {} }
+  function snToast(msg) {
+    const t = document.createElement("div"); t.className = "sn-toast"; t.innerHTML = "🔔 " + msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.classList.add("show"), 10);
+    setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 4500);
+  }
+  function fireNotification(e) {
+    const body = e.sym + ' נכנסה לסריקה "' + e.preset + '"';
+    try {
+      if (window.Notification && Notification.permission === "granted") {
+        const n = new Notification("🔔 התראת StratNinja", { body: body, icon: "favicon.svg", tag: e.pid + e.sym });
+        n.onclick = () => { try { window.focus(); } catch (x) {} openAlertsFeed(); n.close(); };
+      }
+    } catch (x) {}
+    snToast(body);
+  }
+  function checkPresetAlerts() {
+    if (!window.Prefs || !(SCAN && SCAN.rows && SCAN.rows.length)) return;
+    const presets = (Prefs.scanPresets() || []).filter(p => p.alert);
+    const favs = Prefs.favorites();
+    if (!presets.length || !favs.length) return;
+    const today = new Date().toISOString().slice(0, 10), fresh = [];
+    presets.forEach(p => {
+      const matched = evalPreset(p);
+      matched.filter(s => favs.indexOf(s) >= 0).forEach(sym => {
+        if (Prefs.feedHas(p.id, sym, today)) return;
+        const entry = { pid: p.id, preset: p.name, sym: sym, ts: Date.now(), date: today, read: false };
+        Prefs.feedAdd(entry); fresh.push(entry);
+      });
+    });
+    if (fresh.length) { fresh.forEach(fireNotification); updateAlertBell(); }
+  }
+  function updateAlertBell() {
+    const b = document.getElementById("alBadge"); if (!b) return;
+    const n = window.Prefs ? Prefs.feedUnread() : 0;
+    b.textContent = n ? n : ""; b.style.display = n ? "inline-flex" : "none";
+  }
+  function openAlertsFeed() {
+    if (!window.Prefs) return;
+    Prefs.feedMarkRead(); updateAlertBell();
+    const presets = Prefs.scanPresets() || [], feed = Prefs.alertFeed();
+    const permTxt = (window.Notification && Notification.permission === "granted")
+      ? '<span class="pos">✓ התראות דפדפן פעילות</span>'
+      : '<button class="btn ghost" id="alNotifyPerm" style="font-size:12px">הפעל התראות דפדפן</button>';
+    const plist = presets.length ? presets.map(p =>
+      '<div class="al-prow"><span>' + escAttr(p.name) + '</span><button class="chip al-toggle' + (p.alert ? " on" : "") + '" data-alp="' + escAttr(p.id) + '">' + (p.alert ? "🔔 מופעל" : "כבוי") + "</button></div>").join("")
+      : '<div class="muted">אין עדיין סריקות שמורות. שמור פריסט בסורק העסקאות כדי להפעיל עליו התראה.</div>';
+    const flist = feed.length ? feed.slice(0, 50).map(e =>
+      '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted">נכנסה ל־"' + escAttr(e.preset) + '"</span><span class="muted al-time">' + new Date(e.ts).toLocaleString("he-IL") + "</span></div>").join("")
+      : '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>';
+    const body =
+      '<div class="note" style="margin-bottom:10px">🔔 קבל התראה כשמניה <b>מהמועדפים</b> שלך נכנסת לסריקה שמורה. ' + permTxt + "</div>" +
+      '<h3 style="margin:12px 0 6px;font-size:14px">הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div>" +
+      '<h3 style="margin:16px 0 6px;font-size:14px">התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div>";
+    modal("🔔 מרכז ההתראות", body);
+    document.querySelectorAll("[data-alp]").forEach(b => b.onclick = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); openAlertsFeed(); });
+    { const pm = $("#alNotifyPerm"); if (pm) pm.onclick = () => { requestNotifyPerm(); setTimeout(openAlertsFeed, 400); }; }
+    { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); openAlertsFeed(); }; }
+    wireCharts(document.getElementById("pgModal") || document);
+  }
+  window._snOpenAlerts = openAlertsFeed;
+  window._snCheckAlerts = checkPresetAlerts;
   const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
   const CAP_RANGES = { mega: [2e11, Infinity], large: [1e10, 2e11], mid: [2e9, 1e10], small: [3e8, 2e9], micro: [0, 3e8] };
   function fmtCap(n) {
@@ -1000,6 +1074,7 @@
         '<select id="presetSel">' + presetOpts + "</select>" +
         '<button class="btn ghost" id="presetSave">💾 שמור</button>' +
         (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הפריסט הנבחר">🗑</button>' : "") +
+        '<button class="btn ghost" id="alertBell" title="מרכז התראות — התראה כשמניה מהמועדפים נכנסת לסריקה">🔔<span class="al-badge" id="alBadge"></span></button>' +
       "</div></div>";
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וכל מניה מקבלת <b>Ninja Score</b> שמדרג כמה שווה לבדוק אותה עכשיו.</div></div>' + (isLive ? liveBanner() : DEMO) +
@@ -1099,6 +1174,7 @@
     { const psel = $("#presetSel"); if (psel) psel.onchange = () => { const id = psel.value; if (!id) return; const p = (window.Prefs.scanPresets() || []).find(x => x.id === id); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }
     { const psave = $("#presetSave"); if (psave) psave.onclick = () => { const name = (window.prompt("שם לסריקה השמורה:", "") || "").trim(); if (!name) return; window.Prefs.saveScanPreset(name, scanConfigSnapshot()); reRender(); }; }
     { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { const psel = $("#presetSel"); const id = psel ? psel.value : ""; if (!id) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } window.Prefs.deleteScanPreset(id); reRender(); }; }
+    { const bell = $("#alertBell"); if (bell) bell.onclick = () => openAlertsFeed(); updateAlertBell(); }
     document.querySelectorAll("[data-mtft]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtft].t = s.value; reRender(); });
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
@@ -1820,9 +1896,7 @@
   }
 
   let _scanLoaded = false;
-  async function loadScanner() {
-    if (_scanLoaded) return;
-    _scanLoaded = true;
+  async function fetchScanner() {
     try {
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL) return;
@@ -1830,8 +1904,17 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") reRender(); }
+      if (j && j[0] && j[0].data) {
+        SCAN = j[0].data;
+        if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") reRender();
+        checkPresetAlerts();   // fire preset × favorites alerts on fresh scan data
+      }
     } catch (e) { /* keep demo */ }
+  }
+  async function loadScanner() {
+    if (_scanLoaded) return;
+    _scanLoaded = true;
+    fetchScanner();
   }
 
   // ---- persistent live ticker (SPY / QQQ / BTC) ----
@@ -1898,6 +1981,8 @@
     setPage((PAGES[last] || last === "journal") ? last : "market");
     loadLive();
     setInterval(loadLive, 60000);
+    loadScanner();                                   // ensure scan data (for alerts) even off the scanner page
+    setInterval(() => { if (_scanLoaded) fetchScanner(); }, 300000);   // refresh scan + re-check alerts every 5 min
     updateTicker();
     setInterval(updateTicker, 60000);
     setInterval(updateSync, 1000);

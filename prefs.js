@@ -46,6 +46,14 @@ window.Prefs = (function () {
       const rec = { id: uid(), name: name, cfg: cfg }; d.scanPresets.push(rec); write(d); return rec;
     },
     deleteScanPreset(id) { const d = read(); d.scanPresets = (d.scanPresets || []).filter(p => p.id !== id); write(d); },
+    togglePresetAlert(id) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (p) { p.alert = !p.alert; write(d); } return p ? p.alert : false; },
+    // alert feed — fired (preset × favorite) matches
+    alertFeed() { return read().alertFeed || []; },
+    feedHas(pid, sym, date) { return (read().alertFeed || []).some(e => e.pid === pid && e.sym === sym && e.date === date); },
+    feedAdd(entry) { const d = read(); d.alertFeed = d.alertFeed || []; d.alertFeed.unshift(entry); if (d.alertFeed.length > 200) d.alertFeed = d.alertFeed.slice(0, 200); write(d); },
+    feedUnread() { return (read().alertFeed || []).filter(e => !e.read).length; },
+    feedMarkRead() { const d = read(); (d.alertFeed || []).forEach(e => e.read = true); write(d); },
+    feedClear() { const d = read(); d.alertFeed = []; write(d); },
     onChange(f) { listeners.push(f); },
     notify() { listeners.forEach(f => { try { f(); } catch (e) {} }); },  // used by cloudsync after a pull
   };
