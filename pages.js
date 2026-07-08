@@ -337,7 +337,7 @@
     const b = LIVE && LIVE.breadth;
     if (!b || !b.total) return "";
     const ap = (b.above / b.total * 100);
-    return '<div class="panel breadth-panel clickable" id="breadthBar"><h3>רוחב שוק · Breadth <span class="muted" style="font-size:12px">' + b.total + ' מניות · לחץ לפירוט לפי סקטור →</span></h3>' +
+    return '<div class="panel breadth-panel clickable" id="breadthBar"><h3>רוחב שוק · Breadth <span class="muted" style="font-size:12px">S&P 500 · ' + b.total + ' מניות · לחץ לפירוט לפי סקטור →</span></h3>' +
       '<div class="bigbreadth"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
       '<div class="bkey" style="margin-top:10px;font-size:13px"><span class="pos">🟢 ' + b.above + " מעל פתיחה</span><span class=\"neg\">🔴 " + b.below + ' מתחת</span><span class="muted">' + ap.toFixed(0) + "% ירוקים</span></div></div>";
   }
