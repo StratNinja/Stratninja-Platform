@@ -7,6 +7,8 @@
     $("#landing").classList.add("hidden");
     $("#appRoot").classList.remove("hidden");
     document.body.classList.add("in-app");
+    // first-time users get the guided tour once (the 📖 button re-opens it anytime)
+    if (window.SNGuide && window.SNGuide.autoStartIfNew) window.SNGuide.autoStartIfNew();
   }
   function showLanding() {
     $("#appRoot").classList.add("hidden");

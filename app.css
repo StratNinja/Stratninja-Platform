@@ -713,3 +713,40 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .social.ig:hover { background: #e1306c; border-color: #e1306c; }
 .social.tk:hover { background: #010101; border-color: #69c9d0; }
 .social.x:hover { background: #010101; border-color: #444; }
+
+/* ===== help/guide button (next to the logo) ===== */
+.guide-btn { position: relative; margin-inline-start: auto; width: 34px; height: 34px; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center; font-size: 17px; cursor: pointer;
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; color: var(--ink); transition: .15s; }
+.guide-btn:hover { border-color: var(--accent); transform: translateY(-1px); background: rgba(88,101,242,.14); }
+.guide-btn .gb-q { position: absolute; top: -5px; inset-inline-end: -5px; width: 15px; height: 15px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+
+/* ===== MA filter plain-language hint ===== */
+.ma-hint { margin-top: 6px; font-size: 11.5px; line-height: 1.5; color: var(--muted); max-width: 340px; }
+.ma-hint b { color: var(--ink); }
+
+/* reset-filters button in the scanner top bar */
+.scan-topbar .stb-reset { font-size: 12px; font-weight: 600; height: 30px; padding: 0 12px; border-radius: 8px; margin-inline-start: 4px; }
+
+/* ===== onboarding guide (guided tour) ===== */
+.guide-wrap { position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 26px;
+  background: linear-gradient(to top, rgba(6,8,14,.34), rgba(6,8,14,0) 32%); }
+.guide-card { pointer-events: auto; position: relative; width: 100%; max-width: 460px; text-align: center;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px 20px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.55); animation: gdPop .34s cubic-bezier(.2,.9,.3,1.2); }
+@keyframes gdPop { 0% { opacity: 0; transform: translateY(18px) scale(.97); } 100% { opacity: 1; transform: none; } }
+.guide-x { position: absolute; top: 12px; inset-inline-end: 12px; width: 28px; height: 28px; border-radius: 8px;
+  background: transparent; border: 1px solid var(--line); color: var(--muted); cursor: pointer; font-size: 13px; }
+.guide-x:hover { color: var(--ink); border-color: #3a4150; }
+.gd-ico { font-size: 40px; line-height: 1; margin-bottom: 8px; }
+.gd-step { font-size: 11px; font-weight: 700; letter-spacing: .05em; color: var(--accent); text-transform: uppercase; }
+.gd-title { margin: 5px 0 8px; font-size: 20px; font-weight: 800; }
+.gd-text { margin: 0 auto 16px; font-size: 14px; line-height: 1.7; color: var(--muted); max-width: 400px; }
+.gd-text b { color: var(--ink); }
+.gd-dots { display: flex; gap: 6px; justify-content: center; margin-bottom: 16px; }
+.gd-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); transition: .2s; }
+.gd-dot.on { background: var(--accent); transform: scale(1.25); }
+.gd-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gd-nav .btn { min-width: 90px; height: 38px; font-size: 14px; font-weight: 700; border-radius: 10px; }

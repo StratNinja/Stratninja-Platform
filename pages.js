@@ -1132,6 +1132,17 @@
     facts.push({ i: "🔎", t: "הסינון צימצם ל-<b>" + n + "</b> מתוך " + universe + " מניות (" + Math.round(n / universe * 100) + "% מהיקום)" });
     return facts;
   }
+  // plain-language explanation of exactly what the "מיקום מול ממוצע" filter does right now
+  function maRelHint() {
+    const ma = techState.maType + techState.maPeriod, p = techState.maPct;
+    switch (techState.maRel) {
+      case "above": return "מציג רק מניות שהמחיר שלהן <b>מעל</b> " + ma + " (מגמה חיובית / מעל התמיכה).";
+      case "below": return "מציג רק מניות שהמחיר שלהן <b>מתחת</b> ל-" + ma + " (חולשה / מתחת להתנגדות).";
+      case "near":  return "מציג מניות שהמחיר <b>עד " + p + "%</b> מ-" + ma + " — נוגעות/נבחנות מול הממוצע (אזור כניסה).";
+      case "far":   return "מציג מניות שהמחיר <b>יותר מ-" + p + "%</b> מ-" + ma + " — מתוחות / רחוקות מהממוצע.";
+      default: return "";
+    }
+  }
   function renderScanner() {
     const all = scanSource();
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
@@ -1154,7 +1165,6 @@
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp"><label>שווי שוק</label><select id="scanCap">' + CAP_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.cap === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
-        '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="scanReset">איפוס</button></div>' +
       "</div></div>";
 
     // ---- technical filters (collapsible) ----
@@ -1166,12 +1176,12 @@
       techInner = !hasTech
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
         : '<div class="frow tech-row">' +
-            '<div class="fgrp"><label>מרחק מ־MA</label><div class="chips" style="align-items:center">' +
+            '<div class="fgrp"><label>מיקום מול ממוצע (MA)</label><div class="chips" style="align-items:center">' +
               '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
               '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
-              '<select id="tMaRel">' + opt("off", techState.maRel, "— הכל") + opt("near", techState.maRel, "קרוב ±") + opt("far", techState.maRel, "רחוק ±") + opt("above", techState.maRel, "מעל") + opt("below", techState.maRel, "מתחת") + '</select>' +
+              '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע") + '</select>' +
               ((techState.maRel === "near" || techState.maRel === "far") ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
-            "</div></div>" +
+            "</div>" + (techState.maRel !== "off" ? '<div class="ma-hint">' + maRelHint() + "</div>" : "") + "</div>" +
             '<div class="fgrp"><label>RSI</label><div class="chips" style="align-items:center"><input id="tRsiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMin + '"><span class="muted">–</span><input id="tRsiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMax + '"></div></div>' +
             '<div class="fgrp"><label>MFI · כסף חכם</label><div class="chips" style="align-items:center"><input id="tMfiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMin + '"><span class="muted">–</span><input id="tMfiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMax + '"></div></div>' +
             '<div class="fgrp"><label>RVOL ≥</label><input id="tRvolMin" type="number" step="0.1" min="0" placeholder="—" style="width:62px" value="' + techState.rvolMin + '"></div>' +
@@ -1296,7 +1306,8 @@
     const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
     const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '">' + escAttr(p.name) + "</option>").join("");
     const topBar = '<div class="panel filters scan-topbar">' +
-      '<div class="stb-grp"><span class="muted stb-lbl">🧩 פאנלים:</span>' + panelChips + "</div>" +
+      '<div class="stb-grp"><span class="muted stb-lbl">🧩 פאנלים:</span>' + panelChips +
+        '<button class="btn ghost stb-reset" id="scanReset" title="נקה את כל הפילטרים">↺ איפוס פילטרים</button>' + "</div>" +
       '<div class="stb-grp stb-presets"><span class="muted stb-lbl">⭐ סריקות שמורות:</span>' +
         '<select id="presetSel">' + presetOpts + "</select>" +
         '<button class="btn ghost" id="presetSave">💾 שמור</button>' +
@@ -2275,8 +2286,64 @@
     s.innerHTML = '<span class="lt-dot pos" title="' + tip + '"></span><span class="lt-fresh">🕐 עודכן ' + hhmm(upd) + '</span><span class="muted lt-next">· סריקה הבאה ~' + nextTxt + '</span>';
   }
   window._snUpdateTicker = updateTicker;
+  // ================= onboarding GUIDE (guided tour) =================
+  const GUIDE_STEPS = [
+    { page: null, ico: "👋", t: "ברוך הבא ל-StratNinja", d: "סיור קצר שיראה לך איפה כל דבר ואיך משתמשים באתר. אפשר לדלג בכל רגע — ותמיד לפתוח שוב מהכפתור 📖 שליד הלוגו." },
+    { page: "market", ico: "📊", t: "סקירת שוק", d: "תמונת השוק במבט אחד: לאן נעים המדדים, ה-VIX (מדד הפחד), רוחב השוק, מפת הנרות של The Strat, הסקטורים החזקים/חלשים והגאפרים של היום." },
+    { page: "sp500", ico: "🗺️", t: "S&P 500", d: "מפת חום של 500 החברות הגדולות — לראות בבירור לאן הכסף זורם היום, לפי סקטורים וגודל חברה." },
+    { page: "sectors", ico: "🗂️", t: "סקטורים", d: "פירוק לכל סקטור ותת-סקטור: מי מוביל, מי בפיגור, ואילו מניות בולטות בכל אחד." },
+    { page: "today", ico: "🎯", t: "מה לבדוק עכשיו", d: "קיצור דרך: האחזקה הבולטת בכל סקטור והתנועות החשובות — מכאן כדאי להתחיל את הבדיקה היומית." },
+    { page: "scanner", ico: "🔍", t: "סורק העסקאות — הלב של המערכת", d: "מסננים מניות לפי תבניות Strat, טיימפריימים ופילטרים טכניים. כל מניה מקבלת <b>Ninja Score</b> (0–100) שמדרג את איכות הסטאפ. אפשר לשמור <b>סריקות מועדפות (PRESETS)</b> ולקבל 🔔 התראה כשמניה מהמועדפים נכנסת לסריקה." },
+    { page: "favorites", ico: "⭐", t: "מועדפים", d: "סמן ★ על כל מניה כדי להוסיף אותה לרשימת המעקב האישית — נשמרת בענן ומסתנכרנת בין כל המכשירים שלך." },
+    { page: "journal", ico: "📅", t: "יומן מסחר", d: "העלה דוח מהברוקר או הזן עסקאות ידנית — ותקבל דשבורד רווח/הפסד, לוח שנה וסטטיסטיקות אישיות, בסגנון Tradezella." },
+    { page: null, ico: "🗞️", t: "חדשות, שיתוף והתראות לפלאפון", d: "בסרגל הצד: 🗞️ חדשות שוק מתורגמות לעברית, ו-📷 שיתוף מסך. בסורק אפשר להפעיל <b>התראות לפלאפון (Push)</b> שיקפיצו אותך גם כשהאתר סגור." },
+    { page: null, ico: "🚀", t: "זהו — אתה מוכן!", d: "תמיד אפשר לפתוח את המדריך שוב מהכפתור 📖 שליד הלוגו. בהצלחה במסחר!" },
+  ];
+  let _guideIdx = 0;
+  function guideRender() {
+    const s = GUIDE_STEPS[_guideIdx], n = GUIDE_STEPS.length;
+    const isLast = _guideIdx === n - 1, isFirst = _guideIdx === 0;
+    const dots = GUIDE_STEPS.map((_, i) => '<span class="gd-dot' + (i === _guideIdx ? " on" : "") + '"></span>').join("");
+    let el = document.getElementById("snGuide");
+    if (!el) { el = document.createElement("div"); el.id = "snGuide"; el.className = "guide-wrap"; document.body.appendChild(el); }
+    el.innerHTML =
+      '<div class="guide-card">' +
+        '<button class="guide-x" id="gdX" title="סגור">✕</button>' +
+        '<div class="gd-ico">' + s.ico + "</div>" +
+        '<div class="gd-step">שלב ' + (_guideIdx + 1) + " מתוך " + n + "</div>" +
+        '<h3 class="gd-title">' + s.t + "</h3>" +
+        '<p class="gd-text">' + s.d + "</p>" +
+        '<div class="gd-dots">' + dots + "</div>" +
+        '<div class="gd-nav">' +
+          (isFirst ? '<span></span>' : '<button class="btn ghost" id="gdPrev">הקודם</button>') +
+          '<button class="btn primary" id="gdNext">' + (isLast ? "סיום ✓" : "הבא →") + "</button>" +
+        "</div>" +
+      "</div>";
+    el.querySelector("#gdX").onclick = guideClose;
+    el.querySelector("#gdNext").onclick = () => { if (isLast) guideClose(); else guideGo(_guideIdx + 1); };
+    const pv = el.querySelector("#gdPrev"); if (pv) pv.onclick = () => guideGo(_guideIdx - 1);
+  }
+  function guideGo(i) {
+    _guideIdx = Math.max(0, Math.min(GUIDE_STEPS.length - 1, i));
+    const p = GUIDE_STEPS[_guideIdx].page;
+    if (p) setPage(p);
+    guideRender();
+  }
+  function guideStart() { _guideIdx = 0; const p = GUIDE_STEPS[0].page; if (p) setPage(p); guideRender(); }
+  function guideClose() { const el = document.getElementById("snGuide"); if (el) el.remove(); try { localStorage.setItem("sn_guide_seen", "1"); } catch (e) {} }
+  window.SNGuide = {
+    start: guideStart,
+    autoStartIfNew: function () {
+      let seen; try { seen = localStorage.getItem("sn_guide_seen"); } catch (e) {}
+      if (seen) return;
+      try { localStorage.setItem("sn_guide_seen", "1"); } catch (e) {}  // set immediately so it auto-runs only once
+      setTimeout(() => { if (document.getElementById("page")) guideStart(); }, 500);
+    },
+  };
+
   function initNav() {
     document.querySelectorAll(".side-nav a[data-page]").forEach(a => a.onclick = () => setPage(a.dataset.page));
+    { const gb = document.getElementById("guideBtn"); if (gb) gb.onclick = () => guideStart(); }
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
     try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}
