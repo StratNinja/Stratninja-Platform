@@ -334,10 +334,11 @@
     }).join("");
   }
   function breadthBar() {
-    const b = LIVE && LIVE.breadth;
+    const b = mktU().breadth;
     if (!b || !b.total) return "";
     const ap = (b.above / b.total * 100);
-    return '<div class="panel breadth-panel clickable" id="breadthBar"><h3>רוחב שוק · Breadth <span class="muted" style="font-size:12px">S&P 500 · ' + b.total + ' מניות · לחץ לפירוט לפי סקטור →</span></h3>' +
+    const uniLbl = marketUniverse === "sp500" ? "S&P 500" : "StratNinja";
+    return '<div class="panel breadth-panel clickable" id="breadthBar"><h3>רוחב שוק · Breadth <span class="muted" style="font-size:12px">' + uniLbl + " · " + b.total + ' מניות · לחץ לפירוט לפי סקטור →</span></h3>' +
       '<div class="bigbreadth"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
       '<div class="bkey" style="margin-top:10px;font-size:13px"><span class="pos">🟢 ' + b.above + " מעל פתיחה</span><span class=\"neg\">🔴 " + b.below + ' מתחת</span><span class="muted">' + ap.toFixed(0) + "% ירוקים</span></div></div>";
   }
@@ -372,10 +373,15 @@
   const _CM_BUCKET_HE = { "3G": "3 ירוק (התרחבות שורית)", "F2D": "היפוך 2D (reclaim)", "2U": "2U (המשך שורי)", "1": "Inside", "2D": "2D (המשך דובי)", "F2U": "היפוך 2U (rejection)", "3R": "3 אדום (התרחבות דובית)" };
   const _CM_TF_HE = { D: "היומי", W: "השבועי", M: "החודשי", Q: "הרבעוני", Y: "השנתי" };
   let _cmFacts = [], _cmTimer = null;
-  let cmapUniverse = "sp500";   // "sp500" (default, clean) | "all" (full coverage for discovery)
+  // global universe toggle for the market-overview page: "sp500" (default) | "all" (StratNinja world)
+  let marketUniverse = "sp500", _mktFlip = false;
+  function mktU() {
+    const u = LIVE && LIVE.universes;
+    return (u && u[marketUniverse]) ? u[marketUniverse] : (LIVE || {});
+  }
   function cmapRows() {
     const all = (SCAN && SCAN.rows) || [];
-    if (cmapUniverse === "sp500") { const sp = all.filter(r => r.sp); if (sp.length) return sp; }
+    if (marketUniverse === "sp500") { const sp = all.filter(r => r.sp); if (sp.length) return sp; }
     return all;
   }
   function candleMapFacts() {
@@ -433,10 +439,7 @@
     const insightBox = _cmFacts.length
       ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="cmInsightText">' + firstFact + "</span></div>"
       : "";
-    const uni = '<span class="cm-uni-wrap">' +
-      '<button class="chip cm-uni' + (cmapUniverse === "sp500" ? " on" : "") + '" data-cmuni="sp500">S&P 500</button>' +
-      '<button class="chip cm-uni' + (cmapUniverse === "all" ? " on" : "") + '" data-cmuni="all">הכל</button></span>';
-    return '<div class="panel"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימה</span></span>' + uni + "</h3>" +
+    return '<div class="panel"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימה</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div>" + insightBox + "</div>";
   }
   function openCandleMapDrill(bucket, tfk) {
@@ -468,9 +471,15 @@
       : '<div class="v muted">—</div>';
     const idxPanel = '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th><th>% יומי</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div></div>";
     const vixCard = '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>";
+    const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
+      '<span class="uni-lbl">עולם המניות:</span>' +
+      '<button class="uni-btn' + (marketUniverse === "sp500" ? " on" : "") + '" data-uni="sp500">S&P 500</button>' +
+      '<button class="uni-btn' + (marketUniverse === "all" ? " on" : "") + '" data-uni="all">🥷 StratNinja</button>' +
+      "</div>";
     return (
       '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">תמונת השוק במבט אחד: לאן נעים המדדים, מצב הפחד (VIX), רוחב השוק ואילו סקטורים חזקים או חלשים היום.</div></div>' +
-      '<div class="mkt-dash">' +
+      uniSwitch +
+      '<div class="mkt-dash' + (_mktFlip ? " uni-flip" : "") + '">' +
         '<div class="mkt-dash-top">' +
           '<div class="mkt-dash-left">' +
             '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
@@ -479,10 +488,10 @@
           '<div class="mkt-dash-right">' + candleMapPanel() + "</div>" +
         "</div>" +
         '<div class="mkt-dash-bottom">' +
-          '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(LIVE.sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
-          '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(LIVE.sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
-          '<div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((LIVE.leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
-          '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((LIVE.laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div>" +
+          '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(mktU().sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
+          '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(mktU().sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
+          '<div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((mktU().leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
+          '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((mktU().laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div>" +
         "</div>" +
       "</div>"
     );
@@ -490,7 +499,11 @@
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
-    document.querySelectorAll("[data-cmuni]").forEach(el => el.onclick = () => { cmapUniverse = el.dataset.cmuni; reRender(); });
+    document.querySelectorAll("[data-uni]").forEach(el => el.onclick = () => {
+      if (marketUniverse === el.dataset.uni) return;
+      marketUniverse = el.dataset.uni; _mktFlip = true; reRender();
+    });
+    _mktFlip = false;   // one-shot: the flip animation only plays on the switch render
     // rotating "did you know" Candle Map insight
     if (_cmTimer) { clearInterval(_cmTimer); _cmTimer = null; }
     if (_cmFacts && _cmFacts.length > 1) {

@@ -499,8 +499,15 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .cmap-table td { text-align: center; padding: 0 4px; }
 .cmap-table .cm-type { font-weight: 800; font-size: 14px; color: var(--ink); text-align: start; width: 50px; }
 .cmap-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; }
-.cm-uni-wrap { display: inline-flex; gap: 4px; }
-.cm-uni { font-size: 11px; padding: 3px 10px; }
+/* global StratNinja ⇄ S&P 500 universe switch (market overview) */
+.uni-switch { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; }
+.uni-lbl { font-size: 12px; color: var(--muted); margin-inline-end: 2px; }
+.uni-btn { font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 9px; cursor: pointer;
+  background: rgba(255,255,255,.05); color: var(--muted); border: 1px solid var(--line); transition: .15s; }
+.uni-btn.on { background: linear-gradient(90deg, rgba(88,101,242,.92), rgba(124,108,240,.85)); color: #fff; border-color: transparent; }
+.uni-btn:hover:not(.on) { color: var(--ink); }
+@keyframes uniFlip { 0% { opacity: .2; transform: rotateX(7deg) translateY(8px); } 100% { opacity: 1; transform: none; } }
+.uni-flip { animation: uniFlip .42s ease; transform-origin: top center; }
 .cm-pill { display: block; padding: 6px 0; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; min-width: 42px; }
 .cm-click { cursor: pointer; transition: .12s; }
 .cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }
