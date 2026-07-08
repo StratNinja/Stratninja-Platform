@@ -244,15 +244,27 @@
     // if several TFs are selected → default to the LOWEST (shortest) one; order low→high = D,W,M,Q,Y
     const order = ["D", "W", "M", "Q", "Y"];
     const derived = opts.tf || (order.find(x => scanState.tfs.indexOf(x) >= 0) || "D");
+    // lookback ranges (how far back to view) — each picks a sensible candle interval
+    const CG_RANGE = [
+      { k: "1D", he: "תוך יומי", iv: "15", rng: "1D" },
+      { k: "5D", he: "5 ימים", iv: "60", rng: "5D" },
+      { k: "1M", he: "חודש", iv: "D", rng: "1M" },
+      { k: "3M", he: "רבעון", iv: "D", rng: "3M" },
+      { k: "6M", he: "חצי שנה", iv: "D", rng: "6M" },
+      { k: "12M", he: "שנה", iv: "D", rng: "12M" },
+      { k: "60M", he: "5 שנים", iv: "W", rng: "60M" },
+    ];
+    const RANGE_DEF = { D: "6M", W: "12M", M: "60M", Q: "60M", Y: "60M" };
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
     const shown = rows.slice(0, GCAP);
     if (!shown.length) { modal("📊 תצוגת גרפים", '<div class="note" style="padding:24px;text-align:center">אין מניות להצגה.</div>', "chartgrid"); return; }
-    let curTf = derived;
-    function cgSrc(sym, tf) {
+    let curRange = RANGE_DEF[derived] || "6M";
+    function cgSrc(sym, rk) {
+      const R = CG_RANGE.find(x => x.k === rk) || CG_RANGE[4];
       return "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(sym) + "&symbol=" + encodeURIComponent(sym) +
-        "&interval=" + (CG_IV[tf] || "D") + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York";
+        "&interval=" + R.iv + "&range=" + R.rng + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York";
     }
-    function cellsHtml(tf) {
+    function cellsHtml(rk) {
       // charts are NOT rendered upfront — each is a placeholder that loads its iframe only
       // when it scrolls into view (see observeGrid), so the first row appears in ~2s instead of ~20s.
       return shown.map(t => {
@@ -263,17 +275,17 @@
             '<span class="cg-price">' + money(t.price) + " " + pct(t.chg) + "</span>" +
             '<a class="cg-tv" href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(t.sym) + '" target="_blank" rel="noopener" title="פתח ב-TradingView">↗</a>' +
           "</div>" +
-          '<div class="cg-frame cg-ph" data-src="' + cgSrc(t.sym, tf) + '"><span class="cg-spin"></span></div>' +
+          '<div class="cg-frame cg-ph" data-src="' + cgSrc(t.sym, rk) + '"><span class="cg-spin"></span></div>' +
         "</div>";
       }).join("");
     }
     const more = rows.length > GCAP ? ' · מוצגות ' + GCAP + " מתוך " + rows.length : "";
-    const tfBtns = order.map(x => '<button class="chip cg-tfb' + (x === curTf ? " on" : "") + '" data-cgtf="' + x + '" title="' + CG_TF_HE[x] + '">' + x + "</button>").join("");
-    const tfSel = '<div class="cg-tfsel"><span class="muted" style="font-size:12px">טיימפריים:</span>' + tfBtns +
+    const rBtns = CG_RANGE.map(x => '<button class="chip cg-tfb' + (x.k === curRange ? " on" : "") + '" data-cgrange="' + x.k + '">' + x.he + "</button>").join("");
+    const tfSel = '<div class="cg-tfsel"><span class="muted" style="font-size:12px">טווח:</span>' + rBtns +
       '<span class="muted" style="font-size:12px">· ' + shown.length + " מניות" + more + "</span></div>";
     const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
       '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button></div>';
-    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + dens + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curTf) + "</div>", "chartgrid");
+    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + dens + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
@@ -306,11 +318,11 @@
       if (grid) grid.className = "cg-grid cg-" + b.dataset.cg;
       document.querySelectorAll("[data-cg]").forEach(x => x.classList.toggle("on", x === b));
     });
-    // manual timeframe selector — rebuilds the charts in place (re-observes for lazy loading)
-    document.querySelectorAll("[data-cgtf]").forEach(b => b.onclick = () => {
-      curTf = b.dataset.cgtf;
-      if (grid) { grid.innerHTML = cellsHtml(curTf); wireStars(grid); wireCharts(grid); observeGrid(); }
-      document.querySelectorAll("[data-cgtf]").forEach(x => x.classList.toggle("on", x === b));
+    // manual range (lookback) selector — rebuilds the charts in place (re-observes for lazy loading)
+    document.querySelectorAll("[data-cgrange]").forEach(b => b.onclick = () => {
+      curRange = b.dataset.cgrange;
+      if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); }
+      document.querySelectorAll("[data-cgrange]").forEach(x => x.classList.toggle("on", x === b));
     });
   }
   function wireCharts(scope) {
