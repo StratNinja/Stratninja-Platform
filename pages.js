@@ -696,6 +696,9 @@
     if (col === "dhi52") return k.dhi52;
     if (col === "atrp") return k.atrp;
     if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
+    if (col === "comp") return _compSpread(k);
+    if (col === "bbsq") return k.bbsq;
+    if (col === "swd") return techState.swSide === "low" ? k.swlo_d : k.swhi_d;
     return null;
   }
   function sortRows(rows) {
@@ -824,6 +827,11 @@
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
             '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
+            '<div class="fgrp"><label>דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.compMax + '"></div>' +
+            '<div class="fgrp"><label>בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:66px" value="' + techState.bbSqMax + '"></div>' +
+            '<div class="fgrp"><label>סווינג</label><div class="chips" style="align-items:center"><select id="tSwSide">' +
+              opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
+              "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>";
     }
     const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">נטרלי · שנה ערך כדי לסנן</span>';
@@ -857,6 +865,9 @@
       { key: "atrp", th: "ATR%", cell: k => "<td>" + (k.atrp == null ? "—" : k.atrp.toFixed(2) + "%") + "</td>", active: _atrp() > 0 },
       { key: "dma", th: "Δ " + maLabel, cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
+      { key: "comp", th: "דחיסת MA", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
+      { key: "bbsq", th: "BB דחיסה", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
+      { key: "swd", th: "Δ סווינג", cell: k => "<td>" + dPct(techState.swSide === "low" ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
     ];
     // a filter becoming active auto-adds its column (once); the user can still remove it via the chip
     optCols.forEach(c => { if (c.active && colState[c.key] == null) colState[c.key] = true; });
@@ -975,6 +986,10 @@
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
         if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
         if (_atrp() > 0 && (k.atrp == null || k.atrp < _atrp())) return false;
+        if (_compActive()) { const sp = _compSpread(k); if (sp == null || sp > parseFloat(techState.compMax)) return false; }
+        if (_bbActive() && (k.bbsq == null || k.bbsq > parseFloat(techState.bbSqMax))) return false;
+        if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
+        if (techState.swSide === "low" && (k.swlo_d == null || Math.abs(k.swlo_d) > techState.swPct)) return false;
       }
       return true;
     });
@@ -1018,6 +1033,10 @@
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
+    bind("tCompMax", "onchange", e => { techState.compMax = e.target.value; reRender(); });
+    bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
+    bind("tSwSide", "onchange", e => { techState.swSide = e.target.value; reRender(); });
+    bind("tSwPct", "onchange", e => { techState.swPct = parseFloat(e.target.value) || 0; reRender(); });
     document.querySelectorAll("[data-col]").forEach(b => b.onclick = () => { colState[b.dataset.col] = !colState[b.dataset.col]; reRender(); });
     const grid = $("#scanGrid");
     if (grid) grid.onclick = () => openScannerGrid();
@@ -1045,8 +1064,21 @@
     ext52: "off", ext52Pct: 3,
     atrpMin: "",                 // ATR as % of price ≥
     chgMin: "", chgMax: "",      // daily % move, from–to (signed)
+    compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
+    bbSqMax: "",                 // Bollinger squeeze percentile ≤
+    swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
   };
   const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
+  const COMP_MAS = ["20", "50", "100", "200"];
+  function _compSpread(k) {
+    if (!k || !k.dsma) return null;
+    const vals = COMP_MAS.map(p => k.dsma[p]).filter(v => v != null);
+    if (vals.length < 2) return null;
+    return Math.max.apply(null, vals) - Math.min.apply(null, vals);
+  }
+  function _compActive() { return techState.compMax !== "" && !isNaN(parseFloat(techState.compMax)); }
+  function _bbActive() { return techState.bbSqMax !== "" && !isNaN(parseFloat(techState.bbSqMax)); }
+  function _swActive() { return techState.swSide === "high" || techState.swSide === "low"; }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
@@ -1054,7 +1086,7 @@
     return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
-      _atrp() > 0 || _chgActive();
+      _atrp() > 0 || _chgActive() || _compActive() || _bbActive() || _swActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -1067,6 +1099,9 @@
     if (techState.ext52 !== "off") n++;
     if (_atrp() > 0) n++;
     if (_chgActive()) n++;
+    if (_compActive()) n++;
+    if (_bbActive()) n++;
+    if (_swActive()) n++;
     return n;
   }
   function resetTech() {
@@ -1075,6 +1110,7 @@
     techState.rvolMin = ""; techState.volMin = 0; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = "";
+    techState.compMax = ""; techState.bbSqMax = ""; techState.swSide = "off"; techState.swPct = 2;
   }
   function fmtVol(n) {
     if (n == null) return "—";
