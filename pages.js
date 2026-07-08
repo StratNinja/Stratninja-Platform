@@ -649,7 +649,7 @@
   }
 
   // ========== SCANNER ==========
-  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
   const colState = {};
@@ -726,7 +726,7 @@
   function resetScan() {
     scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
     scanState.sector = "all"; scanState.subsec = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
-    scanState.mtf = newMtf();
+    scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
   }
   function scanSource() {
@@ -827,11 +827,6 @@
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
             '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
-            '<div class="fgrp"><label>דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.compMax + '"></div>' +
-            '<div class="fgrp"><label>בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:66px" value="' + techState.bbSqMax + '"></div>' +
-            '<div class="fgrp"><label>סווינג</label><div class="chips" style="align-items:center"><select id="tSwSide">' +
-              opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
-              "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>";
     }
     const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">נטרלי · שנה ערך כדי לסנן</span>';
@@ -849,6 +844,24 @@
     }
     const mtfBadge = mtfCnt ? ' <span class="badge-ftfc">' + mtfCnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">תנאי נפרד לכל טיימפריים</span>';
     const mtfPanel = '<div class="panel filters"><h3 id="mtfToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>🔀 ניתוח מרובה-זמן (MTF)' + mtfBadge + '</span><span style="font-size:14px">' + (scanState.mtfOpen ? "▲" : "▼") + "</span></h3>" + mtfInner + "</div>";
+
+    // ---- indicator scanners (compression / Bollinger / swing) — collapsible, stack AND on top of everything ----
+    const indCnt = indActiveCount();
+    let indInner = "";
+    if (scanState.indOpen) {
+      indInner = !hasTech
+        ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
+        : '<div class="frow tech-row">' +
+            '<div class="fgrp"><label>📉 דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(SMA 20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.compMax + '"></div>' +
+            '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
+            '<div class="fgrp"><label>〽️ סווינג</label><div class="chips" style="align-items:center"><select id="tSwSide">' +
+              opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
+              "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+          "</div>" +
+          '<div class="note" style="margin-top:8px;font-size:11px">💡 <b>דחיסת ממוצעים</b> = טווח ה-SMA כאחוז מהמחיר (נמוך=צפוף). <b>בולינגר דחיסה</b> = אחוזון רוחב הרצועות מול 6 חודשים (נמוך=לפני פריצה). <b>סווינג</b> = קרוב לרמת שיא/תחתית אחרונה. כל פילטר מוסיף עמודה וממוין בלחיצה על הכותרת — ומצטרף (AND) לכל שאר הסינונים.</div>';
+    }
+    const indBadge = indCnt ? ' <span class="badge-ftfc">' + indCnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">דחיסה · בולינגר · סווינג</span>';
+    const indPanel = '<div class="panel filters"><h3 id="indToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>🎯 סורקי אינדיקטורים' + indBadge + '</span><span style="font-size:14px">' + (scanState.indOpen ? "▲" : "▼") + "</span></h3>" + indInner + "</div>";
 
     const techOn = techActive();
     const maLabel = techState.maType + techState.maPeriod;
@@ -889,7 +902,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt || mtfCnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt || mtfCnt || indCnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -914,7 +927,7 @@
 
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">תבניות Strat + קונפלואנס רב-טיימפריים · עם פילטרים טכניים (SMA/RSI/ווליום) לשילוב</div></div>' + (isLive ? liveBanner() : DEMO) +
-      filters + mtfPanel + techPanel +
+      filters + mtfPanel + techPanel + indPanel +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
     );
   }
@@ -986,6 +999,11 @@
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
         if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
         if (_atrp() > 0 && (k.atrp == null || k.atrp < _atrp())) return false;
+      }
+      // indicator scanners (compression / Bollinger / swing) — own collapsible panel, stack AND independently
+      if (_compActive() || _bbActive() || _swActive()) {
+        const k = t.tech;
+        if (!k) return false;
         if (_compActive()) { const sp = _compSpread(k); if (sp == null || sp > parseFloat(techState.compMax)) return false; }
         if (_bbActive() && (k.bbsq == null || k.bbsq > parseFloat(techState.bbSqMax))) return false;
         if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
@@ -998,6 +1016,7 @@
     document.querySelectorAll("[data-tff]").forEach(b => b.onclick = () => { const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
     // multi-timeframe (MTF) controls
     { const mt = $("#mtfToggle"); if (mt) mt.onclick = () => { scanState.mtfOpen = !scanState.mtfOpen; reRender(); }; }
+    { const it = $("#indToggle"); if (it) it.onclick = () => { scanState.indOpen = !scanState.indOpen; reRender(); }; }
     document.querySelectorAll("[data-mtft]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtft].t = s.value; reRender(); });
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
@@ -1079,6 +1098,7 @@
   function _compActive() { return techState.compMax !== "" && !isNaN(parseFloat(techState.compMax)); }
   function _bbActive() { return techState.bbSqMax !== "" && !isNaN(parseFloat(techState.bbSqMax)); }
   function _swActive() { return techState.swSide === "high" || techState.swSide === "low"; }
+  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_swActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
@@ -1086,7 +1106,7 @@
     return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
-      _atrp() > 0 || _chgActive() || _compActive() || _bbActive() || _swActive();
+      _atrp() > 0 || _chgActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -1099,9 +1119,6 @@
     if (techState.ext52 !== "off") n++;
     if (_atrp() > 0) n++;
     if (_chgActive()) n++;
-    if (_compActive()) n++;
-    if (_bbActive()) n++;
-    if (_swActive()) n++;
     return n;
   }
   function resetTech() {
@@ -1548,9 +1565,6 @@
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
-    smacompression: { render: renderSmaCompression, wire: wireSmaCompression },
-    bollinger: { render: renderBollinger, wire: wireBollinger },
-    swing: { render: renderSwing, wire: wireSwing },
     favorites: { render: renderFavorites, wire: wireFavorites },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
   };
@@ -1692,7 +1706,7 @@
       i = (i + 1) % CTA_MSGS.length;
       e.style.transition = "opacity .35s"; e.style.opacity = "0";
       setTimeout(() => { e.innerHTML = CTA_MSGS[i]; e.style.opacity = "1"; }, 350);
-    }, 8000);
+    }, 60000);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initNav);
