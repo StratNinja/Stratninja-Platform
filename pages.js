@@ -954,7 +954,7 @@
         "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
-        "<td>" + ninjaCell(t.ninja) + "</td>" +
+        "<td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
         techCells +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
       "</tr>";
@@ -1213,10 +1213,60 @@
     return String(n);
   }
   function dPct(v) { return v == null ? "—" : '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
-  function ninjaCell(v) {
+  function ninjaCls(v) { return v >= 80 ? "nj-hi" : v >= 65 ? "nj-mid" : v >= 50 ? "nj-lo" : "nj-min"; }
+  function ninjaCell(v, sym) {
     if (v == null) return '<span class="muted">—</span>';
-    const cls = v >= 80 ? "nj-hi" : v >= 65 ? "nj-mid" : v >= 50 ? "nj-lo" : "nj-min";
-    return '<span class="ninja-badge ' + cls + '">' + v + "</span>";
+    const cls = "ninja-badge " + ninjaCls(v) + (sym ? " nj-click" : "");
+    const attr = sym ? ' data-nj="' + escAttr(sym) + '" title="למה הניקוד הזה? לחץ"' : "";
+    return '<span class="' + cls + '"' + attr + ">" + v + "</span>";
+  }
+  // client-side explanation of a Ninja Score, mirroring the server factors (from the row's tech data)
+  function ninjaWhy(t) {
+    const k = t.tech || {}, r = [];
+    const d = (t.D || {}).c;
+    if (d === "up" || d === "down") {
+      const same = ["Y", "Q", "M", "W", "D"].filter(tf => (t[tf] || {}).c === d).length;
+      if (t.ftfc) r.push({ i: "🎯", s: "FTFC — יישור טיימפריימים מלא (" + same + "/5)", pos: true });
+      else if (same >= 3) r.push({ i: "🎯", s: "יישור טיימפריימים חלקי (" + same + "/5 באותו כיוון)", pos: true });
+      else r.push({ i: "🎯", s: "יישור טיימפריימים חלש (" + same + "/5)", pos: false });
+    }
+    if (k.rvol != null) {
+      if (k.rvol >= 2) r.push({ i: "🔊", s: "ווליום יחסי " + k.rvol.toFixed(1) + "× — גבוה", pos: true });
+      else if (k.rvol >= 1) r.push({ i: "🔊", s: "ווליום יחסי " + k.rvol.toFixed(1) + "× — ממוצע", pos: false });
+      else r.push({ i: "🔊", s: "ווליום יחסי " + k.rvol.toFixed(1) + "× — נמוך", pos: false });
+    }
+    const dt = (t.D || {}).t;
+    const patTxt = { "3": "נר יומי 3 (התרחבות) — חזק", "2U": "נר יומי 2U (פריצה מעלה)", "2D": "נר יומי 2D (שבירה מטה)", "1": "נר יומי Inside (דשדוש)" }[dt];
+    if (patTxt) r.push({ i: "📊", s: patTxt, pos: dt !== "1" });
+    if (k.mfi != null) {
+      if (k.mfi >= 50 && k.mfi <= 80) r.push({ i: "💰", s: "MFI " + k.mfi.toFixed(0) + " — תזרים כסף בריא", pos: true });
+      else if (k.mfi > 90) r.push({ i: "💰", s: "MFI " + k.mfi.toFixed(0) + " — קניית יתר", pos: false });
+      else if (k.mfi < 20) r.push({ i: "💰", s: "MFI " + k.mfi.toFixed(0) + " — מכירת יתר", pos: false });
+    }
+    const dsma = k.dsma || {};
+    const nearArr = ["20", "50"].map(p => dsma[p] != null ? Math.abs(dsma[p]) : null).filter(x => x != null);
+    if (nearArr.length) {
+      const near = Math.min.apply(null, nearArr);
+      if (near <= 2) r.push({ i: "📈", s: "צמוד לממוצע (±" + near.toFixed(1) + "% מ-SMA20/50)", pos: true });
+      else if (near <= 5) r.push({ i: "📈", s: "קרוב לממוצע (±" + near.toFixed(1) + "%)", pos: true });
+    }
+    if (k.avol30 != null) {
+      if (k.avol30 >= 1e6) r.push({ i: "💧", s: "נזילות גבוהה (" + fmtVol(k.avol30) + " ליום)", pos: true });
+      else if (k.avol30 < 3e5) r.push({ i: "💧", s: "נזילות נמוכה (" + fmtVol(k.avol30) + ")", pos: false });
+    }
+    return r;
+  }
+  function openNinjaWhy(sym) {
+    const t = scanSource().find(x => x.sym === sym);
+    if (!t || t.ninja == null) return;
+    const rs = ninjaWhy(t);
+    const body = '<div class="nj-why-top"><span class="ninja-badge ' + ninjaCls(t.ninja) + '" style="font-size:18px;padding:5px 14px">' + t.ninja + "</span><span class=\"muted\">/ 100 · " + t.sym + " · " + secHe(t.sector) + "</span></div>" +
+      '<div class="nj-why-list">' + (rs.length ? rs.map(x => '<div class="nj-why-row"><span class="nj-why-ico">' + x.i + '</span><span class="' + (x.pos ? "pos" : "muted") + '">' + x.s + "</span></div>").join("") : '<div class="muted">אין מספיק נתונים.</div>') + "</div>" +
+      '<div class="note" style="margin-top:10px;font-size:11px">💡 <b>Ninja Score</b> = איכות סטאפ: יישור טיימפריימים · ווליום · תבנית · כסף חכם · קרבה לממוצע · נזילות · חוזק סקטור · יישור לשוק. כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף.</div>';
+    modal("🥷 Ninja Score · " + sym, body);
+  }
+  function wireNinja(scope) {
+    (scope || document).querySelectorAll("[data-nj]").forEach(el => el.onclick = e => { e.stopPropagation(); openNinjaWhy(el.dataset.nj); });
   }
   function rsiCls(v) { return v == null ? "" : (v >= 70 ? "neg" : v <= 30 ? "pos" : ""); }
   function mfiCls(v) { return v == null ? "" : (v >= 80 ? "neg" : v <= 20 ? "pos" : ""); }
@@ -1590,10 +1640,10 @@
     return { lead: byGreen.slice(0, 4), lag: byGreen.slice(-4).reverse() };
   }
   function todayStockRow(t) {
-    return "<tr><td>" + ninjaCell(t.ninja) + "</td>" +
+    return "<tr><td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
       '<td>' + star(t.sym) + '</td>' +
       '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
-      '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
+      '<td class="tname" style="text-align:start">' + secHe(t.sector) + "</td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
       "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
       '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
   }
@@ -1617,21 +1667,31 @@
     }
 
     const sc = todaySectors(rows);
-    const secChip = s => '<div class="td-sec"><span class="td-sec-name">' + s.name + '</span><span class="td-sec-bar"><span style="width:' + Math.round(s.greenPct) + '%"></span></span><span class="muted" style="font-size:11px;white-space:nowrap">' + Math.round(s.greenPct) + "% · " + s.n + "</span></div>";
+    const secChip = s => '<div class="td-sec"><span class="td-sec-name">' + secHe(s.name) + (etfFor(s.name) ? " " + etfChip(etfFor(s.name)) : "") + '</span><span class="td-sec-bar"><span style="width:' + Math.round(s.greenPct) + '%"></span></span><span class="muted" style="font-size:11px;white-space:nowrap">' + Math.round(s.greenPct) + "% · " + s.n + "</span></div>";
     const sectorsPanel = '<div class="panel"><h3>🗂️ לאן הכסף זורם</h3><div class="td-secgrid">' +
-      '<div><div class="td-h pos">מובילים</div>' + (sc.lead.map(secChip).join("") || '<div class="muted">—</div>') + "</div>" +
-      '<div><div class="td-h neg">חלשים</div>' + (sc.lag.map(secChip).join("") || '<div class="muted">—</div>') + "</div></div></div>";
+      '<div><div class="td-h pos">🟢 סקטורים מובילים</div>' + (sc.lead.map(secChip).join("") || '<div class="muted">—</div>') + "</div>" +
+      '<div><div class="td-h neg">🔴 סקטורים בפיגור</div>' + (sc.lag.map(secChip).join("") || '<div class="muted">—</div>') + "</div></div></div>";
 
     const longs = rows.filter(t => (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
     const shorts = rows.filter(t => (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
-    const tbl = (list, title) => '<div class="panel"><h3>' + title + ' <span class="muted" style="font-size:12px">Top ' + list.length + " לפי Ninja Score</span></h3>" +
-      (list.length ? '<div class="tablewrap"><table class="scan-table"><thead><tr><th>Score</th><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>%</th><th>FTFC</th><th></th></tr></thead><tbody>' + list.map(todayStockRow).join("") + "</tbody></table></div>" : '<div class="muted" style="padding:14px">אין מועמדים ברורים כרגע.</div>') + "</div>";
+    const tbl = (list, title) => {
+      const syms = list.map(t => t.sym).join(", ");
+      const copyBtn = list.length ? '<button class="btn ghost td-copy" data-syms="' + encodeURIComponent(syms) + '" style="font-size:12px;font-weight:600">📋 העתק ' + list.length + "</button>" : "";
+      return '<div class="panel"><h3 class="td-tbl-head"><span>' + title + ' <span class="muted" style="font-size:12px">Top ' + list.length + " לפי Ninja Score</span></span>" + copyBtn + "</h3>" +
+        (list.length ? '<div class="tablewrap"><table class="scan-table"><thead><tr><th>Score</th><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>%</th><th>FTFC</th><th></th></tr></thead><tbody>' + list.map(todayStockRow).join("") + "</tbody></table></div>" : '<div class="muted" style="padding:14px">אין מועמדים ברורים כרגע.</div>') + "</div>";
+    };
 
     return head + (isLive ? liveBanner() : DEMO) + marketPanel + sectorsPanel +
       '<div class="td-two">' + tbl(longs, "🟢 מועמדים ללונג") + tbl(shorts, "🔴 מועמדים לשורט") + "</div>" +
       '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>Ninja Score</b> מדרג איכות סטאפ (יישור טיימפריימים, ווליום, תבנית, כסף חכם, קרבה לממוצע, נזילות, חוזק סקטור). זהו כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף.</div>';
   }
-  function wireToday() { wireCharts($("#page")); wireStars($("#page")); }
+  function wireToday() {
+    wireCharts($("#page")); wireStars($("#page"));
+    document.querySelectorAll(".td-copy").forEach(b => b.onclick = () => {
+      const syms = decodeURIComponent(b.dataset.syms), o = b.textContent;
+      copyToClipboard(syms, () => { b.textContent = "✓ הועתקו"; setTimeout(() => b.textContent = o, 1500); });
+    });
+  }
 
   // ========== FAVORITES ==========
   function renderFavorites() {
@@ -1728,6 +1788,7 @@
     if (p.wire) p.wire();
     wireStars($("#page"));
     wireCharts($("#page"));
+    wireNinja($("#page"));
   }
 
   function setPage(name) {

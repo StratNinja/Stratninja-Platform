@@ -216,6 +216,13 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .ninja-badge.nj-mid { background:rgba(90,140,255,.18); color:#9db9ff; box-shadow:inset 0 0 0 1px rgba(90,140,255,.4); }
 .ninja-badge.nj-lo  { background:rgba(160,170,190,.12); color:#c3ccdd; }
 .ninja-badge.nj-min { background:rgba(160,170,190,.07); color:#7f8aa0; }
+.ninja-badge.nj-click { cursor:pointer; }
+.ninja-badge.nj-click:hover { filter:brightness(1.18); box-shadow:0 0 0 2px rgba(255,255,255,.25) inset; }
+.nj-why-top { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.nj-why-list { display:flex; flex-direction:column; gap:8px; }
+.nj-why-row { display:flex; align-items:center; gap:10px; font-size:13px; padding:7px 11px; border-radius:9px; background:rgba(255,255,255,.03); }
+.nj-why-ico { font-size:15px; flex-shrink:0; }
+.td-tbl-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin:0; }
 /* what-to-check-now (daily briefing) */
 .td-mode { font-size:20px; font-weight:800; margin:2px 0 10px; }
 .td-mode.pos { color:#4fe39b; } .td-mode.neg { color:#ff6b7a; } .td-mode.zero { color:#e0c760; }

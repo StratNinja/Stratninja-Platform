@@ -168,7 +168,8 @@
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
-          "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button></td></tr>";
+          "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
+          "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button></td></tr>";
     }).join("");
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — ה-P&L שלהן יחושב בסגירה</span>' : "";
@@ -179,6 +180,12 @@
     // wire: click row or close button -> open the edit form (add exit price to close)
     wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => editOpenTrade(tr.dataset.editopen));
     wrap.querySelectorAll("[data-closepos]").forEach(b => b.onclick = e => { e.stopPropagation(); editOpenTrade(b.dataset.closepos); });
+    wrap.querySelectorAll("[data-delpos]").forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const t = openTrades.find(x => x.id === b.dataset.delpos);
+      if (!confirm("למחוק את הפוזיציה הפתוחה " + (t ? t.symbol : "") + "? פעולה זו אינה הפיכה.")) return;
+      Store.deleteManual(b.dataset.delpos); render();
+    });
     wrap.querySelectorAll("[data-img]").forEach(b => b.onclick = e => { e.stopPropagation(); const t = openTrades.find(x => x.id === b.dataset.img); if (t && t.img) viewTradeImg(t); });
     return wrap;
   }
