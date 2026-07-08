@@ -223,6 +223,7 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .nj-why-row { display:flex; align-items:center; gap:10px; font-size:13px; padding:7px 11px; border-radius:9px; background:rgba(255,255,255,.03); }
 .nj-why-ico { font-size:15px; flex-shrink:0; }
 .td-tbl-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin:0; }
+.ext-hours { color:#e0b341; font-size:11px; font-weight:600; white-space:nowrap; }
 /* what-to-check-now (daily briefing) */
 .td-mode { font-size:20px; font-weight:800; margin:2px 0 10px; }
 .td-mode.pos { color:#4fe39b; } .td-mode.neg { color:#ff6b7a; } .td-mode.zero { color:#e0c760; }

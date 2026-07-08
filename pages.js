@@ -462,7 +462,7 @@
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
     const idxRows = idxSrc.map(r =>
       '<tr><td class="sym"><span class="tsym clickable" data-chart="' + r.sym + '" data-tf="D">' + r.sym + '</span> <span class="tname">' + r.name + "</span></td>" +
-      '<td class="idx-chg">' + (r.chg != null ? pctSpanBare(r.chg) : '<span class="muted">—</span>') + "</td>" + tfCells(r) + "</tr>").join("");
+      '<td class="idx-chg">' + (r.chg != null ? pctSpanBare(r.chg) : '<span class="muted">—</span>') + extSpan(r) + "</td>" + tfCells(r) + "</tr>").join("");
     const dist = DIST.map(d => '<div class="tile"><div class="k"><span class="dot ' + d.dot + '"></span>' + d.k + '</div><div class="v">' + d.n + "</div></div>").join("");
     const breadth = BREADTH_IDX.map(b => '<div class="tile"><div class="k">' + b.sym + " · " + b.desc + '</div><div class="v muted">—</div></div>').join("");
     const rank = (arr, cls) => arr.map((s, i) => '<div class="lead-row ' + cls + '"><span>' + s + '</span><span class="rank">#' + (i + 1) + "</span></div>").join("");
@@ -662,6 +662,12 @@
     }
   }
   function pctSpanBare(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
+  function extSpan(r) {
+    if (r == null || r.ext == null || r.extChg == null) return "";
+    const lbl = r.extType === "pre" ? "Pre" : "After";
+    const s = (r.extChg >= 0 ? "+" : "") + r.extChg.toFixed(2) + "%";
+    return ' <span class="ext-hours" title="מסחר מוקדם/מאוחר (' + (r.extType === "pre" ? "לפני פתיחה" : "אחרי סגירה") + ') — לא הסגירה הרשמית">(' + lbl + " " + money(r.ext) + " · " + s + ")</span>";
+  }
   function colorLegend() {
     return '<div class="muted" style="font-size:11px;margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center">' +
       '<span><b>צבע</b> = כיוון הנר: 🟢 סגירה מעל הפתיחה · 🔴 סגירה מתחת</span>' +
