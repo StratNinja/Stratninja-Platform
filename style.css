@@ -77,6 +77,14 @@ button{font-family:inherit}
 svg .axis{stroke:var(--line)}
 svg .eqline{fill:none;stroke:var(--accent);stroke-width:2}
 svg .eqarea{fill:url(#eqgrad)}
+.eqsvg{cursor:crosshair;display:block}
+.eqhover{transition:opacity .1s;pointer-events:none}
+.eqcross{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 4;opacity:.7}
+.eqdot{stroke:#0f1116;stroke-width:2}
+.eqtipbg{fill:var(--panel2);stroke:var(--line)}
+.eqtiptext{font-size:14px;font-weight:800;fill:#fff}
+.eqtoptext{font-size:14px;font-weight:800;fill:#fff}
+.eqbottext{font-size:12px;font-weight:700;fill:var(--ink)}
 
 /* tables */
 .tablebox{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden}

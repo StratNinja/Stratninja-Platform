@@ -461,7 +461,7 @@
     const zeroY = Y(0);
     const last = eq[eq.length - 1];
     const svg =
-      '<svg viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet">' +
+      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet">' +
       '<defs><linearGradient id="eqgrad" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="#7c6cf0" stop-opacity=".35"/><stop offset="1" stop-color="#7c6cf0" stop-opacity="0"/></linearGradient></defs>' +
       '<line class="axis" x1="' + pad + '" y1="' + zeroY + '" x2="' + (W - pad) + '" y2="' + zeroY + '"/>' +
@@ -469,8 +469,50 @@
       '<path class="eqline" d="' + dpath + '"/>' +
       '<text x="' + (W - pad) + '" y="' + (Y(last) - 8) + '" text-anchor="end" fill="' + (last >= 0 ? "#16b877" : "#e0524f") +
       '" font-size="15" font-weight="700">' + money(last, 0) + "</text>" +
+      // hover crosshair: vertical line + dot on the curve, P&L label on top, date label at bottom
+      '<g class="eqhover" style="opacity:0">' +
+        '<line class="eqcross" x1="0" y1="' + pad + '" x2="0" y2="' + (H - pad) + '"/>' +
+        '<circle class="eqdot" cx="0" cy="0" r="5"/>' +
+        '<rect class="eqtipbg eqtop" x="0" y="4" width="120" height="26" rx="7"/>' +
+        '<text class="eqtiptext eqtoptext" x="0" y="22" text-anchor="middle">—</text>' +
+        '<rect class="eqtipbg eqbot" x="0" y="' + (H - 27) + '" width="100" height="23" rx="7"/>' +
+        '<text class="eqtiptext eqbottext" x="0" y="' + (H - 11) + '" text-anchor="middle">—</text>' +
+      "</g>" +
       "</svg>";
     box.innerHTML += svg;
+    // ---- hover interaction ----
+    const svgEl = box.querySelector(".eqsvg");
+    const g = svgEl.querySelector(".eqhover");
+    const cross = svgEl.querySelector(".eqcross"), dot = svgEl.querySelector(".eqdot");
+    const tTxt = svgEl.querySelector(".eqtoptext"), bTxt = svgEl.querySelector(".eqbottext");
+    const tBg = svgEl.querySelector(".eqtop"), bBg = svgEl.querySelector(".eqbot");
+    const clampX = (cx, w) => Math.max(w / 2 + 2, Math.min(W - w / 2 - 2, cx));
+    function moveTo(clientX) {
+      const rect = svgEl.getBoundingClientRect();
+      if (!rect.width) return;
+      const sx = (clientX - rect.left) / rect.width * W;
+      let i = Math.round((sx - pad) / (W - pad * 2) * (pts.length - 1));
+      i = Math.max(0, Math.min(pts.length - 1, i));
+      const x = X(i), val = pts[i].equity, y = Y(val);
+      const posCol = val >= 0 ? "#16b877" : "#e0524f";
+      cross.setAttribute("x1", x); cross.setAttribute("x2", x);
+      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("fill", posCol);
+      // top label = cumulative P&L at this point
+      const topStr = money(val, 0);
+      tTxt.textContent = topStr;
+      const wT = Math.max(70, topStr.length * 11 + 20);
+      tBg.setAttribute("width", wT); tBg.setAttribute("x", clampX(x, wT) - wT / 2); tBg.setAttribute("fill", posCol);
+      tTxt.setAttribute("x", clampX(x, wT));
+      // bottom label = date
+      bTxt.textContent = pts[i].date;
+      const wB = Math.max(84, pts[i].date.length * 9 + 16);
+      bBg.setAttribute("width", wB); bBg.setAttribute("x", clampX(x, wB) - wB / 2);
+      bTxt.setAttribute("x", clampX(x, wB));
+      g.style.opacity = "1";
+    }
+    svgEl.addEventListener("mousemove", e => moveTo(e.clientX));
+    svgEl.addEventListener("mouseleave", () => { g.style.opacity = "0"; });
+    svgEl.addEventListener("touchmove", e => { if (e.touches && e.touches[0]) moveTo(e.touches[0].clientX); }, { passive: true });
     return box;
   }
 

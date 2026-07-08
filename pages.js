@@ -1652,25 +1652,39 @@
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
 
-    // ---- sub-sectors (industries) breadth section ----
+    // ---- sub-sectors (industries): split into BULL / neutral / BEAR by FTFC direction ----
     const byInd = {};
     SCAN.rows.forEach(r => { const k = (r.ind || "").trim(); if (k) (byInd[k] = byInd[k] || []).push(r); });
-    const indNames = Object.keys(byInd).filter(k => byInd[k].length >= 4).sort((a, b) => byInd[b].length - byInd[a].length);
-    const subCards = indNames.map(name => {
-      const mem = byInd[name];
-      const tot = mem.length;
+    const indNames = Object.keys(byInd).filter(k => byInd[k].length >= 4);
+    const subInfo = indNames.map(name => {
+      const mem = byInd[name], tot = mem.length;
       const green = mem.filter(m => (m.D || {}).c === "up").length;
-      const ap = tot ? green / tot * 100 : 0;
-      const ftfc = mem.filter(m => m.ftfc).length;
-      const parentSec = mem[0].sec || "";
-      return '<div class="panel subsec-card" data-subsec="' + encodeURIComponent(name) + '" data-sec="' + encodeURIComponent(parentSec) + '">' +
-        '<h3>' + name + " " + etfChip(subEtfFor(name)) + ' <span class="muted" style="font-size:11px">' + tot + "</span></h3>" +
+      const bull = mem.filter(m => m.ftfc && (m.D || {}).c === "up").length;   // FTFC aligned UP
+      const bear = mem.filter(m => m.ftfc && (m.D || {}).c === "down").length; // FTFC aligned DOWN
+      const bullPct = tot ? bull / tot * 100 : 0, bearPct = tot ? bear / tot * 100 : 0;
+      const bucket = bullPct > 50 ? "bull" : (bearPct >= 50 ? "bear" : "mid");
+      return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "" };
+    });
+    function subCard(o) {
+      const ap = o.tot ? o.green / o.tot * 100 : 0;
+      const ftfcTag = o.bucket === "bull"
+        ? '<span class="badge-ftfc" style="margin-inline-start:auto">🟢 FTFC ' + o.bull + " (" + o.bullPct.toFixed(0) + "%)</span>"
+        : o.bucket === "bear"
+          ? '<span class="badge-ftfc bear" style="margin-inline-start:auto">🔴 FTFC ' + o.bear + " (" + o.bearPct.toFixed(0) + "%)</span>"
+          : '<span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + (o.bull + o.bear) + "</span>";
+      return '<div class="panel subsec-card" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
+        '<h3>' + o.name + " " + etfChip(subEtfFor(o.name)) + ' <span class="muted" style="font-size:11px">' + o.tot + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
-        '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + green + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + (tot - green) + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
-    }).join("");
+        '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + o.green + "</span><span class=\"neg\">🔴 " + (o.tot - o.green) + "</span>" + ftfcTag + "</div></div>";
+    }
+    const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
+    const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
+    const ssBear = subInfo.filter(o => o.bucket === "bear").sort((a, b) => b.bearPct - a.bearPct);
+    const ssCol = (title, cls, arr) => '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+      (arr.length ? arr.map(subCard).join("") : '<div class="muted" style="padding:12px;font-size:12px;text-align:center">אין כרגע</div>') + "</div>";
     const subSection = indNames.length
-      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים</h2><div class="sub">' + indNames.length + ' תתי-סקטורים (4+ מניות) · הצבע לפי הנר היומי · לחץ על כרטיס לצפייה במניות · לחץ על תעודת-הסל לגרף</div>' +
-        '<div class="sub" style="margin-top:6px;font-size:12px;opacity:.85">ⓘ החלוקה לתתי-סקטורים היא <b>נושאית</b> (לפי הראייה של StratNinja) ולא בהכרח לפי הסיווג התקני (GICS). תעודות-הסל הן הקירוב הסחיר הקרוב ביותר.</div></div><div class="subsec-grid">' + subCards + "</div>"
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3: <b>BULL</b> (מעל 50% מהמניות ב-FTFC ירוק) · <b>בין לבין</b> · <b>BEAR</b> (50%+ ב-FTFC אדום). הבר מראה את אחוז הנרות הירוקים היומיים · לחץ על כרטיס למניות.</div></div>' +
+        '<div class="subsec-3col">' + ssCol("🟢 BULL", "ss-bull", ssBull) + ssCol("⚪ בין לבין", "ss-mid", ssMid) + ssCol("🔴 BEAR", "ss-bear", ssBear) + "</div>"
       : "";
 
     return head + note + '<div class="sector-grid">' + cards + "</div>" + subSection;
@@ -2012,12 +2026,18 @@
     if (ms) {
       const strip = ms.idx.map(i => '<span class="td-idx"><b>' + i.sym + "</b> " + pct(i.chg) + "</span>").join("");
       const vixTxt = ms.vix ? '<span class="td-idx"><b>VIX</b> ' + ms.vix.level + "</span>" : "";
-      const brTxt = (ms.br && ms.br.total) ? 'רוחב שוק: <span class="pos">' + ms.br.above + " ▲</span> / <span class=\"neg\">" + ms.br.below + " ▼</span>" : "";
-      marketPanel = '<div class="panel"><h3>מצב השוק</h3><div class="td-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" +
-        '<div class="td-strip">' + strip + vixTxt + "</div>" +
-        '<div class="muted" style="font-size:12px;margin-top:8px">' + brTxt + "</div></div>";
+      let brBar = "";
+      if (ms.br && ms.br.total) {
+        const ap = (ms.br.above / ms.br.total * 100);
+        brBar = '<div class="td-breadth"><span class="td-brlbl">רוחב שוק</span>' +
+          '<span class="td-brbar"><span class="td-brup" style="width:' + ap.toFixed(1) + '%"></span></span>' +
+          '<span class="td-brnum"><span class="pos">' + ms.br.above + '</span>/<span class="neg">' + ms.br.below + "</span></span></div>";
+      }
+      marketPanel = '<div class="panel td-market ' + ms.cls + '"><h3>מצב השוק</h3>' +
+        '<div class="td-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" +
+        '<div class="td-strip">' + strip + vixTxt + "</div>" + brBar + "</div>";
     } else {
-      marketPanel = '<div class="panel"><h3>מצב השוק</h3><div class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</div></div>';
+      marketPanel = '<div class="panel td-market"><h3>מצב השוק</h3><div class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</div></div>';
     }
 
     const sc = todaySectors(rows);
