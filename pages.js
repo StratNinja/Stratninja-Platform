@@ -458,6 +458,25 @@
     const cp = $("#cmapCopy");
     if (cp) cp.onclick = () => { copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + members.length; }); };
   }
+  // compact "what's happening now" pulse — market mode + session + index strip
+  function marketPulse() {
+    const ms = todayMarketState(), sess = (typeof newsSession === "function") ? newsSession() : "";
+    if (!ms) return '<div class="panel mkt-pulse"><span class="mp-mode">📡 מה עולה עכשיו</span><span class="muted">התחבר לנתונים חיים</span></div>';
+    const idx = ms.idx.map(i => '<span class="mp-idx"><b>' + i.sym + "</b> " + pctSpanBare(i.chg) + "</span>").join("");
+    const vix = ms.vix ? '<span class="mp-idx"><b>VIX</b> ' + ms.vix.level.toFixed(1) + "</span>" : "";
+    const br = (ms.br && ms.br.total) ? '<span class="mp-idx">רוחב <span class="pos">' + ms.br.above + '</span>/<span class="neg">' + ms.br.below + "</span></span>" : "";
+    return '<div class="panel mkt-pulse ' + ms.cls + '"><div class="mp-left"><span class="mp-mode">' + ms.emoji + " " + ms.mode + '</span><span class="mp-sess">' + sess + "</span></div>" +
+      '<div class="mp-strip">' + idx + vix + br + "</div></div>";
+  }
+  // gappers TOP-3 up/down for the market page (full list stays on the gappers channel)
+  function gappersMini() {
+    const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
+    const row = arr => arr.length ? arr.slice(0, 3).map(x =>
+      '<div class="gm-row"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span>" + pct(x.gp) + "</div>").join("")
+      : '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
+    return '<div class="panel gappers-mini"><h3 class="gm-head"><span>⚡ גאפרים</span><button class="btn ghost" id="gapAll" style="font-size:12px;font-weight:600">ראה הכל →</button></h3>' +
+      '<div class="gm-grid"><div><div class="td-h pos">TOP גאפ אפ</div>' + row(g.up) + "</div><div><div class=\"td-h neg\">TOP גאפ דאון</div>" + row(g.down) + "</div></div></div>";
+  }
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
     const idxRows = idxSrc.map(r =>
@@ -479,11 +498,13 @@
     return (
       '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">תמונת השוק במבט אחד: לאן נעים המדדים, מצב הפחד (VIX), רוחב השוק ואילו סקטורים חזקים או חלשים היום.</div></div>' +
       uniSwitch +
-      '<div class="mkt-dash' + (_mktFlip ? " uni-flip" : "") + '">' +
+      '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
+        marketPulse() +
         '<div class="mkt-dash-top">' +
           '<div class="mkt-dash-left">' +
             '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
             breadthBar() +
+            gappersMini() +
           "</div>" +
           '<div class="mkt-dash-right">' + candleMapPanel() + "</div>" +
         "</div>" +
@@ -498,6 +519,7 @@
   }
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
+    { const ga = $("#gapAll"); if (ga) ga.onclick = () => setPage("gappers"); }
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
     document.querySelectorAll("[data-uni]").forEach(el => el.onclick = () => {
       if (marketUniverse === el.dataset.uni) return;
@@ -1790,11 +1812,12 @@
     const m = {};
     rows.forEach(t => {
       const s = t.sector || "—";
-      if (!m[s]) m[s] = { n: 0, green: 0 };
+      if (!m[s]) m[s] = { n: 0, green: 0, top: null };
       m[s].n++;
       if ((t.D || {}).c === "up") m[s].green++;
+      if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg };   // largest holding
     });
-    const arr = Object.keys(m).filter(s => m[s].n >= 3).map(s => ({ name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100 }));
+    const arr = Object.keys(m).filter(s => m[s].n >= 3).map(s => ({ name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100, top: m[s].top }));
     const byGreen = arr.slice().sort((a, b) => b.greenPct - a.greenPct);
     return { lead: byGreen.slice(0, 4), lag: byGreen.slice(-4).reverse() };
   }
@@ -1826,8 +1849,12 @@
     }
 
     const sc = todaySectors(rows);
-    const secChip = s => '<div class="td-sec"><span class="td-sec-name">' + secHe(s.name) + (etfFor(s.name) ? " " + etfChip(etfFor(s.name)) : "") + '</span><span class="td-sec-bar"><span style="width:' + Math.round(s.greenPct) + '%"></span></span><span class="muted" style="font-size:11px;white-space:nowrap">' + Math.round(s.greenPct) + "% · " + s.n + "</span></div>";
-    const sectorsPanel = '<div class="panel"><h3>🗂️ לאן הכסף זורם</h3><div class="td-secgrid">' +
+    const secChip = s => {
+      const top = s.top ? '<span class="td-sec-top" title="האחזקה הגדולה בסקטור"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(s.top.chg == null ? 0 : s.top.chg) + "</span>" : "";
+      return '<div class="td-sec"><div class="td-sec-r1"><span class="td-sec-name">' + secHe(s.name) + (etfFor(s.name) ? " " + etfChip(etfFor(s.name)) : "") + "</span>" + top + "</div>" +
+        '<div class="td-sec-r2"><span class="td-sec-bar"><span style="width:' + Math.round(s.greenPct) + '%"></span></span><span class="muted" style="font-size:11px;white-space:nowrap">' + Math.round(s.greenPct) + "% ירוק · " + s.n + "</span></div></div>";
+    };
+    const sectorsPanel = '<div class="panel"><h3>🗂️ לאן הכסף זורם <span class="muted" style="font-size:11px">+ האחזקה הגדולה בכל סקטור</span></h3><div class="td-secgrid">' +
       '<div><div class="td-h pos">🟢 סקטורים מובילים</div>' + (sc.lead.map(secChip).join("") || '<div class="muted">—</div>') + "</div>" +
       '<div><div class="td-h neg">🔴 סקטורים בפיגור</div>' + (sc.lag.map(secChip).join("") || '<div class="muted">—</div>') + "</div></div></div>";
 
@@ -1840,7 +1867,8 @@
         (list.length ? '<div class="tablewrap"><table class="scan-table"><thead><tr><th>Score</th><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>%</th><th>FTFC</th><th></th></tr></thead><tbody>' + list.map(todayStockRow).join("") + "</tbody></table></div>" : '<div class="muted" style="padding:14px">אין מועמדים ברורים כרגע.</div>') + "</div>";
     };
 
-    return head + (isLive ? liveBanner() : DEMO) + marketPanel + sectorsPanel +
+    return head + (isLive ? liveBanner() : DEMO) +
+      '<div class="td-topgrid">' + marketPanel + sectorsPanel + "</div>" +
       '<div class="td-two">' + tbl(longs, "🟢 מועמדים ללונג") + tbl(shorts, "🔴 מועמדים לשורט") + "</div>" +
       '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>Ninja Score</b> מדרג איכות סטאפ (יישור טיימפריימים, ווליום, תבנית, כסף חכם, קרבה לממוצע, נזילות, חוזק סקטור). זהו כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף.</div>';
   }

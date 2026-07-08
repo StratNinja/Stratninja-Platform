@@ -305,14 +305,20 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .td-strip { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
 .td-idx { font-size:13px; background:rgba(255,255,255,.04); padding:5px 10px; border-radius:8px; }
 .td-idx b { color:#c3ccdd; margin-inline-end:4px; }
-.td-secgrid { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+.td-topgrid { display:grid; grid-template-columns:1fr 1.35fr; gap:16px; margin-bottom:16px; align-items:start; }
+.td-topgrid > .panel { margin-bottom:0; }
+.td-secgrid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 .td-h { font-weight:800; font-size:13px; margin:0 0 8px; }
-.td-sec { display:flex; align-items:center; gap:9px; margin:7px 0; }
-.td-sec-name { min-width:96px; font-size:12px; }
+.td-sec { margin:9px 0; }
+.td-sec-r1 { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.td-sec-r2 { display:flex; align-items:center; gap:9px; margin-top:5px; }
+.td-sec-name { font-size:12.5px; font-weight:600; }
+.td-sec-top { font-size:11px; color:var(--muted); white-space:nowrap; }
+.td-sec-top .tsym { font-weight:700; }
 .td-sec-bar { flex:1; height:7px; border-radius:4px; background:rgba(255,90,110,.22); overflow:hidden; }
 .td-sec-bar > span { display:block; height:100%; background:linear-gradient(90deg,#26b06b,#4fe39b); }
 .td-two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-@media (max-width:900px){ .td-two, .td-secgrid { grid-template-columns:1fr; } }
+@media (max-width:900px){ .td-two, .td-secgrid, .td-topgrid { grid-template-columns:1fr; } }
 /* manual-trade image attach (paste / upload chart screenshot) */
 .img-zone { position:relative; border:1.5px dashed var(--line); border-radius:10px; min-height:78px;
   display:flex; align-items:center; justify-content:center; cursor:pointer; padding:10px; transition:border-color .12s, background .12s; }
@@ -591,6 +597,26 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .uni-btn:hover:not(.on) { color: var(--ink); }
 @keyframes uniFlip { 0% { opacity: .2; transform: rotateX(7deg) translateY(8px); } 100% { opacity: 1; transform: none; } }
 .uni-flip { animation: uniFlip .42s ease; transform-origin: top center; }
+/* "what's happening now" pulse */
+.mkt-pulse { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 16px; margin-bottom: 14px; border-inline-start: 4px solid var(--line); }
+.mkt-pulse.pos { border-inline-start-color: #26b06b; } .mkt-pulse.neg { border-inline-start-color: #e0524f; } .mkt-pulse.zero { border-inline-start-color: #e0c760; }
+.mkt-pulse .mp-left { display: flex; flex-direction: column; gap: 2px; }
+.mkt-pulse .mp-mode { font-weight: 800; font-size: 16px; }
+.mkt-pulse .mp-sess { font-size: 12px; color: var(--muted); }
+.mkt-pulse .mp-strip { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin-inline-start: auto; }
+.mkt-pulse .mp-idx { font-size: 13px; background: rgba(255,255,255,.04); padding: 4px 10px; border-radius: 8px; }
+.mkt-pulse .mp-idx b { color: #c3ccdd; margin-inline-end: 4px; }
+/* gappers mini */
+.gappers-mini .gm-head { display: flex; align-items: center; justify-content: space-between; margin: 0; }
+.gm-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-top: 8px; }
+.gm-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; padding: 4px 0; }
+.gm-row .tsym { font-weight: 700; }
+/* tighter dashboard — shrink indices + candle map */
+.mkt-dash-tight .idx-table td, .mkt-dash-tight .idx-table th { padding: 3px 6px; font-size: 12px; }
+.mkt-dash-tight .cmap-table td, .mkt-dash-tight .cmap-table th { padding: 0 3px; }
+.mkt-dash-tight .cmap-table { border-spacing: 0 3px; }
+.mkt-dash-tight .cm-pill { padding: 3px 0; font-size: 12px; min-width: 34px; }
+.mkt-dash-tight .cmap-table .cm-type { font-size: 12px; }
 .cm-pill { display: block; padding: 6px 0; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; min-width: 42px; }
 .cm-click { cursor: pointer; transition: .12s; }
 .cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }
