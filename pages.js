@@ -458,7 +458,7 @@
     const idxPanel = '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th><th>% יומי</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div></div>";
     const vixCard = '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>";
     return (
-      '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">נתוני שוק בזמן אמת עבור סוחרי The Strat</div></div>' +
+      '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">תמונת השוק במבט אחד: לאן נעים המדדים, מצב הפחד (VIX), רוחב השוק ואילו סקטורים חזקים או חלשים היום.</div></div>' +
       '<div class="mkt-dash">' +
         '<div class="mkt-dash-top">' +
           '<div class="mkt-dash-left">' +
@@ -561,7 +561,7 @@
   function renderSp500() {
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
     if (!secs || !secs.length) {
-      return '<div class="page-head"><h1>S&P 500 · מפת שוק</h1><div class="sub">מניות לפי סקטור · גודל = שווי שוק · צבע = תנועה יומית</div></div>' +
+      return '<div class="page-head"><h1>S&P 500 · מפת שוק</h1><div class="sub">מפת חום של המדד: כל ריבוע = מניה, הגודל = שווי השוק, הצבע = התנועה היום. מבט מהיר על מי מוביל ומי נופל.</div></div>' +
         '<div class="panel"><div class="stub"><div class="big">🗺️</div><h2>ממתין לנתוני מסחר</h2><p>המפה מחושבת בשעות המסחר (מעל/מתחת לפתיחת היום). חזור כשהשוק פתוח.</p></div></div>';
     }
     const b = LIVE.breadth;
@@ -699,7 +699,7 @@
     return "$" + n;
   }
   // ---- table sorting ----
-  const scanSort = { col: null, dir: -1 };   // dir: -1 desc (high→low), 1 asc
+  const scanSort = { col: "ninja", dir: -1 };   // default: best Ninja Score first. dir: -1 desc, 1 asc
   function dirRank(cell) { const c = cell && cell.c; return c === "up" ? 1 : c === "down" ? -1 : 0; }
   // rank a Strat timeframe cell by bar TYPE (2U > 3 > 2D > 1), color as tiebreak — so sorting a TF
   // column groups by pattern: 2U (new high) at the top, 1 (inside) at the bottom. null = no data → last.
@@ -718,6 +718,7 @@
     if (col === "mc") return t.mc;
     if (col === "chg") return t.chg;
     if (col === "ftfc") return t.ftfc ? 1 : 0;
+    if (col === "ninja") return t.ninja;
     if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(t[col]);
     const k = t.tech || {};
     if (col === "rsi") return k.rsi;
@@ -763,7 +764,7 @@
   function scanSource() {
     if (SCAN && SCAN.rows && SCAN.rows.length) {
       return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
-        chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc,
+        chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc, ninja: r.ninja,
         Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech }));
     }
     return TICKERS;
@@ -928,6 +929,7 @@
         "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+        "<td>" + ninjaCell(t.ninja) + "</td>" +
         techCells +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
       "</tr>";
@@ -945,9 +947,10 @@
     const head =
       "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("סקטור", "sec") + sortableTh("ת\"ס", "etf") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
       sortableTh("Y", "Y") + sortableTh("Q", "Q") + sortableTh("M", "M") + sortableTh("W", "W") + sortableTh("D", "D") + sortableTh("FTFC", "ftfc") +
+      sortableTh("🥷 Score", "ninja", ' title="Ninja Score 0-100: איכות הסטאפ — יישור טיימפריימים, ווליום יחסי, תבנית, כסף חכם, קרבה לממוצע, נזילות וחוזק הסקטור"') +
       visCols.map(c => sortableTh(c.th, c.key)).join("") +
       "<th></th>";
-    const nCols = 14 + visCols.length;
+    const nCols = 15 + visCols.length;
     const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
       optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '"' + (c.active ? ' title="פילטר פעיל על העמודה"' : "") + ">" + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
@@ -968,7 +971,7 @@
         (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הפריסט הנבחר">🗑</button>' : "") +
       "</div></div>";
     return (
-      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">תבניות Strat + קונפלואנס רב-טיימפריים · עם פילטרים טכניים (SMA/RSI/ווליום) לשילוב</div></div>' + (isLive ? liveBanner() : DEMO) +
+      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וכל מניה מקבלת <b>🥷 Ninja Score</b> שמדרג כמה שווה לבדוק אותה עכשיו.</div></div>' + (isLive ? liveBanner() : DEMO) +
       topBar +
       (pv.filters ? filters : "") + (pv.mtf ? mtfPanel : "") + (pv.tech ? techPanel : "") + (pv.ind ? indPanel : "") +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
@@ -1079,7 +1082,7 @@
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); scanSort.col = null; reRender(); };
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); scanSort.col = "ninja"; scanSort.dir = -1; reRender(); };
     // technical controls
     const bind = (id, ev, fn) => { const e = $("#" + id); if (e) e[ev] = fn; };
     bind("techToggle", "onclick", () => { techState.techOpen = !techState.techOpen; reRender(); });
@@ -1185,12 +1188,17 @@
     return String(n);
   }
   function dPct(v) { return v == null ? "—" : '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
+  function ninjaCell(v) {
+    if (v == null) return '<span class="muted">—</span>';
+    const cls = v >= 80 ? "nj-hi" : v >= 65 ? "nj-mid" : v >= 50 ? "nj-lo" : "nj-min";
+    return '<span class="ninja-badge ' + cls + '">' + v + "</span>";
+  }
   function rsiCls(v) { return v == null ? "" : (v >= 70 ? "neg" : v <= 30 ? "pos" : ""); }
   function mfiCls(v) { return v == null ? "" : (v >= 80 ? "neg" : v <= 20 ? "pos" : ""); }
 
   // ========== SECTORS ==========
   function renderSectors() {
-    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">חברי הסקטור האמיתיים · % ירוקים + המשכיות-טיימפריימים · לחץ לפירוט לפי תת-סקטור</div></div>';
+    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">כאן רואים לאן הכסף זורם היום: באילו סקטורים הכי הרבה מניות ירוקות ו-FTFC חיובי. לחץ על סקטור לפירוט לפי תת-סקטור.</div></div>';
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
@@ -1322,7 +1330,7 @@
   }
   function renderGappers() {
     const g = LIVE && LIVE.gappers;
-    const head = '<div class="page-head"><h1>גאפרים</h1><div class="sub">מניות שפותחות בגאפ מעל 3% (מול סגירת אתמול) · לחץ על כותרת למיון</div></div>';
+    const head = '<div class="page-head"><h1>גאפרים</h1><div class="sub">כאן רואים מניות שפתחו בגאפ משמעותי (מעל/מתחת 3% מסגירת אתמול) — לזיהוי תנועה חריגה בתחילת היום. לחץ על כותרת למיון.</div></div>';
     if (g && (g.up.length || g.down.length)) {
       const gapTh = (label, col, start) => { const arrow = gapSort.col === col ? (gapSort.dir < 0 ? " ▼" : " ▲") : ""; return '<th class="sortable" data-gapsort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>"; };
       const gapTable = (arr, cls, title) => {
@@ -1530,6 +1538,76 @@
     if (cp) cp.onclick = () => { const syms = swRows().slice(0, 300).map(t => t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
   }
 
+  // ========== WHAT TO CHECK NOW (daily briefing) ==========
+  function todayMarketState() {
+    if (!LIVE || !LIVE.indices || !LIVE.indices.length) return null;
+    const idx = LIVE.indices;
+    const green = idx.filter(i => (i.chg || 0) > 0).length;
+    const red = idx.filter(i => (i.chg || 0) < 0).length;
+    const br = LIVE.breadth || {};
+    const brGreen = (br.above != null && br.total) ? br.above / br.total : null;
+    let mode, emoji, cls;
+    if (green > red && (brGreen == null || brGreen >= 0.5)) { mode = "שוק חיובי · Risk-On"; emoji = "🟢"; cls = "pos"; }
+    else if (red > green && (brGreen == null || brGreen < 0.5)) { mode = "שוק שלילי · Risk-Off"; emoji = "🔴"; cls = "neg"; }
+    else { mode = "שוק מעורב · זהירות"; emoji = "🟡"; cls = "zero"; }
+    return { mode, emoji, cls, idx, vix: LIVE.vix, br };
+  }
+  function todaySectors(rows) {
+    const m = {};
+    rows.forEach(t => {
+      const s = t.sector || "—";
+      if (!m[s]) m[s] = { n: 0, green: 0 };
+      m[s].n++;
+      if ((t.D || {}).c === "up") m[s].green++;
+    });
+    const arr = Object.keys(m).filter(s => m[s].n >= 3).map(s => ({ name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100 }));
+    const byGreen = arr.slice().sort((a, b) => b.greenPct - a.greenPct);
+    return { lead: byGreen.slice(0, 4), lag: byGreen.slice(-4).reverse() };
+  }
+  function todayStockRow(t) {
+    return "<tr><td>" + ninjaCell(t.ninja) + "</td>" +
+      '<td>' + star(t.sym) + '</td>' +
+      '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
+      '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
+      "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+      '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
+  }
+  function renderToday() {
+    const head = '<div class="page-head"><h1>🥷 מה לבדוק עכשיו?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם, ואיפה ה-Ninja Score הכי גבוה — ללונג ולשורט.</div></div>';
+    const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
+    const rows = scanSource().filter(t => t.ninja != null);
+    if (!rows.length) return head + '<div class="panel"><div class="note" style="margin:6px 0">⏳ הנתונים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
+
+    const ms = todayMarketState();
+    let marketPanel;
+    if (ms) {
+      const strip = ms.idx.map(i => '<span class="td-idx"><b>' + i.sym + "</b> " + pct(i.chg) + "</span>").join("");
+      const vixTxt = ms.vix ? '<span class="td-idx"><b>VIX</b> ' + ms.vix.level + "</span>" : "";
+      const brTxt = (ms.br && ms.br.total) ? 'רוחב שוק: <span class="pos">' + ms.br.above + " ▲</span> / <span class=\"neg\">" + ms.br.below + " ▼</span>" : "";
+      marketPanel = '<div class="panel"><h3>מצב השוק</h3><div class="td-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" +
+        '<div class="td-strip">' + strip + vixTxt + "</div>" +
+        '<div class="muted" style="font-size:12px;margin-top:8px">' + brTxt + "</div></div>";
+    } else {
+      marketPanel = '<div class="panel"><h3>מצב השוק</h3><div class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</div></div>';
+    }
+
+    const sc = todaySectors(rows);
+    const secChip = s => '<div class="td-sec"><span class="td-sec-name">' + s.name + '</span><span class="td-sec-bar"><span style="width:' + Math.round(s.greenPct) + '%"></span></span><span class="muted" style="font-size:11px;white-space:nowrap">' + Math.round(s.greenPct) + "% · " + s.n + "</span></div>";
+    const sectorsPanel = '<div class="panel"><h3>🗂️ לאן הכסף זורם</h3><div class="td-secgrid">' +
+      '<div><div class="td-h pos">מובילים</div>' + (sc.lead.map(secChip).join("") || '<div class="muted">—</div>') + "</div>" +
+      '<div><div class="td-h neg">חלשים</div>' + (sc.lag.map(secChip).join("") || '<div class="muted">—</div>') + "</div></div></div>";
+
+    const longs = rows.filter(t => (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
+    const shorts = rows.filter(t => (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
+    const tbl = (list, title) => '<div class="panel"><h3>' + title + ' <span class="muted" style="font-size:12px">Top ' + list.length + " לפי Ninja Score</span></h3>" +
+      (list.length ? '<div class="tablewrap"><table class="scan-table"><thead><tr><th>Score</th><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>%</th><th>FTFC</th><th></th></tr></thead><tbody>' + list.map(todayStockRow).join("") + "</tbody></table></div>" : '<div class="muted" style="padding:14px">אין מועמדים ברורים כרגע.</div>') + "</div>";
+
+    return head + (isLive ? liveBanner() : DEMO) + marketPanel + sectorsPanel +
+      '<div class="td-two">' + tbl(longs, "🟢 מועמדים ללונג") + tbl(shorts, "🔴 מועמדים לשורט") + "</div>" +
+      '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>Ninja Score</b> מדרג איכות סטאפ (יישור טיימפריימים, ווליום, תבנית, כסף חכם, קרבה לממוצע, נזילות, חוזק סקטור). זהו כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף.</div>';
+  }
+  function wireToday() { wireCharts($("#page")); wireStars($("#page")); }
+
   // ========== FAVORITES ==========
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
@@ -1609,6 +1687,7 @@
   // ---------- router ----------
   const PAGES = {
     market: { render: renderMarket, wire: wireMarket },
+    today: { render: renderToday, wire: wireToday },
     sp500: { render: renderSp500, wire: wireSp500 },
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
@@ -1631,7 +1710,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
-    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "smacompression" || state.page === "bollinger" || state.page === "swing") loadScanner();
+    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") { loadScanner(); if (state.page === "today") loadLive(); }
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
   }
   window.setPageExternal = setPage;
@@ -1644,7 +1723,7 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { LIVE = j[0].data; _liveTs = Date.now(); updateTicker(); if (state.page === "market") reRender(); }
+      if (j && j[0] && j[0].data) { LIVE = j[0].data; _liveTs = Date.now(); updateTicker(); if (state.page === "market" || state.page === "today") reRender(); }
     } catch (e) { /* keep demo data */ }
   }
 
@@ -1659,7 +1738,7 @@
       const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "smacompression" || state.page === "bollinger" || state.page === "swing") reRender(); }
+      if (j && j[0] && j[0].data) { SCAN = j[0].data; if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") reRender(); }
     } catch (e) { /* keep demo */ }
   }
 
