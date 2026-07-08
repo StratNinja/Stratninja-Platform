@@ -1133,6 +1133,8 @@
     facts.push({ i: "🔎", t: "הסינון צימצם ל-<b>" + n + "</b> מתוך " + universe + " מניות (" + Math.round(n / universe * 100) + "% מהיקום)" });
     return facts;
   }
+  // MA-relation modes that use the ± percentage input
+  function _maPctShown() { return ["near", "far", "touchAbove", "touchBelow"].indexOf(techState.maRel) >= 0; }
   // plain-language explanation of exactly what the "מיקום מול ממוצע" filter does right now
   function maRelHint() {
     const ma = techState.maType + techState.maPeriod, p = techState.maPct;
@@ -1141,6 +1143,8 @@
       case "below": return "מציג רק מניות שהמחיר שלהן <b>מתחת</b> ל-" + ma + " (חולשה / מתחת להתנגדות).";
       case "near":  return "מציג מניות שהמחיר <b>עד " + p + "%</b> מ-" + ma + " — נוגעות/נבחנות מול הממוצע (אזור כניסה).";
       case "far":   return "מציג מניות שהמחיר <b>יותר מ-" + p + "%</b> מ-" + ma + " — מתוחות / רחוקות מהממוצע.";
+      case "touchAbove": return "🎯 כמו ה-<b>SMA150 Sniper</b> בדיסקורד: המניה סגרה <b>מעל</b> " + ma + ", וה-<b>נמוך</b> ירד עד <b>" + p + "%</b> מהממוצע (צלפה בו מלמעלה).";
+      case "touchBelow": return "🎯 כמו ה-Sniper בדיסקורד: המניה סגרה <b>מתחת</b> ל-" + ma + ", וה-<b>גבוה</b> נגע עד <b>" + p + "%</b> מהממוצע (מלמטה).";
       default: return "";
     }
   }
@@ -1180,8 +1184,8 @@
             '<div class="fgrp"><label>מיקום מול ממוצע (MA)</label><div class="chips" style="align-items:center">' +
               '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
               '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
-              '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע") + '</select>' +
-              ((techState.maRel === "near" || techState.maRel === "far") ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
+              '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע") + opt("touchAbove", techState.maRel, "🎯 נגיעה מלמעלה (צל תחתון)") + opt("touchBelow", techState.maRel, "🎯 נגיעה מלמטה (צל עליון)") + '</select>' +
+              (_maPctShown() ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
             "</div>" + (techState.maRel !== "off" ? '<div class="ma-hint">' + maRelHint() + "</div>" : "") + "</div>" +
             '<div class="fgrp"><label>RSI</label><div class="chips" style="align-items:center"><input id="tRsiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMin + '"><span class="muted">–</span><input id="tRsiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMax + '"></div></div>' +
             '<div class="fgrp"><label>MFI · כסף חכם</label><div class="chips" style="align-items:center"><input id="tMfiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMin + '"><span class="muted">–</span><input id="tMfiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMax + '"></div></div>' +
@@ -1372,13 +1376,23 @@
         const k = t.tech;
         if (!k) return false;
         if (techState.maRel !== "off") {
-          const dmap = techState.maType === "EMA" ? k.dema : k.dsma;
-          const d = dmap ? dmap[techState.maPeriod] : null;
+          const isE = techState.maType === "EMA";
+          const dmap = isE ? k.dema : k.dsma;
+          const d = dmap ? dmap[techState.maPeriod] : null;   // close distance from MA (signed %)
           if (d == null) return false;
           if (techState.maRel === "near" && Math.abs(d) > techState.maPct) return false;
           if (techState.maRel === "far" && Math.abs(d) < techState.maPct) return false;
           if (techState.maRel === "above" && d <= 0) return false;
           if (techState.maRel === "below" && d >= 0) return false;
+          // wick "touch" of the MA — mirrors the community SMA150 Sniper:
+          //   touchAbove = closed ABOVE the MA and the LOW dipped within ±% of it
+          //   touchBelow = closed BELOW the MA and the HIGH poked within ±% of it
+          if (techState.maRel === "touchAbove" || techState.maRel === "touchBelow") {
+            const loMap = isE ? k.dema_lo : k.dsma_lo, hiMap = isE ? k.dema_hi : k.dsma_hi;
+            const dLo = loMap ? loMap[techState.maPeriod] : null, dHi = hiMap ? hiMap[techState.maPeriod] : null;
+            if (techState.maRel === "touchAbove") { if (d <= 0 || dLo == null || Math.abs(dLo) > techState.maPct) return false; }
+            else { if (d >= 0 || dHi == null || Math.abs(dHi) > techState.maPct) return false; }
+          }
         }
         if ((techState.rsiMin > 0 || techState.rsiMax < 100) && (k.rsi == null || k.rsi < techState.rsiMin || k.rsi > techState.rsiMax)) return false;
         if ((techState.mfiMin > 0 || techState.mfiMax < 100) && (k.mfi == null || k.mfi < techState.mfiMin || k.mfi > techState.mfiMax)) return false;
