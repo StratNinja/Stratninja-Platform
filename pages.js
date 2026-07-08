@@ -1198,7 +1198,7 @@
 
   // ========== SECTORS ==========
   function renderSectors() {
-    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">כאן רואים לאן הכסף זורם היום: באילו סקטורים הכי הרבה מניות ירוקות ו-FTFC חיובי. לחץ על סקטור לפירוט לפי תת-סקטור.</div></div>';
+    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">כאן רואים לאן הכסף זורם היום: באילו סקטורים הכי הרבה מניות ירוקות ו-FTFC חיובי — לפי מניות <b>S&P 500</b>. לחץ על סקטור לפירוט לפי תת-סקטור.</div></div>';
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
