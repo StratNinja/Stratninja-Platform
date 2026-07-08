@@ -474,7 +474,7 @@
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
       '<button class="uni-btn' + (marketUniverse === "sp500" ? " on" : "") + '" data-uni="sp500">S&P 500</button>' +
-      '<button class="uni-btn' + (marketUniverse === "all" ? " on" : "") + '" data-uni="all">🥷 StratNinja</button>' +
+      '<button class="uni-btn' + (marketUniverse === "all" ? " on" : "") + '" data-uni="all">StratNinja</button>' +
       "</div>";
     return (
       '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">תמונת השוק במבט אחד: לאן נעים המדדים, מצב הפחד (VIX), רוחב השוק ואילו סקטורים חזקים או חלשים היום.</div></div>' +
@@ -972,7 +972,7 @@
     const head =
       "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("סקטור", "sec") + sortableTh("ת\"ס", "etf") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
       sortableTh("Y", "Y") + sortableTh("Q", "Q") + sortableTh("M", "M") + sortableTh("W", "W") + sortableTh("D", "D") + sortableTh("FTFC", "ftfc") +
-      sortableTh("🥷 Score", "ninja", ' title="Ninja Score 0-100: איכות הסטאפ — יישור טיימפריימים, ווליום יחסי, תבנית, כסף חכם, קרבה לממוצע, נזילות וחוזק הסקטור"') +
+      sortableTh("Ninja", "ninja", ' title="Ninja Score 0-100: איכות הסטאפ — יישור טיימפריימים, ווליום יחסי, תבנית, כסף חכם, קרבה לממוצע, נזילות וחוזק הסקטור"') +
       visCols.map(c => sortableTh(c.th, c.key)).join("") +
       "<th></th>";
     const nCols = 15 + visCols.length;
@@ -996,7 +996,7 @@
         (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הפריסט הנבחר">🗑</button>' : "") +
       "</div></div>";
     return (
-      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וכל מניה מקבלת <b>🥷 Ninja Score</b> שמדרג כמה שווה לבדוק אותה עכשיו.</div></div>' + (isLive ? liveBanner() : DEMO) +
+      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וכל מניה מקבלת <b>Ninja Score</b> שמדרג כמה שווה לבדוק אותה עכשיו.</div></div>' + (isLive ? liveBanner() : DEMO) +
       topBar +
       (pv.filters ? filters : "") + (pv.mtf ? mtfPanel : "") + (pv.tech ? techPanel : "") + (pv.ind ? indPanel : "") +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
@@ -1263,7 +1263,7 @@
     const body = '<div class="nj-why-top"><span class="ninja-badge ' + ninjaCls(t.ninja) + '" style="font-size:18px;padding:5px 14px">' + t.ninja + "</span><span class=\"muted\">/ 100 · " + t.sym + " · " + secHe(t.sector) + "</span></div>" +
       '<div class="nj-why-list">' + (rs.length ? rs.map(x => '<div class="nj-why-row"><span class="nj-why-ico">' + x.i + '</span><span class="' + (x.pos ? "pos" : "muted") + '">' + x.s + "</span></div>").join("") : '<div class="muted">אין מספיק נתונים.</div>') + "</div>" +
       '<div class="note" style="margin-top:10px;font-size:11px">💡 <b>Ninja Score</b> = איכות סטאפ: יישור טיימפריימים · ווליום · תבנית · כסף חכם · קרבה לממוצע · נזילות · חוזק סקטור · יישור לשוק. כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף.</div>';
-    modal("🥷 Ninja Score · " + sym, body);
+    modal("Ninja Score · " + sym, body);
   }
   function wireNinja(scope) {
     (scope || document).querySelectorAll("[data-nj]").forEach(el => el.onclick = e => { e.stopPropagation(); openNinjaWhy(el.dataset.nj); });
@@ -1648,7 +1648,7 @@
       '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
   }
   function renderToday() {
-    const head = '<div class="page-head"><h1>🥷 מה לבדוק עכשיו?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם, ואיפה ה-Ninja Score הכי גבוה — ללונג ולשורט.</div></div>';
+    const head = '<div class="page-head"><h1>🎯 מה לבדוק עכשיו?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם, ואיפה ה-Ninja Score הכי גבוה — ללונג ולשורט.</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const rows = scanSource().filter(t => t.ninja != null);
     if (!rows.length) return head + '<div class="panel"><div class="note" style="margin:6px 0">⏳ הנתונים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
@@ -1903,7 +1903,7 @@
     "רוצה סוף־סוף להבין מה באמת קורה בגרפים? 📊",
     "לסחור לבד זה יקר — טעות אחת מכסה שנה של קהילה 🤝",
     "עוד מתלבט על העסקה? תשמע דעה שנייה לפני שתלחץ 💬",
-    "סטאפים, ניתוחים ולייבים — כל יום, בזמן אמת 🥷",
+    "סטאפים, ניתוחים ולייבים — כל יום, בזמן אמת",
     "נינג׳ות לא סוחרות לבד ⚔️ בוא תצטרף",
     "חדשות בוקר, סורקים וכלים אוטומטיים — הכל במקום אחד 🚀",
     "השוק לא מחכה לאף אחד — אתה עדיין בחוץ? ⏰",
