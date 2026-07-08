@@ -658,6 +658,37 @@
   const MTF_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
   function newMtf() { const o = {}; ["D", "W", "M", "Q", "Y"].forEach(function (k) { o[k] = { t: "", c: "" }; }); return o; }
   function mtfActiveCount() { let n = 0; MTF_TFS.forEach(function (k) { if (scanState.mtf[k].t || scanState.mtf[k].c) n++; }); return n; }
+  // ---- scanner panel visibility (declutter): hide whole filter areas per trader ----
+  const SCAN_PANELS = [{ k: "filters", t: "Strat" }, { k: "mtf", t: "MTF" }, { k: "tech", t: "טכני" }, { k: "ind", t: "אינדיקטורים" }];
+  function panelVis() {
+    const def = { filters: true, mtf: true, tech: true, ind: true };
+    const saved = (window.Prefs && window.Prefs.scanPanels) ? window.Prefs.scanPanels() : null;
+    return saved ? Object.assign(def, saved) : def;
+  }
+  function togglePanel(k) {
+    const v = panelVis(); v[k] = !v[k];
+    if (window.Prefs && window.Prefs.setScanPanels) window.Prefs.setScanPanels(v);
+    reRender();
+  }
+  // ---- scan presets ("must-have scans"): snapshot + restore the full filter config ----
+  function scanConfigSnapshot() {
+    const s = scanState;
+    return {
+      s: { tfs: s.tfs.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad,
+        sector: s.sector, subsec: s.subsec, sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
+        cap: s.cap, mtf: JSON.parse(JSON.stringify(s.mtf)) },
+      t: Object.assign({}, techState),
+    };
+  }
+  function applyScanConfig(cfg) {
+    if (!cfg) return;
+    const s = cfg.s || {}, t = cfg.t || {};
+    ["dir", "shape", "broad", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "cap"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
+    if (s.tfs) scanState.tfs = s.tfs.slice();
+    if (s.patterns) scanState.patterns = s.patterns.slice();
+    scanState.mtf = s.mtf ? JSON.parse(JSON.stringify(s.mtf)) : newMtf();
+    Object.keys(techState).forEach(k => { if (k === "techOpen") return; if (t[k] !== undefined) techState[k] = t[k]; });
+  }
   const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
   const CAP_RANGES = { mega: [2e11, Infinity], large: [1e10, 2e11], mid: [2e9, 1e10], small: [3e8, 2e9], micro: [0, 3e8] };
   function fmtCap(n) {
@@ -925,9 +956,21 @@
       (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
 
+    const pv = panelVis();
+    const panelChips = SCAN_PANELS.map(p => '<button class="chip col-chip' + (pv[p.k] ? " on" : "") + '" data-panel="' + p.k + '">' + (pv[p.k] ? "" : "＋ ") + p.t + "</button>").join("");
+    const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
+    const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '">' + escAttr(p.name) + "</option>").join("");
+    const topBar = '<div class="panel scan-topbar">' +
+      '<div class="stb-grp"><span class="muted stb-lbl">🧩 פאנלים:</span>' + panelChips + "</div>" +
+      '<div class="stb-grp stb-presets"><span class="muted stb-lbl">⭐ סריקות שמורות:</span>' +
+        '<select id="presetSel">' + presetOpts + "</select>" +
+        '<button class="btn ghost" id="presetSave">💾 שמור</button>' +
+        (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הפריסט הנבחר">🗑</button>' : "") +
+      "</div></div>";
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">תבניות Strat + קונפלואנס רב-טיימפריים · עם פילטרים טכניים (SMA/RSI/ווליום) לשילוב</div></div>' + (isLive ? liveBanner() : DEMO) +
-      filters + mtfPanel + techPanel + indPanel +
+      topBar +
+      (pv.filters ? filters : "") + (pv.mtf ? mtfPanel : "") + (pv.tech ? techPanel : "") + (pv.ind ? indPanel : "") +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
     );
   }
@@ -1017,6 +1060,11 @@
     // multi-timeframe (MTF) controls
     { const mt = $("#mtfToggle"); if (mt) mt.onclick = () => { scanState.mtfOpen = !scanState.mtfOpen; reRender(); }; }
     { const it = $("#indToggle"); if (it) it.onclick = () => { scanState.indOpen = !scanState.indOpen; reRender(); }; }
+    // panel-visibility chips + saved-scan presets
+    document.querySelectorAll("[data-panel]").forEach(b => b.onclick = () => togglePanel(b.dataset.panel));
+    { const psel = $("#presetSel"); if (psel) psel.onchange = () => { const id = psel.value; if (!id) return; const p = (window.Prefs.scanPresets() || []).find(x => x.id === id); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }
+    { const psave = $("#presetSave"); if (psave) psave.onclick = () => { const name = (window.prompt("שם לסריקה השמורה:", "") || "").trim(); if (!name) return; window.Prefs.saveScanPreset(name, scanConfigSnapshot()); reRender(); }; }
+    { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { const psel = $("#presetSel"); const id = psel ? psel.value : ""; if (!id) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } window.Prefs.deleteScanPreset(id); reRender(); }; }
     document.querySelectorAll("[data-mtft]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtft].t = s.value; reRender(); });
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });

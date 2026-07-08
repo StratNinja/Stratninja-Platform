@@ -196,6 +196,13 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 /* add/remove result columns */
 .col-picker { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin:0 0 12px; }
 .col-picker .col-chip { font-size:12px; padding:4px 10px; }
+.scan-topbar { display:flex; flex-wrap:wrap; gap:16px 20px; align-items:center; padding:9px 14px; }
+.scan-topbar .stb-grp { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.scan-topbar .stb-lbl { font-size:12px; }
+.scan-topbar .col-chip { font-size:12px; padding:4px 10px; }
+.scan-topbar .stb-presets { margin-inline-start:auto; }
+.scan-topbar .stb-presets select { min-width:150px; }
+.scan-topbar .stb-presets .btn { font-size:12px; padding:5px 10px; }
 .sma-spread { color:#8fb4ff; }
 .sma-spread b { font-weight:800; }
 /* manual-trade image attach (paste / upload chart screenshot) */

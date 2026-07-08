@@ -34,6 +34,18 @@ window.Prefs = (function () {
       d.alerts.push(a); write(d); return a;
     },
     deleteAlert(id) { const d = read(); d.alerts = (d.alerts || []).filter(x => x.id !== id); write(d); },
+    // scanner panel visibility (null = default: all panels shown)
+    scanPanels() { return read().scanPanels || null; },
+    setScanPanels(obj) { const d = read(); d.scanPanels = obj; write(d); },
+    // saved scan presets ("must-have scans") — [{id,name,cfg}]
+    scanPresets() { return read().scanPresets || []; },
+    saveScanPreset(name, cfg) {
+      const d = read(); d.scanPresets = d.scanPresets || [];
+      const i = d.scanPresets.findIndex(p => p.name === name);
+      if (i >= 0) { d.scanPresets[i].cfg = cfg; write(d); return d.scanPresets[i]; }
+      const rec = { id: uid(), name: name, cfg: cfg }; d.scanPresets.push(rec); write(d); return rec;
+    },
+    deleteScanPreset(id) { const d = read(); d.scanPresets = (d.scanPresets || []).filter(p => p.id !== id); write(d); },
     onChange(f) { listeners.push(f); },
     notify() { listeners.forEach(f => { try { f(); } catch (e) {} }); },  // used by cloudsync after a pull
   };
