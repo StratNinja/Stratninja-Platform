@@ -247,6 +247,11 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
   display:flex; align-items:center; justify-content:center; transition:transform .12s; }
 .share-cam:hover { transform:scale(1.08); }
 .share-cam.hidden { display:none; }
+/* journal discipline nudge */
+.discipline-warn { display:flex; align-items:flex-start; gap:12px; margin-bottom:14px;
+  border:1px solid rgba(224,179,65,.5); background:rgba(224,179,65,.1); }
+.discipline-warn .dw-ico { font-size:22px; flex-shrink:0; line-height:1.2; }
+.discipline-warn .dw-sub { font-size:13px; color:var(--muted); margin-top:4px; line-height:1.5; }
 /* what-to-check-now (daily briefing) */
 .td-mode { font-size:20px; font-weight:800; margin:2px 0 10px; }
 .td-mode.pos { color:#4fe39b; } .td-mode.neg { color:#ff6b7a; } .td-mode.zero { color:#e0c760; }

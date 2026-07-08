@@ -71,6 +71,8 @@
   // ---- App state ---------------------------------------------------------
   const state = { account: null, tab: "calendar", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1 };
   let manualEditId = null;  // when editing a manual trade, its id; null = adding new
+  const OPEN_WARN = 5;      // discipline nudge: warn at this many concurrent open positions
+  let _lastOpenCount = 0;   // to fire the crossing popup only once per crossing
 
   // ---- Helpers -----------------------------------------------------------
   const $ = sel => document.querySelector(sel);
@@ -136,6 +138,12 @@
 
     const { trades, openPositions, manualOpen } = tradesForAccount();
 
+    // discipline nudge — too many concurrent open positions
+    const openCount = (openPositions ? openPositions.length : 0) + (manualOpen ? manualOpen.length : 0);
+    if (openCount >= OPEN_WARN) root.appendChild(disciplineBanner(openCount));
+    if (openCount >= OPEN_WARN && _lastOpenCount < OPEN_WARN) setTimeout(() => disciplineModal(openCount), 350);
+    _lastOpenCount = openCount;
+
     root.appendChild(renderStatCards(trades));
     if (manualOpen && manualOpen.length) root.appendChild(renderOpenPositions(manualOpen));
     root.appendChild(renderAssetBreakdown(trades));
@@ -145,6 +153,24 @@
 
     // load live prices once, then re-render so Unrealized P&L fills in
     if (manualOpen && manualOpen.length && !livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
+  }
+
+  // discipline nudge — persistent banner + one-time popup when open positions pile up
+  function disciplineBanner(count) {
+    const d = el("div", "panel discipline-warn");
+    d.innerHTML = '<span class="dw-ico">⚠️</span><div><b>שים לב — ' + count + ' עסקאות פתוחות במקביל.</b>' +
+      '<div class="dw-sub">אתה יכול להמשיך, אבל זו לא מעט חשיפה בו-זמנית. קח רגע — האם כל אחת עומדת בכללי הכניסה שלך? עדיף איכות על כמות. 🎯</div></div>';
+    return d;
+  }
+  function disciplineModal(count) {
+    modal("⚠️ ריבוי עסקאות פתוחות",
+      '<div style="font-size:15px;line-height:1.65">' +
+      '<b>היי — יש לך כרגע ' + count + ' עסקאות פתוחות במקביל.</b><br><br>' +
+      'אתה יכול להמשיך — אבל ' + count + ' פוזיציות פתוחות בו-זמנית זו לא מעט חשיפה. זה הרגע לעצור ולחשוב פעמיים:<br><br>' +
+      '• האם כל עסקה עומדת בכללי הכניסה שלך?<br>' +
+      '• האם הסיכון הכולל שלך עדיין בשליטה?<br>' +
+      '• אולי עדיף לחכות שאחת תיסגר לפני שנכנסים לעוד?<br><br>' +
+      '<b>משמעת מנצחת כמות.</b> 🎯</div>');
   }
 
   function renderOpenPositions(openTrades) {
