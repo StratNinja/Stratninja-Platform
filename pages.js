@@ -941,15 +941,39 @@
     return { headline: ms ? ms.emoji + " " + ms.mode : "📡 סקירת שוק", cls: ms ? ms.cls : "zero", strip: idx,
       picksLabel: "Top Ninja Score", picks: picks.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
   }
+  // html2canvas ignores object-fit:cover and stretches a non-square photo → distorted.
+  // Pre-crop hero.jpg to a centered SQUARE via a canvas so the captured photo is never warped.
+  let _heroSquare = null;
+  function _prepHeroSquare(cb) {
+    if (_heroSquare) { cb(_heroSquare); return; }
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        const S = 200, c = document.createElement("canvas"); c.width = S; c.height = S;
+        const ctx = c.getContext("2d");
+        const scale = Math.max(S / img.width, S / img.height);   // cover
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);       // center-crop, no distortion
+        _heroSquare = c.toDataURL("image/png");
+      } catch (e) { _heroSquare = null; }
+      cb(_heroSquare);
+    };
+    img.onerror = () => cb(null);
+    img.src = "hero.jpg";
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
     el.className = "share-card";
     el.style.cssText = "position:fixed;left:-9999px;top:0;width:1000px;z-index:-1;";
+    const photo = _heroSquare
+      ? '<img class="sc-photo" src="' + _heroSquare + '">'
+      : '<img class="sc-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     el.innerHTML =
       '<div class="sc-top"><img class="sc-logo" src="favicon.svg" crossorigin="anonymous">' +
         '<div><div class="sc-title">StratNinja <span>Scanner</span></div><div class="sc-sub">סריקת שוק בזמן אמת · The Strat</div></div>' +
-        '<img class="sc-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'"></div>' +
+        photo + "</div>" +
       '<div class="sc-body">' +
         '<div class="sc-mode ' + s.cls + '">' + s.headline + "</div>" +
         (s.strip ? '<div class="sc-strip">' + s.strip + "</div>" : "") +
@@ -971,12 +995,14 @@
   }
   function captureSummaryCard() {
     snToast("מכין כרטיס סיכום…");
-    const el = buildShareCardEl();
-    setTimeout(() => {
-      html2canvas(el, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false })
-        .then(cv => { el.remove(); showShareModal(cv); })
-        .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
-    }, 300);
+    _prepHeroSquare(() => {
+      const el = buildShareCardEl();
+      setTimeout(() => {
+        html2canvas(el, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false })
+          .then(cv => { el.remove(); showShareModal(cv); })
+          .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
+      }, 300);
+    });
   }
   function captureFullScreen() {
     const target = state.page === "journal" ? document.getElementById("journalContainer") : document.getElementById("page");
@@ -999,6 +1025,18 @@
       showShareModal(out);
     }).catch(() => snToast("שגיאה בצילום — נסה שוב"));
   }
+  // copy a PNG blob to the clipboard (secure-context + supported browsers only)
+  function _copyImageBlob(blob, okMsg) {
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        return navigator.clipboard.write([new ClipboardItem({ "image/png": blob })])
+          .then(() => { snToast(okMsg || "✓ התמונה הועתקה ללוח — אפשר להדביק (Ctrl+V)"); return true; })
+          .catch(() => { snToast("לא ניתן להעתיק ללוח כאן — השתמש ב-📥 הורד"); return false; });
+      }
+    } catch (e) {}
+    snToast("העתקה ללוח לא נתמכת בדפדפן הזה — השתמש ב-📥 הורד");
+    return Promise.resolve(false);
+  }
   function showShareModal(canvas) {
     canvas.toBlob(blob => {
       if (!blob) { snToast("שגיאה ביצירת התמונה"); return; }
@@ -1008,12 +1046,16 @@
       const body =
         '<img src="' + url + '" style="max-width:100%;border-radius:10px;border:1px solid var(--line);display:block">' +
         '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
-          '<a class="btn primary" href="' + url + '" download="stratninja.png" style="font-size:13px">📥 הורד</a>' +
+          '<button class="btn primary" id="copyClip" style="font-size:13px">📋 העתק ללוח</button>' +
+          '<a class="btn ghost" href="' + url + '" download="stratninja.png" style="font-size:13px">📥 הורד</a>' +
           '<button class="btn ghost" id="shareNative" style="font-size:13px">📤 שתף</button>' +
           '<a class="btn ghost" href="' + tweet + '" target="_blank" rel="noopener" style="font-size:13px">שתף ב-X</a>' +
         "</div>" +
-        '<div class="note" style="margin-top:8px;font-size:11px">הורד ושתף באינסטגרם / X / יוטיוב. שיתוף ישיר של הקובץ נתמך בחלק מהמכשירים (בעיקר נייד).</div>';
+        '<div class="note" style="margin-top:8px;font-size:11px">📋 התמונה מועתקת ללוח אוטומטית — פשוט הדבק (Ctrl+V) איפה שתרצה. אם לא הועתקה, לחץ "העתק ללוח" או "הורד".</div>';
       modal("📷 צילום ושיתוף", body);
+      // auto-copy right away (still within the click's activation window)
+      _copyImageBlob(blob);
+      { const cc = document.getElementById("copyClip"); if (cc) cc.onclick = () => _copyImageBlob(blob); }
       const sn = document.getElementById("shareNative");
       if (sn) sn.onclick = () => {
         try {
