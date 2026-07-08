@@ -46,6 +46,15 @@ window.Prefs = (function () {
       const rec = { id: uid(), name: name, cfg: cfg }; d.scanPresets.push(rec); write(d); return rec;
     },
     deleteScanPreset(id) { const d = read(); d.scanPresets = (d.scanPresets || []).filter(p => p.id !== id); write(d); },
+    duplicateScanPreset(id) {
+      const d = read(); d.scanPresets = d.scanPresets || [];
+      const src = d.scanPresets.find(p => p.id === id);
+      if (!src) return null;
+      const base = src.name + " (עותק)"; let name = base, i = 2;
+      while (d.scanPresets.some(p => p.name === name)) { name = base + " " + i; i++; }
+      const rec = { id: uid(), name: name, cfg: JSON.parse(JSON.stringify(src.cfg)) };  // clone cfg; alert NOT copied
+      d.scanPresets.push(rec); write(d); return rec;
+    },
     togglePresetAlert(id) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (p) { p.alert = !p.alert; write(d); } return p ? p.alert : false; },
     // alert feed — fired (preset × favorite) matches
     alertFeed() { return read().alertFeed || []; },

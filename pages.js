@@ -716,6 +716,7 @@
 
   // ========== SCANNER ==========
   const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  let _selPreset = "";   // id of the saved-scan currently chosen in the dropdown (survives reRender so delete/duplicate work)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
   const colState = {};
@@ -1304,14 +1305,16 @@
     const pv = panelVis();
     const panelChips = SCAN_PANELS.map(p => '<button class="chip col-chip' + (pv[p.k] ? " on" : "") + '" data-panel="' + p.k + '">' + (pv[p.k] ? "" : "＋ ") + p.t + "</button>").join("");
     const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
-    const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '">' + escAttr(p.name) + "</option>").join("");
+    if (_selPreset && !presets.some(p => p.id === _selPreset)) _selPreset = "";  // stale id (deleted) → clear
+    const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '"' + (p.id === _selPreset ? " selected" : "") + ">" + escAttr(p.name) + "</option>").join("");
     const topBar = '<div class="panel filters scan-topbar">' +
       '<div class="stb-grp"><span class="muted stb-lbl">🧩 פאנלים:</span>' + panelChips +
         '<button class="btn ghost stb-reset" id="scanReset" title="נקה את כל הפילטרים">↺ איפוס פילטרים</button>' + "</div>" +
       '<div class="stb-grp stb-presets"><span class="muted stb-lbl">⭐ סריקות שמורות:</span>' +
         '<select id="presetSel">' + presetOpts + "</select>" +
-        '<button class="btn ghost" id="presetSave">💾 שמור</button>' +
-        (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הפריסט הנבחר">🗑</button>' : "") +
+        '<button class="btn ghost" id="presetSave" title="שמור את הפילטרים הנוכחיים כסריקה חדשה">💾 שמור</button>' +
+        (presets.length ? '<button class="btn ghost" id="presetDup" title="שכפל את הסריקה הנבחרת">⧉ שכפל</button>' : "") +
+        (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הסריקה הנבחרת">🗑 מחק</button>' : "") +
         '<button class="btn ghost" id="alertBell" title="מרכז התראות — התראה כשמניה מהמועדפים נכנסת לסריקה">🔔<span class="al-badge" id="alBadge"></span></button>' +
       "</div></div>";
     return (
@@ -1411,9 +1414,10 @@
     { const it = $("#indToggle"); if (it) it.onclick = () => { scanState.indOpen = !scanState.indOpen; reRender(); }; }
     // panel-visibility chips + saved-scan presets
     document.querySelectorAll("[data-panel]").forEach(b => b.onclick = () => togglePanel(b.dataset.panel));
-    { const psel = $("#presetSel"); if (psel) psel.onchange = () => { const id = psel.value; if (!id) return; const p = (window.Prefs.scanPresets() || []).find(x => x.id === id); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }
-    { const psave = $("#presetSave"); if (psave) psave.onclick = () => { const name = (window.prompt("שם לסריקה השמורה:", "") || "").trim(); if (!name) return; window.Prefs.saveScanPreset(name, scanConfigSnapshot()); reRender(); }; }
-    { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { const psel = $("#presetSel"); const id = psel ? psel.value : ""; if (!id) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } window.Prefs.deleteScanPreset(id); reRender(); }; }
+    { const psel = $("#presetSel"); if (psel) psel.onchange = () => { _selPreset = psel.value; if (!_selPreset) { reRender(); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }
+    { const psave = $("#presetSave"); if (psave) psave.onclick = () => { const name = (window.prompt("שם לסריקה השמורה:", "") || "").trim(); if (!name) return; const rec = window.Prefs.saveScanPreset(name, scanConfigSnapshot()); if (rec) _selPreset = rec.id; reRender(); }; }
+    { const pdup = $("#presetDup"); if (pdup) pdup.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשכפל אותה."); return; } const rec = window.Prefs.duplicateScanPreset(_selPreset); if (rec) _selPreset = rec.id; reRender(); }; }
+    { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p && !confirm('למחוק את הסריקה "' + p.name + '"?')) return; window.Prefs.deleteScanPreset(_selPreset); _selPreset = ""; reRender(); }; }
     { const bell = $("#alertBell"); if (bell) bell.onclick = () => openAlertsFeed(); updateAlertBell(); }
     document.querySelectorAll("[data-mtft]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtft].t = s.value; reRender(); });
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
