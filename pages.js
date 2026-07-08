@@ -832,28 +832,41 @@
   window._snOpenAlerts = openAlertsFeed;
   window._snCheckAlerts = checkPresetAlerts;
 
-  // ---- screenshot & share (branded card) ----
+  // ---- screenshot & share (designed branded card, not a raw page grab) ----
+  function buildShareCardEl() {
+    const ms = todayMarketState();
+    const picks = (typeof scanSource === "function" ? scanSource() : []).filter(t => t.ninja != null)
+      .sort((a, b) => b.ninja - a.ninja).slice(0, 3);
+    const num = v => (v >= 0 ? "+" : "") + (v == null ? 0 : v).toFixed(2) + "%";
+    const idxHtml = ms ? ms.idx.map(i => '<span class="sc-idx"><b>' + i.sym + "</b> " + num(i.chg) + "</span>").join("") : "";
+    const vixHtml = (ms && ms.vix) ? '<span class="sc-idx"><b>VIX</b> ' + ms.vix.level.toFixed(1) + "</span>" : "";
+    const picksHtml = picks.map(t => '<div class="sc-pick"><div class="sc-pk-score">' + t.ninja + '</div><div class="sc-pk-sym">' + t.sym +
+      '</div><div class="sc-pk-chg ' + ((t.chg || 0) >= 0 ? "pos" : "neg") + '">' + num(t.chg) + "</div></div>").join("");
+    const el = document.createElement("div");
+    el.className = "share-card";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;width:1000px;z-index:-1;";
+    el.innerHTML =
+      '<div class="sc-top"><img class="sc-logo" src="favicon.svg" crossorigin="anonymous">' +
+        '<div><div class="sc-title">StratNinja <span>Scanner</span></div><div class="sc-sub">סריקת שוק בזמן אמת · The Strat</div></div>' +
+        '<img class="sc-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'"></div>' +
+      '<div class="sc-body">' +
+        (ms ? '<div class="sc-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" : "") +
+        '<div class="sc-strip">' + idxHtml + vixHtml + "</div>" +
+        (picksHtml ? '<div class="sc-picks-lbl">Top Ninja Score</div><div class="sc-picks">' + picksHtml + "</div>" : "") +
+      "</div>" +
+      '<div class="sc-foot"><span>Adi Koriat · @KoriatTrade</span><span>stratninja.win · ' + new Date().toLocaleDateString("he-IL") + "</span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function captureShare() {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
-    const target = state.page === "journal" ? document.getElementById("journalContainer") : document.getElementById("page");
-    if (!target) return;
     snToast("מכין תמונה לשיתוף…");
-    html2canvas(target, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false }).then(cv => {
-      const w = cv.width, fh = 150;
-      const out = document.createElement("canvas");
-      out.width = w; out.height = cv.height + fh;
-      const ctx = out.getContext("2d");
-      ctx.fillStyle = "#0f1420"; ctx.fillRect(0, 0, out.width, out.height);
-      ctx.drawImage(cv, 0, 0);
-      ctx.fillStyle = "#131a2b"; ctx.fillRect(0, cv.height, w, fh);
-      ctx.fillStyle = "#26b06b"; ctx.fillRect(0, cv.height, 6, fh);
-      ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.direction = "rtl";
-      ctx.fillStyle = "#ffffff"; ctx.font = "800 40px Arial";
-      ctx.fillText("StratNinja Scanner", w - 44, cv.height + fh / 2 - 24);
-      ctx.fillStyle = "#9aa3b2"; ctx.font = "500 28px Arial";
-      ctx.fillText("Adi Koriat · stratninja.win · " + new Date().toLocaleString("he-IL"), w - 44, cv.height + fh / 2 + 26);
-      showShareModal(out);
-    }).catch(() => snToast("שגיאה בצילום — נסה שוב"));
+    const el = buildShareCardEl();
+    setTimeout(() => {
+      html2canvas(el, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false })
+        .then(cv => { el.remove(); showShareModal(cv); })
+        .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
+    }, 300);
   }
   function showShareModal(canvas) {
     canvas.toBlob(blob => {
@@ -2022,9 +2035,9 @@
     fetchScanner();
   }
 
-  // ---- floating Hebrew news feed ----
-  let NEWS = null, _newsMin = false;
-  try { _newsMin = localStorage.getItem("sn_news_min") === "1"; } catch (e) {}
+  // ---- Hebrew news feed (opens from the sidebar; not a permanent floating box) ----
+  let NEWS = null, _newsOpen = false;
+  try { _newsOpen = localStorage.getItem("sn_news_open") === "1"; } catch (e) {}
   async function loadNews() {
     try {
       const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return;
@@ -2032,8 +2045,19 @@
         { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { NEWS = j[0].data; renderNewsFeed(); }
+      if (j && j[0] && j[0].data) { NEWS = j[0].data; if (_newsOpen) renderNewsFeed(); updateNewsNav(); }
     } catch (e) {}
+  }
+  function updateNewsNav() {
+    const b = document.getElementById("sideNews"); if (!b) return;
+    b.classList.toggle("active", _newsOpen);
+  }
+  function toggleNews() {
+    _newsOpen = !_newsOpen;
+    try { localStorage.setItem("sn_news_open", _newsOpen ? "1" : "0"); } catch (e) {}
+    if (_newsOpen) { if (!NEWS) loadNews(); else renderNewsFeed(); }
+    else { const box = document.getElementById("newsFeed"); if (box) box.classList.add("hidden"); }
+    updateNewsNav();
   }
   function newsSession() {
     try {
@@ -2059,12 +2083,6 @@
     const box = document.getElementById("newsFeed");
     if (!box || !NEWS) return;
     box.classList.remove("hidden");
-    if (_newsMin) {
-      box.className = "news-feed min";
-      box.innerHTML = '<button class="nf-pill" id="nfExpand">🗞️ חדשות · ' + ((NEWS.cards || []).length) + "</button>";
-      const ex = document.getElementById("nfExpand"); if (ex) ex.onclick = () => { _newsMin = false; try { localStorage.setItem("sn_news_min", "0"); } catch (e) {} renderNewsFeed(); };
-      return;
-    }
     box.className = "news-feed";
     const list = (NEWS.cards || []).map(c =>
       '<a class="nf-item" href="' + escAttr(c.url || "#") + '" target="_blank" rel="noopener">' +
@@ -2073,10 +2091,10 @@
       '<span class="nf-src">' + escAttr(c.pub || "") + "</span><span class=\"nf-time\">" + timeAgoHe(c.ts) + "</span></div></a>").join("");
     box.innerHTML =
       '<div class="nf-head"><span class="nf-title">🗞️ חדשות בזמן אמת</span>' +
-      '<button class="nf-min" id="nfMin" title="מזער">–</button></div>' +
+      '<button class="nf-min" id="nfClose" title="סגור">✕</button></div>' +
       '<div class="nf-status">' + newsSession() + " · עודכן " + timeAgoHe(NEWS.updated) + "</div>" +
       '<div class="nf-list">' + (list || '<div class="muted" style="padding:12px">אין חדשות כרגע.</div>') + "</div>";
-    const mn = document.getElementById("nfMin"); if (mn) mn.onclick = () => { _newsMin = true; try { localStorage.setItem("sn_news_min", "1"); } catch (e) {} renderNewsFeed(); };
+    const cl = document.getElementById("nfClose"); if (cl) cl.onclick = () => toggleNews();
   }
 
   // ---- persistent live ticker (SPY / QQQ / BTC) ----
@@ -2149,7 +2167,8 @@
     setInterval(updateTicker, 60000);
     setInterval(updateSync, 1000);
     startCtaRotator();
-    { const cam = document.getElementById("shareCam"); if (cam) { cam.classList.remove("hidden"); cam.onclick = () => captureShare(); } }
+    { const cam = document.getElementById("sideCam"); if (cam) cam.onclick = () => captureShare(); }
+    { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
     loadNews();
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min
   }

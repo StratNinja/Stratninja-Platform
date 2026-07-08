@@ -100,6 +100,8 @@
 
         <a data-page="journal">📅 <span class="lbl">יומן מסחר</span></a>
         <a class="side-about" onclick="openLegal('about')">👤 <span class="lbl">עליי</span></a>
+        <a class="side-act" id="sideNews">🗞️ <span class="lbl">חדשות</span></a>
+        <a class="side-act" id="sideCam">📷 <span class="lbl">שתף מסך</span></a>
       </nav>
       <div class="side-foot">
         <div class="social-row">
@@ -159,10 +161,8 @@
 <script src="legal.js"></script>
 <script src="a11y.js"></script>
 
-<!-- floating Hebrew news feed (app pages) -->
+<!-- floating Hebrew news feed (opens from the sidebar; app pages) -->
 <div id="newsFeed" class="news-feed hidden" aria-live="polite"></div>
-<!-- screenshot & share floating button (app pages) -->
-<button id="shareCam" class="share-cam hidden" aria-label="צלם ושתף" title="צלם מסך ושתף">📷</button>
 <!-- back-to-top floating button (shows on scroll, app pages) -->
 <button id="backTop" aria-label="חזרה למעלה" title="חזרה למעלה">↑</button>
 <script>

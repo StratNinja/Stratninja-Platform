@@ -274,8 +274,31 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
   display:flex; align-items:center; justify-content:center; transition:transform .12s; }
 .share-cam:hover { transform:scale(1.08); }
 .share-cam.hidden { display:none; }
+/* designed share card (rendered to an image) */
+.share-card { width:1000px; background:linear-gradient(135deg,#0f1420,#1a2238); color:#fff; font-family:'Rubik',Arial,sans-serif; }
+.share-card .sc-top { display:flex; align-items:center; gap:18px; padding:34px 44px 18px; background:linear-gradient(90deg, rgba(124,108,240,.28), rgba(124,108,240,0)); }
+.share-card .sc-logo { width:60px; height:60px; }
+.share-card .sc-title { font-size:38px; font-weight:800; line-height:1; }
+.share-card .sc-title span { color:#8f82ff; }
+.share-card .sc-sub { font-size:18px; color:#9aa3b2; margin-top:7px; }
+.share-card .sc-photo { width:96px; height:96px; border-radius:50%; object-fit:cover; border:3px solid #7c6cf0; margin-inline-start:auto; }
+.share-card .sc-body { padding:6px 44px 24px; }
+.share-card .sc-mode { font-size:30px; font-weight:800; margin:14px 0 18px; }
+.share-card .sc-mode.pos { color:#4fe39b; } .share-card .sc-mode.neg { color:#ff7a86; } .share-card .sc-mode.zero { color:#e0c760; }
+.share-card .sc-strip { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:22px; }
+.share-card .sc-idx { background:rgba(255,255,255,.06); padding:11px 18px; border-radius:12px; font-size:20px; font-weight:600; }
+.share-card .sc-idx b { color:#c3ccdd; margin-inline-end:6px; }
+.share-card .sc-picks-lbl { font-size:16px; color:#9aa3b2; margin-bottom:10px; font-weight:700; }
+.share-card .sc-picks { display:flex; gap:16px; }
+.share-card .sc-pick { flex:1; background:rgba(255,255,255,.06); border-radius:16px; padding:18px; text-align:center; }
+.share-card .sc-pk-score { display:inline-block; background:rgba(38,176,107,.22); color:#4fe39b; font-weight:800; font-size:26px; padding:3px 16px; border-radius:12px; }
+.share-card .sc-pk-sym { font-size:26px; font-weight:800; margin:10px 0 4px; }
+.share-card .sc-pk-chg { font-size:20px; font-weight:700; }
+.share-card .sc-pk-chg.pos { color:#4fe39b; } .share-card .sc-pk-chg.neg { color:#ff7a86; }
+.share-card .sc-foot { display:flex; justify-content:space-between; padding:20px 44px; background:rgba(0,0,0,.35); font-size:18px; color:#c3ccdd; font-weight:600; }
 /* floating Hebrew news feed */
-.news-feed { position:fixed; inset-block-end:74px; inset-inline-start:18px; inset-inline-end:auto; z-index:3800;
+.side-nav a.side-act { cursor:pointer; }
+.news-feed { position:fixed; inset-block-end:18px; inset-inline-start:18px; inset-inline-end:auto; z-index:3800;
   width:min(340px, calc(100vw - 36px)); background:var(--panel); border:1px solid var(--line); border-radius:14px;
   box-shadow:0 10px 34px rgba(0,0,0,.45); overflow:hidden; }
 .news-feed.hidden { display:none; }
