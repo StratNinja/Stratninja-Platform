@@ -825,19 +825,50 @@
     const flist = feed.length ? feed.slice(0, 50).map(e =>
       '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted">נכנסה ל־"' + escAttr(e.preset) + '"</span><span class="muted al-time">' + new Date(e.ts).toLocaleString("he-IL") + "</span></div>").join("")
       : '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>';
+    const pushOn = !!(window.Prefs && Prefs.pushSubs().length);
+    const pushBtn = pushOn ? '<span class="pos" style="font-weight:600">✓ התראות פלאפון פעילות</span>'
+      : '<button class="btn primary" id="alPushSub" style="font-size:12px">📱 הפעל התראות לפלאפון</button>';
     const body =
       '<div class="note" style="margin-bottom:8px">🔔 קבל התראה כשמניה <b>מהמועדפים</b> שלך נכנסת לסריקה שמורה. ' + permTxt + "</div>" +
-      '<div class="note" style="margin-bottom:10px;font-size:11px">📱 <b>לפלאפון:</b> הוסף את האתר למסך הבית (שיתוף → הוסף למסך הבית) והפעל התראות — כך תקבל התראה גם כשהאפליקציה ברקע.</div>' +
+      '<div class="note" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">' + pushBtn +
+        '<span style="font-size:11px;color:var(--muted)">📱 בפלאפון: הוסף קודם למסך הבית (שיתוף → הוסף למסך הבית), ואז תקבל התראות גם כשהאפליקציה סגורה לגמרי.</span></div>' +
       '<h3 style="margin:12px 0 6px;font-size:14px">הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div>" +
       '<h3 style="margin:16px 0 6px;font-size:14px">התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div>";
     modal("🔔 מרכז ההתראות", body);
     document.querySelectorAll("[data-alp]").forEach(b => b.onchange = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); });
     { const pm = $("#alNotifyPerm"); if (pm) pm.onclick = () => { requestNotifyPerm(); setTimeout(openAlertsFeed, 400); }; }
+    { const ps = $("#alPushSub"); if (ps) ps.onclick = () => subscribeToPush(); }
     { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); openAlertsFeed(); }; }
     wireCharts(document.getElementById("pgModal") || document);
   }
   window._snOpenAlerts = openAlertsFeed;
   window._snCheckAlerts = checkPresetAlerts;
+
+  // ---- Web Push subscription (phone alerts even when the app is closed) ----
+  function urlB64ToUint8(b64) {
+    const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    const s = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(s), arr = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+    return arr;
+  }
+  async function subscribeToPush() {
+    try {
+      const cfg = window.SN_CONFIG;
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !cfg || !cfg.VAPID_PUBLIC) {
+        snToast("הדפדפן הזה לא תומך בהתראות Push"); return;
+      }
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { snToast("צריך לאשר התראות בדפדפן"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
+      if (window.Prefs && sub) Prefs.addPushSub(sub.toJSON());
+      snToast("✓ התראות לפלאפון הופעלו!");
+      if (document.getElementById("pgModal")) openAlertsFeed();
+    } catch (e) { snToast("שגיאה בהפעלת התראות פלאפון"); }
+  }
+  window._snSubPush = subscribeToPush;
 
   // ---- screenshot & share ----
   const _shNum = v => (v >= 0 ? "+" : "") + (v == null ? 0 : v).toFixed(2) + "%";

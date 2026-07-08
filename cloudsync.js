@@ -12,8 +12,8 @@
     { key: "stratninja_journal_v1", table: "user_journal", empty: { fills: [], manual: [] },
       hasData: d => d && (((d.fills || []).length) || ((d.manual || []).length)),
       rerender: () => { if (window.Journal && window.Journal.rerender) window.Journal.rerender(); } },
-    { key: "stratninja_prefs_v1", table: "user_prefs", empty: { favorites: [], alerts: [], scanPanels: null, scanPresets: [], alertFeed: [] },
-      hasData: d => d && (((d.favorites || []).length) || ((d.alerts || []).length) || ((d.scanPresets || []).length) || (d.scanPanels != null) || ((d.alertFeed || []).length)),
+    { key: "stratninja_prefs_v1", table: "user_prefs", empty: { favorites: [], alerts: [], scanPanels: null, scanPresets: [], alertFeed: [], pushSubs: [] },
+      hasData: d => d && (((d.favorites || []).length) || ((d.alerts || []).length) || ((d.scanPresets || []).length) || (d.scanPanels != null) || ((d.alertFeed || []).length) || ((d.pushSubs || []).length)),
       rerender: () => { if (window.Prefs && window.Prefs.notify) window.Prefs.notify(); } },
   ];
   const byKey = {}; SYNCS.forEach(s => { byKey[s.key] = s; s._timer = null; });

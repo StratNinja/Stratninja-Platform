@@ -54,6 +54,13 @@ window.Prefs = (function () {
     feedUnread() { return (read().alertFeed || []).filter(e => !e.read).length; },
     feedMarkRead() { const d = read(); (d.alertFeed || []).forEach(e => e.read = true); write(d); },
     feedClear() { const d = read(); d.alertFeed = []; write(d); },
+    // Web Push subscriptions (per device) — the server pushes phone alerts to these
+    pushSubs() { return read().pushSubs || []; },
+    addPushSub(sub) {
+      const d = read(); d.pushSubs = d.pushSubs || [];
+      if (!d.pushSubs.some(s => s.endpoint === sub.endpoint)) { d.pushSubs.push(sub); write(d); }
+    },
+    removePushSub(endpoint) { const d = read(); d.pushSubs = (d.pushSubs || []).filter(s => s.endpoint !== endpoint); write(d); },
     onChange(f) { listeners.push(f); },
     notify() { listeners.forEach(f => { try { f(); } catch (e) {} }); },  // used by cloudsync after a pull
   };
