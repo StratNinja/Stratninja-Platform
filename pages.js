@@ -839,16 +839,57 @@
   window._snOpenAlerts = openAlertsFeed;
   window._snCheckAlerts = checkPresetAlerts;
 
-  // ---- screenshot & share (designed branded card, not a raw page grab) ----
-  function buildShareCardEl() {
+  // ---- screenshot & share ----
+  const _shNum = v => (v >= 0 ? "+" : "") + (v == null ? 0 : v).toFixed(2) + "%";
+  function _shPick(score, sym, chg) {
+    return '<div class="sc-pick"><div class="sc-pk-score">' + score + '</div><div class="sc-pk-sym">' + sym +
+      '</div><div class="sc-pk-chg ' + ((chg || 0) >= 0 ? "pos" : "neg") + '">' + _shNum(chg) + "</div></div>";
+  }
+  function _shIdx(label, val, cls) { return '<span class="sc-idx' + (cls ? " " + cls : "") + '"><b>' + label + "</b> " + val + "</span>"; }
+  // page-aware summary content for the share card
+  function shareSummaryFor(page) {
     const ms = todayMarketState();
-    const picks = (typeof scanSource === "function" ? scanSource() : []).filter(t => t.ninja != null)
-      .sort((a, b) => b.ninja - a.ninja).slice(0, 3);
-    const num = v => (v >= 0 ? "+" : "") + (v == null ? 0 : v).toFixed(2) + "%";
-    const idxHtml = ms ? ms.idx.map(i => '<span class="sc-idx"><b>' + i.sym + "</b> " + num(i.chg) + "</span>").join("") : "";
-    const vixHtml = (ms && ms.vix) ? '<span class="sc-idx"><b>VIX</b> ' + ms.vix.level.toFixed(1) + "</span>" : "";
-    const picksHtml = picks.map(t => '<div class="sc-pick"><div class="sc-pk-score">' + t.ninja + '</div><div class="sc-pk-sym">' + t.sym +
-      '</div><div class="sc-pk-chg ' + ((t.chg || 0) >= 0 ? "pos" : "neg") + '">' + num(t.chg) + "</div></div>").join("");
+    const src = (typeof scanSource === "function" ? scanSource() : []);
+    if (page === "scanner") {
+      let rows = []; try { rows = filterRows(src); } catch (e) { rows = src; }
+      const top = rows.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 3);
+      return { headline: "🔍 סורק עסקאות · " + rows.length + " תוצאות", cls: "zero", strip: "", picksLabel: "Top Ninja Score",
+        picks: top.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
+    }
+    if (page === "today") {
+      const longs = src.filter(t => t.ninja != null && (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 3);
+      return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 מה לבדוק עכשיו", cls: ms ? ms.cls : "zero", strip: "",
+        picksLabel: "🟢 מועמדים ללונג — Top Ninja", picks: longs.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
+    }
+    if (page === "sectors") {
+      const lead = (LIVE && LIVE.sectorLeaders || []).slice(0, 3), lag = (LIVE && LIVE.sectorLaggards || []).slice(0, 3);
+      const strip = lead.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "pos")).join("") + lag.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "neg")).join("");
+      return { headline: "🗂️ סקטורים · לאן הכסף זורם", cls: "zero", strip: strip, picksLabel: "", picks: "" };
+    }
+    if (page === "sp500") {
+      const b = mktU().breadth || {}; const pct = b.total ? Math.round(b.above / b.total * 100) : 0;
+      return { headline: "🗺️ רוחב שוק S&P 500 · " + pct + "% ירוקים", cls: pct >= 55 ? "pos" : pct <= 45 ? "neg" : "zero",
+        strip: _shIdx("מעל פתיחה", b.above || 0, "pos") + _shIdx("מתחת", b.below || 0, "neg"), picksLabel: "", picks: "" };
+    }
+    if (page === "gappers") {
+      const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
+      const strip = (g.up || []).slice(0, 4).map(x => _shIdx(x.s, _shNum(x.gp), "pos")).join("") + (g.down || []).slice(0, 4).map(x => _shIdx(x.s, _shNum(x.gp), "neg")).join("");
+      return { headline: "⚡ גאפרים היום", cls: "zero", strip: strip || '<span class="sc-idx">אין גאפרים כרגע</span>', picksLabel: "", picks: "" };
+    }
+    if (page === "favorites") {
+      const favs = window.Prefs ? Prefs.favorites() : [];
+      const rows = src.filter(t => favs.indexOf(t.sym) >= 0);
+      const strip = rows.slice(0, 8).map(t => _shIdx(t.sym, _shNum(t.chg), (t.chg || 0) >= 0 ? "pos" : "neg")).join("");
+      return { headline: "⭐ המועדפים שלי · " + favs.length, cls: "zero", strip: strip || '<span class="sc-idx">אין מועדפים</span>', picksLabel: "", picks: "" };
+    }
+    // default = market
+    const idx = ms ? ms.idx.map(i => _shIdx(i.sym, _shNum(i.chg))).join("") + (ms.vix ? _shIdx("VIX", ms.vix.level.toFixed(1)) : "") : "";
+    const picks = src.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 3);
+    return { headline: ms ? ms.emoji + " " + ms.mode : "📡 סקירת שוק", cls: ms ? ms.cls : "zero", strip: idx,
+      picksLabel: "Top Ninja Score", picks: picks.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
+  }
+  function buildShareCardEl() {
+    const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
     el.className = "share-card";
     el.style.cssText = "position:fixed;left:-9999px;top:0;width:1000px;z-index:-1;";
@@ -857,9 +898,9 @@
         '<div><div class="sc-title">StratNinja <span>Scanner</span></div><div class="sc-sub">סריקת שוק בזמן אמת · The Strat</div></div>' +
         '<img class="sc-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'"></div>' +
       '<div class="sc-body">' +
-        (ms ? '<div class="sc-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" : "") +
-        '<div class="sc-strip">' + idxHtml + vixHtml + "</div>" +
-        (picksHtml ? '<div class="sc-picks-lbl">Top Ninja Score</div><div class="sc-picks">' + picksHtml + "</div>" : "") +
+        '<div class="sc-mode ' + s.cls + '">' + s.headline + "</div>" +
+        (s.strip ? '<div class="sc-strip">' + s.strip + "</div>" : "") +
+        (s.picks ? '<div class="sc-picks-lbl">' + s.picksLabel + '</div><div class="sc-picks">' + s.picks + "</div>" : "") +
       "</div>" +
       '<div class="sc-foot"><span>Adi Koriat · @KoriatTrade</span><span>stratninja.win · ' + new Date().toLocaleDateString("he-IL") + "</span></div>";
     document.body.appendChild(el);
@@ -867,13 +908,43 @@
   }
   function captureShare() {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
-    snToast("מכין תמונה לשיתוף…");
+    const body = '<div style="display:flex;flex-direction:column;gap:10px">' +
+      '<button class="btn primary" id="capSummary" style="font-size:14px;padding:13px;text-align:start">🖼️ כרטיס סיכום מעוצב<div style="font-size:11px;font-weight:400;opacity:.85;margin-top:3px">תמונה ממותגת עם סיכום מה שאתה רואה בערוץ הנוכחי</div></button>' +
+      '<button class="btn ghost" id="capFull" style="font-size:14px;padding:13px;text-align:start">📸 צילום מסך מלא<div style="font-size:11px;font-weight:400;opacity:.7;margin-top:3px">צילום של כל המסך כמו שהוא כרגע</div></button>' +
+      "</div>";
+    modal("📷 צילום ושיתוף", body);
+    { const a = document.getElementById("capSummary"); if (a) a.onclick = () => { closeModal(); captureSummaryCard(); }; }
+    { const b = document.getElementById("capFull"); if (b) b.onclick = () => { closeModal(); captureFullScreen(); }; }
+  }
+  function captureSummaryCard() {
+    snToast("מכין כרטיס סיכום…");
     const el = buildShareCardEl();
     setTimeout(() => {
       html2canvas(el, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
     }, 300);
+  }
+  function captureFullScreen() {
+    const target = state.page === "journal" ? document.getElementById("journalContainer") : document.getElementById("page");
+    if (!target) { snToast("אין מה לצלם"); return; }
+    snToast("מצלם את המסך…");
+    html2canvas(target, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false }).then(cv => {
+      const w = cv.width, fh = 128;
+      const out = document.createElement("canvas");
+      out.width = w; out.height = cv.height + fh;
+      const ctx = out.getContext("2d");
+      ctx.fillStyle = "#0f1420"; ctx.fillRect(0, 0, out.width, out.height);
+      ctx.drawImage(cv, 0, 0);
+      ctx.fillStyle = "#131a2b"; ctx.fillRect(0, cv.height, w, fh);
+      ctx.fillStyle = "#7c6cf0"; ctx.fillRect(0, cv.height, 6, fh);
+      ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.direction = "rtl";
+      ctx.fillStyle = "#ffffff"; ctx.font = "800 36px Rubik, Arial";
+      ctx.fillText("StratNinja Scanner", w - 40, cv.height + fh / 2 - 20);
+      ctx.fillStyle = "#9aa3b2"; ctx.font = "500 26px Rubik, Arial";
+      ctx.fillText("Adi Koriat · stratninja.win · " + new Date().toLocaleString("he-IL"), w - 40, cv.height + fh / 2 + 24);
+      showShareModal(out);
+    }).catch(() => snToast("שגיאה בצילום — נסה שוב"));
   }
   function showShareModal(canvas) {
     canvas.toBlob(blob => {
