@@ -483,11 +483,11 @@
   // gappers TOP-3 up/down for the market page (full list stays on the gappers channel)
   function gappersMini() {
     const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
-    const row = arr => arr.length ? arr.slice(0, 3).map(x =>
+    const row = arr => arr.length ? arr.slice(0, 5).map(x =>
       '<div class="gm-row"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span>" + pct(x.gp) + "</div>").join("")
       : '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
-    return '<div class="panel gappers-mini"><h3 class="gm-head"><span>⚡ גאפרים</span><button class="btn ghost" id="gapAll" style="font-size:12px;font-weight:600">ראה הכל →</button></h3>' +
-      '<div class="gm-grid"><div><div class="td-h pos">TOP גאפ אפ</div>' + row(g.up) + "</div><div><div class=\"td-h neg\">TOP גאפ דאון</div>" + row(g.down) + "</div></div></div>";
+    return '<div class="panel gappers-mini"><h3 class="gm-head"><span>⚡ גאפרים · פתיחת יום</span><button class="btn ghost" id="gapAll" style="font-size:12px;font-weight:600">ראה הכל →</button></h3>' +
+      '<div class="gm-grid"><div><div class="td-h pos">🟢 TOP גאפ אפ</div>' + row(g.up) + "</div><div><div class=\"td-h neg\">🔴 TOP גאפ דאון</div>" + row(g.down) + "</div></div></div>";
   }
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
@@ -516,16 +516,17 @@
           '<div class="mkt-dash-left">' +
             '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
             breadthBar() +
-            gappersMini() +
           "</div>" +
           '<div class="mkt-dash-right">' + candleMapPanel() + "</div>" +
         "</div>" +
+        '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-dash-bottom">' +
-          '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead(mktU().sectorLeaders, "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
-          '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead(mktU().sectorLaggards, "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
+          '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead((mktU().sectorLeaders || []).slice(0, 5), "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
+          '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead((mktU().sectorLaggards || []).slice(0, 5), "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
           '<div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((mktU().leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
           '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((mktU().laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div>" +
         "</div>" +
+        gappersMini() +
       "</div>"
     );
   }
