@@ -746,7 +746,21 @@
         n.onclick = () => { try { window.focus(); } catch (x) {} openAlertsFeed(); n.close(); };
       }
     } catch (x) {}
-    snToast(body);
+  }
+  // prominent on-screen alert — can't be missed
+  function showAlertBanner(fresh) {
+    const box = document.createElement("div");
+    box.className = "alert-pop";
+    box.innerHTML = '<div class="ap-head"><span>🔔 התראה חדשה!</span><button class="ap-x" aria-label="סגור">✕</button></div>' +
+      '<div class="ap-body">' + fresh.map(e =>
+        '<div class="ap-row"><span class="ap-sym">' + escAttr(e.sym) + "</span>נכנסה לסריקה <b>" + escAttr(e.preset) + "</b>" +
+        ' <a class="ap-link" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener">📈 גרף</a></div>').join("") +
+      "</div>";
+    document.body.appendChild(box);
+    requestAnimationFrame(() => box.classList.add("show"));
+    const close = () => { box.classList.remove("show"); setTimeout(() => box.remove(), 300); };
+    const x = box.querySelector(".ap-x"); if (x) x.onclick = close;
+    setTimeout(close, 15000);
   }
   function checkPresetAlerts() {
     if (!window.Prefs || !(SCAN && SCAN.rows && SCAN.rows.length)) return;
@@ -762,8 +776,9 @@
         Prefs.feedAdd(entry); fresh.push(entry);
       });
     });
-    if (fresh.length) { fresh.forEach(fireNotification); updateAlertBell(); }
+    if (fresh.length) { fresh.forEach(fireNotification); showAlertBanner(fresh); updateAlertBell(); }
   }
+  window._snTestAlert = () => showAlertBanner([{ sym: "TSLA", preset: "בדיקה", pid: "x" }]);
   function updateAlertBell() {
     const b = document.getElementById("alBadge"); if (!b) return;
     const n = window.Prefs ? Prefs.feedUnread() : 0;
@@ -777,7 +792,7 @@
       ? '<span class="pos">✓ התראות דפדפן פעילות</span>'
       : '<button class="btn ghost" id="alNotifyPerm" style="font-size:12px">הפעל התראות דפדפן</button>';
     const plist = presets.length ? presets.map(p =>
-      '<div class="al-prow"><span>' + escAttr(p.name) + '</span><button class="chip al-toggle' + (p.alert ? " on" : "") + '" data-alp="' + escAttr(p.id) + '">' + (p.alert ? "🔔 מופעל" : "כבוי") + "</button></div>").join("")
+      '<div class="al-prow"><span>' + escAttr(p.name) + '</span><label class="ios-switch"><input type="checkbox" data-alp="' + escAttr(p.id) + '"' + (p.alert ? " checked" : "") + '><span class="ios-slider"></span></label></div>').join("")
       : '<div class="muted">אין עדיין סריקות שמורות. שמור פריסט בסורק העסקאות כדי להפעיל עליו התראה.</div>';
     const flist = feed.length ? feed.slice(0, 50).map(e =>
       '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted">נכנסה ל־"' + escAttr(e.preset) + '"</span><span class="muted al-time">' + new Date(e.ts).toLocaleString("he-IL") + "</span></div>").join("")
@@ -787,7 +802,7 @@
       '<h3 style="margin:12px 0 6px;font-size:14px">הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div>" +
       '<h3 style="margin:16px 0 6px;font-size:14px">התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div>";
     modal("🔔 מרכז ההתראות", body);
-    document.querySelectorAll("[data-alp]").forEach(b => b.onclick = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); openAlertsFeed(); });
+    document.querySelectorAll("[data-alp]").forEach(b => b.onchange = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); });
     { const pm = $("#alNotifyPerm"); if (pm) pm.onclick = () => { requestNotifyPerm(); setTimeout(openAlertsFeed, 400); }; }
     { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); openAlertsFeed(); }; }
     wireCharts(document.getElementById("pgModal") || document);
