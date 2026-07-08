@@ -764,8 +764,14 @@
     const body = e.sym + ' נכנסה לסריקה "' + e.preset + '"';
     try {
       if (window.Notification && Notification.permission === "granted") {
-        const n = new Notification("🔔 התראת StratNinja", { body: body, icon: "favicon.svg", tag: e.pid + e.sym });
-        n.onclick = () => { try { window.focus(); } catch (x) {} openAlertsFeed(); n.close(); };
+        // prefer the service worker (shows on the phone even when the app is backgrounded)
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(reg => reg.showNotification("🔔 התראת StratNinja",
+            { body: body, icon: "favicon.svg", badge: "favicon.svg", tag: e.pid + e.sym, dir: "rtl", data: { url: "/" } })).catch(() => {});
+        } else {
+          const n = new Notification("🔔 התראת StratNinja", { body: body, icon: "favicon.svg", tag: e.pid + e.sym });
+          n.onclick = () => { try { window.focus(); } catch (x) {} openAlertsFeed(); n.close(); };
+        }
       }
     } catch (x) {}
   }
@@ -820,7 +826,8 @@
       '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted">נכנסה ל־"' + escAttr(e.preset) + '"</span><span class="muted al-time">' + new Date(e.ts).toLocaleString("he-IL") + "</span></div>").join("")
       : '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>';
     const body =
-      '<div class="note" style="margin-bottom:10px">🔔 קבל התראה כשמניה <b>מהמועדפים</b> שלך נכנסת לסריקה שמורה. ' + permTxt + "</div>" +
+      '<div class="note" style="margin-bottom:8px">🔔 קבל התראה כשמניה <b>מהמועדפים</b> שלך נכנסת לסריקה שמורה. ' + permTxt + "</div>" +
+      '<div class="note" style="margin-bottom:10px;font-size:11px">📱 <b>לפלאפון:</b> הוסף את האתר למסך הבית (שיתוף → הוסף למסך הבית) והפעל התראות — כך תקבל התראה גם כשהאפליקציה ברקע.</div>' +
       '<h3 style="margin:12px 0 6px;font-size:14px">הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div>" +
       '<h3 style="margin:16px 0 6px;font-size:14px">התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div>";
     modal("🔔 מרכז ההתראות", body);
