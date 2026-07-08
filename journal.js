@@ -69,6 +69,7 @@
   window.Store = Store;
 
   // ---- App state ---------------------------------------------------------
+  const ALL = "__ALL__";    // pseudo-account: combined view of every account
   const state = { account: null, tab: "calendar", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1 };
   let manualEditId = null;  // when editing a manual trade, its id; null = adding new
   const OPEN_WARN = 5;      // discipline nudge: warn at this many concurrent open positions
@@ -90,16 +91,28 @@
     setTimeout(() => t.remove(), 2600);
   }
 
-  /* unified trades for the active account */
-  function tradesForAccount() {
-    const acct = state.account;
+  /* unified trades for ONE account */
+  function _tradesForOne(acct) {
     const csvFills = Store.getFills().filter(f => (f.account || "").trim() === acct);
     const { trades, openPositions } = E.computeTrades(csvFills);
     const manual = Store.getManual().filter(m => (m.account || "").trim() === acct).map(E.manualToTrade);
-    const manualClosed = manual.filter(t => !t.open);
-    const manualOpen = manual.filter(t => t.open);
-    const all = trades.concat(manualClosed);
-    return { trades: all, openPositions, manualOpen };
+    return { trades: trades.concat(manual.filter(t => !t.open)), openPositions: openPositions || [], manualOpen: manual.filter(t => t.open) };
+  }
+  /* unified trades for the active account — or ALL accounts combined.
+     Each account is computed separately (so FIFO round-trips never mix across
+     accounts) and the results are merged. */
+  function tradesForAccount() {
+    if (state.account === ALL) {
+      const out = { trades: [], openPositions: [], manualOpen: [] };
+      Store.accounts().forEach(a => {
+        const r = _tradesForOne(a);
+        out.trades = out.trades.concat(r.trades);
+        out.openPositions = out.openPositions.concat(r.openPositions);
+        out.manualOpen = out.manualOpen.concat(r.manualOpen);
+      });
+      return out;
+    }
+    return _tradesForOne(state.account);
   }
 
   // ---- live prices for Unrealized P&L (from the scanner_data snapshot) ----
@@ -132,7 +145,7 @@
     const accts = Store.accounts();
     // normalize the active account BEFORE syncing the dropdown, so the
     // selector and the rendered data can never desync on load.
-    if (accts.length && (!state.account || accts.indexOf(state.account) < 0)) state.account = accts[0];
+    if (accts.length && state.account !== ALL && (!state.account || accts.indexOf(state.account) < 0)) state.account = accts[0];
     renderAccountBar();
     if (!accts.length) { root.appendChild(emptyState()); return; }
 
@@ -238,6 +251,8 @@
     const sel = $("#acctSel");
     sel.innerHTML = "";
     accts.forEach(a => { const o = el("option"); o.value = a; o.textContent = a; sel.appendChild(o); });
+    // combined view — only worth offering when there are 2+ accounts
+    if (accts.length >= 2) { const o = el("option"); o.value = ALL; o.textContent = "📊 כל החשבונות (משולב)"; sel.appendChild(o); }
     if (state.account) sel.value = state.account;
     sel.parentElement.style.display = accts.length ? "" : "none";
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === state.tab));
@@ -597,79 +612,131 @@
     });
   }
 
-  // ---- Manual entry modal ------------------------------------------------
+  // ---- Manual entry wizard (2 steps: OPEN → CLOSE) -----------------------
+  let _mData = null;        // in-progress values, kept across step switches
+  let _mStep = 1;           // 1 = open trade, 2 = close trade
   function openManual(existing) {
     manualEditId = existing && existing.source === "manual" ? existing.id : null;
-    const accts = Store.accounts();
-    const selAcct = existing ? existing.account : state.account;
-    const acctField = accts.length
-      ? '<select id="m_acct">' + accts.map(a => '<option value="' + a + '"' + (a === selAcct ? " selected" : "") + ">" + a + "</option>").join("") +
-        '<option value="__new">➕ חשבון חדש…</option></select>'
-      : '<input id="m_acct" placeholder="שם/מספר חשבון" value="' + (existing ? existing.account : "") + '">';
-    const body =
-      '<div class="form">' +
-      field("חשבון", acctField, true) +
-      field("סימבול", '<input id="m_sym" placeholder="AAPL" style="text-transform:uppercase">') +
-      field("סוג נכס", '<select id="m_asset"><option value="stock">מניה</option><option value="option">אופציה (×100)</option></select>') +
-      field("כיוון", '<select id="m_dir"><option value="long">לונג</option><option value="short">שורט</option></select>') +
-      field("כמות", '<input id="m_qty" type="number" step="any" placeholder="100">') +
-      field("מחיר כניסה", '<input id="m_ep" type="number" step="any">') +
-      field("מחיר יציאה", '<input id="m_xp" type="number" step="any" placeholder="ריק = פוזיציה פתוחה">') +
-      field("תאריך כניסה", '<input id="m_ed" type="date">') +
-      field("תאריך יציאה", '<input id="m_xd" type="date">') +
-      field("עמלות", '<input id="m_fee" type="number" step="any" value="' + lastFee() + '">') +
-      field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?"></textarea>', true) +
-      field("📷 צילום גרף (אופציונלי)",
-        '<div id="m_imgzone" class="img-zone" tabindex="0">' +
-          '<input type="file" id="m_imgfile" accept="image/*" style="display:none">' +
-          '<div class="img-zone-empty" id="m_imgempty">גרור / הדבק (Ctrl+V) / לחץ להעלאת צילום מסך של הגרף</div>' +
-          '<img id="m_imgpreview" class="img-preview hidden" alt="צילום גרף">' +
-          '<button type="button" id="m_imgclear" class="img-clear hidden" title="הסר תמונה">✕</button>' +
-        "</div>", true) +
-      "</div>" +
-      '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>' +
-      '<div class="price-warn hidden" id="m_pricewarn"></div>';
-    modal(existing ? "עריכת עסקה ידנית" : "הזנת עסקה ידנית", body, [
-      { label: existing ? "עדכן עסקה" : "שמור עסקה", cls: "primary", fn: saveManual },
-    ]);
-    // pre-fill when editing
-    if (existing) {
-      const set = (id, v) => { const e = document.getElementById(id); if (e != null && v != null) e.value = v; };
-      set("m_sym", existing.symbol); set("m_asset", existing.assetType); set("m_dir", existing.direction);
-      set("m_qty", existing.qty); set("m_ep", existing.entryPrice); set("m_xp", existing.exitPrice);
-      set("m_ed", existing.entryDate); set("m_xd", existing.exitDate); set("m_fee", existing.fees);
-      set("m_notes", existing.notes);
+    _mData = {
+      account: existing ? existing.account : (state.account === ALL ? "" : (state.account || "")),
+      symbol: existing ? existing.symbol : "",
+      assetType: existing ? existing.assetType : "stock",
+      direction: existing ? existing.direction : "long",
+      qty: existing && existing.qty != null ? existing.qty : "",
+      entryPrice: existing && existing.entryPrice != null ? existing.entryPrice : "",
+      exitPrice: existing && existing.exitPrice != null ? existing.exitPrice : "",
+      entryDate: existing ? (existing.entryDate || "") : "",
+      exitDate: existing && existing.exitDate ? existing.exitDate : "",
+      fees: existing && existing.fees != null ? existing.fees : lastFee(),
+      notes: existing ? (existing.notes || "") : "",
+      closeType: "full", closeQty: "",
+    };
+    manualImg = (existing && existing.img) || null;
+    _mStep = 1;
+    renderManualStep();
+  }
+  // pull whatever inputs exist in the CURRENT step into _mData (never clobber a
+  // field whose input isn't on screen this step)
+  function syncFromDOM() {
+    const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
+    const set = (k, id) => { const v = g(id); if (v !== undefined) _mData[k] = v; };
+    set("entryDate", "m_ed"); set("account", "m_acct"); set("symbol", "m_sym"); set("assetType", "m_asset");
+    set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("notes", "m_notes");
+    set("exitDate", "m_xd"); set("exitPrice", "m_xp"); set("fees", "m_fee");
+    set("closeType", "m_closetype"); set("closeQty", "m_closeqty");
+  }
+  function gotoStep(n) { syncFromDOM(); _mStep = n; renderManualStep(); }
+  function renderManualStep() {
+    const d = _mData, accts = Store.accounts();
+    const opt = (v, cur, lbl) => '<option value="' + v + '"' + (String(cur) === String(v) ? " selected" : "") + ">" + lbl + "</option>";
+    let body, title, actions;
+    if (_mStep === 1) {
+      const acctField = accts.length
+        ? '<select id="m_acct">' + accts.map(a => '<option value="' + a + '"' + (a === d.account ? " selected" : "") + ">" + a + "</option>").join("") +
+          '<option value="__new"' + (d.account === "" ? " selected" : "") + ">➕ חשבון חדש…</option></select>"
+        : '<input id="m_acct" placeholder="שם/מספר חשבון" value="' + (d.account || "") + '">';
+      title = manualEditId ? "עריכת עסקה · פתיחה" : "עסקה חדשה · פתיחה";
+      body =
+        '<div class="wiz-steps"><span class="wiz-dot on">1 · פתיחה</span><span class="wiz-arrow">→</span><span class="wiz-dot">2 · סגירה</span></div>' +
+        '<div class="form">' +
+        field("תאריך כניסה", '<input id="m_ed" type="date" value="' + (d.entryDate || "") + '">') +
+        field("חשבון", acctField, true) +
+        field("סימבול", '<input id="m_sym" placeholder="AAPL" style="text-transform:uppercase" value="' + (d.symbol || "") + '">') +
+        field("סוג נכס", '<select id="m_asset">' + opt("stock", d.assetType, "מניה") + opt("option", d.assetType, "אופציה (×100)") + "</select>") +
+        field("כיוון", '<select id="m_dir">' + opt("long", d.direction, "לונג") + opt("short", d.direction, "שורט") + "</select>") +
+        field("כמות", '<input id="m_qty" type="number" step="any" placeholder="100" value="' + (d.qty === "" ? "" : d.qty) + '">') +
+        field("מחיר כניסה", '<input id="m_ep" type="number" step="any" value="' + (d.entryPrice === "" ? "" : d.entryPrice) + '">') +
+        field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?">' + (d.notes || "") + "</textarea>", true) +
+        field("📷 צילום גרף (אופציונלי)",
+          '<div id="m_imgzone" class="img-zone" tabindex="0">' +
+            '<input type="file" id="m_imgfile" accept="image/*" style="display:none">' +
+            '<div class="img-zone-empty" id="m_imgempty">גרור / הדבק (Ctrl+V) / לחץ להעלאת צילום מסך של הגרף</div>' +
+            '<img id="m_imgpreview" class="img-preview hidden" alt="צילום גרף">' +
+            '<button type="button" id="m_imgclear" class="img-clear hidden" title="הסר תמונה">✕</button>' +
+          "</div>", true) +
+        "</div>" +
+        '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>' +
+        '<div class="price-warn hidden" id="m_pricewarn"></div>';
+      const hasExitSeed = d.exitPrice !== "" && d.exitPrice != null;
+      actions = [
+        { label: hasExitSeed ? "💾 שמור עסקה" : "💾 שמור כפוזיציה פתוחה", cls: "primary", fn: () => saveManual(false) },
+        { label: "לסגירת העסקה →", cls: "", fn: () => gotoStep(2) },
+      ];
+    } else {
+      const q = Math.abs(parseFloat(d.qty) || 0);
+      const dirHe = d.direction === "short" ? "🔴 שורט" : "🟢 לונג";
+      title = "עסקה · סגירה";
+      body =
+        '<div class="wiz-steps"><span class="wiz-dot done">1 · פתיחה</span><span class="wiz-arrow">→</span><span class="wiz-dot on">2 · סגירה</span></div>' +
+        '<div class="note" style="margin:0 0 12px">סוגר: <b>' + (d.symbol || "—").toUpperCase() + "</b> · " + dirHe + " · " + (q || "?") + " יח׳ @ " + (d.entryPrice || "?") + "$ · כניסה " + (d.entryDate || "—") + "</div>" +
+        '<div class="form">' +
+        field("סוג סגירה", '<select id="m_closetype">' + opt("full", d.closeType, "מלאה — כל הפוזיציה") + opt("partial", d.closeType, "חלקית — חלק מהכמות") + "</select>") +
+        field("כמות שנסגרה", '<input id="m_closeqty" type="number" step="any" min="0" max="' + (q || "") + '" placeholder="כמה יח׳ נסגרו" value="' + (d.closeQty === "" ? "" : d.closeQty) + '"' + (d.closeType === "partial" ? "" : " disabled") + '>', false) +
+        field("תאריך יציאה", '<input id="m_xd" type="date" value="' + (d.exitDate || "") + '">') +
+        field("מחיר יציאה", '<input id="m_xp" type="number" step="any" placeholder="מחיר הסגירה" value="' + (d.exitPrice === "" ? "" : d.exitPrice) + '">') +
+        field("עמלות", '<input id="m_fee" type="number" step="any" value="' + (d.fees == null ? "0" : d.fees) + '">') +
+        "</div>" +
+        '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>' +
+        '<div class="price-warn hidden" id="m_pricewarn"></div>';
+      actions = [
+        { label: "✓ שמור סגירה", cls: "primary", fn: () => saveManual(true) },
+        { label: "← חזרה לפתיחה", cls: "", fn: () => gotoStep(1) },
+      ];
     }
-    // live P&L preview
-    const ids = ["m_asset", "m_dir", "m_qty", "m_ep", "m_xp", "m_fee"];
-    ids.forEach(id => { const e = document.getElementById(id); e.oninput = updatePreview; e.onchange = updatePreview; });
-    // price-in-range validation (soft warning) — on change/blur to limit API calls
+    modal(title, body, actions);
+    // wire common preview + validation
+    ["m_asset", "m_dir", "m_qty", "m_ep", "m_xp", "m_fee", "m_closetype", "m_closeqty"].forEach(id => {
+      const e = document.getElementById(id); if (e) { e.oninput = updatePreview; e.onchange = updatePreview; }
+    });
     ["m_sym", "m_ed", "m_ep", "m_xd", "m_xp"].forEach(id => {
       const e = document.getElementById(id);
       if (e) { e.addEventListener("change", scheduleValidatePrices); e.addEventListener("blur", scheduleValidatePrices); }
     });
-    // new-account handling
-    const acctSel = document.getElementById("m_acct");
-    if (acctSel.tagName === "SELECT") acctSel.onchange = () => {
-      if (acctSel.value === "__new") {
-        const name = prompt("שם/מספר החשבון החדש:");
-        if (name) { const o = el("option"); o.value = name; o.textContent = name; acctSel.insertBefore(o, acctSel.lastChild); o.selected = true; }
-        else acctSel.selectedIndex = 0;
+    if (_mStep === 2) {
+      const ct = document.getElementById("m_closetype"), cq = document.getElementById("m_closeqty");
+      if (ct && cq) ct.onchange = () => { cq.disabled = ct.value !== "partial"; if (ct.value !== "partial") cq.value = ""; updatePreview(); };
+    }
+    if (_mStep === 1) {
+      const acctSel = document.getElementById("m_acct");
+      if (acctSel && acctSel.tagName === "SELECT") acctSel.onchange = () => {
+        if (acctSel.value === "__new") {
+          const name = prompt("שם/מספר החשבון החדש:");
+          if (name) { const o = el("option"); o.value = name; o.textContent = name; acctSel.insertBefore(o, acctSel.lastChild); o.selected = true; }
+          else acctSel.selectedIndex = 0;
+        }
+      };
+      _hookPaste();
+      const zone = document.getElementById("m_imgzone"), imgFile = document.getElementById("m_imgfile");
+      if (zone && imgFile) {
+        zone.onclick = e => { if (e.target.id !== "m_imgclear") imgFile.click(); };
+        imgFile.onchange = () => { if (imgFile.files && imgFile.files[0]) _readImgFile(imgFile.files[0]); };
+        zone.ondragover = e => { e.preventDefault(); zone.classList.add("drag"); };
+        zone.ondragleave = () => zone.classList.remove("drag");
+        zone.ondrop = e => { e.preventDefault(); zone.classList.remove("drag"); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) _readImgFile(f); };
+        const clr = document.getElementById("m_imgclear");
+        if (clr) clr.onclick = e => { e.stopPropagation(); setManualImg(null); };
+        setManualImg(manualImg);
       }
-    };
-    // image attach (paste / drag / upload)
-    manualImg = (existing && existing.img) || null;
-    _hookPaste();
-    const zone = document.getElementById("m_imgzone"), imgFile = document.getElementById("m_imgfile");
-    if (zone && imgFile) {
-      zone.onclick = e => { if (e.target.id !== "m_imgclear") imgFile.click(); };
-      imgFile.onchange = () => { if (imgFile.files && imgFile.files[0]) _readImgFile(imgFile.files[0]); };
-      zone.ondragover = e => { e.preventDefault(); zone.classList.add("drag"); };
-      zone.ondragleave = () => zone.classList.remove("drag");
-      zone.ondrop = e => { e.preventDefault(); zone.classList.remove("drag"); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) _readImgFile(f); };
-      const clr = document.getElementById("m_imgclear");
-      if (clr) clr.onclick = e => { e.stopPropagation(); setManualImg(null); };
-      setManualImg(manualImg);
     }
     updatePreview();
   }
@@ -718,47 +785,77 @@
     return '<div class="field' + (full ? " full" : "") + '"><label>' + label + "</label>" + control + "</div>";
   }
   function readManual() {
-    const g = id => (document.getElementById(id) || {}).value;
+    syncFromDOM();
+    const d = _mData;
     return {
       id: manualEditId || undefined,
-      account: (g("m_acct") || "").trim(),
-      symbol: g("m_sym"), assetType: g("m_asset"), direction: g("m_dir"),
-      qty: g("m_qty"), entryPrice: g("m_ep"), exitPrice: g("m_xp"),
-      entryDate: g("m_ed"), exitDate: g("m_xd") || g("m_ed"), fees: g("m_fee"), notes: g("m_notes"),
+      account: (d.account || "").trim(),
+      symbol: d.symbol, assetType: d.assetType, direction: d.direction,
+      qty: d.qty, entryPrice: d.entryPrice, exitPrice: d.exitPrice,
+      entryDate: d.entryDate, exitDate: d.exitDate || d.entryDate, fees: d.fees, notes: d.notes,
       img: manualImg || undefined,
     };
   }
   function updatePreview() {
-    const t = E.manualToTrade(readManual());
+    syncFromDOM();
     const p = document.getElementById("m_preview");
     if (!p) return;
-    if (t.open) {
+    const d = _mData;
+    const hasExit = d.exitPrice !== "" && d.exitPrice != null && !isNaN(parseFloat(d.exitPrice));
+    if (!hasExit) {
       p.className = "pnlpreview";
-      p.textContent = t.assetType === "option"
+      p.textContent = d.assetType === "option"
         ? "📌 פוזיציה פתוחה — טרם נסגרה. לאופציות אין מחיר חי, אז ה-P&L יחושב בסגירה (לפי מחיר היציאה ×100)."
         : "📌 פוזיציה פתוחה — טרם נסגרה. ה-Unrealized P&L יוצג ביומן לפי מחיר חי.";
       return;
     }
-
+    const fullQty = Math.abs(parseFloat(d.qty) || 0);
+    const partial = d.closeType === "partial";
+    const cq = partial ? Math.abs(parseFloat(d.closeQty) || 0) : fullQty;
+    const useQty = cq || fullQty;
+    const t = E.manualToTrade({ account: d.account, symbol: d.symbol, assetType: d.assetType, direction: d.direction, qty: useQty, entryPrice: d.entryPrice, exitPrice: d.exitPrice, entryDate: d.entryDate, exitDate: d.exitDate || d.entryDate, fees: d.fees });
     p.className = "pnlpreview " + cls(t.pnl);
-    p.textContent = "רווח/הפסד משוער: " + money(t.pnl, 2);
+    const extra = (partial && cq && cq < fullQty) ? (" · נשארות " + (fullQty - cq) + " יח׳ פתוחות") : "";
+    p.textContent = "רווח/הפסד משוער: " + money(t.pnl, 2) + extra;
   }
   // remember the last commission the user entered, so it prefills next time
   function lastFee() { try { return localStorage.getItem("sn_last_fee") || "0"; } catch (e) { return "0"; } }
-  function saveManual() {
-    const m = readManual();
-    if (!m.account) { alert("צריך לבחור/להזין חשבון"); return; }
-    try { localStorage.setItem("sn_last_fee", (m.fees == null ? "0" : String(m.fees))); } catch (e) {}
-    if (!m.symbol) { alert("צריך סימבול"); return; }
-    if (!m.entryDate) { alert("צריך תאריך כניסה"); return; }
-    const t = E.manualToTrade(m);
-    if (manualEditId) { Store.updateManual(t); } else { Store.addManual(t); }
-    const wasEdit = !!manualEditId;
+  function finishSave(kind, account) {
     manualEditId = null;
-    state.account = m.account;
+    if (account && account !== ALL) state.account = account;
     closeModal();
     render();
-    toast(wasEdit ? "העסקה עודכנה" : "העסקה נשמרה");
+    toast(kind === "partial" ? "נסגר חלקית — השארית נשמרה כפוזיציה פתוחה"
+      : kind === "open" ? "נשמרה כפוזיציה פתוחה"
+      : kind === "edit" ? "העסקה עודכנה" : "העסקה נשמרה");
+  }
+  function saveManual(isClose) {
+    syncFromDOM();
+    const d = _mData;
+    const account = (d.account || "").trim();
+    if (!account || account === "__new") { alert("צריך לבחור/להזין חשבון"); return; }
+    if (!d.symbol) { alert("צריך סימבול"); return; }
+    if (!d.entryDate) { alert("צריך תאריך כניסה"); return; }
+    const fullQty = Math.abs(parseFloat(d.qty) || 0);
+    if (!fullQty) { alert("צריך כמות"); return; }
+    const hasExit = d.exitPrice !== "" && d.exitPrice != null && !isNaN(parseFloat(d.exitPrice));
+    try { localStorage.setItem("sn_last_fee", String(d.fees == null ? 0 : d.fees)); } catch (e) {}
+    const base = { account: account, symbol: d.symbol, assetType: d.assetType, direction: d.direction, entryPrice: d.entryPrice, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined };
+    // partial close → a closed record for the sold qty + a remaining OPEN record
+    if (isClose && hasExit && d.closeType === "partial") {
+      const cq = Math.abs(parseFloat(d.closeQty) || 0);
+      if (!cq) { alert("כמה יחידות נסגרו? הזן כמות."); return; }
+      if (cq < fullQty) {
+        Store.addManual(E.manualToTrade(Object.assign({}, base, { qty: cq, exitPrice: d.exitPrice, exitDate: d.exitDate || d.entryDate, fees: d.fees })));
+        const remain = E.manualToTrade(Object.assign({}, base, { id: manualEditId || undefined, qty: fullQty - cq, exitPrice: "", exitDate: "", fees: 0 }));
+        if (manualEditId) Store.updateManual(remain); else Store.addManual(remain);
+        finishSave("partial", account); return;
+      }
+      // cq >= fullQty → treat as a full close (fall through)
+    }
+    const t = E.manualToTrade(Object.assign({}, base, { id: manualEditId || undefined, qty: fullQty, exitPrice: hasExit ? d.exitPrice : "", exitDate: hasExit ? (d.exitDate || d.entryDate) : "", fees: d.fees }));
+    if (manualEditId) Store.updateManual(t); else Store.addManual(t);
+    finishSave(manualEditId ? "edit" : (hasExit ? "closed" : "open"), account);
   }
 
   // ---- Modal infra -------------------------------------------------------
