@@ -122,9 +122,11 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
    (close vs open), independent of type. A red 2U = "conflict" candle. */
 .tf { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; height: 24px;
   border-radius: 6px; font-size: 12px; font-weight: 700; padding: 0 6px; }
-.tf.up { background: rgba(22,184,119,.9); color: #04150e; }    /* close > open */
-.tf.down { background: rgba(224,82,79,.92); color: #1a0505; }  /* close < open */
-.tf.doji { background: #3a4150; color: #cfd6e2; }             /* close ≈ open */
+/* softer, calmer Strat cells — tinted background + colored text (was solid saturated fills).
+   keeps direction readable at a glance without the whole table shouting green/red. */
+.tf.up { background: rgba(38,176,107,.16); color: #56e0a0; box-shadow: inset 0 0 0 1px rgba(38,176,107,.32); }   /* close > open */
+.tf.down { background: rgba(224,82,79,.15); color: #ff8a91; box-shadow: inset 0 0 0 1px rgba(224,82,79,.34); }   /* close < open */
+.tf.doji { background: rgba(160,170,190,.1); color: #aeb7c7; box-shadow: inset 0 0 0 1px rgba(160,170,190,.2); } /* close ≈ open */
 
 /* indices table */
 .idx-table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -504,8 +506,14 @@ html.a11y-noanim *, html.a11y-noanim *::before, html.a11y-noanim *::after {
 .cm-insight .cm-bulb { font-size: 17px; flex-shrink: 0; }
 #cmInsightText { transition: opacity .25s; }
 #cmInsightText b { color: var(--ink); }
-.cm-3g { background: #0e9f6e; } .cm-f2d { background: #84cc16; } .cm-2u { background: #22c55e; }
-.cm-1 { background: #3b82f6; } .cm-2d { background: #f27a7a; } .cm-f2u { background: #ef4444; } .cm-3r { background: #c62828; }
+/* softened candle-map pills — tinted background + colored text (was solid saturated fills) */
+.cm-3g  { background: rgba(14,159,110,.2);  color: #3ddc9a; box-shadow: inset 0 0 0 1px rgba(14,159,110,.42); }
+.cm-f2d { background: rgba(132,204,22,.16); color: #b7e35c; box-shadow: inset 0 0 0 1px rgba(132,204,22,.36); }
+.cm-2u  { background: rgba(34,197,94,.16);  color: #5fe08f; box-shadow: inset 0 0 0 1px rgba(34,197,94,.36); }
+.cm-1   { background: rgba(59,130,246,.15); color: #8fb4ff; box-shadow: inset 0 0 0 1px rgba(59,130,246,.36); }
+.cm-2d  { background: rgba(242,122,122,.15);color: #ffa3a3; box-shadow: inset 0 0 0 1px rgba(242,122,122,.36); }
+.cm-f2u { background: rgba(239,68,68,.15);  color: #ff8a8a; box-shadow: inset 0 0 0 1px rgba(239,68,68,.4); }
+.cm-3r  { background: rgba(198,40,40,.2);   color: #ff7676; box-shadow: inset 0 0 0 1px rgba(198,40,40,.46); }
 
 /* ===== multi-timeframe chart grid (ticker click) ===== */
 .modal.mtf { max-width: 1240px; width: 96vw; }
