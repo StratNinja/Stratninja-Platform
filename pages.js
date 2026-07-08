@@ -794,6 +794,56 @@
   }
   window._snOpenAlerts = openAlertsFeed;
   window._snCheckAlerts = checkPresetAlerts;
+
+  // ---- screenshot & share (branded card) ----
+  function captureShare() {
+    if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
+    const target = state.page === "journal" ? document.getElementById("journalContainer") : document.getElementById("page");
+    if (!target) return;
+    snToast("מכין תמונה לשיתוף…");
+    html2canvas(target, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false }).then(cv => {
+      const w = cv.width, fh = 150;
+      const out = document.createElement("canvas");
+      out.width = w; out.height = cv.height + fh;
+      const ctx = out.getContext("2d");
+      ctx.fillStyle = "#0f1420"; ctx.fillRect(0, 0, out.width, out.height);
+      ctx.drawImage(cv, 0, 0);
+      ctx.fillStyle = "#131a2b"; ctx.fillRect(0, cv.height, w, fh);
+      ctx.fillStyle = "#26b06b"; ctx.fillRect(0, cv.height, 6, fh);
+      ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.direction = "rtl";
+      ctx.fillStyle = "#ffffff"; ctx.font = "800 40px Arial";
+      ctx.fillText("StratNinja Scanner", w - 44, cv.height + fh / 2 - 24);
+      ctx.fillStyle = "#9aa3b2"; ctx.font = "500 28px Arial";
+      ctx.fillText("Adi Koriat · stratninja.win · " + new Date().toLocaleString("he-IL"), w - 44, cv.height + fh / 2 + 26);
+      showShareModal(out);
+    }).catch(() => snToast("שגיאה בצילום — נסה שוב"));
+  }
+  function showShareModal(canvas) {
+    canvas.toBlob(blob => {
+      if (!blob) { snToast("שגיאה ביצירת התמונה"); return; }
+      const url = URL.createObjectURL(blob);
+      const file = new File([blob], "stratninja.png", { type: "image/png" });
+      const tweet = "https://twitter.com/intent/tweet?text=" + encodeURIComponent("סרקתי את השוק ב-StratNinja 📊 stratninja.win");
+      const body =
+        '<img src="' + url + '" style="max-width:100%;border-radius:10px;border:1px solid var(--line);display:block">' +
+        '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
+          '<a class="btn primary" href="' + url + '" download="stratninja.png" style="font-size:13px">📥 הורד</a>' +
+          '<button class="btn ghost" id="shareNative" style="font-size:13px">📤 שתף</button>' +
+          '<a class="btn ghost" href="' + tweet + '" target="_blank" rel="noopener" style="font-size:13px">שתף ב-X</a>' +
+        "</div>" +
+        '<div class="note" style="margin-top:8px;font-size:11px">הורד ושתף באינסטגרם / X / יוטיוב. שיתוף ישיר של הקובץ נתמך בחלק מהמכשירים (בעיקר נייד).</div>';
+      modal("📷 צילום ושיתוף", body);
+      const sn = document.getElementById("shareNative");
+      if (sn) sn.onclick = () => {
+        try {
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            navigator.share({ files: [file], title: "StratNinja", text: "StratNinja Scanner · stratninja.win" });
+          } else { snToast("שיתוף ישיר לא נתמך פה — הורד את התמונה ושתף ידנית"); }
+        } catch (e) { snToast("שיתוף ישיר לא נתמך פה — הורד את התמונה"); }
+      };
+    }, "image/png");
+  }
+  window._snCapture = captureShare;
   const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
   const CAP_RANGES = { mega: [2e11, Infinity], large: [1e10, 2e11], mid: [2e9, 1e10], small: [3e8, 2e9], micro: [0, 3e8] };
   function fmtCap(n) {
@@ -832,6 +882,7 @@
     if (col === "vol") return k.vol;
     if (col === "dhi52") return k.dhi52;
     if (col === "atrp") return k.atrp;
+    if (col === "gap") return k.gap;
     if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
     if (col === "comp") return _compSpread(k);
     if (col === "bbsq") return k.bbsq;
@@ -964,6 +1015,9 @@
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
             '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
+            '<div class="fgrp"><label>גאפ (פתיחה מול אתמול)</label><div class="chips" style="align-items:center"><select id="tGapDir">' +
+              opt("off", techState.gapDir, "— הכל") + opt("up", techState.gapDir, "גאפ אפ ↑") + opt("down", techState.gapDir, "גאפ דאון ↓") +
+              "</select>" + (_gapActive() ? '<span class="muted">≥</span><input id="tGapPct" type="number" step="0.5" min="0" style="width:56px" value="' + techState.gapPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>";
     }
     const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">נטרלי · שנה ערך כדי לסנן</span>';
@@ -1013,6 +1067,7 @@
       { key: "rvol", th: "RVOL", cell: k => "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>", active: _rv() > 0 },
       { key: "vol", th: "ווליום", cell: k => "<td>" + fmtVol(k.vol) + "</td>", active: techState.volMin > 0 },
       { key: "atrp", th: "ATR%", cell: k => "<td>" + (k.atrp == null ? "—" : k.atrp.toFixed(2) + "%") + "</td>", active: _atrp() > 0 },
+      { key: "gap", th: "גאפ", cell: k => "<td>" + dPct(k.gap) + "</td>", active: _gapActive() },
       { key: "dma", th: "Δ " + maLabel, cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
       { key: "comp", th: "דחיסת MA", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
@@ -1068,7 +1123,7 @@
     const panelChips = SCAN_PANELS.map(p => '<button class="chip col-chip' + (pv[p.k] ? " on" : "") + '" data-panel="' + p.k + '">' + (pv[p.k] ? "" : "＋ ") + p.t + "</button>").join("");
     const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
     const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '">' + escAttr(p.name) + "</option>").join("");
-    const topBar = '<div class="panel scan-topbar">' +
+    const topBar = '<div class="panel filters scan-topbar">' +
       '<div class="stb-grp"><span class="muted stb-lbl">🧩 פאנלים:</span>' + panelChips + "</div>" +
       '<div class="stb-grp stb-presets"><span class="muted stb-lbl">⭐ סריקות שמורות:</span>' +
         '<select id="presetSel">' + presetOpts + "</select>" +
@@ -1151,6 +1206,8 @@
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
         if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
         if (_atrp() > 0 && (k.atrp == null || k.atrp < _atrp())) return false;
+        if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
+        if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
       }
       // indicator scanners (compression / Bollinger / swing) — own collapsible panel, stack AND independently
       if (_compActive() || _bbActive() || _swActive()) {
@@ -1210,6 +1267,8 @@
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
+    bind("tGapDir", "onchange", e => { techState.gapDir = e.target.value; reRender(); });
+    bind("tGapPct", "onchange", e => { techState.gapPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tCompMax", "onchange", e => { techState.compMax = e.target.value; reRender(); });
     bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
     bind("tSwSide", "onchange", e => { techState.swSide = e.target.value; reRender(); });
@@ -1241,6 +1300,7 @@
     ext52: "off", ext52Pct: 3,
     atrpMin: "",                 // ATR as % of price ≥
     chgMin: "", chgMax: "",      // daily % move, from–to (signed)
+    gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
     compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
     bbSqMax: "",                 // Bollinger squeeze percentile ≤
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
@@ -1260,11 +1320,12 @@
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
+  function _gapActive() { return techState.gapDir === "up" || techState.gapDir === "down"; }
   function techActive() {
     return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
-      _atrp() > 0 || _chgActive();
+      _atrp() > 0 || _chgActive() || _gapActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -1277,6 +1338,7 @@
     if (techState.ext52 !== "off") n++;
     if (_atrp() > 0) n++;
     if (_chgActive()) n++;
+    if (_gapActive()) n++;
     return n;
   }
   function resetTech() {
@@ -1284,7 +1346,7 @@
     techState.rsiMin = 0; techState.rsiMax = 100; techState.mfiMin = 0; techState.mfiMax = 100;
     techState.rvolMin = ""; techState.volMin = 0; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
     techState.ext52 = "off"; techState.ext52Pct = 3;
-    techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = "";
+    techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
     techState.compMax = ""; techState.bbSqMax = ""; techState.swSide = "off"; techState.swPct = 2;
   }
   function fmtVol(n) {
@@ -1987,6 +2049,7 @@
     setInterval(updateTicker, 60000);
     setInterval(updateSync, 1000);
     startCtaRotator();
+    { const cam = document.getElementById("shareCam"); if (cam) { cam.classList.remove("hidden"); cam.onclick = () => captureShare(); } }
   }
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [
