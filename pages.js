@@ -2047,17 +2047,22 @@
     return { mode, emoji, cls, idx, vix: LIVE.vix, br };
   }
   function todaySectors(rows) {
+    const liveChg = {}; if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => liveChg[s.name] = s.chg);
     const m = {};
     rows.forEach(t => {
       const s = t.sector || "—";
-      if (!m[s]) m[s] = { n: 0, green: 0, top: null };
+      if (!m[s]) m[s] = { n: 0, green: 0, top: null, chgSum: 0, chgN: 0 };
       m[s].n++;
       if ((t.D || {}).c === "up") m[s].green++;
+      if (t.chg != null) { m[s].chgSum += t.chg; m[s].chgN++; }
       if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg };   // largest holding
     });
-    const arr = Object.keys(m).filter(s => m[s].n >= 3).map(s => ({ name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100, top: m[s].top }));
-    const byGreen = arr.slice().sort((a, b) => b.greenPct - a.greenPct);
-    return { lead: byGreen.slice(0, 4), lag: byGreen.slice(-4).reverse() };
+    // chg = the sector's official daily move (from LIVE.sectors) — the real "money flow";
+    // falls back to the average move of its stocks when live data isn't loaded.
+    return Object.keys(m).filter(s => m[s].n >= 3).map(s => ({
+      name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100, top: m[s].top,
+      chg: liveChg[s] != null ? liveChg[s] : (m[s].chgN ? m[s].chgSum / m[s].chgN : 0),
+    }));
   }
   function todayStockRow(t) {
     return "<tr><td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
@@ -2092,15 +2097,21 @@
       marketPanel = '<div class="panel td-market"><h3>מצב השוק</h3><div class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</div></div>';
     }
 
-    const sc = todaySectors(rows);
-    const secChip = s => {
-      const top = s.top ? '<span class="td-sec-top" title="האחזקה הגדולה בסקטור"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(s.top.chg == null ? 0 : s.top.chg) + "</span>" : "";
-      return '<div class="td-sec"><div class="td-sec-r1"><span class="td-sec-name">' + secHe(s.name) + (etfFor(s.name) ? " " + etfChip(etfFor(s.name)) : "") + "</span>" + top + "</div>" +
-        '<div class="td-sec-r2"><span class="td-sec-bar"><span style="width:' + Math.round(s.greenPct) + '%"></span></span><span class="muted" style="font-size:11px;white-space:nowrap">' + Math.round(s.greenPct) + "% ירוק · " + s.n + "</span></div></div>";
+    // "where the money flows" — every sector ranked by its daily move, as a diverging
+    // bar (green = money IN → right, red = money OUT → left) with the leading holding.
+    const flow = todaySectors(rows).sort((a, b) => b.chg - a.chg);
+    const maxAbs = Math.max.apply(null, flow.map(s => Math.abs(s.chg)).concat([0.1]));
+    const flowRow = s => {
+      const pos = s.chg >= 0, w = Math.min(50, Math.abs(s.chg) / maxAbs * 50);
+      const top = s.top ? '<span class="tdf-top" title="האחזקה הגדולה בסקטור"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(s.top.chg == null ? 0 : s.top.chg) + "</span>" : '<span class="tdf-top"></span>';
+      return '<div class="tdf-row">' +
+        '<span class="tdf-name">' + secHe(s.name) + (etfFor(s.name) ? " " + etfChip(etfFor(s.name)) : "") + "</span>" +
+        '<span class="tdf-bar"><span class="tdf-center"></span><span class="tdf-fill ' + (pos ? "pos" : "neg") + '" style="width:' + w.toFixed(1) + '%"></span></span>' +
+        '<span class="tdf-pct ' + (pos ? "pos" : "neg") + '">' + (pos ? "+" : "") + s.chg.toFixed(2) + "%</span>" + top +
+      "</div>";
     };
-    const sectorsPanel = '<div class="panel"><h3>🗂️ לאן הכסף זורם <span class="muted" style="font-size:11px">+ האחזקה הגדולה בכל סקטור</span></h3><div class="td-secgrid">' +
-      '<div><div class="td-h pos">🟢 סקטורים מובילים</div>' + (sc.lead.map(secChip).join("") || '<div class="muted">—</div>') + "</div>" +
-      '<div><div class="td-h neg">🔴 סקטורים בפיגור</div>' + (sc.lag.map(secChip).join("") || '<div class="muted">—</div>') + "</div></div></div>";
+    const sectorsPanel = '<div class="panel td-flow"><h3>🗂️ לאן הכסף זורם עכשיו <span class="muted" style="font-size:11px">כל הסקטורים לפי התנועה היום · 🟢 כסף נכנס · 🔴 כסף יוצא · + האחזקה הגדולה</span></h3>' +
+      '<div class="tdf-list">' + (flow.length ? flow.map(flowRow).join("") : '<div class="muted" style="padding:10px">—</div>') + "</div></div>";
 
     const longs = rows.filter(t => (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
     const shorts = rows.filter(t => (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
