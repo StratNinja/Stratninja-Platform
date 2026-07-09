@@ -491,14 +491,41 @@
     return '<div class="panel mkt-pulse ' + ms.cls + '"><div class="mp-left"><span class="mp-mode">' + ms.emoji + " " + ms.mode + '</span><span class="mp-sess">' + sess + "</span></div>" +
       '<div class="mp-strip">' + idx + vix + "</div>" + breadth + "</div>";
   }
-  // gappers TOP-3 up/down for the market page (full list stays on the gappers channel)
+  // minutes since midnight in Israel time (works regardless of the viewer's own TZ)
+  function _ilMinutes() {
+    try {
+      const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit", hour12: false }).formatToParts(new Date());
+      const hh = +p.find(x => x.type === "hour").value, mm = +p.find(x => x.type === "minute").value;
+      return hh * 60 + mm;
+    } catch (e) { return new Date().getHours() * 60 + new Date().getMinutes(); }
+  }
+  // Time-aware movers panel on the market page: PRE-MARKET (<16:30 IL) → גאפרים
+  // (16:30–23:00) → AFTER-MARKET (≥23:00). Data is picked to match the window.
   function gappersMini() {
-    const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
+    const mins = _ilMinutes();
+    let head, data, upLbl, dnLbl, seeAll = "", note = "";
+    if (mins < 16 * 60 + 30) {                       // before 16:30 IL → pre-market
+      head = "🌅 PRE-MARKET MOVERS · תנועות לפני הפתיחה";
+      data = (LIVE && LIVE.premovers) || { up: [], down: [] };
+      upLbl = "🟢 עולים בפרה"; dnLbl = "🔴 יורדים בפרה";
+      note = "מתעדכן ככל שנסחר יותר בפרה-מרקט";
+    } else if (mins < 23 * 60) {                     // 16:30–23:00 IL → gappers
+      head = "⚡ גאפרים · פתיחת יום";
+      data = (LIVE && LIVE.gappers) || { up: [], down: [] };
+      upLbl = "🟢 TOP גאפ אפ"; dnLbl = "🔴 TOP גאפ דאון";
+      seeAll = '<button class="btn ghost" id="gapAll" style="font-size:12px;font-weight:600">ראה הכל →</button>';
+    } else {                                         // ≥23:00 IL → after-market
+      head = "🌙 AFTER-MARKET MOVERS · תנועות אחרי הסגירה";
+      data = (LIVE && LIVE.aftermovers) || { up: [], down: [] };
+      upLbl = "🟢 עולים באפטר"; dnLbl = "🔴 יורדים באפטר";
+      note = "תנועה ביחס למחיר הסגירה של היום";
+    }
     const row = arr => arr.length ? arr.slice(0, 5).map(x =>
       '<div class="gm-row"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span>" + pct(x.gp) + "</div>").join("")
       : '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
-    return '<div class="panel gappers-mini"><h3 class="gm-head"><span>⚡ גאפרים · פתיחת יום</span><button class="btn ghost" id="gapAll" style="font-size:12px;font-weight:600">ראה הכל →</button></h3>' +
-      '<div class="gm-grid"><div><div class="td-h pos">🟢 TOP גאפ אפ</div>' + row(g.up) + "</div><div><div class=\"td-h neg\">🔴 TOP גאפ דאון</div>" + row(g.down) + "</div></div></div>";
+    const sub = note ? '<div class="muted" style="font-size:11px;margin:-2px 0 6px">' + note + "</div>" : "";
+    return '<div class="panel gappers-mini"><h3 class="gm-head"><span>' + head + "</span>" + seeAll + "</h3>" + sub +
+      '<div class="gm-grid"><div><div class="td-h pos">' + upLbl + "</div>" + row(data.up) + '</div><div><div class="td-h neg">' + dnLbl + "</div>" + row(data.down) + "</div></div></div>";
   }
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
