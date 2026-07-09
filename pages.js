@@ -1281,6 +1281,7 @@
     if (col === "chg") return t.chg;
     if (col === "ftfc") return t.ftfc ? 1 : 0;
     if (col === "ninja") return t.ninja;
+    if (col === "ind") return t.ind || "";
     if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(t[col]);
     const k = t.tech || {};
     if (col === "rsi") return k.rsi;
@@ -1515,6 +1516,7 @@
     const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
     // optional result columns — shown if the user toggled them on OR the matching filter is active
     const optCols = [
+      { key: "ind", th: "תת-סקטור", cell: (k, dma, t) => '<td class="tname" style="text-align:start">' + (t && t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : '<span class="muted">—</span>') + "</td>", active: scanState.subsec !== "all" },
       { key: "rsi", th: "RSI", cell: k => '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>", active: techState.rsiMin > 0 || techState.rsiMax < 100 },
       { key: "mfi", th: "MFI", cell: k => '<td class="' + mfiCls(k.mfi) + '">' + (k.mfi == null ? "—" : k.mfi.toFixed(0)) + "</td>", active: techState.mfiMin > 0 || techState.mfiMax < 100 },
       { key: "rvol", th: "RVOL", cell: k => "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>", active: _rv() > 0 },
@@ -1533,7 +1535,7 @@
     const body = shown.map(t => {
       const k = t.tech || {};
       const dma = (k[dmapKey] || {})[techState.maPeriod];
-      const techCells = visCols.map(c => c.cell(k, dma)).join("");
+      const techCells = visCols.map(c => c.cell(k, dma, t)).join("");
       return "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
