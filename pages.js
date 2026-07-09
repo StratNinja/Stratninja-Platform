@@ -503,21 +503,22 @@
   // (16:30–23:00) → AFTER-MARKET (≥23:00). Data is picked to match the window.
   function gappersMini() {
     const mins = _ilMinutes();
+    const U = mktU() || {};                          // universe-aware (follows the S&P500 ⇄ StratNinja toggle)
     let head, data, upLbl, dnLbl, seeAll = "", note = "";
     if (mins < 16 * 60 + 30) {                       // before 16:30 IL → pre-market
       head = "🌅 PRE-MARKET MOVERS · תנועות לפני הפתיחה";
-      data = (LIVE && LIVE.premovers) || { up: [], down: [] };
-      upLbl = "🟢 עולים בפרה"; dnLbl = "🔴 יורדים בפרה";
+      data = U.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] };
+      upLbl = "🟢 עולות לפני פתיחת המסחר"; dnLbl = "🔴 יורדות לפני פתיחת המסחר";
       note = "מתעדכן ככל שנסחר יותר בפרה-מרקט";
     } else if (mins < 23 * 60) {                     // 16:30–23:00 IL → gappers
       head = "⚡ גאפרים · פתיחת יום";
-      data = (LIVE && LIVE.gappers) || { up: [], down: [] };
+      data = U.gappers || (LIVE && LIVE.gappers) || { up: [], down: [] };
       upLbl = "🟢 TOP גאפ אפ"; dnLbl = "🔴 TOP גאפ דאון";
       seeAll = '<button class="btn ghost" id="gapAll" style="font-size:12px;font-weight:600">ראה הכל →</button>';
     } else {                                         // ≥23:00 IL → after-market
       head = "🌙 AFTER-MARKET MOVERS · תנועות אחרי הסגירה";
-      data = (LIVE && LIVE.aftermovers) || { up: [], down: [] };
-      upLbl = "🟢 עולים באפטר"; dnLbl = "🔴 יורדים באפטר";
+      data = U.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] };
+      upLbl = "🟢 עולות אחרי סגירת המסחר"; dnLbl = "🔴 יורדות אחרי סגירת המסחר";
       note = "תנועה ביחס למחיר הסגירה של היום";
     }
     const row = arr => arr.length ? arr.slice(0, 5).map(x =>
@@ -821,6 +822,60 @@
     document.body.appendChild(t);
     setTimeout(() => t.classList.add("show"), 10);
     setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 4500);
+  }
+  // ── market open/close chime + banner (16:30 open / 23:00 close, Israel time) ──
+  let _audioCtx = null;
+  function _primeAudio() {                   // called on first user gesture so the bell can play later
+    try { _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (_audioCtx.state === "suspended") _audioCtx.resume(); } catch (e) {}
+  }
+  function _bellSound(kind) {                 // soft synthesized two-note chime (not loud/startling)
+    try {
+      _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === "suspended") _audioCtx.resume();
+      const ctx = _audioCtx, now = ctx.currentTime;
+      const notes = kind === "open" ? [783.99, 1046.5] : [659.25, 440.0];   // open rises, close falls
+      notes.forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "sine"; o.frequency.value = f;
+        const t0 = now + i * 0.30;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0006, t0 + 1.1);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0); o.stop(t0 + 1.2);
+      });
+    } catch (e) {}
+  }
+  function _marketBellBanner(kind) {
+    const open = kind === "open";
+    const el = document.createElement("div");
+    el.className = "mkt-bell " + (open ? "open" : "close");
+    el.innerHTML = '<span class="mb-ico">🔔</span><div class="mb-txt"><b>' +
+      (open ? "המסחר נפתח! 🟢" : "המסחר נסגר 🔴") + "</b><span>" +
+      (open ? "וול סטריט פתוחה — בהצלחה 🥷" : "נתראה מחר · אפטר-מרקט פעיל") + "</span></div>";
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add("show"));
+    const kill = () => { el.classList.remove("show"); setTimeout(() => el.remove(), 400); };
+    el.onclick = kill; setTimeout(kill, 9000);
+  }
+  function _ilParts() {                       // {dow, date} in Israel time, viewer-TZ independent
+    try {
+      const p = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", weekday: "short", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+      const g = t => (p.find(x => x.type === t) || {}).value;
+      return { dow: g("weekday"), date: g("year") + "-" + g("month") + "-" + g("day") };
+    } catch (e) { const d = new Date(); return { dow: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()], date: d.toISOString().slice(0, 10) }; }
+  }
+  function _marketBell(kind, dateStr) {        // fire once per day per event (localStorage-deduped)
+    const key = "sn_bell_" + dateStr + "_" + kind;
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (e) {}
+    _bellSound(kind); _marketBellBanner(kind);
+  }
+  function _marketBellTick() {
+    const ip = _ilParts();
+    if (["Sat", "Sun"].indexOf(ip.dow) >= 0) return;         // US market weekdays only
+    const mins = _ilMinutes();
+    if (mins >= 16 * 60 + 30 && mins < 16 * 60 + 33) _marketBell("open", ip.date);
+    else if (mins >= 23 * 60 && mins < 23 * 60 + 3) _marketBell("close", ip.date);
   }
   function fireNotification(e) {
     const body = e.sym + ' נכנסה לסריקה "' + e.preset + '"';
@@ -2640,6 +2695,10 @@
       if (SCAN && SCAN.rows && SCAN.rows.length && document.body.classList.contains("in-app")) { clearInterval(_athBoot); refreshAthCeleb(); }
     }, 1500);
     setInterval(refreshAthCeleb, 60000);
+    // market open/close chime — prime audio on first interaction, then poll every 20s
+    document.addEventListener("pointerdown", _primeAudio, { once: true });
+    _marketBellTick();
+    setInterval(_marketBellTick, 20000);
   }
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [

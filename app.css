@@ -726,6 +726,21 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .cm-f2u { background: rgba(239,68,68,.15);  color: #ff8a8a; box-shadow: inset 0 0 0 1px rgba(239,68,68,.4); }
 .cm-3r  { background: rgba(198,40,40,.2);   color: #ff7676; box-shadow: inset 0 0 0 1px rgba(198,40,40,.46); }
 
+/* ===== market open/close chime banner ===== */
+.mkt-bell { position: fixed; top: 68px; left: 50%; transform: translate(-50%, -20px); z-index: 9999;
+  display: flex; align-items: center; gap: 14px; padding: 13px 22px; border-radius: 16px; cursor: pointer;
+  background: linear-gradient(135deg, rgba(16,24,38,.98), rgba(10,16,28,.98)); border: 1px solid var(--line);
+  box-shadow: 0 14px 44px rgba(0,0,0,.5); opacity: 0; transition: opacity .4s, transform .4s; max-width: 92vw; }
+.mkt-bell.show { opacity: 1; transform: translate(-50%, 0); }
+.mkt-bell.open { border-color: rgba(34,197,94,.55); box-shadow: 0 14px 44px rgba(34,197,94,.28); }
+.mkt-bell.close { border-color: rgba(239,68,68,.5); box-shadow: 0 14px 44px rgba(239,68,68,.22); }
+.mkt-bell .mb-ico { font-size: 30px; animation: mbring 1.1s ease; transform-origin: 50% 15%; }
+.mkt-bell .mb-txt { display: flex; flex-direction: column; gap: 2px; }
+.mkt-bell .mb-txt b { font-size: 16px; }
+.mkt-bell .mb-txt span { font-size: 12px; color: var(--muted); }
+@keyframes mbring { 0%,100% { transform: rotate(0); } 15% { transform: rotate(17deg); } 30% { transform: rotate(-15deg); }
+  45% { transform: rotate(10deg); } 60% { transform: rotate(-7deg); } 75% { transform: rotate(4deg); } }
+
 /* ===== single chart popup (ticker + timeframe) — full-screen ===== */
 .modal.onechart { max-width: none; width: 99vw; }
 @media (min-width: 901px) {
