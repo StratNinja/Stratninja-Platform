@@ -503,7 +503,9 @@
   // (16:30–23:00) → AFTER-MARKET (≥23:00). Data is picked to match the window.
   function gappersMini() {
     const mins = _ilMinutes();
-    const U = mktU() || {};                          // universe-aware (follows the S&P500 ⇄ StratNinja toggle)
+    // movers panel ALWAYS uses the widest universe (full StratNinja, ~1415 stocks) so big
+    // movers never get hidden by the S&P-500 filter — e.g. non-S&P names like IONS crashing.
+    const U = (LIVE && LIVE.universes && LIVE.universes.all) || {};
     let head, data, upLbl, dnLbl, seeAll = "", note = "";
     if (mins < 16 * 60 + 30) {                       // before 16:30 IL → pre-market
       head = "🌅 PRE-MARKET MOVERS · תנועות לפני הפתיחה";
