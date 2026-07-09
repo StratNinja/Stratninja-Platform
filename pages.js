@@ -260,11 +260,13 @@
       { k: "12M", he: "שנה", iv: "D", rng: "12M" },
       { k: "60M", he: "5 שנים", iv: "W", rng: "60M" },
     ];
-    const RANGE_DEF = { D: "6M", W: "12M", M: "60M", Q: "60M", Y: "60M" };
+    // default lookback per TF. D → a full YEAR so candles render DAILY (a short 6M range makes
+    // TradingView auto-switch to intraday 2h candles, which Adi doesn't want).
+    const RANGE_DEF = { D: "12M", W: "12M", M: "60M", Q: "60M", Y: "60M" };
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
     const shown = rows.slice(0, GCAP);
     if (!shown.length) { modal("📊 תצוגת גרפים", '<div class="note" style="padding:24px;text-align:center">אין מניות להצגה.</div>', "chartgrid"); return; }
-    let curRange = RANGE_DEF[derived] || "6M";
+    let curRange = RANGE_DEF[derived] || "12M";
     function cgSrc(sym, rk) {
       const R = CG_RANGE.find(x => x.k === rk) || CG_RANGE[4];
       return "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(sym) + "&symbol=" + encodeURIComponent(sym) +
