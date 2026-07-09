@@ -14,7 +14,8 @@
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
   const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
   const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"],
-    ["2-1-2", "רצף 2-1-2"], ["3-1-2", "רצף 3-1-2"], ["1-3-2", "רצף 1-3-2"], ["1-2-2", "רצף 1-2-2"], ["3-2-2", "רצף 3-2-2"]];
+    ["2-1-2", "לקראת 2-1-2"], ["3-1-2", "לקראת 3-1-2"], ["1-3-2", "לקראת 1-3-2"], ["1-2-2", "לקראת 1-2-2"], ["3-2-2", "לקראת 3-2-2"]];
+  const _isCombo = v => /^\d-\d-\d$/.test(v || "");
   // sector → SPDR sector ETF (the ETF that holds the stock)
   const SECTOR_ETF = { "Technology": "XLK", "Financials": "XLF", "Health Care": "XLV", "Energy": "XLE", "Consumer Disc.": "XLY", "Communication": "XLC", "Industrials": "XLI", "Consumer Staples": "XLP", "Materials": "XLB", "Real Estate": "XLRE", "Utilities": "XLU" };
   function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
@@ -733,7 +734,7 @@
   // ========== SCANNER ==========
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: false, sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
   let _selPreset = "";   // id of the saved-scan currently chosen in the dropdown (survives reRender so delete/duplicate work)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
@@ -759,7 +760,7 @@
   function scanConfigSnapshot() {
     const s = scanState;
     return {
-      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad,
+      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad, inforce: s.inforce,
         sector: s.sector, subsec: s.subsec, sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
         cap: s.cap, mtf: JSON.parse(JSON.stringify(s.mtf)) },
       t: Object.assign({}, techState),
@@ -768,7 +769,7 @@
   function applyScanConfig(cfg) {
     if (!cfg) return;
     const s = cfg.s || {}, t = cfg.t || {};
-    ["dir", "shape", "broad", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "cap"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
+    ["dir", "shape", "broad", "inforce", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "cap"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
     if (s.tfs) scanState.tfs = s.tfs.slice();
     scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
     if (s.patterns) scanState.patterns = s.patterns.slice();
@@ -1159,7 +1160,7 @@
     return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
   }
   function resetScan() {
-    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
+    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = false;
     scanState.sector = "all"; scanState.subsec = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
@@ -1268,7 +1269,8 @@
         '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>תבניות (רצף Strat)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>תבניות (רצף Strat)</label><div class="chips" style="align-items:center"><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>" +
+          (_isCombo(scanState.broad) ? '<button class="chip' + (scanState.inforce ? " on" : "") + '" id="scanInforce" title="IN FORCE = התבנית כבר הושלמה (המהלך קרה). כבוי = לקראת המהלך (סטאפ)">IN FORCE</button>' : "") + "</div></div>" +
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.sector === s ? " selected" : "") + ">" + s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.subsec === s ? " selected" : "") + ">" + s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
@@ -1467,8 +1469,12 @@
             const br = c.br || "";
             if (scanState.broad === "any" && !br) return false;
             if ((scanState.broad === "up" || scanState.broad === "down") && br !== scanState.broad) return false;
-          } else if ((c.seq3 || "") !== scanState.broad) {   // combo sequence pattern (2-1-2 …)
-            return false;
+          } else {   // combo pattern (2-1-2 …)
+            const p = scanState.broad.split("-"), sq = (c.seq3 || "").split("-");
+            if (sq.length < 3) return false;
+            if (scanState.inforce) {
+              if ((c.seq3 || "") !== scanState.broad) return false;     // IN FORCE: full 3-bar pattern completed
+            } else if (sq[1] !== p[0] || sq[2] !== p[1]) return false;  // setup: last 2 bars = first 2 digits (approaching)
           }
         }
       }
@@ -1549,7 +1555,8 @@
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
-    const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; reRender(); };
+    const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = false; reRender(); };
+    { const inf = $("#scanInforce"); if (inf) inf.onclick = () => { scanState.inforce = !scanState.inforce; reRender(); }; }
     const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; scanState.subsec = "all"; reRender(); };
     const subsec = $("#scanSubsec"); if (subsec) subsec.onchange = () => { scanState.subsec = subsec.value; reRender(); };
     const sym = $("#scanSym"); if (sym) sym.onchange = () => { scanState.sym = sym.value; reRender(); };
