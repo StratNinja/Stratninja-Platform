@@ -2450,6 +2450,52 @@
     },
   };
 
+  // ================= 52-week-high celebration widget =================
+  // A small floating card that celebrates one stock at a new 52-week high at a time,
+  // rotating every 30s with a countdown bar showing when the next one appears.
+  const ATH_SECS = 30;
+  let _athList = [], _athIdx = 0, _athTimer = null, _athDismissed = false;
+  function _athStocks() {
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) return [];
+    return SCAN.rows.filter(r => {
+      const k = r.tech; if (!k) return false;
+      const chg = r.c != null ? r.c : (k.chg != null ? k.chg : null);
+      const px = r.p || k.px || 0;
+      // at (or within 0.3% of) the 52-week high, green today, tradable
+      return k.dhi52 != null && k.dhi52 >= -0.3 && (chg == null || chg > 0) &&
+        (k.avol30 == null || k.avol30 >= 300000) && px >= 3;
+    }).map(r => ({ sym: r.s, sec: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
+      chg: r.c != null ? r.c : (r.tech ? r.tech.chg : 0) }))
+      .sort((a, b) => (b.chg || 0) - (a.chg || 0));
+  }
+  function _athShow(i) {
+    if (!_athList.length) { const e = document.getElementById("athCeleb"); if (e) e.remove(); return; }
+    _athIdx = ((i % _athList.length) + _athList.length) % _athList.length;
+    const s = _athList[_athIdx];
+    let e = document.getElementById("athCeleb");
+    if (!e) { e = document.createElement("div"); e.id = "athCeleb"; e.className = "ath-celeb"; document.body.appendChild(e); }
+    e.innerHTML =
+      '<button class="ath-x" id="athX" title="הסתר">✕</button>' +
+      '<div class="ath-badge">🚀 שיא 52 שבועות!</div>' +
+      '<div class="ath-main"><span class="ath-sym tsym clickable" data-chart="' + s.sym + '" data-tf="D">' + s.sym + "</span>" +
+        '<span class="ath-price">' + money(s.price) + " " + pct(s.chg == null ? 0 : s.chg) + "</span></div>" +
+      '<div class="ath-sub">' + (secHe(s.sec) || "") + (s.ind ? " · " + s.ind : "") + ' <span class="muted">· ' + (_athIdx + 1) + "/" + _athList.length + "</span></div>" +
+      '<div class="ath-timer"><span class="ath-timerbar" id="athBar"></span></div>';
+    wireCharts(e);
+    { const x = document.getElementById("athX"); if (x) x.onclick = () => { _athDismissed = true; clearTimeout(_athTimer); e.remove(); }; }
+    const bar = document.getElementById("athBar");
+    if (bar) { bar.style.transition = "none"; bar.style.width = "100%"; void bar.offsetWidth; bar.style.transition = "width " + ATH_SECS + "s linear"; bar.style.width = "0%"; }
+    clearTimeout(_athTimer);
+    _athTimer = setTimeout(() => _athShow(_athIdx + 1), ATH_SECS * 1000);
+  }
+  function refreshAthCeleb() {
+    if (_athDismissed) return;
+    if (!document.body.classList.contains("in-app")) return;   // app pages only
+    _athList = _athStocks();
+    if (!_athList.length) { const e = document.getElementById("athCeleb"); if (e) e.remove(); clearTimeout(_athTimer); return; }
+    if (!document.getElementById("athCeleb")) { _athIdx = 0; _athShow(0); }   // (re)start rotation if not already running
+  }
+
   function initNav() {
     document.querySelectorAll(".side-nav a[data-page]").forEach(a => a.onclick = () => setPage(a.dataset.page));
     { const gb = document.getElementById("guideBtn"); if (gb) gb.onclick = () => guideStart(); }
@@ -2469,6 +2515,12 @@
     { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
     loadNews();
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min
+    // 52-week-high celebration: boot once scan data is present AND the app is visible,
+    // then refresh each minute
+    const _athBoot = setInterval(() => {
+      if (SCAN && SCAN.rows && SCAN.rows.length && document.body.classList.contains("in-app")) { clearInterval(_athBoot); refreshAthCeleb(); }
+    }, 1500);
+    setInterval(refreshAthCeleb, 60000);
   }
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [

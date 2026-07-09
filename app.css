@@ -797,3 +797,21 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .gd-dot.on { background: var(--accent); transform: scale(1.25); }
 .gd-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .gd-nav .btn { min-width: 90px; height: 38px; font-size: 14px; font-weight: 700; border-radius: 10px; }
+
+/* ===== 52-week-high celebration widget ===== */
+.ath-celeb { position: fixed; bottom: 20px; left: 20px; z-index: 1200; width: 250px;
+  background: linear-gradient(160deg, #132a1f, #0f1420); border: 1px solid rgba(38,176,107,.4);
+  border-radius: 14px; padding: 14px 16px 0; overflow: hidden;
+  box-shadow: 0 12px 34px rgba(0,0,0,.5), 0 0 22px rgba(38,176,107,.16); animation: athIn .4s ease; }
+@keyframes athIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.ath-celeb .ath-x { position: absolute; top: 8px; inset-inline-end: 8px; width: 22px; height: 22px;
+  border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: 12px; }
+.ath-celeb .ath-x:hover { color: var(--ink); }
+.ath-celeb .ath-badge { font-size: 12px; font-weight: 800; color: #4fe39b; letter-spacing: .02em; }
+.ath-celeb .ath-main { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 8px 0 2px; }
+.ath-celeb .ath-sym { font-size: 25px; font-weight: 800; color: #fff; cursor: pointer; }
+.ath-celeb .ath-price { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.ath-celeb .ath-sub { font-size: 11.5px; color: var(--muted); margin-bottom: 12px; }
+.ath-celeb .ath-timer { height: 4px; margin: 0 -16px; background: rgba(255,255,255,.06); }
+.ath-celeb .ath-timerbar { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #26b06b, #4fe39b); }
+@media (max-width: 560px) { .ath-celeb { left: 10px; right: 10px; bottom: 10px; width: auto; } }
