@@ -236,9 +236,11 @@
     modal(sym + ' · כל הטיימפריימים',
       strip + '<div class="mtf-grid">' + cells + "</div>" +
       '<div class="note" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
-        '<button class="btn ghost" id="mtfShot" style="font-size:13px;font-weight:600">📸 צילום מעוצב (כל הטיימפריימים)</button>' +
+        '<button class="btn ghost" id="mtfShot" style="font-size:13px;font-weight:600">📸 צילום מעוצב (כרטיס Strat)</button>' +
+        '<button class="btn ghost" id="mtfFull" style="font-size:13px;font-weight:600">🖼️ צילום מסך כולל (עם הגרפים)</button>' +
         '<a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "mtf");
     { const ms = document.getElementById("mtfShot"); if (ms) ms.onclick = () => captureMtfCard(sym); }
+    { const mf = document.getElementById("mtfFull"); if (mf) mf.onclick = () => captureFullShot(); }
   }
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
@@ -1208,6 +1210,31 @@
         .then(cv => { el.remove(); showShareModal(cv); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
     }, 200);
+  }
+  // full screenshot INCLUDING the live TradingView charts — html2canvas can't read cross-origin
+  // iframes, so we use the Screen Capture API (captures rendered pixels, needs a one-time "share
+  // this tab" confirmation). Chrome/Edge auto-scope to the current tab via preferCurrentTab.
+  async function captureFullShot() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      snToast("הדפדפן לא תומך בצילום מסך מלא — השתמש בכרטיס המעוצב, או בצילום המובנה של כל גרף 📸"); return;
+    }
+    snToast("בחר \"הכרטיסייה הנוכחית\" בחלון שנפתח…");
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser" }, preferCurrentTab: true, audio: false });
+    } catch (e) { snToast("הצילום בוטל"); return; }
+    try {
+      const video = document.createElement("video");
+      video.srcObject = stream; video.muted = true; video.playsInline = true;
+      await video.play();
+      await new Promise(r => setTimeout(r, 400));            // let a full frame paint
+      const cv = document.createElement("canvas");
+      cv.width = video.videoWidth || 1920; cv.height = video.videoHeight || 1080;
+      cv.getContext("2d").drawImage(video, 0, 0, cv.width, cv.height);
+      stream.getTracks().forEach(t => t.stop());
+      if (!cv.width || !cv.height) { snToast("לא התקבלה תמונה — נסה שוב"); return; }
+      showShareModal(cv);
+    } catch (e) { try { stream.getTracks().forEach(t => t.stop()); } catch (x) {} snToast("שגיאה בצילום — נסה שוב"); }
   }
   // copy a PNG blob to the clipboard (secure-context + supported browsers only)
   function _copyImageBlob(blob, okMsg) {
