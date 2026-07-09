@@ -13,7 +13,8 @@
   const SHAPE_HE = { doji: "דוג'י", hammer: "פטיש 🔨", shooter: "כוכב נופל ⭐", marubozu: "מרובוזו", spinning: "סביבון", normal: "נר רגיל", flat: "—" };
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
   const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
-  const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"]];
+  const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"],
+    ["2-1-2", "רצף 2-1-2"], ["3-1-2", "רצף 3-1-2"], ["1-3-2", "רצף 1-3-2"], ["1-2-2", "רצף 1-2-2"], ["3-2-2", "רצף 3-2-2"]];
   // sector → SPDR sector ETF (the ETF that holds the stock)
   const SECTOR_ETF = { "Technology": "XLK", "Financials": "XLF", "Health Care": "XLV", "Energy": "XLE", "Consumer Disc.": "XLY", "Communication": "XLC", "Industrials": "XLI", "Consumer Staples": "XLP", "Materials": "XLB", "Real Estate": "XLRE", "Utilities": "XLU" };
   function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
@@ -1267,7 +1268,7 @@
         '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>היפוך (Reversal)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>תבניות (רצף Strat)</label><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.sector === s ? " selected" : "") + ">" + s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.subsec === s ? " selected" : "") + ">" + s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
@@ -1462,9 +1463,13 @@
         if (scanState.dir !== "all" && c.c !== scanState.dir) return false;
         if (scanState.shape !== "all" && (c.sh || "") !== scanState.shape) return false;
         if (scanState.broad !== "off") {
-          const br = c.br || "";
-          if (scanState.broad === "any" && !br) return false;
-          if ((scanState.broad === "up" || scanState.broad === "down") && br !== scanState.broad) return false;
+          if (scanState.broad === "any" || scanState.broad === "up" || scanState.broad === "down") {
+            const br = c.br || "";
+            if (scanState.broad === "any" && !br) return false;
+            if ((scanState.broad === "up" || scanState.broad === "down") && br !== scanState.broad) return false;
+          } else if ((c.seq3 || "") !== scanState.broad) {   // combo sequence pattern (2-1-2 …)
+            return false;
+          }
         }
       }
       // multi-timeframe (MTF): a separate per-TF condition (type + color), all must hold together (AND)
