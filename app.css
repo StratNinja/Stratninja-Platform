@@ -792,6 +792,19 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* reset-filters button in the scanner top bar */
 .scan-topbar .stb-reset { font-size: 12px; font-weight: 600; height: 30px; padding: 0 12px; border-radius: 8px; margin-inline-start: 4px; }
 
+/* custom Strat timeframe picker (➕) */
+.chip.tf-addbtn { font-weight: 800; }
+.chip.tf-extra { position: relative; padding-inline-end: 22px; }
+.chip.tf-extra .tf-x { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); font-size: 10px; opacity: .55;
+  width: 15px; height: 15px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
+.chip.tf-extra .tf-x:hover { opacity: 1; background: rgba(255,255,255,.16); }
+.tf-addpop { position: absolute; z-index: 4000; background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px; box-shadow: 0 14px 34px rgba(0,0,0,.5); width: 234px; }
+.tf-addpop-lbl { font-size: 12px; font-weight: 800; margin-bottom: 9px; color: var(--ink); }
+.tf-addpop-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.tf-addpop-grid .chip { min-width: 42px; text-align: center; }
+.tf-addpop-note { font-size: 10.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
+
 /* ===== onboarding guide (guided tour) ===== */
 .guide-wrap { position: fixed; inset: 0; z-index: 9999; pointer-events: none;
   display: flex; align-items: flex-end; justify-content: center; padding: 0 16px 26px;

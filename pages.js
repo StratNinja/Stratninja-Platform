@@ -730,7 +730,9 @@
   }
 
   // ========== SCANNER ==========
-  const scanState = { tfs: ["D"], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
+  const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
   let _selPreset = "";   // id of the saved-scan currently chosen in the dropdown (survives reRender so delete/duplicate work)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
@@ -756,7 +758,7 @@
   function scanConfigSnapshot() {
     const s = scanState;
     return {
-      s: { tfs: s.tfs.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad,
+      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad,
         sector: s.sector, subsec: s.subsec, sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
         cap: s.cap, mtf: JSON.parse(JSON.stringify(s.mtf)) },
       t: Object.assign({}, techState),
@@ -767,6 +769,7 @@
     const s = cfg.s || {}, t = cfg.t || {};
     ["dir", "shape", "broad", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "cap"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
     if (s.tfs) scanState.tfs = s.tfs.slice();
+    scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
     if (s.patterns) scanState.patterns = s.patterns.slice();
     scanState.mtf = s.mtf ? JSON.parse(JSON.stringify(s.mtf)) : newMtf();
     Object.keys(techState).forEach(k => { if (k === "techOpen") return; if (t[k] !== undefined) techState[k] = t[k]; });
@@ -1155,16 +1158,43 @@
     return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
   }
   function resetScan() {
-    scanState.tfs = ["D"]; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
+    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off";
     scanState.sector = "all"; scanState.subsec = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
   }
+  // ➕ custom-timeframe picker (adds a server-computed extra Strat TF to the scanner)
+  function closeTfMenu() { const p = document.getElementById("tfAddPop"); if (p) p.remove(); document.removeEventListener("click", _tfMenuOutside); }
+  function _tfMenuOutside(e) { const p = document.getElementById("tfAddPop"); if (p && !p.contains(e.target) && e.target.id !== "tfAdd") closeTfMenu(); }
+  function openTfAddMenu(btn) {
+    closeTfMenu();
+    const avail = EXTRA_TFS.filter(t => scanState.tfsExtra.indexOf(t) < 0);
+    if (!avail.length) return;
+    const pop = document.createElement("div"); pop.className = "tf-addpop"; pop.id = "tfAddPop";
+    pop.innerHTML = '<div class="tf-addpop-lbl">➕ טיימפריים סטראט מותאם</div><div class="tf-addpop-grid">' +
+      avail.map(t => '<button class="chip" data-addtf="' + t + '">' + t + "</button>").join("") + "</div>" +
+      '<div class="tf-addpop-note">TheStrat אגנוסטי לזמן — הוסף כל מסגרת וסנן לפיה כמו D/W/M/Q/Y.</div>';
+    document.body.appendChild(pop);
+    const r = btn.getBoundingClientRect();
+    pop.style.top = (r.bottom + window.scrollY + 6) + "px";
+    pop.style.insetInlineStart = (r.left + window.scrollX) + "px";
+    pop.querySelectorAll("[data-addtf]").forEach(b => b.onclick = () => {
+      const t = b.dataset.addtf;
+      if (scanState.tfsExtra.indexOf(t) < 0) scanState.tfsExtra.push(t);
+      if (scanState.tfs.indexOf(t) < 0) scanState.tfs.push(t);
+      closeTfMenu(); reRender();
+    });
+    setTimeout(() => document.addEventListener("click", _tfMenuOutside), 0);
+  }
   function scanSource() {
     if (SCAN && SCAN.rows && SCAN.rows.length) {
-      return SCAN.rows.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
-        chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc, ninja: r.ninja,
-        Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech }));
+      return SCAN.rows.map(r => {
+        const o = { sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
+          chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc, ninja: r.ninja,
+          Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech };
+        EXTRA_TFS.forEach(tf => { if (r[tf]) o[tf] = r[tf]; });   // custom Strat timeframes
+        return o;
+      });
     }
     return TICKERS;
   }
@@ -1229,7 +1259,11 @@
     const dirBtn = (v, l) => '<button class="chip' + (scanState.dir === v ? " on" : "") + '" data-dir="' + v + '">' + l + "</button>";
     const filters =
       '<div class="panel filters"><h3>פילטרים <span class="muted" style="font-size:12px">בחר כמה טיימפריימים = חיפוש קונפלואנס (התבנית מתקיימת על כולם)</span></h3><div class="frow">' +
-        '<div class="fgrp"><label>טיימפריימים · רב-בחירה</label><div class="chips">' + ["D", "W", "M", "Q", "Y"].map(tfBtn).join("") + "</div></div>" +
+        '<div class="fgrp"><label>טיימפריימים · רב-בחירה</label><div class="chips">' +
+          ["D", "W", "M", "Q", "Y"].map(tfBtn).join("") +
+          scanState.tfsExtra.map(f => '<button class="chip tf-extra' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + '<span class="tf-x" data-rmtf="' + f + '" title="הסר">✕</span></button>').join("") +
+          '<button class="chip tf-addbtn" id="tfAdd" title="הוסף טיימפריים סטראט מותאם">➕</button>' +
+        "</div></div>" +
         '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
@@ -1492,7 +1526,9 @@
     });
   }
   function wireScanner() {
-    document.querySelectorAll("[data-tff]").forEach(b => b.onclick = () => { const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
+    document.querySelectorAll("[data-tff]").forEach(b => b.onclick = e => { if (e.target && e.target.dataset && e.target.dataset.rmtf) return; const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
+    document.querySelectorAll("[data-rmtf]").forEach(x => x.onclick = e => { e.stopPropagation(); const f = x.dataset.rmtf; scanState.tfsExtra = scanState.tfsExtra.filter(t => t !== f); const i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); reRender(); });
+    { const add = $("#tfAdd"); if (add) add.onclick = e => { e.stopPropagation(); openTfAddMenu(add); }; }
     // multi-timeframe (MTF) controls
     { const mt = $("#mtfToggle"); if (mt) mt.onclick = () => { scanState.mtfOpen = !scanState.mtfOpen; reRender(); }; }
     { const it = $("#indToggle"); if (it) it.onclick = () => { scanState.indOpen = !scanState.indOpen; reRender(); }; }
