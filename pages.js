@@ -215,7 +215,7 @@
   function openChart(sym, tfl) {
     const iv = ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M" })[tfl] || "D";
     const src = "https://www.tradingview.com/widgetembed/?frameElementId=tvchart&symbol=" + encodeURIComponent(sym) +
-      "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=1&saveimage=0&timezone=America%2FNew_York";
+      "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=0&saveimage=1&timezone=America%2FNew_York";
     modal(sym + " · " + tfl,
       '<iframe src="' + src + '" style="width:100%;height:520px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe>' +
       '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "onechart");
@@ -230,7 +230,7 @@
     }
     const cells = tfs.map(([lbl, iv]) => {
       const src = "https://www.tradingview.com/widgetembed/?frameElementId=tv_" + lbl + "&symbol=" + encodeURIComponent(sym) +
-        "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=1&saveimage=0&timezone=America%2FNew_York";
+        "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=0&saveimage=1&timezone=America%2FNew_York";
       return '<div class="mtf-cell"><div class="mtf-lbl">' + lbl + '</div><iframe src="' + src + '" loading="lazy" style="width:100%;height:220px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe></div>';
     }).join("");
     modal(sym + ' · כל הטיימפריימים',
@@ -951,12 +951,19 @@
       '<div class="note" style="margin-bottom:8px">🔔 קבל התראה כשמניה <b>מהמועדפים</b> שלך נכנסת לסריקה שמורה. ' + permTxt + "</div>" +
       '<div class="note" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">' + pushBtn +
         '<span style="font-size:11px;color:var(--muted)">📱 בפלאפון: הוסף קודם למסך הבית (שיתוף → הוסף למסך הבית), ואז תקבל התראות גם כשהאפליקציה סגורה לגמרי.</span></div>' +
+      '<div class="note" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">' +
+        '<span style="font-size:12px;font-weight:600">🔔 צלצול פתיחה/סגירת מסחר:</span>' +
+        '<button class="btn ghost" id="alBellOpen" style="font-size:12px">בדוק פתיחה 🟢</button>' +
+        '<button class="btn ghost" id="alBellClose" style="font-size:12px">בדוק סגירה 🔴</button>' +
+        '<span style="font-size:11px;color:var(--muted)">מנוגן אוטומטית ב-16:30 ו-23:00 (שעון ישראל)</span></div>' +
       '<h3 style="margin:12px 0 6px;font-size:14px">הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div>" +
       '<h3 style="margin:16px 0 6px;font-size:14px">התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div>";
     modal("🔔 מרכז ההתראות", body);
     document.querySelectorAll("[data-alp]").forEach(b => b.onchange = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); });
     { const pm = $("#alNotifyPerm"); if (pm) pm.onclick = () => { requestNotifyPerm(); setTimeout(openAlertsFeed, 400); }; }
     { const ps = $("#alPushSub"); if (ps) ps.onclick = () => subscribeToPush(); }
+    { const bo = $("#alBellOpen"); if (bo) bo.onclick = () => { _primeAudio(); _bellSound("open"); _marketBellBanner("open"); }; }
+    { const bc = $("#alBellClose"); if (bc) bc.onclick = () => { _primeAudio(); _bellSound("close"); _marketBellBanner("close"); }; }
     { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); openAlertsFeed(); }; }
     wireCharts(document.getElementById("pgModal") || document);
   }
