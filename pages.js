@@ -876,8 +876,10 @@
     const ip = _ilParts();
     if (["Sat", "Sun"].indexOf(ip.dow) >= 0) return;         // US market weekdays only
     const mins = _ilMinutes();
-    if (mins >= 16 * 60 + 30 && mins < 16 * 60 + 33) _marketBell("open", ip.date);
-    else if (mins >= 23 * 60 && mins < 23 * 60 + 3) _marketBell("close", ip.date);
+    // 15-minute catch window (deduped once/day) so a backgrounded/throttled tab or a slightly
+    // late page-open still rings — instead of a strict 3-minute window that's easy to miss.
+    if (mins >= 16 * 60 + 30 && mins < 16 * 60 + 45) _marketBell("open", ip.date);
+    else if (mins >= 23 * 60 && mins < 23 * 60 + 15) _marketBell("close", ip.date);
   }
   function fireNotification(e) {
     const body = e.sym + ' נכנסה לסריקה "' + e.preset + '"';
@@ -2704,8 +2706,11 @@
       if (SCAN && SCAN.rows && SCAN.rows.length && document.body.classList.contains("in-app")) { clearInterval(_athBoot); refreshAthCeleb(); }
     }, 1500);
     setInterval(refreshAthCeleb, 60000);
-    // market open/close chime — prime audio on first interaction, then poll every 20s
+    // market open/close chime — prime audio on first interaction, then poll every 20s.
+    // Also re-check when the tab regains focus (background tabs throttle timers, so a poll
+    // may be skipped right at 16:30 — this catches it the moment you come back).
     document.addEventListener("pointerdown", _primeAudio, { once: true });
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) _marketBellTick(); });
     _marketBellTick();
     setInterval(_marketBellTick, 20000);
   }
