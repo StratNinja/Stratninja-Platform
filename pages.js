@@ -235,7 +235,10 @@
     }).join("");
     modal(sym + ' · כל הטיימפריימים',
       strip + '<div class="mtf-grid">' + cells + "</div>" +
-      '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "mtf");
+      '<div class="note" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
+        '<button class="btn ghost" id="mtfShot" style="font-size:13px;font-weight:600">📸 צילום מעוצב (כל הטיימפריימים)</button>' +
+        '<a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "mtf");
+    { const ms = document.getElementById("mtfShot"); if (ms) ms.onclick = () => captureMtfCard(sym); }
   }
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
@@ -830,22 +833,29 @@
   function _primeAudio() {                   // called on first user gesture so the bell can play later
     try { _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)(); if (_audioCtx.state === "suspended") _audioCtx.resume(); } catch (e) {}
   }
-  function _bellSound(kind) {                 // soft synthesized two-note chime (not loud/startling)
+  function _bellSound(kind) {                 // soft synthesized bell melody (not loud/startling)
     try {
       _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       if (_audioCtx.state === "suspended") _audioCtx.resume();
       const ctx = _audioCtx, now = ctx.currentTime;
-      const notes = kind === "open" ? [783.99, 1046.5] : [659.25, 440.0];   // open rises, close falls
-      notes.forEach((f, i) => {
-        const o = ctx.createOscillator(), g = ctx.createGain();
-        o.type = "sine"; o.frequency.value = f;
-        const t0 = now + i * 0.30;
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(0.16, t0 + 0.03);
-        g.gain.exponentialRampToValueAtTime(0.0006, t0 + 1.1);
-        o.connect(g); g.connect(ctx.destination);
-        o.start(t0); o.stop(t0 + 1.2);
-      });
+      // open = ASCENDING opening bell · close = DESCENDING closing bell (clearly distinct)
+      const notes = kind === "open" ? [523.25, 659.25, 783.99, 1046.5]
+                                    : [1046.5, 783.99, 659.25, 523.25];
+      const step = 0.34;
+      const ring = (f, t0, peak, dur) => {     // fundamental + soft octave = bell-like timbre
+        [[1, peak], [2, peak * 0.32]].forEach(([h, pk]) => {
+          const o = ctx.createOscillator(), g = ctx.createGain();
+          o.type = "sine"; o.frequency.value = f * h;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(pk, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0005, t0 + dur);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(t0); o.stop(t0 + dur + 0.1);
+        });
+      };
+      notes.forEach((f, i) => ring(f, now + i * step, 0.16, 1.4));
+      // final sustained chime rounds it off (a bit longer, ~3.3s total)
+      ring(kind === "open" ? 1046.5 : 523.25, now + notes.length * step, 0.15, 2.0);
     } catch (e) {}
   }
   function _marketBellBanner(kind) {
@@ -854,7 +864,7 @@
     el.className = "mkt-bell " + (open ? "open" : "close");
     el.innerHTML = '<span class="mb-ico">🔔</span><div class="mb-txt"><b>' +
       (open ? "המסחר נפתח! 🟢" : "המסחר נסגר 🔴") + "</b><span>" +
-      (open ? "וול סטריט פתוחה — בהצלחה 🥷" : "נתראה מחר · אפטר-מרקט פעיל") + "</span></div>";
+      (open ? "וול סטריט פתוחה — בהצלחה!" : "נתראה מחר · אפטר-מרקט פעיל") + "</span></div>";
     document.body.appendChild(el);
     requestAnimationFrame(() => el.classList.add("show"));
     const kill = () => { el.classList.remove("show"); setTimeout(() => el.remove(), 400); };
@@ -929,9 +939,10 @@
   }
   window._snTestAlert = () => showAlertBanner([{ sym: "TSLA", preset: "בדיקה", pid: "x" }]);
   function updateAlertBell() {
-    const b = document.getElementById("alBadge"); if (!b) return;
     const n = window.Prefs ? Prefs.feedUnread() : 0;
-    b.textContent = n ? n : ""; b.style.display = n ? "inline-flex" : "none";
+    [document.getElementById("alBadge"), document.getElementById("alBadgeSide")].forEach(b => {
+      if (b) { b.textContent = n ? n : ""; b.style.display = n ? "inline-flex" : "none"; }
+    });
   }
   function openAlertsFeed() {
     if (!window.Prefs) return;
@@ -1143,6 +1154,58 @@
       ctx.fillText("Adi Koriat · stratninja.win · " + new Date().toLocaleString("he-IL"), w - 40, cv.height + fh / 2 + 24);
       showShareModal(out);
     }).catch(() => snToast("שגיאה בצילום — נסה שוב"));
+  }
+  // ---- designed multi-timeframe Strat card (from scanner data — TradingView iframes can't
+  //      be screenshotted cross-origin, so we render a branded card of the Strat bar-types) ----
+  function buildMtfCardEl(sym, r) {
+    const chg = (r.c != null) ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : null);
+    const chgCol = (chg == null) ? "#8a93a6" : (chg >= 0 ? "#22c55e" : "#ef4444");
+    const chgTxt = (chg == null) ? "" : (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%";
+    const price = (r.p != null) ? r.p : (r.tech && r.tech.px != null ? r.tech.px : null);
+    const TFS = [["Y", "שנתי"], ["Q", "רבעוני"], ["M", "חודשי"], ["W", "שבועי"], ["D", "יומי"]];
+    const bar = (k, he) => {
+      const cell = r[k], t = (cell && cell.t) || "1", dir = cell && cell.c;
+      const col = dir === "up" ? "#22c55e" : dir === "down" ? "#ef4444" : "#586074";
+      const arrow = dir === "up" ? "▲" : dir === "down" ? "▼" : "•";
+      return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:9px;background:#131c2e;border:1px solid #26324a;border-radius:14px;padding:15px 4px">' +
+        '<span style="font-size:13px;color:#93a0b8;font-weight:700">' + he + "</span>" +
+        '<span style="display:flex;align-items:center;justify-content:center;min-width:52px;height:38px;border-radius:10px;font-weight:800;font-size:17px;color:#fff;background:' + col + '">' + t + "</span>" +
+        '<span style="font-size:13px;color:' + col + '">' + arrow + "</span></div>";
+    };
+    const badges = [];
+    if (r.ftfc) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:800;font-size:13px;color:#0a0f1c;background:#22c55e">FTFC ✓</span>');
+    if (r.ninja != null) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:800;font-size:13px;color:#fff;background:#2b3550">Ninja Score ' + r.ninja + "</span>");
+    if (r.sec) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:700;font-size:13px;color:#cbd5e6;background:#1b2438">' + r.sec + "</span>");
+    const el = document.createElement("div");
+    el.style.cssText = "position:fixed;left:-9999px;top:0;width:660px;padding:30px;background:linear-gradient(150deg,#101a2c,#0a0f1c);border:1px solid #223;border-radius:22px;font-family:Rubik,Arial,sans-serif;direction:rtl;color:#eef2f8;box-sizing:border-box";
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">' +
+        '<img src="favicon.svg" style="width:38px;height:38px" crossorigin="anonymous">' +
+        '<div><div style="font-weight:800;font-size:20px">StratNinja</div><div style="font-size:12px;color:#8a93a6">כל הטיימפריימים · The Strat</div></div>' +
+      "</div>" +
+      '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px">' +
+        '<span style="font-size:40px;font-weight:800;letter-spacing:.5px">' + sym + "</span>" +
+        (price != null ? '<span style="font-size:24px;font-weight:700;color:#cbd5e6">$' + price.toFixed(2) + "</span>" : "") +
+        (chgTxt ? '<span style="font-size:22px;font-weight:800;color:' + chgCol + '">' + chgTxt + "</span>" : "") +
+      "</div>" +
+      (badges.length ? '<div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 18px">' + badges.join("") + "</div>" : '<div style="height:14px"></div>') +
+      '<div style="display:flex;gap:10px">' + TFS.map(x => bar(x[0], x[1])).join("") + "</div>" +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:16px;border-top:1px solid #223046;font-size:13px;color:#8a93a6">' +
+        "<span>Adi Koriat · @KoriatTrade</span><span>stratninja.win · " + new Date().toLocaleDateString("he-IL") + "</span></div>";
+    return el;
+  }
+  function captureMtfCard(sym) {
+    if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
+    const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+    if (!r) { snToast("אין נתוני Strat למניה הזו — פתח אותה דרך סורק העסקאות כדי לצלם כרטיס"); return; }
+    snToast("מכין כרטיס מעוצב…");
+    const el = buildMtfCardEl(sym, r);
+    document.body.appendChild(el);
+    setTimeout(() => {
+      html2canvas(el, { backgroundColor: "#0a0f1c", scale: 2, useCORS: true, logging: false })
+        .then(cv => { el.remove(); showShareModal(cv); })
+        .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
+    }, 200);
   }
   // copy a PNG blob to the clipboard (secure-context + supported browsers only)
   function _copyImageBlob(blob, okMsg) {
@@ -2698,6 +2761,8 @@
     startCtaRotator();
     { const cam = document.getElementById("sideCam"); if (cam) cam.onclick = () => captureShare(); }
     { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
+    { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed(); }
+    updateAlertBell();
     loadNews();
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min
     // 52-week-high celebration: boot once scan data is present AND the app is visible,
