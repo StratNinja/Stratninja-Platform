@@ -917,9 +917,18 @@
         picks: top.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
     }
     if (page === "today") {
+      // rich card that reflects the page's value: money flow + long AND short candidates
+      const flow = (typeof todaySectors === "function" ? todaySectors(src) : []).sort((a, b) => b.chg - a.chg);
+      const flowIn = flow.slice(0, 3), flowOut = flow.slice(-3).reverse();
       const longs = src.filter(t => t.ninja != null && (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 3);
-      return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 מה לבדוק עכשיו", cls: ms ? ms.cls : "zero", strip: "",
-        picksLabel: "🟢 מועמדים ללונג — Top Ninja", picks: longs.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
+      const shorts = src.filter(t => t.ninja != null && (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 3);
+      const flowStrip = flowIn.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "pos")).join("") + flowOut.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "neg")).join("");
+      const col = (lbl, cls, arr) => '<div class="sc-col"><div class="sc-picks-lbl ' + cls + '">' + lbl + "</div><div class=\"sc-picks\">" +
+        (arr.length ? arr.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") : '<div class="sc-empty">אין מועמדים ברורים</div>') + "</div></div>";
+      const bodyHtml =
+        (flowStrip ? '<div class="sc-sec-lbl">🗂️ לאן הכסף זורם</div><div class="sc-strip">' + flowStrip + "</div>" : "") +
+        '<div class="sc-two">' + col("🟢 מועמדים ללונג", "pos", longs) + col("🔴 מועמדים לשורט", "neg", shorts) + "</div>";
+      return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 מה לבדוק עכשיו", cls: ms ? ms.cls : "zero", bodyHtml: bodyHtml };
     }
     if (page === "sectors") {
       const lead = (LIVE && LIVE.sectorLeaders || []).slice(0, 3), lag = (LIVE && LIVE.sectorLaggards || []).slice(0, 3);
@@ -986,8 +995,9 @@
         photo + "</div>" +
       '<div class="sc-body">' +
         '<div class="sc-mode ' + s.cls + '">' + s.headline + "</div>" +
-        (s.strip ? '<div class="sc-strip">' + s.strip + "</div>" : "") +
-        (s.picks ? '<div class="sc-picks-lbl">' + s.picksLabel + '</div><div class="sc-picks">' + s.picks + "</div>" : "") +
+        (s.bodyHtml ? s.bodyHtml :
+          ((s.strip ? '<div class="sc-strip">' + s.strip + "</div>" : "") +
+           (s.picks ? '<div class="sc-picks-lbl">' + s.picksLabel + '</div><div class="sc-picks">' + s.picks + "</div>" : ""))) +
       "</div>" +
       '<div class="sc-foot"><span>Adi Koriat · @KoriatTrade</span><span>stratninja.win · ' + new Date().toLocaleDateString("he-IL") + "</span></div>";
     document.body.appendChild(el);
@@ -2334,6 +2344,10 @@
     box.innerHTML =
       '<div class="nf-head"><span class="nf-title">🗞️ חדשות בזמן אמת</span>' +
       '<button class="nf-min" id="nfClose" title="סגור">✕</button></div>' +
+      '<a class="nf-cta" href="https://www.patreon.com/14520383/join" target="_blank" rel="noopener">' +
+        '<span class="nf-cta-ico">🎓</span>' +
+        '<span class="nf-cta-txt"><b>רוצה להבין את הגרפים טוב יותר?</b><span>הצטרף לקורס ולקהילת StratNinja →</span></span>' +
+      "</a>" +
       '<div class="nf-status">' + newsSession() + " · עודכן " + timeAgoHe(NEWS.updated) + "</div>" +
       '<div class="nf-list">' + (list || '<div class="muted" style="padding:12px">אין חדשות כרגע.</div>') + "</div>";
     const cl = document.getElementById("nfClose"); if (cl) cl.onclick = () => toggleNews();

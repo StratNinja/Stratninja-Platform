@@ -297,6 +297,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .share-card .sc-pk-chg { font-size:20px; font-weight:700; }
 .share-card .sc-pk-chg.pos { color:#4fe39b; } .share-card .sc-pk-chg.neg { color:#ff7a86; }
 .share-card .sc-foot { display:flex; justify-content:space-between; padding:20px 44px; background:rgba(0,0,0,.35); font-size:18px; color:#c3ccdd; font-weight:600; }
+/* "what to check now" share card — money flow + long/short columns */
+.share-card .sc-sec-lbl { font-size:17px; font-weight:800; color:#c3ccdd; margin:4px 0 10px; }
+.share-card .sc-two { display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:20px; }
+.share-card .sc-two .sc-picks-lbl { margin-bottom:12px; }
+.share-card .sc-two .sc-picks-lbl.pos { color:#4fe39b; } .share-card .sc-two .sc-picks-lbl.neg { color:#ff7a86; }
+.share-card .sc-two .sc-picks { gap:12px; }
+.share-card .sc-two .sc-pick { padding:14px 10px; }
+.share-card .sc-empty { flex:1; text-align:center; color:#9aa3b2; font-size:16px; padding:22px 10px; background:rgba(255,255,255,.04); border-radius:16px; }
 /* floating Hebrew news feed */
 .side-nav a.side-act { cursor:pointer; }
 .news-feed { position:fixed; inset-block-end:18px; inset-inline-start:18px; inset-inline-end:auto; z-index:3800;
@@ -310,6 +318,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .nf-title { font-weight:800; font-size:14px; }
 .nf-min { background:rgba(255,255,255,.06); border:none; color:var(--ink); width:26px; height:26px; border-radius:7px; cursor:pointer; font-size:17px; line-height:1; }
 .nf-status { font-size:11px; color:var(--muted); padding:7px 14px; border-bottom:1px solid var(--line); }
+/* community / course CTA at the top of the news feed */
+.nf-cta { display:flex; align-items:center; gap:11px; margin:10px 12px; padding:11px 13px; border-radius:11px; text-decoration:none;
+  background:linear-gradient(90deg, rgba(124,108,240,.95), rgba(88,101,242,.8)); color:#fff; transition:filter .15s, transform .15s; }
+.nf-cta:hover { filter:brightness(1.08); transform:translateY(-1px); }
+.nf-cta-ico { font-size:22px; line-height:1; }
+.nf-cta-txt { display:flex; flex-direction:column; line-height:1.35; }
+.nf-cta-txt b { font-size:13px; font-weight:800; }
+.nf-cta-txt span { font-size:11.5px; opacity:.92; }
 .nf-list { max-height:52vh; overflow-y:auto; }
 .nf-item { display:block; padding:11px 14px; border-bottom:1px solid rgba(255,255,255,.05); text-decoration:none; color:var(--ink); transition:background .12s; }
 .nf-item:hover { background:rgba(255,255,255,.045); }
