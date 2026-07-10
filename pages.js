@@ -1652,18 +1652,18 @@
     const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
     // optional result columns — shown if the user toggled them on OR the matching filter is active
     const optCols = [
-      { key: "ind", th: "תת-סקטור", cell: (k, dma, t) => '<td class="tname" style="text-align:start">' + (t && t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : '<span class="muted">—</span>') + "</td>", active: scanState.subsec !== "all" },
-      { key: "rsi", th: "RSI", cell: k => '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>", active: techState.rsiMin > 0 || techState.rsiMax < 100 },
-      { key: "mfi", th: "MFI", cell: k => '<td class="' + mfiCls(k.mfi) + '">' + (k.mfi == null ? "—" : k.mfi.toFixed(0)) + "</td>", active: techState.mfiMin > 0 || techState.mfiMax < 100 },
-      { key: "rvol", th: "RVOL", cell: k => "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>", active: _rv() > 0 },
-      { key: "vol", th: "ווליום", cell: k => "<td>" + fmtVol(k.vol) + "</td>", active: techState.volMin > 0 },
-      { key: "atrp", th: "ATR%", cell: k => "<td>" + (k.atrp == null ? "—" : k.atrp.toFixed(2) + "%") + "</td>", active: _atrp() > 0 },
-      { key: "gap", th: "גאפ", cell: k => "<td>" + dPct(k.gap) + "</td>", active: _gapActive() },
-      { key: "dma", th: "Δ " + maLabel, cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
-      { key: "dhi52", th: "Δ שיא52", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
-      { key: "comp", th: "דחיסת MA", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
-      { key: "bbsq", th: "BB דחיסה", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
-      { key: "swd", th: "Δ סווינג", cell: k => "<td>" + dPct(techState.swSide === "low" ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
+      { key: "ind", th: "תת-סקטור", tip: "תת-הסקטור (התעשייה) של המניה + תעודת הסל שלה", cell: (k, dma, t) => '<td class="tname" style="text-align:start">' + (t && t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : '<span class="muted">—</span>') + "</td>", active: scanState.subsec !== "all" },
+      { key: "rsi", th: "RSI", tip: "RSI (0–100): מדד מומנטום. מעל 70 = קניית-יתר, מתחת 30 = מכירת-יתר", cell: k => '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>", active: techState.rsiMin > 0 || techState.rsiMax < 100 },
+      { key: "mfi", th: "MFI", tip: "MFI (0–100): תזרים כסף — כמו RSI אך משוקלל בווליום ('כסף חכם'). מעל 80 קניית-יתר, מתחת 20 מכירת-יתר", cell: k => '<td class="' + mfiCls(k.mfi) + '">' + (k.mfi == null ? "—" : k.mfi.toFixed(0)) + "</td>", active: techState.mfiMin > 0 || techState.mfiMax < 100 },
+      { key: "rvol", th: "RVOL", tip: "ווליום יחסי: נפח המסחר היום חלקי הממוצע. מעל 1× = פעילות ערה מהרגיל", cell: k => "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>", active: _rv() > 0 },
+      { key: "vol", th: "ווליום", tip: "נפח: מספר המניות שנסחרו היום", cell: k => "<td>" + fmtVol(k.vol) + "</td>", active: techState.volMin > 0 },
+      { key: "atrp", th: "ATR%", tip: "ATR%: טווח התנועה היומי הממוצע כאחוז מהמחיר — מדד תנודתיות", cell: k => "<td>" + (k.atrp == null ? "—" : k.atrp.toFixed(2) + "%") + "</td>", active: _atrp() > 0 },
+      { key: "gap", th: "גאפ", tip: "גאפ: פער הפתיחה של היום מול סגירת אתמול (%)", cell: k => "<td>" + dPct(k.gap) + "</td>", active: _gapActive() },
+      { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
+      { key: "dhi52", th: "Δ שיא52", tip: "מרחק המחיר משיא 52 השבועות (0% = בשיא)", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
+      { key: "comp", th: "דחיסת MA", tip: "דחיסת ממוצעים: כמה הממוצעים הנעים צפופים זה לזה — נמוך = קפיץ דחוס לפני פריצה", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
+      { key: "bbsq", th: "BB דחיסה", tip: "דחיסת בולינגר: אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = דחוס/קפיץ", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
+      { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct(techState.swSide === "low" ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
     ];
     // a filter becoming active auto-adds its column (once); the user can still remove it via the chip
     optCols.forEach(c => { if (c.active && colState[c.key] == null) colState[c.key] = true; });
@@ -1696,14 +1696,14 @@
       "</div>";
 
     const head =
-      "<th></th>" + sortableTh("סימבול", "sym") + sortableTh("סקטור", "sec") + sortableTh("ת\"ס", "etf") + sortableTh("מחיר", "price") + sortableTh("שווי", "mc") + sortableTh("%", "chg") +
-      sortableTh("Y", "Y") + sortableTh("Q", "Q") + sortableTh("M", "M") + sortableTh("W", "W") + sortableTh("D", "D") + sortableTh("FTFC", "ftfc") +
+      "<th></th>" + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') + sortableTh("סקטור", "sec", ' title="הסקטור של המניה"') + sortableTh("ת\"ס", "etf", ' title="תעודת הסל (ETF) שמייצגת את הסקטור"') + sortableTh("מחיר", "price", ' title="המחיר הנוכחי"') + sortableTh("שווי", "mc", ' title="שווי שוק (מחיר × מספר מניות)"') + sortableTh("%", "chg", ' title="שינוי במחיר היום באחוזים"') +
+      sortableTh("Y", "Y", ' title="נר Strat בטיימפריים השנתי"') + sortableTh("Q", "Q", ' title="נר Strat בטיימפריים הרבעוני"') + sortableTh("M", "M", ' title="נר Strat בטיימפריים החודשי"') + sortableTh("W", "W", ' title="נר Strat בטיימפריים השבועי"') + sortableTh("D", "D", ' title="נר Strat בטיימפריים היומי"') + sortableTh("FTFC", "ftfc", ' title="FTFC — המשכיות טיימפריימים מלאה: כל הטיימפריימים באותו כיוון (ירוק=עולה, אדום=יורד)"') +
       sortableTh("Ninja", "ninja", ' title="Ninja Score 0-100: איכות הסטאפ — יישור טיימפריימים, ווליום יחסי, תבנית, כסף חכם, קרבה לממוצע, נזילות וחוזק הסקטור"') +
-      visCols.map(c => sortableTh(c.th, c.key)).join("") +
+      visCols.map(c => sortableTh(c.th, c.key, c.tip ? ' title="' + escAttr(c.tip) + '"' : "")).join("") +
       "<th></th>";
     const nCols = 15 + visCols.length;
     const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
-      optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '"' + (c.active ? ' title="פילטר פעיל על העמודה"' : "") + ">" + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
+      optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '" title="' + escAttr((c.tip ? c.tip : c.th) + (c.active ? " · פילטר פעיל" : "")) + '">' + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<span style="display:flex;gap:8px"><button class="btn ghost" id="scanGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button><button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button></span>" : "") + "</h3>" + colChips +
       '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" +
@@ -2673,7 +2673,7 @@
   function setPage(name) {
     document.querySelectorAll(".side-nav a").forEach(a => a.classList.toggle("active", a.dataset.page === name));
     const jc = $("#journalContainer"), pg = $("#page");
-    if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; }
+    if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
     if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") { loadScanner(); if (state.page === "today") loadLive(); }
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}

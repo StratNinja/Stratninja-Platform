@@ -86,6 +86,10 @@
   let openPosMin = false;   // collapse the open-positions panel
   try { openPosMin = localStorage.getItem("sn_openpos_min") === "1"; } catch (e) {}
   let _openSort = { col: null, dir: 1 };   // open-positions table sort (click a header)
+  // live-stream privacy: hide the trades on entry (toggle persisted); _peek = temporarily revealed
+  let _journalPrivate = false;
+  try { _journalPrivate = localStorage.getItem("sn_journal_private") === "1"; } catch (e) {}
+  let _journalPeek = false;
 
   // ---- Helpers -----------------------------------------------------------
   const $ = sel => document.querySelector(sel);
@@ -169,12 +173,35 @@
     if (openCount >= OPEN_WARN && _lastOpenCount < OPEN_WARN) setTimeout(() => disciplineModal(openCount), 350);
     _lastOpenCount = openCount;
 
-    root.appendChild(renderStatCards(trades));
-    if (manualOpen && manualOpen.length) root.appendChild(renderOpenPositions(manualOpen));
-    root.appendChild(renderAssetBreakdown(trades));
-    if (state.tab === "calendar") root.appendChild(renderCalendar(trades));
-    else if (state.tab === "equity") root.appendChild(renderEquity(trades));
-    else if (state.tab === "trades") root.appendChild(renderTrades(trades, openPositions));
+    // live-stream privacy toggle — always visible so it can be flipped
+    const privBar = el("div", "jr-privbar");
+    privBar.innerHTML = '<button class="btn ghost" id="jrPrivToggle" title="הסתר את העסקאות בכניסה — נוח ללייבים. כבוי = הכל גלוי מיד">' +
+      (_journalPrivate ? "🔒 מצב לייב פעיל · עסקאות מוסתרות בכניסה" : "👁️ עסקאות גלויות") + "</button>";
+    root.appendChild(privBar);
+    { const pt = privBar.querySelector("#jrPrivToggle"); if (pt) pt.onclick = () => { _journalPrivate = !_journalPrivate; try { localStorage.setItem("sn_journal_private", _journalPrivate ? "1" : "0"); } catch (e) {} _journalPeek = false; render(); }; }
+
+    const content = el("div", "jr-content");
+    content.appendChild(renderStatCards(trades));
+    if (manualOpen && manualOpen.length) content.appendChild(renderOpenPositions(manualOpen));
+    content.appendChild(renderAssetBreakdown(trades));
+    if (state.tab === "calendar") content.appendChild(renderCalendar(trades));
+    else if (state.tab === "equity") content.appendChild(renderEquity(trades));
+    else if (state.tab === "trades") content.appendChild(renderTrades(trades, openPositions));
+
+    if (_journalPrivate && !_journalPeek) {
+      const shell = el("div", "jr-private-shell");
+      content.classList.add("jr-blurred");
+      const cover = el("div", "jr-cover");
+      cover.innerHTML = '<div class="jr-cover-in"><div style="font-size:38px">🔒</div>' +
+        '<h3 style="margin:8px 0 4px">העסקאות מוסתרות · מצב לייב</h3>' +
+        '<p class="muted" style="margin:0 0 14px;max-width:340px">מוסתר אוטומטית בכל כניסה כל עוד המצב פעיל. לחץ להצגה זמנית.</p>' +
+        '<button class="btn primary" id="jrReveal">👁️ הצג עסקאות</button></div>';
+      shell.appendChild(content); shell.appendChild(cover);
+      root.appendChild(shell);
+      { const rb = cover.querySelector("#jrReveal"); if (rb) rb.onclick = () => { _journalPeek = true; render(); }; }
+    } else {
+      root.appendChild(content);
+    }
 
     // load live prices once, then re-render so Unrealized P&L fills in
     if (manualOpen && manualOpen.length && !livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
@@ -1036,6 +1063,8 @@
   // pulling the user's data from Supabase.
   window.Journal = {
     rerender: function () { try { render(); } catch (e) {} },
+    // called by the main app when the journal tab is entered — re-hides trades if live-mode is on
+    onEnter: function () { try { _journalPeek = false; render(); } catch (e) {} },
     // current-view performance summary (for the share card in the main app)
     summary: function () {
       try {
