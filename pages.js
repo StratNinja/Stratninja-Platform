@@ -2812,6 +2812,8 @@
     document.addEventListener("visibilitychange", () => { if (!document.hidden) _marketBellTick(); });
     _marketBellTick();
     setInterval(_marketBellTick, 20000);
+    // ESC closes any open modal (chart-grid, all-timeframes, single chart, alerts, share…)
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && document.getElementById("pgModal")) closeModal(); });
   }
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [
