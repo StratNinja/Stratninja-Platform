@@ -1394,26 +1394,34 @@
       const url = URL.createObjectURL(blob);
       const file = new File([blob], "stratninja.png", { type: "image/png" });
       const tweet = "https://twitter.com/intent/tweet?text=" + encodeURIComponent("סרקתי את השוק ב-StratNinja 📊 stratninja.win");
+      const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [file] }));
       const body =
         '<img src="' + url + '" style="max-width:100%;border-radius:10px;border:1px solid var(--line);display:block">' +
         '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
-          '<button class="btn primary" id="copyClip" style="font-size:13px">📋 העתק ללוח</button>' +
+          '<button class="btn primary" id="shareNative" style="font-size:13px">📤 שתף · אינסטגרם / סטורי / וואטסאפ</button>' +
+          '<button class="btn ghost" id="copyClip" style="font-size:13px">📋 העתק ללוח</button>' +
           '<a class="btn ghost" href="' + url + '" download="stratninja.png" style="font-size:13px">📥 הורד</a>' +
-          '<button class="btn ghost" id="shareNative" style="font-size:13px">📤 שתף</button>' +
-          '<a class="btn ghost" href="' + tweet + '" target="_blank" rel="noopener" style="font-size:13px">שתף ב-X</a>' +
+          '<a class="btn ghost" href="' + tweet + '" target="_blank" rel="noopener" style="font-size:13px">𝕏 שתף ב-X</a>' +
         "</div>" +
-        '<div class="note" style="margin-top:8px;font-size:11px">📋 התמונה מועתקת ללוח אוטומטית — פשוט הדבק (Ctrl+V) איפה שתרצה. אם לא הועתקה, לחץ "העתק ללוח" או "הורד".</div>';
+        '<div class="note" style="margin-top:10px;font-size:11px;line-height:1.6">' +
+          '📱 <b>בפלאפון:</b> "שתף" פותח את גיליון השיתוף — משם אפשר ישר ל<b>אינסטגרם, סטורי, וואטסאפ</b> ועוד.<br>' +
+          '🖥️ <b>במחשב:</b> אינסטגרם ויוטיוב <b>לא מאפשרים פרסום מהדפדפן</b> (רק דרך האפליקציה) — לחץ <b>📥 הורד</b> והעלה ידנית. התמונה כבר הועתקה ללוח (Ctrl+V).<br>' +
+          '𝕏 <b>ל-X:</b> "שתף ב-X" פותח ציוץ — הדבק את התמונה (Ctrl+V).' +
+        "</div>";
       modal("📷 צילום ושיתוף", body);
       // auto-copy right away (still within the click's activation window)
       _copyImageBlob(blob);
       { const cc = document.getElementById("copyClip"); if (cc) cc.onclick = () => _copyImageBlob(blob); }
       const sn = document.getElementById("shareNative");
       if (sn) sn.onclick = () => {
-        try {
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            navigator.share({ files: [file], title: "StratNinja", text: "StratNinja Scanner · stratninja.win" });
-          } else { snToast("שיתוף ישיר לא נתמך פה — הורד את התמונה ושתף ידנית"); }
-        } catch (e) { snToast("שיתוף ישיר לא נתמך פה — הורד את התמונה"); }
+        if (canShareFiles) {
+          try { navigator.share({ files: [file], title: "StratNinja", text: "StratNinja Scanner · stratninja.win" }); }
+          catch (e) {}
+        } else {
+          // desktop: no OS share sheet → download + guide (IG/YouTube need manual upload via the app)
+          const a = document.createElement("a"); a.href = url; a.download = "stratninja.png"; a.click();
+          snToast("במחשב אין שיתוף ישיר — התמונה הורדה, העלה אותה לאינסטגרם/יוטיוב דרך האפליקציה 📱");
+        }
       };
     }, "image/png");
   }
