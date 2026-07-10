@@ -726,6 +726,15 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .cm-f2u { background: rgba(239,68,68,.15);  color: #ff8a8a; box-shadow: inset 0 0 0 1px rgba(239,68,68,.4); }
 .cm-3r  { background: rgba(198,40,40,.2);   color: #ff7676; box-shadow: inset 0 0 0 1px rgba(198,40,40,.46); }
 
+/* favorites that currently match saved scan presets — subtle green row + red count badge */
+.scan-table tr.fav-inpreset { background: rgba(34,197,94,.09); }
+.scan-table tr.fav-inpreset:hover { background: rgba(34,197,94,.15); }
+.scan-table tr.fav-inpreset td:first-child { box-shadow: inset 3px 0 0 rgba(34,197,94,.7); }
+.fav-starcell { display: inline-flex; align-items: center; gap: 5px; }
+.fav-pcount { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
+  padding: 0 4px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+
 /* selected stock-alert style button */
 .al-style.on { border-color: var(--accent, #7c6cf0); color: var(--ink); background: rgba(124,108,240,.18); font-weight: 700; }
 

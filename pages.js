@@ -2513,11 +2513,21 @@
     if (!favs.length) {
       body = '<div class="panel"><div class="stub"><div class="big">⭐</div><h2>אין עדיין מועדפים</h2><p>לחץ על הכוכב ⭐ ליד מניות בסורק, בסקטורים או בגאפרים כדי להוסיף אותן לכאן.</p><button class="btn primary" id="goScanner">לסורק העסקאות</button></div></div>';
     } else {
-      const rows = list.map(t =>
-        "<tr><td>" + star(t.sym) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
-        '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
-        '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
-        "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>').join("");
+      // which favorites currently match one or more of the saved scan presets (for the highlight + count badge)
+      const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
+      const pmatch = {};
+      if (SCAN && SCAN.rows && SCAN.rows.length && presets.length) {
+        presets.forEach(p => { let m = []; try { m = evalPreset(p) || []; } catch (e) {} m.forEach(sym => { (pmatch[sym] = pmatch[sym] || []).push(p.name); }); });
+      }
+      const rows = list.map(t => {
+        const pm = pmatch[t.sym] || [];
+        const badge = pm.length ? '<span class="fav-pcount" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + '">' + pm.length + "</span>" : "";
+        return "<tr" + (pm.length ? ' class="fav-inpreset"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + badge + "</span></td>" +
+          '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
+          '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
+          '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
+          "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
+      }).join("");
       body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + body;
@@ -2588,11 +2598,47 @@
     (scope || document).querySelectorAll("[data-star]").forEach(b => {
       b.onclick = e => {
         e.stopPropagation();
+        if (_starJustDragged) return;          // a drag just handled these — don't double-toggle
         window.Prefs.toggleFav(b.dataset.star);
         b.classList.toggle("on");
         b.textContent = b.classList.contains("on") ? "★" : "☆";
         if (state.page === "favorites") reRender();
       };
+    });
+  }
+  // ---- drag-to-select stars: press on a star and drag over more to mark/unmark them all ----
+  let _starDrag = null, _starJustDragged = false;
+  function _paintStar(btn, on) {
+    if (!btn || !window.Prefs) return;
+    const sym = btn.dataset.star;
+    if (window.Prefs.isFav(sym) !== on) window.Prefs.toggleFav(sym);
+    btn.classList.toggle("on", on);
+    btn.textContent = on ? "★" : "☆";
+  }
+  function _setupStarDrag() {
+    document.addEventListener("mousedown", e => {
+      const btn = e.target && e.target.closest && e.target.closest("[data-star]");
+      if (!btn || !window.Prefs) return;
+      e.preventDefault();                                    // no text selection while dragging
+      _starDrag = { start: btn, target: !window.Prefs.isFav(btn.dataset.star), dragged: false };
+    });
+    document.addEventListener("mouseover", e => {
+      if (!_starDrag) return;
+      const btn = e.target && e.target.closest && e.target.closest("[data-star]");
+      if (!btn) return;
+      if (btn === _starDrag.start && !_starDrag.dragged) return;       // still on the start star — not a drag yet
+      if (!_starDrag.dragged) { _starDrag.dragged = true; _paintStar(_starDrag.start, _starDrag.target); }
+      _paintStar(btn, _starDrag.target);
+    });
+    document.addEventListener("mouseup", () => {
+      if (!_starDrag) return;
+      const dragged = _starDrag.dragged;
+      _starDrag = null;
+      if (dragged) {
+        _starJustDragged = true;                             // block the trailing click's toggle (only after a real drag)
+        setTimeout(() => { _starJustDragged = false; }, 0);
+        if (state.page === "favorites") setTimeout(() => reRender(), 0);  // refresh rows/badges AFTER the click
+      }
     });
   }
 
@@ -2951,6 +2997,7 @@
     setInterval(_marketBellTick, 20000);
     // ESC closes any open modal (chart-grid, all-timeframes, single chart, alerts, share…)
     document.addEventListener("keydown", e => { if (e.key === "Escape" && document.getElementById("pgModal")) closeModal(); });
+    _setupStarDrag();   // drag over stars to mark/unmark many at once
   }
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [
