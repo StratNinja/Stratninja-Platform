@@ -2399,11 +2399,22 @@
     } else {
       const rows = list.map(t =>
         "<tr><td>" + star(t.sym) + '</td><td class="sym"><span class="tsym">' + t.sym + '</span> <span class="tname">' + (t.name || "") + "</span></td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>').join("");
-      body = '<div class="panel"><h3>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + " מניות</span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th><th style='text-align:start'>סימבול</th><th>מחיר</th><th>%</th>" + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + body;
   }
-  function wireFavorites() { const g = $("#goScanner"); if (g) g.onclick = () => setPage("scanner"); }
+  function wireFavorites() {
+    const g = $("#goScanner"); if (g) g.onclick = () => setPage("scanner");
+    const fg = $("#favGrid");
+    if (fg) fg.onclick = () => {
+      const favs = window.Prefs ? window.Prefs.favorites() : [];
+      const favRows = favs.map(sym => {
+        const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+        return r ? { sym: sym, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) } : { sym: sym };
+      });
+      if (favRows.length) openChartGrid(favRows, { title: "רשימת המעקב" });
+    };
+  }
 
   // ========== ALERTS ==========
   function renderAlerts() {
