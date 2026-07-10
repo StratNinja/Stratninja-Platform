@@ -226,7 +226,7 @@
       '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "onechart");
   }
   function openMultiChart(sym) {
-    const tfs = [["4H", "240"], ["D", "D"], ["W", "W"], ["M", "M"], ["Q", "3M"], ["Y", "12M"]];
+    const tfs = [["130m", "130"], ["D", "D"], ["W", "W"], ["M", "M"], ["Q", "3M"], ["Y", "12M"]];
     // strat-type strip from the loaded scanner row (if available)
     let strip = "";
     if (SCAN && SCAN.rows) {
@@ -2392,14 +2392,21 @@
   // ========== FAVORITES ==========
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
-    const list = favs.map(sym => TICKERS.find(t => t.sym === sym) || { sym, name: "", sector: "", price: 0, chg: 0, shape: "", atr: 0, rvol: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji") });
+    const list = favs.map(sym => {
+      const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;    // prefer LIVE scan data (sector/sub-sector)
+      if (r) return { sym: sym, name: "", sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
+      return TICKERS.find(t => t.sym === sym) || { sym: sym, name: "", sector: "", ind: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji") };
+    });
     let body;
     if (!favs.length) {
       body = '<div class="panel"><div class="stub"><div class="big">⭐</div><h2>אין עדיין מועדפים</h2><p>לחץ על הכוכב ⭐ ליד מניות בסורק, בסקטורים או בגאפרים כדי להוסיף אותן לכאן.</p><button class="btn primary" id="goScanner">לסורק העסקאות</button></div></div>';
     } else {
       const rows = list.map(t =>
-        "<tr><td>" + star(t.sym) + '</td><td class="sym"><span class="tsym">' + t.sym + '</span> <span class="tname">' + (t.name || "") + "</span></td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>').join("");
-      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+        "<tr><td>" + star(t.sym) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
+        '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
+        '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
+        "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>').join("");
+      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + body;
   }
@@ -2414,6 +2421,7 @@
       });
       if (favRows.length) openChartGrid(favRows, { title: "רשימת המעקב" });
     };
+    wireStars(); wireCharts();
   }
 
   // ========== ALERTS ==========
