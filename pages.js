@@ -506,25 +506,28 @@
       return hh * 60 + mm;
     } catch (e) { return new Date().getHours() * 60 + new Date().getMinutes(); }
   }
-  // Time-aware movers panel on the market page: PRE-MARKET (<16:30 IL) → גאפרים
-  // (16:30–23:00) → AFTER-MARKET (≥23:00). Data is picked to match the window.
+  // Time-aware movers panel (Israel time). US↔IL is a constant 7h offset, so:
+  //   16:30–23:00 → RTH gappers · 11:00–16:30 → pre-market (US pre-market 04:00–09:30 ET) ·
+  //   23:00–11:00 (wraps past midnight) → after-market. The long after-market window keeps the
+  //   last session's post-market movers on screen through the overnight dead zone (nothing new
+  //   trades 03:00–11:00 IL), instead of showing an empty "pre-market" list.
   function gappersMini() {
     const mins = _ilMinutes();
     // movers panel ALWAYS uses the widest universe (full StratNinja, ~1415 stocks) so big
     // movers never get hidden by the S&P-500 filter — e.g. non-S&P names like IONS crashing.
     const U = (LIVE && LIVE.universes && LIVE.universes.all) || {};
     let head, data, upLbl, dnLbl, seeAll = "", note = "";
-    if (mins < 16 * 60 + 30) {                       // before 16:30 IL → pre-market
-      head = "🌅 PRE-MARKET MOVERS · תנועות לפני הפתיחה";
-      data = U.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] };
-      upLbl = "🟢 עולות לפני פתיחת המסחר"; dnLbl = "🔴 יורדות לפני פתיחת המסחר";
-      note = "מתעדכן ככל שנסחר יותר בפרה-מרקט";
-    } else if (mins < 23 * 60) {                     // 16:30–23:00 IL → gappers
+    if (mins >= 16 * 60 + 30 && mins < 23 * 60) {    // 16:30–23:00 IL → gappers (RTH)
       head = "⚡ גאפרים · פתיחת יום";
       data = U.gappers || (LIVE && LIVE.gappers) || { up: [], down: [] };
       upLbl = "🟢 TOP גאפ אפ"; dnLbl = "🔴 TOP גאפ דאון";
       seeAll = '<button class="btn ghost" id="gapAll" style="font-size:12px;font-weight:600">ראה הכל →</button>';
-    } else {                                         // ≥23:00 IL → after-market
+    } else if (mins >= 11 * 60 && mins < 16 * 60 + 30) {   // 11:00–16:30 IL → pre-market (US pre live)
+      head = "🌅 PRE-MARKET MOVERS · תנועות לפני הפתיחה";
+      data = U.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] };
+      upLbl = "🟢 עולות לפני פתיחת המסחר"; dnLbl = "🔴 יורדות לפני פתיחת המסחר";
+      note = "מתעדכן ככל שנסחר יותר בפרה-מרקט";
+    } else {                                         // 23:00–11:00 IL → after-market (post + overnight)
       head = "🌙 AFTER-MARKET MOVERS · תנועות אחרי הסגירה";
       data = U.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] };
       upLbl = "🟢 עולות אחרי סגירת המסחר"; dnLbl = "🔴 יורדות אחרי סגירת המסחר";
