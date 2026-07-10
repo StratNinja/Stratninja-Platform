@@ -226,7 +226,7 @@
       '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "onechart");
   }
   function openMultiChart(sym) {
-    const tfs = [["130m", "130"], ["D", "D"], ["W", "W"], ["M", "M"], ["Q", "3M"], ["Y", "12M"]];
+    const tfs = [["2h", "120"], ["D", "D"], ["W", "W"], ["M", "M"], ["Q", "3M"], ["Y", "12M"]];
     // strat-type strip from the loaded scanner row (if available)
     let strip = "";
     if (SCAN && SCAN.rows) {
