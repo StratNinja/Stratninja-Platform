@@ -212,6 +212,11 @@
     const s = t.sym;
     return "<td>" + tf(t.Y, s, "Y") + "</td><td>" + tf(t.Q, s, "Q") + "</td><td>" + tf(t.M, s, "M") + "</td><td>" + tf(t.W, s, "W") + "</td><td>" + tf(t.D, s, "D") + "</td>";
   }
+  // FTFC badge — GREEN when the continuity is bullish (daily up), RED ("bear") when bearish (daily down)
+  function ftfcBadge(row) {
+    if (!row || !row.ftfc) return "—";
+    return '<span class="badge-ftfc' + ((row.D || {}).c === "down" ? " bear" : "") + '">FTFC</span>';
+  }
   function openChart(sym, tfl) {
     const iv = ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M" })[tfl] || "D";
     const src = "https://www.tradingview.com/widgetembed/?frameElementId=tvchart&symbol=" + encodeURIComponent(sym) +
@@ -1180,7 +1185,7 @@
         '<span style="font-size:13px;color:' + col + '">' + arrow + "</span></div>";
     };
     const badges = [];
-    if (r.ftfc) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:800;font-size:13px;color:#0a0f1c;background:#22c55e">FTFC ✓</span>');
+    if (r.ftfc) { const ftfcBear = (r.D || {}).c === "down"; badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:800;font-size:13px;color:#0a0f1c;background:' + (ftfcBear ? "#ef4444" : "#22c55e") + '">FTFC ' + (ftfcBear ? "↓" : "✓") + "</span>"); }
     if (r.ninja != null) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:800;font-size:13px;color:#fff;background:#2b3550">Ninja Score ' + r.ninja + "</span>");
     if (r.sec) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:700;font-size:13px;color:#cbd5e6;background:#1b2438">' + r.sec + "</span>");
     const el = document.createElement("div");
@@ -1573,7 +1578,7 @@
         "<td>" + (etfFor(t.sector) ? '<span class="tsym clickable etf-chip" data-chart="' + etfFor(t.sector) + '" data-tf="D">' + etfFor(t.sector) + "</span>" : '<span class="muted">—</span>') + "</td>" +
         "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
-        "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+        "<td>" + ftfcBadge(t) + "</td>" +
         "<td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
         techCells +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
@@ -2019,7 +2024,7 @@
     const rowHtml = r => {
       const t = { sym: r.s, Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
       const chg = r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
-      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p || (r.tech ? r.tech.px : 0)) + "</td><td>" + pct(chg) + "</td>" + tfCells(t) + "<td>" + (r.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td></tr>";
+      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p || (r.tech ? r.tech.px : 0)) + "</td><td>" + pct(chg) + "</td>" + tfCells(t) + "<td>" + ftfcBadge(r) + "</td></tr>";
     };
     const th = (label, col, start) => {
       const arrow = secSort.col === col ? (secSort.dir < 0 ? " ▼" : " ▲") : "";
@@ -2145,7 +2150,7 @@
         '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td>" +
         '<td class="sma-spread"><b>' + x.sp.toFixed(2) + "%</b></td>" +
         sel.map(p => "<td>" + dPct(k[p]) + "</td>").join("") +
-        "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+        "<td>" + ftfcBadge(t) + "</td>" +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
     }).join("");
     const head = "<th></th><th style='text-align:start'>סימבול</th><th style='text-align:start'>סקטור</th><th>מחיר</th><th title='טווח הממוצעים כאחוז מהמחיר — קטן = צפוף'>דחיסה ▲</th>" + sel.map(p => "<th>SMA" + p + "</th>").join("") + "<th>FTFC</th><th></th>";
@@ -2210,7 +2215,7 @@
         "<td>" + bbPct(k.bbp) + "</td>" +
         "<td>" + bbNum(k.bbw, "%") + "</td>" +
         '<td class="sma-spread"><b>' + bbNum(k.bbsq) + "</b></td>" +
-        "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+        "<td>" + ftfcBadge(t) + "</td>" +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
     }).join("");
     const sortHint = bollingerState.mode === "up" ? "%B ▼" : bollingerState.mode === "low" ? "%B ▲" : "דחיסה ▲";
@@ -2265,7 +2270,7 @@
         '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td>" +
         "<td>" + (k.swhi != null ? money(k.swhi) : "—") + "</td><td>" + dPct(k.swhi_d) + "</td>" +
         "<td>" + (k.swlo != null ? money(k.swlo) : "—") + "</td><td>" + dPct(k.swlo_d) + "</td>" +
-        "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+        "<td>" + ftfcBadge(t) + "</td>" +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
     }).join("");
     const head = "<th></th><th style='text-align:start'>סימבול</th><th style='text-align:start'>סקטור</th><th>מחיר</th><th>שיא סווינג</th><th title='מרחק המחיר מהשיא'>מרחק לשיא</th><th>תחתית סווינג</th><th title='מרחק המחיר מהתחתית'>מרחק לתחתית</th><th>FTFC</th><th></th>";
@@ -2318,7 +2323,7 @@
       '<td>' + star(t.sym) + '</td>' +
       '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
       '<td class="tname" style="text-align:start">' + secHe(t.sector) + "</td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
-      "<td>" + (t.ftfc ? '<span class="badge-ftfc">FTFC</span>' : "—") + "</td>" +
+      "<td>" + ftfcBadge(t) + "</td>" +
       '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
   }
   function renderToday() {
