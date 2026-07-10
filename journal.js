@@ -1002,7 +1002,19 @@
 
   // expose a re-render hook so the cloud-sync layer can refresh the UI after
   // pulling the user's data from Supabase.
-  window.Journal = { rerender: function () { try { render(); } catch (e) {} } };
+  window.Journal = {
+    rerender: function () { try { render(); } catch (e) {} },
+    // current-view performance summary (for the share card in the main app)
+    summary: function () {
+      try {
+        const r = tradesForAccount();
+        const s = E.stats(r.trades || []);
+        return { net: s.net, winRate: s.winRate, profitFactor: s.profitFactor, count: s.count,
+          bestTrade: s.bestTrade, worstTrade: s.worstTrade,
+          open: (r.openPositions || []).length + (r.manualOpen || []).length };
+      } catch (e) { return null; }
+    },
+  };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();

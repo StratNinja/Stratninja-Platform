@@ -1120,8 +1120,21 @@
     if (page === "favorites") {
       const favs = window.Prefs ? Prefs.favorites() : [];
       const rows = src.filter(t => favs.indexOf(t.sym) >= 0);
-      const strip = rows.slice(0, 8).map(t => _shIdx(t.sym, _shNum(t.chg), (t.chg || 0) >= 0 ? "pos" : "neg")).join("");
+      const gainers = rows.filter(t => (t.chg || 0) > 0).sort((a, b) => b.chg - a.chg).slice(0, 5);   // TOP 5 up
+      const losers = rows.filter(t => (t.chg || 0) < 0).sort((a, b) => a.chg - b.chg).slice(0, 5);     // TOP 5 down
+      const strip = gainers.map(t => _shIdx(t.sym, _shNum(t.chg), "pos")).join("") + losers.map(t => _shIdx(t.sym, _shNum(t.chg), "neg")).join("");
       return { headline: "⭐ המועדפים שלי · " + favs.length, cls: "zero", strip: strip || '<span class="sc-idx">אין מועדפים</span>', picksLabel: "", picks: "" };
+    }
+    if (page === "journal") {
+      const j = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null;
+      if (!j || !j.count) return { headline: "📅 יומן מסחר", cls: "zero", strip: '<span class="sc-idx">אין עדיין עסקאות סגורות ביומן</span>', picksLabel: "", picks: "" };
+      const pf = j.profitFactor === Infinity ? "∞" : (j.profitFactor || 0).toFixed(2);
+      const netTxt = (j.net >= 0 ? "+$" : "-$") + Math.abs(Math.round(j.net)).toLocaleString("en-US");
+      const strip = _shIdx("רווח/הפסד נטו", netTxt, j.net >= 0 ? "pos" : "neg") +
+        _shIdx("Win Rate", j.winRate + "%", j.winRate >= 50 ? "pos" : "neg") +
+        _shIdx("Profit Factor", pf, (j.profitFactor || 0) >= 1 ? "pos" : "neg") +
+        _shIdx("עסקאות", j.count, "") + (j.open ? _shIdx("פתוחות", j.open, "") : "");
+      return { headline: "📅 יומן מסחר · הביצועים שלי", cls: j.net >= 0 ? "pos" : "neg", strip: strip, picksLabel: "", picks: "" };
     }
     // default = market: show the strongest FULL-TIMEFRAME-CONTINUITY plays — top-2 bullish
     // (FTFC green) + top-2 bearish (FTFC red) by Ninja Score.
