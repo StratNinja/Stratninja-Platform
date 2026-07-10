@@ -726,6 +726,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .cm-f2u { background: rgba(239,68,68,.15);  color: #ff8a8a; box-shadow: inset 0 0 0 1px rgba(239,68,68,.4); }
 .cm-3r  { background: rgba(198,40,40,.2);   color: #ff7676; box-shadow: inset 0 0 0 1px rgba(198,40,40,.46); }
 
+/* selected stock-alert style button */
+.al-style.on { border-color: var(--accent, #7c6cf0); color: var(--ink); background: rgba(124,108,240,.18); font-weight: 700; }
+
 /* ===== market open/close chime banner ===== */
 .mkt-bell { position: fixed; top: 68px; left: 50%; transform: translate(-50%, -20px); z-index: 9999;
   display: flex; align-items: center; gap: 14px; padding: 13px 22px; border-radius: 16px; cursor: pointer;

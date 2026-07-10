@@ -933,6 +933,33 @@
     const x = box.querySelector(".ap-x"); if (x) x.onclick = close;
     setTimeout(close, 15000);
   }
+  // alert-style preference: "both" (default) | "visual" (silent) | "sound"
+  function _alertStyle() { try { return localStorage.getItem("sn_alert_style") || "both"; } catch (e) { return "both"; } }
+  function _setAlertStyle(v) { try { localStorage.setItem("sn_alert_style", v); } catch (e) {} }
+  // bright rising 3-note chime for a stock alert (distinct from the market open/close bell)
+  function _alertChime() {
+    try {
+      _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === "suspended") _audioCtx.resume();
+      const ctx = _audioCtx, now = ctx.currentTime;
+      [880, 1108.73, 1318.51].forEach((f, i) => {           // A5 · C#6 · E6
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "triangle"; o.frequency.value = f;
+        const t0 = now + i * 0.13;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0006, t0 + 0.5);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0); o.stop(t0 + 0.55);
+      });
+    } catch (e) {}
+  }
+  function _fireAlert(fresh) {                               // visual + sound per the user's style
+    const style = _alertStyle();
+    fresh.forEach(fireNotification);                        // system notification (also wakes a backgrounded tab)
+    if (style !== "sound") showAlertBanner(fresh);          // on-screen banner (both / visual)
+    if (style !== "visual") _alertChime();                  // chime (both / sound)
+  }
   function checkPresetAlerts() {
     if (!window.Prefs || !(SCAN && SCAN.rows && SCAN.rows.length)) return;
     const presets = (Prefs.scanPresets() || []).filter(p => p.alert);
@@ -947,9 +974,9 @@
         Prefs.feedAdd(entry); fresh.push(entry);
       });
     });
-    if (fresh.length) { fresh.forEach(fireNotification); showAlertBanner(fresh); updateAlertBell(); }
+    if (fresh.length) { _fireAlert(fresh); updateAlertBell(); }
   }
-  window._snTestAlert = () => showAlertBanner([{ sym: "TSLA", preset: "בדיקה", pid: "x" }]);
+  window._snTestAlert = () => _fireAlert([{ sym: "TSLA", preset: "בדיקה", pid: "x" }]);
   function updateAlertBell() {
     const n = window.Prefs ? Prefs.feedUnread() : 0;
     [document.getElementById("alBadge"), document.getElementById("alBadgeSide")].forEach(b => {
@@ -981,6 +1008,12 @@
         '<button class="btn ghost" id="alBellOpen" style="font-size:12px">בדוק פתיחה 🟢</button>' +
         '<button class="btn ghost" id="alBellClose" style="font-size:12px">בדוק סגירה 🔴</button>' +
         '<span style="font-size:11px;color:var(--muted)">מנוגן אוטומטית ב-16:30 ו-23:00 (שעון ישראל)</span></div>' +
+      '<div class="note" style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">' +
+        '<span style="font-size:12px;font-weight:600">📣 התראת מניה:</span>' +
+        '<button class="btn ghost al-style' + (_alertStyle() === "both" ? " on" : "") + '" data-style="both" style="font-size:12px">🔔👁️ צליל + ויזואלי</button>' +
+        '<button class="btn ghost al-style' + (_alertStyle() === "visual" ? " on" : "") + '" data-style="visual" style="font-size:12px">👁️ ויזואלי (שקט)</button>' +
+        '<button class="btn ghost al-style' + (_alertStyle() === "sound" ? " on" : "") + '" data-style="sound" style="font-size:12px">🔔 צליל בלבד</button>' +
+        '<button class="btn ghost" id="alTestAlert" style="font-size:12px;font-weight:600">🧪 בדוק התראה</button></div>' +
       '<h3 style="margin:12px 0 6px;font-size:14px">הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div>" +
       '<h3 style="margin:16px 0 6px;font-size:14px">התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div>";
     modal("🔔 מרכז ההתראות", body);
@@ -989,6 +1022,8 @@
     { const ps = $("#alPushSub"); if (ps) ps.onclick = () => subscribeToPush(); }
     { const bo = $("#alBellOpen"); if (bo) bo.onclick = () => { _primeAudio(); _bellSound("open"); _marketBellBanner("open"); }; }
     { const bc = $("#alBellClose"); if (bc) bc.onclick = () => { _primeAudio(); _bellSound("close"); _marketBellBanner("close"); }; }
+    document.querySelectorAll(".al-style").forEach(b => b.onclick = () => { _setAlertStyle(b.dataset.style); _primeAudio(); openAlertsFeed(); });
+    { const ta = $("#alTestAlert"); if (ta) ta.onclick = () => { _primeAudio(); _fireAlert([{ sym: "TSLA", preset: "בדיקה", pid: "test" }]); }; }
     { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); openAlertsFeed(); }; }
     wireCharts(document.getElementById("pgModal") || document);
   }
