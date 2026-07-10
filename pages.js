@@ -1076,7 +1076,7 @@
     const src = (typeof scanSource === "function" ? scanSource() : []);
     if (page === "scanner") {
       let rows = []; try { rows = filterRows(src); } catch (e) { rows = src; }
-      const top = rows.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 3);
+      const top = rows.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 4);
       return { headline: "🔍 סורק עסקאות · " + rows.length + " תוצאות", cls: "zero", strip: "", picksLabel: "Top Ninja Score",
         picks: top.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
     }
@@ -1101,8 +1101,16 @@
     }
     if (page === "sp500") {
       const b = mktU().breadth || {}; const pct = b.total ? Math.round(b.above / b.total * 100) : 0;
+      // the top-rising stock inside today's leading sector
+      let leadStrip = "";
+      const leadSec = (LIVE && LIVE.sectorLeaders || [])[0];
+      if (leadSec) {
+        const secObj = (LIVE && LIVE.sectors || []).find(s => s.name === leadSec.name);
+        const topSt = secObj && secObj.stocks && secObj.stocks.length ? secObj.stocks.slice().sort((a, b) => (b.c || 0) - (a.c || 0))[0] : null;
+        if (topSt) leadStrip = _shIdx("🚀 " + topSt.s + " · " + secHe(leadSec.name), _shNum(topSt.c), "pos");
+      }
       return { headline: "🗺️ רוחב שוק S&P 500 · " + pct + "% ירוקים", cls: pct >= 55 ? "pos" : pct <= 45 ? "neg" : "zero",
-        strip: _shIdx("מעל פתיחה", b.above || 0, "pos") + _shIdx("מתחת", b.below || 0, "neg"), picksLabel: "", picks: "" };
+        strip: _shIdx("מעל פתיחה", b.above || 0, "pos") + _shIdx("מתחת", b.below || 0, "neg") + leadStrip, picksLabel: "", picks: "" };
     }
     if (page === "gappers") {
       const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
@@ -1115,11 +1123,14 @@
       const strip = rows.slice(0, 8).map(t => _shIdx(t.sym, _shNum(t.chg), (t.chg || 0) >= 0 ? "pos" : "neg")).join("");
       return { headline: "⭐ המועדפים שלי · " + favs.length, cls: "zero", strip: strip || '<span class="sc-idx">אין מועדפים</span>', picksLabel: "", picks: "" };
     }
-    // default = market
+    // default = market: show the strongest FULL-TIMEFRAME-CONTINUITY plays — top-2 bullish
+    // (FTFC green) + top-2 bearish (FTFC red) by Ninja Score.
     const idx = ms ? ms.idx.map(i => _shIdx(i.sym, _shNum(i.chg))).join("") + (ms.vix ? _shIdx("VIX", ms.vix.level.toFixed(1)) : "") : "";
-    const picks = src.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 3);
+    const ftfcUp = src.filter(t => t.ftfc && (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 2);
+    const ftfcDn = src.filter(t => t.ftfc && (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 2);
+    const picks = ftfcUp.concat(ftfcDn).map(t => _shPick(t.ninja, t.sym, t.chg)).join("");
     return { headline: ms ? ms.emoji + " " + ms.mode : "📡 סקירת שוק", cls: ms ? ms.cls : "zero", strip: idx,
-      picksLabel: "Top Ninja Score", picks: picks.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
+      picksLabel: "FTFC · 2🟢 המשכיות עולה / 2🔴 יורדת", picks: picks };
   }
   // html2canvas ignores object-fit:cover and stretches a non-square photo → distorted.
   // Pre-crop hero.jpg to a centered SQUARE via a canvas so the captured photo is never warped.
@@ -2413,8 +2424,11 @@
     const shorts = rows.filter(t => (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
     const tbl = (list, title) => {
       const syms = list.map(t => t.sym).join(", ");
-      const copyBtn = list.length ? '<button class="btn ghost td-copy" data-syms="' + encodeURIComponent(syms) + '" style="font-size:12px;font-weight:600">📋 העתק ' + list.length + "</button>" : "";
-      return '<div class="panel"><h3 class="td-tbl-head"><span>' + title + ' <span class="muted" style="font-size:12px">Top ' + list.length + " לפי Ninja Score</span></span>" + copyBtn + "</h3>" +
+      const btns = list.length
+        ? '<span style="display:flex;gap:6px"><button class="btn ghost td-grid" data-syms="' + encodeURIComponent(syms) + '" style="font-size:12px;font-weight:600">📊 גרפים</button>' +
+          '<button class="btn ghost td-copy" data-syms="' + encodeURIComponent(syms) + '" style="font-size:12px;font-weight:600">📋 העתק ' + list.length + "</button></span>"
+        : "";
+      return '<div class="panel"><h3 class="td-tbl-head"><span>' + title + ' <span class="muted" style="font-size:12px">Top ' + list.length + " לפי Ninja Score</span></span>" + btns + "</h3>" +
         (list.length ? '<div class="tablewrap"><table class="scan-table"><thead><tr><th>Score</th><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>%</th><th>FTFC</th><th></th></tr></thead><tbody>' + list.map(todayStockRow).join("") + "</tbody></table></div>" : '<div class="muted" style="padding:14px">אין מועמדים ברורים כרגע.</div>') + "</div>";
     };
 
@@ -2428,6 +2442,14 @@
     document.querySelectorAll(".td-copy").forEach(b => b.onclick = () => {
       const syms = decodeURIComponent(b.dataset.syms), o = b.textContent;
       copyToClipboard(syms, () => { b.textContent = "✓ הועתקו"; setTimeout(() => b.textContent = o, 1500); });
+    });
+    document.querySelectorAll(".td-grid").forEach(b => b.onclick = () => {
+      const syms = decodeURIComponent(b.dataset.syms).split(", ").filter(Boolean);
+      const gridRows = syms.map(sym => {
+        const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+        return r ? { sym: sym, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) } : { sym: sym };
+      });
+      if (gridRows.length) openChartGrid(gridRows, { title: "מה לבדוק עכשיו" });
     });
   }
 
