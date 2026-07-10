@@ -271,7 +271,16 @@
     // TradingView auto-switch to intraday 2h candles, which Adi doesn't want).
     const RANGE_DEF = { D: "12M", W: "12M", M: "60M", Q: "60M", Y: "60M" };
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
-    const shown = rows.slice(0, GCAP);
+    let cgSort = "ninja";   // charts order (like sorting the scanner table) — re-orderable below
+    function cgSorted() {
+      const arr = rows.slice();
+      if (cgSort === "chg") arr.sort((a, b) => (b.chg || 0) - (a.chg || 0));
+      else if (cgSort === "chgAsc") arr.sort((a, b) => (a.chg || 0) - (b.chg || 0));
+      else if (cgSort === "sym") arr.sort((a, b) => (a.sym || "").localeCompare(b.sym || ""));
+      else arr.sort((a, b) => (b.ninja || 0) - (a.ninja || 0));   // default: best Ninja Score first
+      return arr.slice(0, GCAP);
+    }
+    let shown = cgSorted();
     if (!shown.length) { modal("📊 תצוגת גרפים", '<div class="note" style="padding:24px;text-align:center">אין מניות להצגה.</div>', "chartgrid"); return; }
     let curRange = RANGE_DEF[derived] || "12M";
     function cgSrc(sym, rk) {
@@ -300,7 +309,10 @@
       '<span class="muted" style="font-size:12px">· ' + shown.length + " מניות" + more + "</span></div>";
     const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
       '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button></div>';
-    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + dens + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
+    const sortSel = '<div class="cg-sort"><span class="muted" style="font-size:12px">מיון:</span><select id="cgSortSel" style="font-size:12px">' +
+      '<option value="ninja">Ninja Score</option><option value="chg">% עולה→יורד</option><option value="chgAsc">% יורד→עולה</option><option value="sym">סימבול</option></select></div>';
+    const shotBtn = '<button class="btn ghost" id="cgShot" style="font-size:12px;font-weight:600" title="צילום מסך של תצוגת הגרפים">🖼️ צילום מסך</button>';
+    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
@@ -339,6 +351,10 @@
       if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); }
       document.querySelectorAll("[data-cgrange]").forEach(x => x.classList.toggle("on", x === b));
     });
+    // sort selector — re-orders the charts (like sorting the scanner table)
+    { const ss = $("#cgSortSel"); if (ss) ss.onchange = () => { cgSort = ss.value; shown = cgSorted(); if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); } }; }
+    // full screenshot of the chart grid (captures the live TradingView charts)
+    { const sh = $("#cgShot"); if (sh) sh.onclick = () => captureFullShot(); }
   }
   function wireCharts(scope) {
     (scope || document).querySelectorAll("[data-chart]").forEach(b => {
@@ -1130,9 +1146,24 @@
       return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 מה לבדוק עכשיו", cls: ms ? ms.cls : "zero", bodyHtml: bodyHtml };
     }
     if (page === "sectors") {
-      const lead = (LIVE && LIVE.sectorLeaders || []).slice(0, 3), lag = (LIVE && LIVE.sectorLaggards || []).slice(0, 3);
-      const strip = lead.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "pos")).join("") + lag.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "neg")).join("");
-      return { headline: "🗂️ סקטורים · לאן הכסף זורם", cls: "zero", strip: strip, picksLabel: "", picks: "" };
+      // count full-continuity (FTFC) stocks per sector & sub-sector, split by direction (🟢 up / 🔴 down)
+      const secC = {}, indC = {};
+      src.forEach(t => {
+        if (!t.ftfc) return;
+        const dir = (t.D || {}).c;
+        if (dir !== "up" && dir !== "down") return;
+        const up = dir === "up";
+        if (t.sector) { const o = secC[t.sector] = secC[t.sector] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; }
+        if (t.ind) { const o = indC[t.ind] = indC[t.ind] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; }
+      });
+      const top2 = (obj, key, heFn) => Object.keys(obj).filter(k => obj[k][key] > 0).sort((a, b) => obj[b][key] - obj[a][key]).slice(0, 2).map(k => ({ name: heFn ? heFn(k) : k, n: obj[k][key] }));
+      const line = (arr, cls) => arr.length ? arr.map(x => _shIdx(x.name, "FTFC " + x.n, cls)).join("") : '<span class="sc-idx muted">—</span>';
+      const bodyHtml =
+        '<div class="sc-sec-lbl pos">🟢 הכי הרבה FTFC ירוק (המשכיות עולה)</div><div class="sc-strip">' +
+          line(top2(secC, "g", secHe), "pos") + line(top2(indC, "g"), "pos") + "</div>" +
+        '<div class="sc-sec-lbl neg" style="margin-top:12px">🔴 הכי הרבה FTFC אדום (המשכיות יורדת)</div><div class="sc-strip">' +
+          line(top2(secC, "r", secHe), "neg") + line(top2(indC, "r"), "neg") + "</div>";
+      return { headline: "🗂️ סקטורים · המשכיות טיימפריימים (FTFC)", cls: "zero", bodyHtml: bodyHtml };
     }
     if (page === "sp500") {
       const b = mktU().breadth || {}; const pct = b.total ? Math.round(b.above / b.total * 100) : 0;

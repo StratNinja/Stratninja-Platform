@@ -796,6 +796,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .cg-tfsel { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .cg-tfsel .cg-tfb { min-width: 30px; text-align: center; font-weight: 700; }
 .cg-dens { display: flex; align-items: center; gap: 6px; }
+.cg-sort { display: flex; align-items: center; gap: 6px; }
+.cg-sort select { font-size: 12px; padding: 4px 8px; }
 .cg-dens .chip { min-width: 30px; text-align: center; }
 .cg-grid { display: grid; gap: 10px; }
 .cg-grid.cg-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
