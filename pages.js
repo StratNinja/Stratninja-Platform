@@ -994,6 +994,48 @@
   }
   window._snOpenAlerts = openAlertsFeed;
   window._snCheckAlerts = checkPresetAlerts;
+  // ---- community requests form (saved to Supabase; the server relays new ones to a private
+  //      Discord channel — the webhook stays server-side, never in this client code) ----
+  function openRequestForm() {
+    const body =
+      '<div class="note" style="margin-bottom:12px">💬 יש לך רעיון, בקשה לפיצ׳ר או משהו שתרצה לראות באתר? ספר לנו — זה מגיע ישירות לצוות StratNinja. קוראים הכל 🥷</div>' +
+      '<div class="fgrp"><label>השם שלך <span class="muted">(רשות)</span></label><input id="reqName" type="text" maxlength="60" placeholder="איך קוראים לך?"></div>' +
+      '<div class="fgrp"><label>ליצירת קשר <span class="muted">(רשות)</span></label><input id="reqContact" type="text" maxlength="80" placeholder="דיסקורד / אימייל / טלגרם"></div>' +
+      '<div class="fgrp"><label>הבקשה שלך</label><textarea id="reqMsg" rows="5" maxlength="1000" placeholder="מה תרצה שנוסיף או נשפר?" style="width:100%;box-sizing:border-box;resize:vertical;padding:9px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:14px"></textarea></div>' +
+      '<input id="reqHp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">' +
+      '<button class="btn primary" id="reqSend" style="margin-top:4px">📤 שלח בקשה</button>' +
+      '<div id="reqStatus" class="note" style="margin-top:10px;display:none"></div>';
+    modal("💬 בקשות מהקהל", body);
+    const btn = document.getElementById("reqSend");
+    btn.onclick = async () => {
+      if ((document.getElementById("reqHp").value || "").trim()) { closeModal(); return; }   // honeypot → bot, silently drop
+      const msg = (document.getElementById("reqMsg").value || "").trim();
+      if (msg.length < 3) { snToast("כתוב בבקשה את הבקשה ✍️"); return; }
+      try { const last = +localStorage.getItem("sn_req_last") || 0; if (Date.now() - last < 120000) { snToast("שלחת בקשה זה עתה — נסה שוב בעוד רגע 🙏"); return; } } catch (e) {}
+      const cfg = window.SN_CONFIG || {};
+      if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { snToast("שירות הבקשות לא זמין כרגע"); return; }
+      const name = (document.getElementById("reqName").value || "").trim().slice(0, 60);
+      const contact = (document.getElementById("reqContact").value || "").trim().slice(0, 80);
+      btn.disabled = true; btn.textContent = "שולח…";
+      const st = document.getElementById("reqStatus");
+      try {
+        const res = await fetch(cfg.SUPABASE_URL + "/rest/v1/community_requests", {
+          method: "POST",
+          headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ name: name || null, contact: contact || null, message: msg }),
+        });
+        if (res.ok) {
+          try { localStorage.setItem("sn_req_last", String(Date.now())); } catch (e) {}
+          st.style.display = "block"; st.style.color = "var(--green)"; st.innerHTML = "✅ נשלח! תודה רבה — נעבור על זה. 🥷";
+          document.getElementById("reqMsg").value = ""; btn.style.display = "none";
+        } else { throw new Error("http " + res.status); }
+      } catch (e) {
+        st.style.display = "block"; st.style.color = "var(--red)"; st.innerHTML = "❌ שליחה נכשלה — נסה שוב מאוחר יותר.";
+        btn.disabled = false; btn.textContent = "📤 שלח בקשה";
+      }
+    };
+  }
+  window._snOpenRequest = openRequestForm;
 
   // ---- Web Push subscription (phone alerts even when the app is closed) ----
   function urlB64ToUint8(b64) {
@@ -2820,6 +2862,7 @@
     { const cam = document.getElementById("sideCam"); if (cam) cam.onclick = () => captureShare(); }
     { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
     { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed(); }
+    { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestForm(); }
     updateAlertBell();
     loadNews();
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min
