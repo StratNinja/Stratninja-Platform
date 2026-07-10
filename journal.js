@@ -85,6 +85,7 @@
   let _lastOpenCount = 0;   // to fire the crossing popup only once per crossing
   let openPosMin = false;   // collapse the open-positions panel
   try { openPosMin = localStorage.getItem("sn_openpos_min") === "1"; } catch (e) {}
+  let _openSort = { col: null, dir: 1 };   // open-positions table sort (click a header)
 
   // ---- Helpers -----------------------------------------------------------
   const $ = sel => document.querySelector(sel);
@@ -199,28 +200,53 @@
 
   function renderOpenPositions(openTrades) {
     const wrap = el("div", "panel open-pos");
-    let totUn = 0, haveAll = true, hasOpt = false;
-    const rows = openTrades.map(t => {
+    // derive per-position values first (live prices are STOCK prices — not an option's premium,
+    // so Unrealized P&L is only computable for stocks). Needed for both display AND sorting.
+    const items = openTrades.map(t => {
       const isOpt = t.assetType === "option";
-      // live prices are STOCK prices — they are NOT an option's premium, so we cannot
-      // compute a meaningful Unrealized P&L for an open option from them. Show it only for stocks.
       const cp = (!isOpt && livePrices) ? livePrices[t.symbol] : null;
+      const un = (!isOpt && cp != null) ? unrealizedPnl(t, cp) : null;
+      return { t: t, isOpt: isOpt, cp: cp, un: un };
+    });
+    if (_openSort.col) {
+      const sv = it => {
+        switch (_openSort.col) {
+          case "symbol": return (it.t.symbol || "").toUpperCase();
+          case "entryDate": return it.t.entryDate || "";
+          case "direction": return it.t.direction || "";
+          case "qty": return +it.t.qty || 0;
+          case "entryPrice": return +it.t.entryPrice || 0;
+          case "cp": return it.cp == null ? -Infinity : it.cp;
+          case "un": return it.un == null ? -Infinity : it.un;
+          default: return 0;
+        }
+      };
+      items.sort((a, b) => { const va = sv(a), vb = sv(b); return typeof va === "string" ? _openSort.dir * va.localeCompare(vb) : _openSort.dir * (va - vb); });
+    }
+    let totUn = 0, haveAll = true, hasOpt = false;
+    const rows = items.map(function (it) {
+      const t = it.t, isOpt = it.isOpt, cp = it.cp;
       let pnlHtml, cpHtml;
       if (isOpt) {
         hasOpt = true; cpHtml = '<span class="muted">—</span>';
         pnlHtml = '<span class="muted" title="אין מחיר אופציה חי בסורק — ה-P&amp;L יחושב בסגירה לפי מחיר היציאה">לא זמין ⓘ</span>';
       } else if (cp != null) {
-        const un = unrealizedPnl(t, cp); totUn += un;
-        pnlHtml = '<span class="' + cls(un) + '">' + money(un, 2) + "</span>";
+        totUn += it.un;
+        pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>";
         cpHtml = money(cp, 2);
       } else { haveAll = false; pnlHtml = '<span class="muted">' + (livePrices ? "אין מחיר" : "טוען…") + "</span>"; cpHtml = "—"; }
-      return "<tr data-editopen='" + t.id + "' style='cursor:pointer'><td class='sym'>" + t.symbol +
+      return "<tr data-editopen='" + t.id + "' style='cursor:pointer'>" +
+        "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
+        "<td class='sym'>" + t.symbol +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
           "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
           "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button></td></tr>";
     }).join("");
+    // sortable header (click a column to sort)
+    const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
+    const _thead = "<tr>" + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + "<th></th></tr>";
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — ה-P&L שלהן יחושב בסגירה</span>' : "";
     const count = openTrades.length;
@@ -230,9 +256,15 @@
       "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
         (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + toggleBtn + "</h3>" +
       (openPosMin ? "" :
-        "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>מחיר נוכחי</th><th>Unrealized</th><th></th></tr></thead>" +
-        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='5' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>");
+        "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
+        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='6' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>");
     { const tg = wrap.querySelector("#openPosToggle"); if (tg) tg.onclick = () => { openPosMin = !openPosMin; try { localStorage.setItem("sn_openpos_min", openPosMin ? "1" : "0"); } catch (e) {} render(); }; }
+    wrap.querySelectorAll("[data-jsort]").forEach(th => th.onclick = () => {
+      const c = th.dataset.jsort;
+      if (_openSort.col === c) _openSort.dir *= -1;
+      else { _openSort.col = c; _openSort.dir = (c === "symbol" || c === "entryDate" || c === "direction") ? 1 : -1; }
+      render();
+    });
     // wire: click row or close button -> open the edit form (add exit price to close)
     wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => editOpenTrade(tr.dataset.editopen));
     wrap.querySelectorAll("[data-closepos]").forEach(b => b.onclick = e => { e.stopPropagation(); editOpenTrade(b.dataset.closepos); });
