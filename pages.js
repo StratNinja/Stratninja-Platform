@@ -1388,34 +1388,74 @@
     snToast("העתקה ללוח לא נתמכת בדפדפן הזה — השתמש ב-📥 הורד");
     return Promise.resolve(false);
   }
+  // page-aware share caption + $cashtags (for the X tweet / WhatsApp text)
+  function shareTweetText() {
+    const page = state.page;
+    const src = (typeof scanSource === "function" ? scanSource() : []);
+    const cash = arr => arr.filter(Boolean).map(s => "$" + s).slice(0, 8).join(" ");
+    let cap = "סרקתי את השוק ב-StratNinja 📊", tags = [];
+    if (page === "sectors") {
+      cap = "🗂️ הסקטורים ותתי-הסקטורים המעניינים היום · StratNinja";
+      const secC = {}, indC = {};
+      src.forEach(t => { if (!t.ftfc) return; const dir = (t.D || {}).c; if (dir !== "up" && dir !== "down") return; const up = dir === "up"; if (t.sector) { const o = secC[t.sector] = secC[t.sector] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } if (t.ind) { const o = indC[t.ind] = indC[t.ind] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } });
+      const topSec = Object.keys(secC).sort((a, b) => secC[b].g - secC[a].g).slice(0, 2).map(s => etfFor(s));
+      const topInd = Object.keys(indC).sort((a, b) => indC[b].g - indC[a].g).slice(0, 3).map(i => subEtfFor(i));
+      tags = topSec.concat(topInd);
+    } else if (page === "scanner") {
+      cap = "🔍 הסטאפים החזקים היום ב-StratNinja";
+      let rows = []; try { rows = filterRows(src); } catch (e) { rows = src; }
+      tags = rows.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 5).map(t => t.sym);
+    } else if (page === "today") {
+      cap = "🎯 מה לבדוק היום · StratNinja";
+      tags = src.filter(t => t.ninja != null && (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 4).map(t => t.sym);
+    } else if (page === "gappers") {
+      cap = "⚡ הגאפרים של היום · StratNinja";
+      const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
+      tags = (g.up || []).slice(0, 3).map(x => x.s).concat((g.down || []).slice(0, 2).map(x => x.s));
+    } else if (page === "favorites") {
+      cap = "⭐ רשימת המעקב שלי · StratNinja";
+      tags = (window.Prefs ? Prefs.favorites() : []).slice(0, 6);
+    } else {
+      cap = "📊 סקירת השוק היום ב-StratNinja";
+      tags = src.filter(t => t.ftfc).sort((a, b) => (b.ninja || 0) - (a.ninja || 0)).slice(0, 5).map(t => t.sym);
+    }
+    const tagStr = cash(tags);
+    return cap + (tagStr ? "\n\n" + tagStr : "") + "\n\nstratninja.win";
+  }
   function showShareModal(canvas) {
     canvas.toBlob(blob => {
       if (!blob) { snToast("שגיאה ביצירת התמונה"); return; }
       const url = URL.createObjectURL(blob);
       const file = new File([blob], "stratninja.png", { type: "image/png" });
-      const tweet = "https://twitter.com/intent/tweet?text=" + encodeURIComponent("סרקתי את השוק ב-StratNinja 📊 stratninja.win");
+      const tweetTxt = shareTweetText();
+      const tweet = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(tweetTxt);
       const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [file] }));
+      const capPreview = tweetTxt.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>");
       const body =
         '<img src="' + url + '" style="max-width:100%;border-radius:10px;border:1px solid var(--line);display:block">' +
+        '<div style="margin-top:10px;font-size:11px;color:var(--muted)">📝 הכיתוב שילווה את השיתוף (מותאם לדף):</div>' +
+        '<div style="margin-top:5px;white-space:pre-wrap;font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px">' + capPreview + "</div>" +
         '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">' +
           '<button class="btn primary" id="shareNative" style="font-size:13px">📤 שתף · אינסטגרם / סטורי / וואטסאפ</button>' +
-          '<button class="btn ghost" id="copyClip" style="font-size:13px">📋 העתק ללוח</button>' +
+          '<button class="btn ghost" id="copyClip" style="font-size:13px">📋 העתק תמונה</button>' +
+          '<button class="btn ghost" id="copyCap" style="font-size:13px">📝 העתק כיתוב</button>' +
           '<a class="btn ghost" href="' + url + '" download="stratninja.png" style="font-size:13px">📥 הורד</a>' +
           '<a class="btn ghost" href="' + tweet + '" target="_blank" rel="noopener" style="font-size:13px">𝕏 שתף ב-X</a>' +
         "</div>" +
         '<div class="note" style="margin-top:10px;font-size:11px;line-height:1.6">' +
-          '📱 <b>בפלאפון:</b> "שתף" פותח את גיליון השיתוף — משם אפשר ישר ל<b>אינסטגרם, סטורי, וואטסאפ</b> ועוד.<br>' +
-          '🖥️ <b>במחשב:</b> אינסטגרם ויוטיוב <b>לא מאפשרים פרסום מהדפדפן</b> (רק דרך האפליקציה) — לחץ <b>📥 הורד</b> והעלה ידנית. התמונה כבר הועתקה ללוח (Ctrl+V).<br>' +
-          '𝕏 <b>ל-X:</b> "שתף ב-X" פותח ציוץ — הדבק את התמונה (Ctrl+V).' +
+          '📱 <b>בפלאפון:</b> "שתף" פותח את גיליון השיתוף — משם ישר ל<b>אינסטגרם, סטורי, וואטסאפ</b> (עם הכיתוב והטיקרים).<br>' +
+          '🖥️ <b>במחשב:</b> אינסטגרם ויוטיוב לא מאפשרים פרסום מהדפדפן — לחץ <b>📥 הורד</b> + <b>📝 העתק כיתוב</b> והעלה ידנית.<br>' +
+          '𝕏 <b>ל-X:</b> "שתף ב-X" פותח ציוץ עם הכיתוב — הדבק את התמונה (Ctrl+V).' +
         "</div>";
       modal("📷 צילום ושיתוף", body);
       // auto-copy right away (still within the click's activation window)
       _copyImageBlob(blob);
       { const cc = document.getElementById("copyClip"); if (cc) cc.onclick = () => _copyImageBlob(blob); }
+      { const cp = document.getElementById("copyCap"); if (cp) cp.onclick = () => { try { navigator.clipboard.writeText(tweetTxt); snToast("✓ הכיתוב הועתק — הדבק באינסטגרם/יוטיוב"); } catch (e) { snToast("לא ניתן להעתיק כאן"); } }; }
       const sn = document.getElementById("shareNative");
       if (sn) sn.onclick = () => {
         if (canShareFiles) {
-          try { navigator.share({ files: [file], title: "StratNinja", text: "StratNinja Scanner · stratninja.win" }); }
+          try { navigator.share({ files: [file], title: "StratNinja", text: tweetTxt }); }
           catch (e) {}
         } else {
           // desktop: no OS share sheet → download + guide (IG/YouTube need manual upload via the app)
