@@ -2516,9 +2516,15 @@
       // which favorites currently match one or more of the saved scan presets (for the highlight + count badge)
       const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
       const pmatch = {};
+      const _addMatch = (sym, name) => { const a = pmatch[sym] = pmatch[sym] || []; if (a.indexOf(name) < 0) a.push(name); };
+      // (a) live matches — re-run each saved preset against the current scan data
       if (SCAN && SCAN.rows && SCAN.rows.length && presets.length) {
-        presets.forEach(p => { let m = []; try { m = evalPreset(p) || []; } catch (e) {} m.forEach(sym => { (pmatch[sym] = pmatch[sym] || []).push(p.name); }); });
+        presets.forEach(p => { let m = []; try { m = evalPreset(p) || []; } catch (e) {} m.forEach(sym => _addMatch(sym, p.name)); });
       }
+      // (b) today's fired alerts — covers stocks that matched but aren't in the current scan snapshot
+      const _feed = (window.Prefs && window.Prefs.alertFeed) ? window.Prefs.alertFeed() : [];
+      const _today = new Date().toISOString().slice(0, 10);
+      _feed.forEach(e => { if (e && e.date === _today && favs.indexOf(e.sym) >= 0) _addMatch(e.sym, e.preset); });
       const rows = list.map(t => {
         const pm = pmatch[t.sym] || [];
         const badge = pm.length ? '<span class="fav-pcount" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + '">' + pm.length + "</span>" : "";
