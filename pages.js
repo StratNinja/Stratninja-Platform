@@ -22,6 +22,7 @@
   const SECTOR_HE = { "Technology": "טכנולוגיה", "Financials": "פיננסים", "Health Care": "בריאות", "Energy": "אנרגיה", "Consumer Disc.": "צריכה מחזורית", "Communication": "תקשורת", "Industrials": "תעשייה", "Consumer Staples": "צריכה בסיסית", "Materials": "חומרי גלם", "Real Estate": 'נדל"ן', "Utilities": "תשתיות", "Crypto": "קריפטו", "אחר": "אחר" };
   function secHe(name) { return SECTOR_HE[name] || name; }
   function escAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;"); }
+  function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // sub-sector (industry) → closest tradeable ETF, matched by keyword (ordered specific→general).
   // Validated against all 171 live industries; unmapped ones are genuine ETF/macro categories.
   const INDUSTRY_ETF_KW = [
@@ -824,7 +825,7 @@
   // ========== SCANNER ==========
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: false, sector: "all", subsec: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: false, sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
   let _selPreset = "";   // id of the saved-scan currently chosen in the dropdown (survives reRender so delete/duplicate work)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
@@ -1115,6 +1116,102 @@
     };
   }
   window._snOpenRequest = openRequestForm;
+
+  // ========== COMMUNITY TICKERS (viewer-suggested scanner stocks) ==========
+  const SN_ADMIN_EMAIL = "koriatmanagement@gmail.com";
+  function _snIsAdmin() {
+    try { return ((window.SNAuth && SNAuth.user() || {}).email || "").toLowerCase() === SN_ADMIN_EMAIL; }
+    catch (e) { return false; }
+  }
+  // viewer-facing: suggest a ticker for the scanner
+  function openSuggestTicker() {
+    const body =
+      '<div class="note" style="margin-bottom:12px">⭐ יש מניה אמריקאית שתרצה שתופיע בסורק? הצע אותה!<br>השרת בודק אוטומטית שהיא אמיתית ונזילה, ואז היא עוברת אישור קצר — ואז נכנסת ל<b>רשימת הקהילה</b> בסורק. 🥷</div>' +
+      '<div class="fgrp"><label>סימבול המניה</label><input id="sugTk" type="text" maxlength="8" placeholder="AAPL" autocomplete="off" style="text-transform:uppercase;letter-spacing:1px;font-weight:700"></div>' +
+      '<input id="sugHp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">' +
+      '<button class="btn primary" id="sugSend" style="margin-top:4px">📤 הצע מניה</button>' +
+      '<div id="sugStatus" class="note" style="margin-top:10px;display:none"></div>';
+    modal("⭐ הצע מניה לסורק", body);
+    const inp = document.getElementById("sugTk"); if (inp) inp.focus();
+    const btn = document.getElementById("sugSend");
+    btn.onclick = async () => {
+      if ((document.getElementById("sugHp").value || "").trim()) { closeModal(); return; }
+      const tk = (document.getElementById("sugTk").value || "").trim().toUpperCase();
+      const st = document.getElementById("sugStatus");
+      const show = (color, html) => { st.style.display = "block"; st.style.color = color; st.innerHTML = html; };
+      if (!/^[A-Z][A-Z.\-]{0,7}$/.test(tk)) { show("var(--red)", "❌ הזן סימבול תקין (אותיות לועזיות, למשל AAPL)"); return; }
+      try { const last = +localStorage.getItem("sn_sug_last") || 0; if (Date.now() - last < 60000) { show("var(--red)", "הצעת מניה זה עתה — נסה שוב בעוד רגע 🙏"); return; } } catch (e) {}
+      const cfg = window.SN_CONFIG || {};
+      if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { show("var(--red)", "השירות לא זמין כרגע"); return; }
+      const email = ((window.SNAuth && SNAuth.user() || {}).email) || null;
+      btn.disabled = true; btn.textContent = "שולח…";
+      try {
+        const res = await fetch(cfg.SUPABASE_URL + "/rest/v1/community_tickers", {
+          method: "POST",
+          headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ ticker: tk, requested_by: email }),
+        });
+        if (res.ok) {
+          try { localStorage.setItem("sn_sug_last", String(Date.now())); } catch (e) {}
+          show("var(--green)", "✅ <b>$" + tk + "</b> נשלחה! נבדוק אותה ונוסיף לרשימת הקהילה אם היא מתאימה. תודה 🥷");
+          document.getElementById("sugTk").value = ""; btn.style.display = "none";
+        } else if (res.status === 409) {
+          show("var(--muted)", "ℹ️ <b>$" + tk + "</b> כבר הוצעה — היא בתהליך.");
+          btn.disabled = false; btn.textContent = "📤 הצע מניה";
+        } else { throw new Error("http " + res.status); }
+      } catch (e) {
+        show("var(--red)", "❌ שליחה נכשלה — נסה שוב מאוחר יותר.");
+        btn.disabled = false; btn.textContent = "📤 הצע מניה";
+      }
+    };
+  }
+  window._snSuggestTicker = openSuggestTicker;
+
+  // admin-only: approve / reject / remove suggested tickers
+  async function openCommunityAdmin() {
+    if (!_snIsAdmin()) { snToast("גישה למנהל בלבד"); return; }
+    const client = window.SNAuth && SNAuth.getClient && SNAuth.getClient();
+    if (!client) { snToast("התחבר עם Google כדי לנהל"); return; }
+    modal("⭐ מניות קהילה · ניהול", '<div id="caBody" class="note">טוען…</div>');
+    renderCommunityAdmin(client);
+  }
+  async function renderCommunityAdmin(client) {
+    const box = document.getElementById("caBody");
+    if (!box) return;
+    let rows = [];
+    try {
+      const { data, error } = await client.from("community_tickers").select("*").order("created_at", { ascending: false });
+      if (error) throw error;
+      rows = data || [];
+    } catch (e) { box.innerHTML = '<span style="color:var(--red)">שגיאה בטעינה: ' + (e.message || e) + "</span>"; return; }
+    const awaiting = rows.filter(r => r.status === "pending" && r.validated);
+    const checking = rows.filter(r => r.status === "pending" && !r.validated);
+    const approved = rows.filter(r => r.status === "approved");
+    const rejected = rows.filter(r => r.status === "rejected");
+    const chip = (r, acts) => '<div class="ca-row"><span class="ca-tk">$' + (r.ticker || "").toUpperCase() + "</span>" +
+      '<span class="ca-sec muted">' + (r.sector || "—") + "</span>" +
+      (r.reason ? '<span class="ca-reason muted" title="' + escAttr(r.reason) + '">· ' + escHtml(r.reason).slice(0, 40) + "</span>" : "") +
+      '<span class="ca-acts">' + acts.map(a => '<button class="btn ghost ca-btn" data-ca="' + a.act + '" data-id="' + r.id + '">' + a.lbl + "</button>").join("") + "</span></div>";
+    let html = "";
+    html += '<div class="ca-sec-h">🟢 ממתין לאישור שלך (' + awaiting.length + ")</div>";
+    html += awaiting.length ? awaiting.map(r => chip(r, [{ act: "approve", lbl: "✅ אשר" }, { act: "reject", lbl: "❌ דחה" }])).join("") : '<div class="muted" style="padding:4px 0">אין ממתינות ✨</div>';
+    if (checking.length) { html += '<div class="ca-sec-h">⏳ בבדיקת השרת (' + checking.length + ")</div>"; html += checking.map(r => chip(r, [{ act: "del", lbl: "🗑️" }])).join(""); }
+    html += '<div class="ca-sec-h">⭐ מאושרות · בסורק (' + approved.length + ")</div>";
+    html += approved.length ? approved.map(r => chip(r, [{ act: "del", lbl: "🗑️ הסר" }])).join("") : '<div class="muted" style="padding:4px 0">עדיין אין</div>';
+    if (rejected.length) { html += '<div class="ca-sec-h">❌ נדחו (' + rejected.length + ")</div>"; html += rejected.map(r => chip(r, [{ act: "approve", lbl: "↩️ שחזר" }, { act: "del", lbl: "🗑️" }])).join(""); }
+    box.innerHTML = html;
+    box.querySelectorAll("[data-ca]").forEach(b => b.onclick = async () => {
+      const id = b.dataset.id, act = b.dataset.ca;
+      b.disabled = true; b.textContent = "…";
+      try {
+        if (act === "del") await client.from("community_tickers").delete().eq("id", id);
+        else if (act === "approve") await client.from("community_tickers").update({ status: "approved", validated: true, reason: null }).eq("id", id);
+        else if (act === "reject") await client.from("community_tickers").update({ status: "rejected", reason: "נדחה ידנית" }).eq("id", id);
+        renderCommunityAdmin(client);
+      } catch (e) { snToast("שגיאה: " + (e.message || e)); b.disabled = false; renderCommunityAdmin(client); }
+    });
+  }
+  window._snCommunityAdmin = openCommunityAdmin;
 
   // ---- Web Push subscription (phone alerts even when the app is closed) ----
   function urlB64ToUint8(b64) {
@@ -1564,7 +1661,7 @@
   }
   function resetScan() {
     scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = false;
-    scanState.sector = "all"; scanState.subsec = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
+    scanState.sector = "all"; scanState.subsec = "all"; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
   }
@@ -1596,7 +1693,7 @@
       return SCAN.rows.map(r => {
         const o = { sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
           chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc, ninja: r.ninja,
-          Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech };
+          Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech, sp: r.sp, comm: r.comm };
         EXTRA_TFS.forEach(tf => { if (r[tf]) o[tf] = r[tf]; });   // custom Strat timeframes
         return o;
       });
@@ -1664,6 +1761,7 @@
     const patBtn = p => '<button class="chip' + (scanState.patterns.indexOf(p) >= 0 ? " on" : "") + '" data-pat="' + p + '">' + p + "</button>";
     const tfBtn = f => '<button class="chip' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + "</button>";
     const dirBtn = (v, l) => '<button class="chip' + (scanState.dir === v ? " on" : "") + '" data-dir="' + v + '">' + l + "</button>";
+    const uniBtn = (v, l) => '<button class="chip' + (scanState.universe === v ? " on" : "") + '" data-scanuni="' + v + '">' + l + "</button>";
     const filters =
       '<div class="panel filters"><h3>פילטרים <span class="muted" style="font-size:12px">בחר כמה טיימפריימים = חיפוש קונפלואנס (התבנית מתקיימת על כולם)</span></h3><div class="frow">' +
         '<div class="fgrp"><label>טיימפריימים · רב-בחירה</label><div class="chips">' +
@@ -1682,6 +1780,7 @@
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp"><label>שווי שוק</label><select id="scanCap">' + CAP_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.cap === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
+        '<div class="fgrp"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
       "</div></div>";
 
     // ---- technical filters (collapsible) ----
@@ -1845,6 +1944,8 @@
     const tfs = scanState.tfs.length ? scanState.tfs : ["D"];
     const techOn = techActive();
     return all.filter(t => {
+      if (scanState.universe === "sp500" && !t.sp) return false;
+      if (scanState.universe === "comm" && !t.comm) return false;
       if (scanState.sector !== "all" && t.sector !== scanState.sector) return false;
       if (scanState.subsec !== "all" && t.ind !== scanState.subsec) return false;
       if (scanState.sym && t.sym.indexOf(scanState.sym.toUpperCase()) < 0) return false;
@@ -1962,6 +2063,8 @@
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
+    document.querySelectorAll("[data-scanuni]").forEach(b => b.onclick = () => { scanState.universe = b.dataset.scanuni; reRender(); });
+    { const sg = $("#scanSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
     const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = false; reRender(); };
     { const inf = $("#scanInforce"); if (inf) inf.onclick = () => { scanState.inforce = !scanState.inforce; reRender(); }; }
@@ -3097,6 +3200,12 @@
     { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
     { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed(); }
     { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestForm(); }
+    { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
+    { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
+    // reveal the admin-only community panel link for Adi (and whenever auth state changes)
+    const _revealAdmin = () => { const el = document.getElementById("sideCommAdmin"); if (el) el.style.display = _snIsAdmin() ? "" : "none"; };
+    _revealAdmin();
+    try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(_revealAdmin); } catch (e) {}
     updateAlertBell();
     loadNews();
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min

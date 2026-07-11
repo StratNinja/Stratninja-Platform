@@ -908,3 +908,13 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
   border-radius: 11px; padding: 9px 13px; box-shadow: 0 8px 22px rgba(0,0,0,.45); }
 .ath-celeb .ath-mini-btn b { color: #fff; }
 @media (max-width: 560px) { .ath-celeb:not(.ath-mini) { left: 10px; right: 10px; bottom: 76px; width: auto; } }
+
+/* ---- community tickers · admin panel ---- */
+.ca-sec-h { font-weight: 700; font-size: 13px; margin: 15px 0 6px; color: var(--ink); }
+.ca-sec-h:first-child { margin-top: 2px; }
+.ca-row { display: flex; align-items: center; gap: 10px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel2); margin-bottom: 6px; flex-wrap: wrap; }
+.ca-tk { font-weight: 800; letter-spacing: .5px; min-width: 62px; }
+.ca-sec { font-size: 12px; }
+.ca-reason { font-size: 11px; flex: 1; min-width: 100px; }
+.ca-acts { margin-inline-start: auto; display: flex; gap: 6px; }
+.ca-btn { font-size: 12px; font-weight: 600; padding: 4px 10px; }
