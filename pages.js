@@ -1127,8 +1127,18 @@
     try { return ((window.SNAuth && SNAuth.user() || {}).email || "").toLowerCase() === SN_ADMIN_EMAIL; }
     catch (e) { return false; }
   }
-  // viewer-facing: suggest a ticker for the scanner
+  // viewer-facing: suggest a ticker for the scanner (requires Google login — browsing stays free)
   function openSuggestTicker() {
+    const cloud = !!(window.SNAuth && SNAuth.isCloud && SNAuth.isCloud());
+    const loggedIn = !!(window.SNAuth && SNAuth.user && SNAuth.user());
+    if (cloud && !loggedIn) {
+      modal("⭐ הצע מניה לסורק",
+        '<div class="note" style="margin-bottom:14px">⭐ כדי להציע מניה לסורק צריך <b>להתחבר עם Google</b> — כך נדע מי הציע ונוכל לעדכן אותך.<br>הגלישה באתר חופשית לגמרי; רק הצעת מניה דורשת התחברות. 🥷</div>' +
+        '<button class="btn primary" id="sugLogin" style="width:100%;box-sizing:border-box">🔓 התחבר עם Google</button>');
+      const lb = document.getElementById("sugLogin");
+      if (lb) lb.onclick = () => { try { SNAuth.signInWithGoogle(); } catch (e) {} };
+      return;
+    }
     const body =
       '<div class="note" style="margin-bottom:12px">⭐ יש מניה אמריקאית שתרצה שתופיע בסורק? הצע אותה!<br>השרת בודק אוטומטית שהיא אמיתית ונזילה, ואז היא עוברת אישור קצר — ואז נכנסת ל<b>רשימת הקהילה</b> בסורק. 🥷</div>' +
       '<div class="fgrp"><label>סימבול המניה</label><input id="sugTk" type="text" maxlength="8" placeholder="AAPL" autocomplete="off" style="text-transform:uppercase;letter-spacing:1px;font-weight:700"></div>' +
