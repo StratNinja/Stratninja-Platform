@@ -501,14 +501,15 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* ===== community CTA — sticky so it follows on scroll + confetti animation ===== */
 .community-cta { position: sticky; top: 44px; z-index: 30; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
 /* persistent live price ticker (SPY / QQQ / BTC) */
-.live-ticker { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; padding: 7px 14px; margin-bottom: 8px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; position: sticky; top: 0; z-index: 32; min-height: 34px; }
+.live-ticker { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 5px 14px; margin-bottom: 6px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; position: sticky; top: 0; z-index: 32; min-height: 30px; }
 .lt-item { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .lt-item:hover { opacity: .82; }
 .lt-sym { font-weight: 800; font-size: 12px; letter-spacing: .04em; color: var(--muted); }
 .lt-px { font-weight: 700; color: var(--ink); }
 .lt-item .pos { color: var(--green); font-weight: 700; } .lt-item .neg { color: var(--red); font-weight: 700; } .lt-item .zero { color: var(--muted); }
-.lt-sync { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; margin-inline-start: auto; white-space: nowrap; }
+.lt-sync { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; white-space: nowrap;
+  padding-inline-start: 14px; border-inline-start: 1px solid var(--line); margin-inline-start: 4px; }
 .lt-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .lt-dot.pos { background: var(--green); box-shadow: 0 0 6px rgba(22,184,119,.7); } .lt-dot.stale { background: #e0b341; } .lt-dot.zero { background: var(--muted); }
 .lt-fresh { color: var(--ink); font-weight: 600; } .lt-next { color: var(--muted); }

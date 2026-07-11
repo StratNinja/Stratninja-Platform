@@ -3028,11 +3028,12 @@
     } catch (e) { /* keep last */ }
     return _btc;
   }
-  function tickerItem(sym, name, price, chg, chartSym) {
+  function tickerItem(sym, name, price, chg, chartSym, noDollar) {
     const c = chg == null ? 0 : chg;
-    const cls = c > 0 ? "pos" : c < 0 ? "neg" : "zero";
+    // VIX: rising volatility is "bad" (red), falling is "good" (green) — invert the color
+    const cls = noDollar ? (c > 0 ? "neg" : c < 0 ? "pos" : "zero") : (c > 0 ? "pos" : c < 0 ? "neg" : "zero");
     const cs = (c >= 0 ? "+" : "") + c.toFixed(2) + "%";
-    const pxTxt = price == null ? "—" : "$" + Number(price).toLocaleString("en-US", { maximumFractionDigits: price >= 1000 ? 0 : 2 });
+    const pxTxt = price == null ? "—" : (noDollar ? "" : "$") + Number(price).toLocaleString("en-US", { maximumFractionDigits: price >= 1000 ? 0 : 2 });
     return '<span class="lt-item tsym clickable" data-chart="' + (chartSym || sym) + '" data-tf="D" title="' + name + '"><b class="lt-sym">' + sym + "</b><span class=\"lt-px\">" + pxTxt + '</span><span class="' + cls + '">' + cs + "</span></span>";
   }
   async function updateTicker() {
@@ -3041,9 +3042,13 @@
     const btc = await fetchBtc();                                  // await BEFORE reading LIVE
     const idx = (LIVE && LIVE.indices) ? LIVE.indices : [];        // read LIVE after await → no race
     const spy = idx.find(x => x.sym === "SPY"), qqq = idx.find(x => x.sym === "QQQ");
+    const dia = idx.find(x => x.sym === "DIA"), iwm = idx.find(x => x.sym === "IWM");
     let html = "";
     if (spy) html += tickerItem("SPY", "S&P 500", spy.price, spy.chg);
     if (qqq) html += tickerItem("QQQ", "NASDAQ 100", qqq.price, qqq.chg);
+    if (dia) html += tickerItem("DIA", "Dow Jones", dia.price, dia.chg);
+    if (iwm) html += tickerItem("IWM", "Russell 2000", iwm.price, iwm.chg);
+    if (LIVE && LIVE.vix) html += tickerItem("VIX", "Volatility", LIVE.vix.level, LIVE.vix.chg, "TVC:VIX", true);
     if (btc) html += tickerItem("BTC", "Bitcoin", btc.price, btc.chg, "BINANCE:BTCUSD");
     html += '<span class="lt-sync" id="ltSync"></span>';
     el.innerHTML = html || '<span class="muted" style="font-size:12px;padding-inline-start:4px">טוען מחירים…</span>';
