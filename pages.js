@@ -841,7 +841,8 @@
     const ap = s.above / (s.total || 1) * 100;
     const syms = st.map(x => x.s).join(", ");
     modal(secHe(s.name) + " · " + s.above + "/" + s.total + " מעל פתיחה (" + ap.toFixed(0) + "%)",
-      '<div class="drill-bar"><button class="btn ghost" id="spCopy" style="font-size:12px;font-weight:600">📋 העתק ' + st.length + " טיקרים</button><span class=\"muted\" style=\"font-size:12px\">לחץ על כותרת למיון</span></div>" +
+      '<div class="drill-bar"><button class="btn ghost" id="spGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
+      '<button class="btn ghost" id="spCopy" style="font-size:12px;font-weight:600">📋 העתק ' + st.length + " טיקרים</button><span class=\"muted\" style=\"font-size:12px\">לחץ על כותרת למיון</span></div>" +
       "<div class='tablewrap'><table class='scan-table'><thead><tr>" + th("סימבול", "sym", true) + th("מעל פתיחה", "ao") + th("תנועה", "c") + th("שווי", "mc") + "</tr></thead><tbody>" + rows + "</tbody></table></div>");
     document.querySelectorAll("[data-spsort]").forEach(h => h.onclick = () => {
       const c = h.dataset.spsort;
@@ -850,6 +851,11 @@
     });
     const cp = $("#spCopy");
     if (cp) cp.onclick = () => copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + st.length; setTimeout(() => cp.textContent = "📋 העתק " + st.length + " טיקרים", 1600); });
+    const gb = $("#spGrid");
+    if (gb) gb.onclick = () => openChartGrid(st.map(x => {
+      const r = (SCAN && SCAN.rows) ? SCAN.rows.find(rr => rr.s === x.s) : null;
+      return { sym: x.s, sector: secName, ind: x.ind, price: r ? (r.p || 0) : 0, chg: x.c };
+    }), { title: secHe(s.name) });
   }
   function wireSp500() {
     wireCharts(document);

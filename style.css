@@ -3,6 +3,7 @@
   --green:#16b877; --greenbg:rgba(22,184,119,.13); --greenbd:rgba(22,184,119,.5);
   --red:#e0524f; --redbg:rgba(224,82,79,.13); --redbd:rgba(224,82,79,.5);
   --ink:#e7ebf2; --muted:#a0a9bb; --accent:#7c6cf0; --accentbg:#2a2740;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
 }
 *{box-sizing:border-box}
 html,body{margin:0}

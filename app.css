@@ -939,3 +939,18 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* sub-sector column "show more" toggle */
 .ss-more { width: 100%; margin-top: 6px; font-size: 12px; font-weight: 600; }
 .ss-rest[hidden] { display: none; }
+
+/* ===== monospace data typography (terminal feel + perfect digit alignment) ===== */
+/* numbers + tickers → mono; Hebrew name cells (.tname) & headers stay in the UI font */
+.scan-table { font-variant-numeric: tabular-nums; }
+.scan-table td:not(.tname):not(.sym) { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.tsym, .lt-item, .lt-sym, .lt-px, .sc-head b, .sc-px, .ca-tk, .idx-chg, .money, .pct {
+  font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ===== subtle neon glow — critical signals + row hover (clean, not heavy) ===== */
+.scan-table tbody tr { transition: background .12s ease, box-shadow .12s ease; }
+.scan-table tbody tr:hover { background: rgba(124,108,240,.05); box-shadow: inset 2px 0 0 var(--accent); }
+.scan-table tbody tr:hover:has(.badge-ftfc:not(.bear)) { box-shadow: inset 2px 0 0 var(--green), 0 0 16px rgba(22,184,119,.12); }
+.scan-table tbody tr:hover:has(.badge-ftfc.bear) { box-shadow: inset 2px 0 0 var(--red), 0 0 16px rgba(224,82,79,.12); }
+.badge-ftfc { box-shadow: 0 0 7px rgba(22,184,119,.28); }
+.badge-ftfc.bear { box-shadow: 0 0 7px rgba(224,82,79,.28); }
