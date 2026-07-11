@@ -489,6 +489,7 @@
   let cmDrill = { bucket: null, tfk: null, col: null, dir: -1 };
   function cmSortVal(r, col, tfk) {
     if (col === "sym") return r.s;
+    if (col === "sec") return r.sec || "";
     if (col === "price") return r.p || 0;
     // candle color: green(up)=2, doji=1, red(down)=0 → descending puts green on top, then red
     if (col === "cndl") { const c = (r[tfk] || {}).c; return c === "up" ? 2 : (c === "down" ? 0 : 1); }
@@ -519,11 +520,14 @@
       '</span></td><td class="tname" style="text-align:start">' + (r.sec || "") + "</td><td>" + money(r.p || 0) + "</td><td>" + tf(r[tfk], r.s, tfk) + "</td></tr>").join("");
     const syms = members.map(r => r.s).join(", ");
     modal("🗺️ " + title + " · " + (TF_HE[tfk] || tfk) + " · " + members.length + " מניות",
-      '<div class="note" style="margin-bottom:8px">' + (CMAP_DESC[bucket] || "") + ' · לחץ על כותרת <b>נר</b> למיון 🟢 ירוק / 🔴 אדום</div>' +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th>' + th("סימבול", "sym", true) + '<th style="text-align:start">סקטור</th>' + th("מחיר", "price") + th("נר " + tfk, "cndl") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
-      '<button class="btn ghost" id="cmapCopy" style="margin-top:10px;font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button>");
+      '<div class="drill-bar"><button class="btn ghost" id="cmapGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
+      '<button class="btn ghost" id="cmapCopy" style="font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button></div>" +
+      '<div class="note" style="margin-bottom:8px">' + (CMAP_DESC[bucket] || "") + ' · לחץ על כל כותרת למיון (נר = 🟢 ירוק / 🔴 אדום)</div>' +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th>' + th("סימבול", "sym", true) + th("סקטור", "sec", true) + th("מחיר", "price") + th("נר " + tfk, "cndl") + "</tr></thead><tbody>" + rows + "</tbody></table></div>");
     const cp = $("#cmapCopy");
     if (cp) cp.onclick = () => { copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + members.length; }); };
+    const gb = $("#cmapGrid");
+    if (gb) gb.onclick = () => openChartGrid(members.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || 0, chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: title });
     document.querySelectorAll("[data-cmsort]").forEach(h => h.onclick = () => {
       const c = h.dataset.cmsort;
       if (cmDrill.col === c) cmDrill.dir *= -1; else { cmDrill.col = c; cmDrill.dir = c === "sym" ? 1 : -1; }
