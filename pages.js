@@ -1194,6 +1194,7 @@
     const rejected = rows.filter(r => r.status === "rejected");
     const chip = (r, acts) => '<div class="ca-row"><span class="ca-tk">$' + (r.ticker || "").toUpperCase() + "</span>" +
       '<span class="ca-sec muted">' + (r.sector || "—") + "</span>" +
+      '<span class="ca-by muted" title="' + escAttr(r.requested_by || "אנונימי") + '">👤 ' + escHtml(r.requested_by || "אנונימי") + "</span>" +
       (r.reason ? '<span class="ca-reason muted" title="' + escAttr(r.reason) + '">· ' + escHtml(r.reason).slice(0, 40) + "</span>" : "") +
       '<span class="ca-acts">' + acts.map(a => '<button class="btn ghost ca-btn" data-ca="' + a.act + '" data-id="' + r.id + '">' + a.lbl + "</button>").join("") + "</span></div>";
     let html = "";

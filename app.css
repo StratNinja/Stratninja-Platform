@@ -915,6 +915,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ca-row { display: flex; align-items: center; gap: 10px; padding: 7px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel2); margin-bottom: 6px; flex-wrap: wrap; }
 .ca-tk { font-weight: 800; letter-spacing: .5px; min-width: 62px; }
 .ca-sec { font-size: 12px; }
+.ca-by { font-size: 11px; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ca-reason { font-size: 11px; flex: 1; min-width: 100px; }
 .ca-acts { margin-inline-start: auto; display: flex; gap: 6px; }
 .ca-btn { font-size: 12px; font-weight: 600; padding: 4px 10px; }
