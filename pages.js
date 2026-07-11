@@ -2074,7 +2074,15 @@
     { const inf = $("#scanInforce"); if (inf) inf.onclick = () => { scanState.inforce = !scanState.inforce; reRender(); }; }
     const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; scanState.subsec = "all"; reRender(); };
     const subsec = $("#scanSubsec"); if (subsec) subsec.onchange = () => { scanState.subsec = subsec.value; reRender(); };
-    const sym = $("#scanSym"); if (sym) sym.onchange = () => { scanState.sym = sym.value; reRender(); };
+    // live filter as you type (not only on Enter) — restore focus + caret after the re-render
+    const sym = $("#scanSym");
+    if (sym) sym.oninput = () => {
+      const pos = sym.selectionStart;
+      scanState.sym = sym.value;
+      reRender();
+      const ns = $("#scanSym");
+      if (ns) { ns.focus(); try { ns.setSelectionRange(pos, pos); } catch (e) {} }
+    };
     document.querySelectorAll("[data-sortcol]").forEach(th => th.onclick = () => onSortClick(th.dataset.sortcol));
     const cap = $("#scanCap"); if (cap) cap.onchange = () => { scanState.cap = cap.value; reRender(); };
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
