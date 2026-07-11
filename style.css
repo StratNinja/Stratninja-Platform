@@ -2,7 +2,7 @@
   --bg:#0f1116; --panel:#161a21; --panel2:#1b1f27; --cell:#1b1f27; --line:#262b35;
   --green:#16b877; --greenbg:rgba(22,184,119,.13); --greenbd:rgba(22,184,119,.5);
   --red:#e0524f; --redbg:rgba(224,82,79,.13); --redbd:rgba(224,82,79,.5);
-  --ink:#e7ebf2; --muted:#8b93a3; --accent:#7c6cf0; --accentbg:#2a2740;
+  --ink:#e7ebf2; --muted:#a0a9bb; --accent:#7c6cf0; --accentbg:#2a2740;
 }
 *{box-sizing:border-box}
 html,body{margin:0}
