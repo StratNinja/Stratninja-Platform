@@ -485,21 +485,49 @@
     return '<div class="panel"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימה</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div>" + insightBox + "</div>";
   }
-  function openCandleMapDrill(bucket, tfk) {
+  let cmDrill = { bucket: null, tfk: null, col: null, dir: -1 };
+  function cmSortVal(r, col, tfk) {
+    if (col === "sym") return r.s;
+    if (col === "price") return r.p || 0;
+    // candle color: green(up)=2, doji=1, red(down)=0 → descending puts green on top, then red
+    if (col === "cndl") { const c = (r[tfk] || {}).c; return c === "up" ? 2 : (c === "down" ? 0 : 1); }
+    return null;
+  }
+  function openCandleMapDrill(bucket, tfk) { cmDrill = { bucket, tfk, col: null, dir: -1 }; renderCmDrill(); }
+  function renderCmDrill() {
     if (!(SCAN && SCAN.rows)) return;
-    const members = cmapRows().filter(r => candleBucket(r[tfk]) === bucket).sort((a, b) => a.s.localeCompare(b.s));
+    const bucket = cmDrill.bucket, tfk = cmDrill.tfk;
+    let members = cmapRows().filter(r => candleBucket(r[tfk]) === bucket);
     const title = (CMAP_DESC[bucket] || bucket).split(" — ")[0];
     if (!members.length) { modal(bucket, '<div class="muted" style="padding:20px">אין מניות</div>'); return; }
+    if (cmDrill.col) {
+      members = members.slice().sort((a, b) => {
+        const va = cmSortVal(a, cmDrill.col, tfk), vb = cmSortVal(b, cmDrill.col, tfk);
+        if (typeof va === "string") return cmDrill.dir * va.localeCompare(vb);
+        return cmDrill.dir * (va - vb);
+      });
+    } else {
+      members = members.slice().sort((a, b) => a.s.localeCompare(b.s));
+    }
+    const th = (label, col, start) => {
+      const arrow = cmDrill.col === col ? (cmDrill.dir < 0 ? " ▼" : " ▲") : "";
+      return '<th class="sortable" data-cmsort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>";
+    };
     const rows = members.map(r =>
       "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s +
       '</span></td><td class="tname" style="text-align:start">' + (r.sec || "") + "</td><td>" + money(r.p || 0) + "</td><td>" + tf(r[tfk], r.s, tfk) + "</td></tr>").join("");
     const syms = members.map(r => r.s).join(", ");
     modal("🗺️ " + title + " · " + (TF_HE[tfk] || tfk) + " · " + members.length + " מניות",
-      '<div class="note" style="margin-bottom:8px">' + (CMAP_DESC[bucket] || "") + "</div>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>נר ' + tfk + "</th></tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<div class="note" style="margin-bottom:8px">' + (CMAP_DESC[bucket] || "") + ' · לחץ על כותרת <b>נר</b> למיון 🟢 ירוק / 🔴 אדום</div>' +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th>' + th("סימבול", "sym", true) + '<th style="text-align:start">סקטור</th>' + th("מחיר", "price") + th("נר " + tfk, "cndl") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
       '<button class="btn ghost" id="cmapCopy" style="margin-top:10px;font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button>");
     const cp = $("#cmapCopy");
     if (cp) cp.onclick = () => { copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + members.length; }); };
+    document.querySelectorAll("[data-cmsort]").forEach(h => h.onclick = () => {
+      const c = h.dataset.cmsort;
+      if (cmDrill.col === c) cmDrill.dir *= -1; else { cmDrill.col = c; cmDrill.dir = c === "sym" ? 1 : -1; }
+      renderCmDrill();
+    });
   }
   // compact "what's happening now" pulse — market mode + session + index strip
   function marketPulse() {
@@ -1611,7 +1639,7 @@
     return facts;
   }
   // MA-relation modes that use the ± percentage input
-  function _maPctShown() { return ["near", "far", "touchAbove", "touchBelow"].indexOf(techState.maRel) >= 0; }
+  function _maPctShown() { return ["near", "far", "farAbove", "farBelow", "touchAbove", "touchBelow"].indexOf(techState.maRel) >= 0; }
   // plain-language explanation of exactly what the "מיקום מול ממוצע" filter does right now
   function maRelHint() {
     const ma = techState.maType + techState.maPeriod, p = techState.maPct;
@@ -1619,7 +1647,9 @@
       case "above": return "מציג רק מניות שהמחיר שלהן <b>מעל</b> " + ma + " (מגמה חיובית / מעל התמיכה).";
       case "below": return "מציג רק מניות שהמחיר שלהן <b>מתחת</b> ל-" + ma + " (חולשה / מתחת להתנגדות).";
       case "near":  return "מציג מניות שהמחיר <b>עד " + p + "%</b> מ-" + ma + " — נוגעות/נבחנות מול הממוצע (אזור כניסה).";
-      case "far":   return "מציג מניות שהמחיר <b>יותר מ-" + p + "%</b> מ-" + ma + " — מתוחות / רחוקות מהממוצע.";
+      case "far":   return "מציג מניות שהמחיר <b>יותר מ-" + p + "%</b> מ-" + ma + " — מתוחות / רחוקות מהממוצע (שני הכיוונים).";
+      case "farAbove": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מעל</b> " + ma + " — מתוחות כלפי מעלה (מומנטום/מגמת <b>לונג</b>).";
+      case "farBelow": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מתחת</b> ל-" + ma + " — מתוחות כלפי מטה (חולשה/מגמת <b>שורט</b>).";
       case "touchAbove": return "🎯 כמו ה-<b>SMA150 Sniper</b> בדיסקורד: המניה סגרה <b>מעל</b> " + ma + ", וה-<b>נמוך</b> ירד עד <b>" + p + "%</b> מהממוצע (צלפה בו מלמעלה).";
       case "touchBelow": return "🎯 כמו ה-Sniper בדיסקורד: המניה סגרה <b>מתחת</b> ל-" + ma + ", וה-<b>גבוה</b> נגע עד <b>" + p + "%</b> מהממוצע (מלמטה).";
       default: return "";
@@ -1666,7 +1696,7 @@
             '<div class="fgrp"><label>מיקום מול ממוצע (MA)</label><div class="chips" style="align-items:center">' +
               '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
               '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
-              '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע") + opt("touchAbove", techState.maRel, "🎯 נגיעה מלמעלה (צל תחתון)") + opt("touchBelow", techState.maRel, "🎯 נגיעה מלמטה (צל עליון)") + '</select>' +
+              '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע (2 הכיוונים)") + opt("farAbove", techState.maRel, "יותר מ-% מעל הממוצע ↑ לונג") + opt("farBelow", techState.maRel, "יותר מ-% מתחת לממוצע ↓ שורט") + opt("touchAbove", techState.maRel, "🎯 נגיעה מלמעלה (צל תחתון)") + opt("touchBelow", techState.maRel, "🎯 נגיעה מלמטה (צל עליון)") + '</select>' +
               (_maPctShown() ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
             "</div>" + (techState.maRel !== "off" ? '<div class="ma-hint">' + maRelHint() + "</div>" : "") + "</div>" +
             '<div class="fgrp"><label>RSI</label><div class="chips" style="align-items:center"><input id="tRsiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMin + '"><span class="muted">–</span><input id="tRsiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMax + '"></div></div>' +
@@ -1873,6 +1903,8 @@
           if (d == null) return false;
           if (techState.maRel === "near" && Math.abs(d) > techState.maPct) return false;
           if (techState.maRel === "far" && Math.abs(d) < techState.maPct) return false;
+          if (techState.maRel === "farAbove" && d < techState.maPct) return false;   // stretched ABOVE (long)
+          if (techState.maRel === "farBelow" && d > -techState.maPct) return false;  // stretched BELOW (short)
           if (techState.maRel === "above" && d <= 0) return false;
           if (techState.maRel === "below" && d >= 0) return false;
           // wick "touch" of the MA — mirrors the community SMA150 Sniper:
@@ -2190,7 +2222,8 @@
     if (col === "sym") return r.s;
     if (col === "price") return r.p || (r.tech ? r.tech.px : 0);
     if (col === "chg") return r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
-    if (col === "ftfc") return r.ftfc ? 1 : 0;
+    // FTFC-green (D up) on top, then FTFC-red (D down), then non-FTFC — so descending groups green→red→none
+    if (col === "ftfc") return r.ftfc ? ((r.D || {}).c === "down" ? 1 : 2) : 0;
     if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(r[col]);
     return null;
   }
