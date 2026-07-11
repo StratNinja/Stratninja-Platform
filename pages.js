@@ -2382,8 +2382,15 @@
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
     const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
     const ssBear = subInfo.filter(o => o.bucket === "bear").sort((a, b) => b.bearPct - a.bearPct);
-    const ssCol = (title, cls, arr) => '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-      (arr.length ? arr.map(subCard).join("") : '<div class="muted" style="padding:12px;font-size:12px;text-align:center">אין כרגע</div>') + "</div>";
+    // each column shows its top few, with the rest collapsed behind a toggle (no more infinite scroll)
+    const SS_HEAD = 6;
+    const ssCol = (title, cls, arr) => {
+      const head = arr.slice(0, SS_HEAD), rest = arr.slice(SS_HEAD), restId = "ssrest-" + cls;
+      return '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+        (arr.length ? head.map(subCard).join("") : '<div class="muted" style="padding:12px;font-size:12px;text-align:center">אין כרגע</div>') +
+        (rest.length ? '<div class="ss-rest" id="' + restId + '" hidden>' + rest.map(subCard).join("") + "</div>" +
+          '<button class="btn ghost ss-more" data-ssmore="' + restId + '">עוד ' + rest.length + " ↓</button>" : "") + "</div>";
+    };
     const subSection = indNames.length
       ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3: <b>BULL</b> (מעל 50% מהמניות ב-FTFC ירוק) · <b>בין לבין</b> · <b>BEAR</b> (50%+ ב-FTFC אדום). הבר מראה את אחוז הנרות הירוקים היומיים · לחץ על כרטיס למניות.</div></div>' +
         '<div class="subsec-3col">' + ssCol("🟢 BULL", "ss-bull", ssBull) + ssCol("⚪ בין לבין", "ss-mid", ssMid) + ssCol("🔴 BEAR", "ss-bear", ssBear) + "</div>"
@@ -2398,6 +2405,13 @@
     // sub-sector card → open a drill with that sub-sector's stocks (like a sector drill)
     document.querySelectorAll(".subsec-card").forEach(c => {
       c.onclick = () => { if (c.dataset.subsec) openSubDrillLive(decodeURIComponent(c.dataset.subsec)); };
+    });
+    // "עוד N" — reveal/hide the collapsed sub-sector cards in each column
+    document.querySelectorAll("[data-ssmore]").forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const el = document.getElementById(b.dataset.ssmore); if (!el) return;
+      if (el.hasAttribute("hidden")) { el.removeAttribute("hidden"); b.textContent = "פחות ↑"; }
+      else { el.setAttribute("hidden", ""); b.textContent = "עוד " + el.children.length + " ↓"; }
     });
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }

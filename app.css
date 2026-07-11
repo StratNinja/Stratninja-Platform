@@ -935,3 +935,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .sc-tf { font-weight: 800; color: var(--muted); font-size: 10px; margin-inline-end: 1px; }
 .sc-foot { margin-top: 8px; font-size: 11px; color: var(--muted); }
 .sc-foot b { color: var(--ink); }
+
+/* sub-sector column "show more" toggle */
+.ss-more { width: 100%; margin-top: 6px; font-size: 12px; font-weight: 600; }
+.ss-rest[hidden] { display: none; }
