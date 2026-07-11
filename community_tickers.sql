@@ -23,6 +23,10 @@ create table if not exists public.community_tickers (
 create unique index if not exists community_tickers_ticker_uidx
   on public.community_tickers (upper(ticker));
 
+-- table-level privileges (RLS still gates WHICH rows each role may touch)
+grant select, insert on public.community_tickers to anon, authenticated;
+grant update, delete on public.community_tickers to authenticated;
+
 alter table public.community_tickers enable row level security;
 
 -- anyone may SUBMIT a pending, unvalidated ticker (cannot self-approve)
