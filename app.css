@@ -920,3 +920,18 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ca-reason { font-size: 11px; flex: 1; min-width: 100px; }
 .ca-acts { margin-inline-start: auto; display: flex; gap: 6px; }
 .ca-btn { font-size: 12px; font-weight: 600; padding: 4px 10px; }
+
+/* ---- hover sparkline preview card ---- */
+.spark-card { position: fixed; z-index: 5000; pointer-events: none; width: 212px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 11px; padding: 10px 11px;
+  box-shadow: 0 12px 34px rgba(0,0,0,.55); animation: scFade .12s ease-out; }
+@keyframes scFade { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+.sc-head { display: flex; align-items: center; gap: 6px; font-size: 13px; margin-bottom: 7px; flex-wrap: wrap; }
+.sc-head b { font-weight: 800; letter-spacing: .3px; }
+.sc-px { margin-inline-start: auto; font-weight: 700; font-size: 12px; white-space: nowrap; }
+.sc-spark { background: var(--panel2); border-radius: 7px; padding: 3px 4px; display: block; }
+.sc-spark svg { display: block; width: 100%; height: auto; }
+.sc-cells { display: flex; align-items: center; gap: 4px; margin-top: 8px; flex-wrap: wrap; font-size: 11px; }
+.sc-tf { font-weight: 800; color: var(--muted); font-size: 10px; margin-inline-end: 1px; }
+.sc-foot { margin-top: 8px; font-size: 11px; color: var(--muted); }
+.sc-foot b { color: var(--ink); }

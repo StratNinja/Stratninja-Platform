@@ -365,6 +365,64 @@
         else openChart(b.dataset.chart, b.dataset.tf);
       };
     });
+    wireSparkHover(scope);
+  }
+
+  // ---- hover sparkline preview (desktop): mini candlestick + Strat map on ticker hover ----
+  let _hoverTO = null, _hoverEl = null;
+  const _canHover = (() => { try { return window.matchMedia("(hover: hover)").matches; } catch (e) { return true; } })();
+  function _rowBySym(sym) { return (SCAN && SCAN.rows) ? (SCAN.rows.find(x => x.s === sym) || null) : null; }
+  function sparkCandles(spk, w, h) {
+    if (!spk || !spk.length) return "";
+    const pad = 3, n = spk.length;
+    let lo = Infinity, hi = -Infinity;
+    spk.forEach(b => { lo = Math.min(lo, b[2]); hi = Math.max(hi, b[1]); });
+    if (!(hi > lo)) hi = lo + 1;
+    const cw = (w - pad * 2) / n;
+    const y = v => pad + (h - pad * 2) * (1 - (v - lo) / (hi - lo));
+    let s = "";
+    spk.forEach((b, i) => {
+      const o = b[0], hh = b[1], ll = b[2], c = b[3];
+      const cx = pad + cw * i + cw / 2;
+      const col = c >= o ? "var(--green)" : "var(--red)";
+      const bodyTop = y(Math.max(o, c)), bodyBot = y(Math.min(o, c));
+      const bw = Math.max(1.6, cw * 0.62);
+      s += '<line x1="' + cx.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y1="' + y(hh).toFixed(1) + '" y2="' + y(ll).toFixed(1) + '" stroke="' + col + '" stroke-width="1"/>';
+      s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + bodyTop.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, bodyBot - bodyTop).toFixed(1) + '" fill="' + col + '"/>';
+    });
+    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">' + s + "</svg>";
+  }
+  function showHoverCard(sym, x, y) {
+    const r = _rowBySym(sym); if (!r) return;
+    const spk = (r.tech && r.tech.spk) || null;
+    const chg = r.c || 0, cCls = chg > 0 ? "pos" : chg < 0 ? "neg" : "muted";
+    const card = document.createElement("div");
+    card.className = "spark-card";
+    card.innerHTML =
+      '<div class="sc-head"><b>' + r.s + '</b> <span class="muted">' + (r.sec || "") + "</span>" +
+        '<span class="sc-px">' + money(r.p || 0) + ' <span class="' + cCls + '">' + (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%</span></span></div>" +
+      (spk ? '<div class="sc-spark">' + sparkCandles(spk, 184, 54) + "</div>" : '<div class="muted" style="font-size:11px;padding:14px 0;text-align:center">אין נתוני גרף</div>') +
+      '<div class="sc-cells">' + ["Y", "Q", "M", "W", "D"].map(k => r[k] ? ('<span class="sc-tf">' + k + "</span>" + tf(r[k], r.s, k)) : "").join("") + "</div>" +
+      (r.ninja != null ? '<div class="sc-foot">🥷 Ninja Score <b>' + Math.round(r.ninja) + "</b> · 📅 14 ימים אחרונים</div>" : "");
+    document.body.appendChild(card);
+    const cw = card.offsetWidth, ch = card.offsetHeight;
+    let px = x + 16, py = y + 16;
+    if (px + cw > window.innerWidth - 8) px = x - cw - 16;
+    if (py + ch > window.innerHeight - 8) py = y - ch - 16;
+    card.style.left = Math.max(8, px) + "px"; card.style.top = Math.max(8, py) + "px";
+    _hoverEl = card;
+  }
+  function hideHoverCard() { if (_hoverEl) { _hoverEl.remove(); _hoverEl = null; } if (_hoverTO) { clearTimeout(_hoverTO); _hoverTO = null; } }
+  function wireSparkHover(scope) {
+    if (!_canHover) return;
+    (scope || document).querySelectorAll(".tsym[data-chart]").forEach(el => {
+      el.addEventListener("mouseenter", e => {
+        hideHoverCard();
+        const sym = el.dataset.chart, x = e.clientX, y = e.clientY;
+        _hoverTO = setTimeout(() => showHoverCard(sym, x, y), 320);
+      });
+      el.addEventListener("mouseleave", hideHoverCard);
+    });
   }
 
   // ========== MARKET ==========
