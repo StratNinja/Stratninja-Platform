@@ -2053,12 +2053,14 @@
             const inforceOn = inf === true || inf === "up" || inf === "down" || inf === "any";
             if (inforceOn) {
               if (sq.slice(3 - n).join("-") !== scanState.broad) return false;   // full pattern completed (last n bars)
-              // direction = the BREAK (2U=broke prior high / 2D=broke prior low), NOT the candle color.
-              // exclude failed breaks: c.br="down" = broke the high then got rejected below it (e.g. ARQT Q).
-              if (p[n - 1] === "2") {
-                if (inf === "up"   && !((c.t === "2U" || (c.t === "3" && c.c === "up"))   && c.br !== "down")) return false;   // 🔼 clean bullish break
-                if (inf === "down" && !((c.t === "2D" || (c.t === "3" && c.c === "down")) && c.br !== "up"))   return false;   // 🔽 clean bearish break
-              }
+              // IN FORCE (precise): the current CLOSE must be HOLDING beyond the prior bar's extreme —
+              // ifc="up" = close above the prior high (real long trigger) / ifc="down" = close below the
+              // prior low. A bar that broke the high then fell back (AAP/ELS Q) has ifc="" → not in force,
+              // it's a reversal. (fallback to bar-type if ifc missing on pre-rescan data.)
+              const ifcVal = (c.ifc !== undefined) ? c.ifc
+                : (c.t === "2U" && c.br !== "down" ? "up" : (c.t === "2D" && c.br !== "up" ? "down" : ""));
+              if (inf === "up"   && ifcVal !== "up")   return false;   // 🔼 holding above the prior high
+              if (inf === "down" && ifcVal !== "down") return false;   // 🔽 holding below the prior low
             } else if (sq.slice(3 - (n - 1)).join("-") !== p.slice(0, n - 1).join("-")) return false;   // setup: approaching the final bar
           }
         }
