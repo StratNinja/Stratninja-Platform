@@ -75,10 +75,11 @@ button{font-family:inherit}
 /* equity curve */
 .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:18px;margin-bottom:20px}
 .chartbox h3{margin:0 0 12px;font-size:15px}
-svg .axis{stroke:var(--line)}
-svg .eqline{fill:none;stroke:var(--accent);stroke-width:2}
+svg .axis{stroke:var(--line);vector-effect:non-scaling-stroke}
+svg .eqline{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
 svg .eqarea{fill:url(#eqgrad)}
-.eqsvg{cursor:crosshair;display:block}
+/* bounded height so the curve doesn't grow with the container width / when zooming out */
+.eqsvg{cursor:crosshair;display:block;width:100%;height:clamp(200px,34vh,320px)}
 .eqhover{transition:opacity .1s;pointer-events:none}
 .eqcross{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 4;opacity:.7}
 .eqdot{stroke:#0f1116;stroke-width:2}

@@ -527,7 +527,7 @@
     box.appendChild(el("h3", null, "עקומת הון (רווח/הפסד מצטבר)"));
     const pts = E.equityCurve(trades);
     if (pts.length < 2) { box.appendChild(el("div", "note", "צריך לפחות שני ימי מסחר כדי לצייר עקומה.")); return box; }
-    const W = 1100, H = 340, pad = 44;
+    const W = 1600, H = 340, pad = 44;   // wide viewBox → preserveAspectRatio="none" stretches less
     const xs = pts.map((_, i) => i);
     const eq = pts.map(p => p.equity);
     const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
@@ -540,7 +540,7 @@
     const zeroY = Y(0);
     const last = eq[eq.length - 1];
     const svg =
-      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet">' +
+      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" height="100%" preserveAspectRatio="none">' +
       '<defs><linearGradient id="eqgrad" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="#7c6cf0" stop-opacity=".35"/><stop offset="1" stop-color="#7c6cf0" stop-opacity="0"/></linearGradient></defs>' +
       '<line class="axis" x1="' + pad + '" y1="' + zeroY + '" x2="' + (W - pad) + '" y2="' + zeroY + '"/>' +
