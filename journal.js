@@ -522,20 +522,58 @@
   }
 
   // ---- Equity curve ------------------------------------------------------
+  let eqMode = "abs";   // "abs" ($) | "pct" (% of portfolio size)
+  function eqBaseKey(acct) { return "sn_eq_base_" + (acct || "_"); }
+  function getEqBase(acct) { try { const v = parseFloat(localStorage.getItem(eqBaseKey(acct))); return v > 0 ? v : null; } catch (e) { return null; } }
+  function setEqBase(acct, v) { try { localStorage.setItem(eqBaseKey(acct), String(v)); } catch (e) {} }
+  // estimate portfolio size = peak capital deployed at once (sum of open trades' cost basis over time)
+  function peakCapital(trades) {
+    const evts = [];
+    trades.forEach(t => {
+      const cost = Math.abs((t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1));
+      if (cost > 0 && t.entryDate && t.exitDate) { evts.push([t.entryDate, cost]); evts.push([t.exitDate, -cost]); }
+    });
+    evts.sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : (a[1] - b[1]));   // same day: releases before adds
+    let cur = 0, peak = 0;
+    evts.forEach(e => { cur += e[1]; if (cur > peak) peak = cur; });
+    return Math.round(peak);
+  }
   function renderEquity(trades) {
     const box = el("div", "chartbox");
-    box.appendChild(el("h3", null, "עקומת הון (רווח/הפסד מצטבר)"));
+    const acct = state.account;
+    const autoBase = peakCapital(trades);
+    const base = getEqBase(acct) || autoBase || 0;
+    // header: title + $/% toggle
+    const head = el("div", "eq-head");
+    head.innerHTML = '<h3>עקומת הון (רווח/הפסד מצטבר)</h3>' +
+      '<span class="eq-modes"><button class="eq-mode-btn' + (eqMode === "abs" ? " on" : "") + '" data-eqmode="abs">$</button>' +
+      '<button class="eq-mode-btn' + (eqMode === "pct" ? " on" : "") + '" data-eqmode="pct">%</button></span>';
+    box.appendChild(head);
+    head.querySelectorAll("[data-eqmode]").forEach(b => b.onclick = () => {
+      if (eqMode === b.dataset.eqmode) return; eqMode = b.dataset.eqmode; render();
+    });
+    // in % mode: editable portfolio-size base (the % denominator)
+    if (eqMode === "pct") {
+      const baseRow = el("div", "eq-base-row");
+      baseRow.innerHTML = '<label>גודל תיק: $<input type="number" class="eq-base-inp" value="' + base + '" min="1" step="100"></label>' +
+        '<span class="muted">' + (getEqBase(acct) == null ? "הערכה אוטומטית (ההון המרבי שהיה בשוק) — ניתן לערוך" : "האחוזים מחושבים מהערך הזה") + "</span>";
+      box.appendChild(baseRow);
+      const inp = baseRow.querySelector(".eq-base-inp");
+      inp.onchange = () => { const v = parseFloat(inp.value); if (v > 0) { setEqBase(acct, v); render(); } };
+    }
     const pts = E.equityCurve(trades);
     if (pts.length < 2) { box.appendChild(el("div", "note", "צריך לפחות שני ימי מסחר כדי לצייר עקומה.")); return box; }
+    const pctMode = eqMode === "pct" && base > 0;
+    const toVal = eq => pctMode ? eq / base * 100 : eq;                       // $ → % of portfolio
+    const fmtVal = v => pctMode ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : money(v, 0);
     const W = 1600, H = 340, pad = 44;   // wide viewBox → preserveAspectRatio="none" stretches less
-    const xs = pts.map((_, i) => i);
-    const eq = pts.map(p => p.equity);
+    const eq = pts.map(p => toVal(p.equity));
     const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
     const rng = (maxY - minY) || 1;
     const X = i => pad + (i / (pts.length - 1)) * (W - pad * 2);
     const Y = v => H - pad - ((v - minY) / rng) * (H - pad * 2);
     let dpath = "", apath = "";
-    pts.forEach((p, i) => { const x = X(i), y = Y(p.equity); dpath += (i ? "L" : "M") + x + " " + y + " "; });
+    pts.forEach((p, i) => { const x = X(i), y = Y(eq[i]); dpath += (i ? "L" : "M") + x + " " + y + " "; });
     apath = dpath + "L" + X(pts.length - 1) + " " + Y(minY) + " L" + X(0) + " " + Y(minY) + " Z";
     const zeroY = Y(0);
     const last = eq[eq.length - 1];
@@ -547,7 +585,7 @@
       '<path class="eqarea" d="' + apath + '"/>' +
       '<path class="eqline" d="' + dpath + '"/>' +
       '<text x="' + (W - pad) + '" y="' + (Y(last) - 8) + '" text-anchor="end" fill="' + (last >= 0 ? "#16b877" : "#e0524f") +
-      '" font-size="15" font-weight="700">' + money(last, 0) + "</text>" +
+      '" font-size="15" font-weight="700">' + fmtVal(last) + "</text>" +
       // hover crosshair: vertical line + dot on the curve, P&L label on top, date label at bottom
       '<g class="eqhover" style="opacity:0">' +
         '<line class="eqcross" x1="0" y1="' + pad + '" x2="0" y2="' + (H - pad) + '"/>' +
@@ -558,7 +596,7 @@
         '<text class="eqtiptext eqbottext" x="0" y="' + (H - 11) + '" text-anchor="middle">—</text>' +
       "</g>" +
       "</svg>";
-    box.innerHTML += svg;
+    box.insertAdjacentHTML("beforeend", svg);   // append WITHOUT reserializing box (keeps toggle/input handlers)
     // ---- hover interaction ----
     const svgEl = box.querySelector(".eqsvg");
     const g = svgEl.querySelector(".eqhover");
@@ -572,12 +610,12 @@
       const sx = (clientX - rect.left) / rect.width * W;
       let i = Math.round((sx - pad) / (W - pad * 2) * (pts.length - 1));
       i = Math.max(0, Math.min(pts.length - 1, i));
-      const x = X(i), val = pts[i].equity, y = Y(val);
+      const x = X(i), val = eq[i], y = Y(val);
       const posCol = val >= 0 ? "#16b877" : "#e0524f";
       cross.setAttribute("x1", x); cross.setAttribute("x2", x);
       dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("fill", posCol);
-      // top label = cumulative P&L at this point
-      const topStr = money(val, 0);
+      // top label = cumulative P&L at this point ($ or % of portfolio)
+      const topStr = fmtVal(val);
       tTxt.textContent = topStr;
       const wT = Math.max(70, topStr.length * 11 + 20);
       tBg.setAttribute("width", wT); tBg.setAttribute("x", clampX(x, wT) - wT / 2); tBg.setAttribute("fill", posCol);

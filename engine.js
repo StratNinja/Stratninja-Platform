@@ -206,6 +206,7 @@ window.Engine = (function () {
         assetType: ep.assetType,
         direction: ep.dir > 0 ? "long" : "short",
         qty: round(ep.openQty, 4),
+        mult: ep.mult || 1,
         entryPrice: ep.openQty ? ep.entryNotional / ep.openQty : 0,
         exitPrice: ep.exitQty ? ep.exitNotional / ep.exitQty : 0,
         entryDate: ep.entryDate,

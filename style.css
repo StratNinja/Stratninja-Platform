@@ -75,6 +75,16 @@ button{font-family:inherit}
 /* equity curve */
 .chartbox{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:18px;margin-bottom:20px}
 .chartbox h3{margin:0 0 12px;font-size:15px}
+.eq-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.eq-head h3{margin:0}
+.eq-modes{display:inline-flex;gap:3px}
+.eq-mode-btn{font-size:13px;font-weight:800;min-width:34px;padding:4px 10px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line);transition:.15s}
+.eq-mode-btn.on{background:linear-gradient(90deg,rgba(88,101,242,.92),rgba(124,108,240,.85));color:#fff;border-color:transparent}
+.eq-mode-btn:hover:not(.on){color:var(--ink)}
+.eq-base-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 2px;font-size:12.5px}
+.eq-base-row label{display:inline-flex;align-items:center;gap:4px;font-weight:600}
+.eq-base-inp{width:110px;padding:5px 8px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:13px;font-weight:700}
+.eq-base-row .muted{font-size:11px}
 svg .axis{stroke:var(--line);vector-effect:non-scaling-stroke}
 svg .eqline{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
 svg .eqarea{fill:url(#eqgrad)}
