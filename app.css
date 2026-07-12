@@ -435,8 +435,17 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ss-mid  .ss-col-h { background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--line); }
 .ss-col-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(132px,1fr)); gap:6px; align-items:stretch; }
 .ss-col-grid .subsec-card, .ss-col-grid .sector-card { margin:0; padding:10px 11px; display:flex; flex-direction:column; }
-.ss-col-grid .subsec-card .bkey, .ss-col-grid .sector-card .bkey { margin-top:auto; }
-.ss-col-grid .subsec-card h3, .ss-col-grid .sector-card h3 { font-size:12.5px; }
+.ss-col-grid .subsec-card h3, .ss-col-grid .sector-card h3 { font-size:12.5px; min-height:2.5em; align-content:flex-start; }
+/* 3-way FTFC bar (🟢 up-continuity · ⚪ none · 🔴 down-continuity), aligned across all cards */
+.ftfc3 { display:flex; height:8px; border-radius:5px; overflow:hidden; background:var(--cell); margin:2px 0 7px; }
+.ftfc3 .f3 { height:100%; }
+.ftfc3 .f3.g { background:var(--green); }
+.ftfc3 .f3.y { background:rgba(160,169,187,.32); }
+.ftfc3 .f3.r { background:var(--red); }
+.ftfc3-key { display:flex; gap:9px; font-size:11px; align-items:center; margin-top:auto; }
+.ftfc3-key .pos { color:var(--green); font-weight:600; }
+.ftfc3-key .neg { color:var(--red); font-weight:600; }
+.ftfc3-key .gy  { color:var(--muted); font-weight:600; }
 .subsec-card.b-bear, .sector-card.b-bear { border-inline-start:3px solid var(--red); }
 .subsec-card.b-mid,  .sector-card.b-mid  { border-inline-start:3px solid var(--line); }
 .subsec-card.b-bull, .sector-card.b-bull { border-inline-start:3px solid var(--green); }

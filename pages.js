@@ -2353,7 +2353,7 @@
 
   // ========== SECTORS ==========
   function renderSectors() {
-    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">כאן רואים לאן הכסף זורם היום: באילו סקטורים הכי הרבה מניות ירוקות ו-FTFC חיובי — לפי מניות <b>S&P 500</b>. לחץ על סקטור לפירוט לפי תת-סקטור.</div></div>';
+    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. הבר בכל כרטיס = הרכב ה-<b>FTFC</b> (המשכיות <b>D·W·M</b> — יומי·שבועי·חודשי): <span class="pos">🟢 המשכיות מעלה</span> · <span class="muted">⚪ ללא המשכיות</span> · <span class="neg">🔴 המשכיות מטה</span>. לחץ על סקטור לפירוט.</div></div>';
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
@@ -2371,19 +2371,14 @@
       return { name, members, bucket };
     });
     function secCard(o, extra) {
-      const name = o.name, members = o.members;
-      const ftfc = members.filter(m => m.ftfc).length;
-      const green = members.filter(m => (m.D || {}).c === "up").length;
+      const name = o.name, members = o.members, tot = members.length;
+      const fg = members.filter(m => m.ftfc && (m.D || {}).c === "up").length;
+      const fr = members.filter(m => m.ftfc && (m.D || {}).c === "down").length;
       const lv = liveMap[name];
-      const above = lv ? lv.above : green;
-      const below = lv ? lv.below : (members.length - green);
-      const tot = (lv && lv.total) ? lv.total : members.length;
-      const ap = tot ? above / tot * 100 : 0;
       const chgHtml = lv ? (" · " + pctSpanBare(lv.chg)) : "";
       const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
-      return '<div class="panel sector-card' + bcls + (extra ? " ss-extra" : "") + '" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
-        '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
-        '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + below + '</span><span class="badge-ftfc' + (o.bucket === "bear" ? " bear" : "") + '" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
+      return '<div class="panel sector-card' + bcls + (extra ? " ss-extra" : "") + '" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:11px">' + tot + " מניות" + chgHtml + "</span></h3>" +
+        ftfc3Html(fg, fr, tot) + "</div>";
     }
     // ONE column per bucket, side by side (RTL: BULL right · neutral middle · BEAR left). Inside each
     // column: a grid of up to 4-per-row (auto-fits the column width), first 4 shown + "עוד N" toggle.
@@ -2419,24 +2414,24 @@
       const bucket = bullPct > 50 ? "bull" : (bearPct >= 50 ? "bear" : "mid");
       return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "" };
     });
+    // 3-way FTFC (continuity of D·W·M): 🟢 up · ⚪ no-continuity · 🔴 down
+    function ftfc3Html(fg, fr, tot) {
+      const gray = Math.max(0, tot - fg - fr);
+      const gp = tot ? fg / tot * 100 : 0, rp = tot ? fr / tot * 100 : 0, yp = Math.max(0, 100 - gp - rp);
+      return '<div class="ftfc3" title="FTFC = המשכיות D·W·M"><span class="f3 g" style="width:' + gp.toFixed(1) + '%"></span><span class="f3 y" style="width:' + yp.toFixed(1) + '%"></span><span class="f3 r" style="width:' + rp.toFixed(1) + '%"></span></div>' +
+        '<div class="ftfc3-key"><span class="pos">🟢 ' + fg + '</span><span class="gy">⚪ ' + gray + '</span><span class="neg">🔴 ' + fr + "</span></div>";
+    }
     function subCard(o, extra) {
-      const ap = o.tot ? o.green / o.tot * 100 : 0;
-      const ftfcTag = o.bucket === "bull"
-        ? '<span class="badge-ftfc" style="margin-inline-start:auto">🟢 FTFC ' + o.bull + " (" + o.bullPct.toFixed(0) + "%)</span>"
-        : o.bucket === "bear"
-          ? '<span class="badge-ftfc bear" style="margin-inline-start:auto">🔴 FTFC ' + o.bear + " (" + o.bearPct.toFixed(0) + "%)</span>"
-          : '<span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + (o.bull + o.bear) + "</span>";
       const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
       return '<div class="panel subsec-card' + bcls + (extra ? " ss-extra" : "") + '" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
         '<h3>' + o.name + " " + etfChip(subEtfFor(o.name)) + ' <span class="muted" style="font-size:11px">' + o.tot + "</span></h3>" +
-        '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
-        '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + o.green + "</span><span class=\"neg\">🔴 " + (o.tot - o.green) + "</span>" + ftfcTag + "</div></div>";
+        ftfc3Html(o.bull, o.bear, o.tot) + "</div>";
     }
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
     const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
     const ssBear = subInfo.filter(o => o.bucket === "bear").sort((a, b) => b.bearPct - a.bearPct);
     const subSection = indNames.length
-      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (מימין — כסף נכנס) · <b>⚪ בין לבין</b> (באמצע) · <b>🔴 BEAR</b> (משמאל — כסף יוצא). לחץ על כרטיס למניות.</div></div>' +
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (מימין) · <b>⚪ בין לבין</b> (אמצע) · <b>🔴 BEAR</b> (שמאל). הבר = הרכב <b>FTFC (D·W·M)</b>: <span class="pos">🟢 מעלה</span> · <span class="muted">⚪ ללא</span> · <span class="neg">🔴 מטה</span>. לחץ על כרטיס למניות.</div></div>' +
         '<div class="subsec-3col">' +
           ssColumn("🟢 BULL", "ss-bull", ssBull, subCard) + ssColumn("⚪ בין לבין", "ss-mid", ssMid, subCard) + ssColumn("🔴 BEAR", "ss-bear", ssBear, subCard) + "</div>"
       : "";
