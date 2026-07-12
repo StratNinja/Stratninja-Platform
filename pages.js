@@ -2361,8 +2361,17 @@
     SCAN.rows.forEach(r => { const s = r.sec || "אחר"; (bySec[s] = bySec[s] || []).push(r); });
     const liveMap = {}; if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => liveMap[s.name] = s);
     const names = Object.keys(bySec).sort((a, b) => bySec[b].length - bySec[a].length);
-    const cards = names.map(name => {
+    // classify each main sector by its FTFC directional bias (of its FTFC stocks, more green or red?)
+    const secInfo = names.map(name => {
       const members = bySec[name];
+      const sb = members.filter(m => m.ftfc && (m.D || {}).c === "up").length;
+      const sr = members.filter(m => m.ftfc && (m.D || {}).c === "down").length;
+      const ft = sb + sr;
+      const bucket = ft === 0 ? "mid" : (sb / ft > 0.6 ? "bull" : (sb / ft < 0.4 ? "bear" : "mid"));
+      return { name, members, bucket };
+    });
+    function secCard(o) {
+      const name = o.name, members = o.members;
       const ftfc = members.filter(m => m.ftfc).length;
       const green = members.filter(m => (m.D || {}).c === "up").length;
       const lv = liveMap[name];
@@ -2371,10 +2380,23 @@
       const tot = (lv && lv.total) ? lv.total : members.length;
       const ap = tot ? above / tot * 100 : 0;
       const chgHtml = lv ? (" · " + pctSpanBare(lv.chg)) : "";
-      return '<div class="panel sector-card" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
+      const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
+      return '<div class="panel sector-card' + bcls + '" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
-        '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + below + '</span><span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
-    }).join("");
+        '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + below + '</span><span class="badge-ftfc' + (o.bucket === "bear" ? " bear" : "") + '" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
+    }
+    const secBull = secInfo.filter(o => o.bucket === "bull");
+    const secMid = secInfo.filter(o => o.bucket === "mid");
+    const secBear = secInfo.filter(o => o.bucket === "bear");
+    const secBlock = (title, cls, arr) =>
+      '<div class="ss-section ' + cls + '"><div class="ss-sec-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+      '<div class="ss-grid">' + (arr.length ? arr.map(secCard).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>') + "</div></div>";
+    const secGrouped =
+      '<div class="ss-spectrum">' +
+        '<div class="ss-sp bull">🟢 BULL <b>' + secBull.length + "</b></div>" +
+        '<div class="ss-sp mid">⚪ נטרלי <b>' + secMid.length + "</b></div>" +
+        '<div class="ss-sp bear">🔴 BEAR <b>' + secBear.length + "</b></div></div>" +
+      secBlock("🟢 BULL", "ss-bull", secBull) + secBlock("⚪ נטרלי", "ss-mid", secMid) + secBlock("🔴 BEAR", "ss-bear", secBear);
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
@@ -2430,7 +2452,7 @@
         ssGrid("🟢 BULL", "ss-bull", ssBull) + ssGrid("⚪ בין לבין", "ss-mid", ssMid) + ssGrid("🔴 BEAR", "ss-bear", ssBear)
       : "";
 
-    return head + note + '<div class="sector-grid">' + cards + "</div>" + subSection;
+    return head + note + secGrouped + subSection;
   }
   function wireSectors() {
     document.querySelectorAll(".sector-card").forEach(c => {

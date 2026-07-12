@@ -438,10 +438,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ss-bear .ss-sec-h { background:rgba(224,82,79,.15); color:#ff6b7a; border:1px solid rgba(224,82,79,.3); }
 .ss-mid  .ss-sec-h { background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--line); }
 .ss-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; align-items:start; }
-.ss-grid .subsec-card { margin:0; }
-.subsec-card.b-bear { border-inline-start:3px solid var(--red); }
-.subsec-card.b-mid  { border-inline-start:3px solid var(--line); }
-.subsec-card.b-bull { border-inline-start:3px solid var(--green); }
+.ss-grid .subsec-card, .ss-grid .sector-card { margin:0; }
+.subsec-card.b-bear, .sector-card.b-bear { border-inline-start:3px solid var(--red); }
+.subsec-card.b-mid,  .sector-card.b-mid  { border-inline-start:3px solid var(--line); }
+.subsec-card.b-bull, .sector-card.b-bull { border-inline-start:3px solid var(--green); }
 .ss-section .ss-extra { display:none; }
 .ss-section.expanded .ss-extra { display:block; }
 .ss-more { width:100%; margin-top:8px; font-size:12px; font-weight:600; }
