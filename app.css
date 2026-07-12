@@ -673,9 +673,18 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* ===== market overview — compact single-screen dashboard ===== */
 .mkt-dash { display: grid; grid-template-rows: auto auto; gap: 10px; }
 .mkt-dash-top { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 10px; align-items: stretch; }
-.mkt-dash-left { display: grid; grid-template-rows: 1fr; gap: 10px; align-content: stretch; }
-.mkt-dash-left .mkt-idx-row { height: 100%; }
+.mkt-dash-left { display: flex; flex-direction: column; gap: 10px; }
+.mkt-dash-left .mkt-idx-row { height: auto; }
 .mkt-idx-row { display: grid; grid-template-columns: minmax(0,1fr) 148px; gap: 10px; align-items: stretch; }
+/* SPY 30-day mini chart (candles / line) */
+.spy-chart-panel { margin: 0; padding: 10px 12px; }
+.spc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.spc-title { font-weight: 800; font-size: 13px; }
+.spc-toggle { margin-inline-start: auto; display: flex; gap: 4px; }
+.spc-btn { background: var(--panel2); border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 7px; cursor: pointer; }
+.spc-btn.on { background: var(--accentbg); color: var(--accent); border-color: rgba(124,108,240,.5); }
+.spc-body { background: var(--panel2); border-radius: 8px; padding: 4px 6px; }
+.spc-body svg { display: block; }
 .mkt-dash-right { min-width: 0; }
 .mkt-dash-bottom { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; align-items: stretch; }
 .mkt-dash-bottom .panel { display: flex; flex-direction: column; }

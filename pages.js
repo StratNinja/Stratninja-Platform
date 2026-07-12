@@ -594,6 +594,45 @@
     return '<div class="panel gappers-mini"><h3 class="gm-head"><span>' + head + "</span>" + seeAll + "</h3>" + sub +
       '<div class="gm-grid"><div><div class="td-h pos">' + upLbl + "</div>" + row(data.up) + '</div><div><div class="td-h neg">' + dnLbl + "</div>" + row(data.down) + "</div></div></div>";
   }
+  // ---- market-page mini chart of an index (30-day, candles or line) ----
+  let _idxChartMode = "candle";
+  function indexChartSvg(ohlc, mode, w, h) {
+    if (!ohlc || !ohlc.length) return '<div class="muted" style="padding:26px 0;text-align:center;font-size:12px">אין נתוני גרף — יטען בהרצת השרת הבאה</div>';
+    const padT = 8, padB = 6, padL = 4, padR = 42, n = ohlc.length;
+    let lo = Infinity, hi = -Infinity;
+    ohlc.forEach(b => { lo = Math.min(lo, b[2]); hi = Math.max(hi, b[1]); });
+    const rng = (hi - lo) || 1;
+    const cw = (w - padL - padR) / n;
+    const y = v => padT + (h - padT - padB) * (1 - (v - lo) / rng);
+    const x = i => padL + cw * i + cw / 2;
+    let s = "";
+    if (mode === "line") {
+      const pts = ohlc.map((b, i) => x(i).toFixed(1) + "," + y(b[3]).toFixed(1)).join(" ");
+      const col = ohlc[n - 1][3] >= ohlc[0][3] ? "var(--green)" : "var(--red)";
+      s += '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="1.8" stroke-linejoin="round"/>';
+    } else {
+      ohlc.forEach((b, i) => {
+        const o = b[0], hh = b[1], ll = b[2], c = b[3], cx = x(i);
+        const col = c >= o ? "var(--green)" : "var(--red)";
+        const bt = y(Math.max(o, c)), bb = y(Math.min(o, c)), bw = Math.max(1.5, cw * 0.62);
+        s += '<line x1="' + cx.toFixed(1) + '" x2="' + cx.toFixed(1) + '" y1="' + y(hh).toFixed(1) + '" y2="' + y(ll).toFixed(1) + '" stroke="' + col + '" stroke-width="1"/>';
+        s += '<rect x="' + (cx - bw / 2).toFixed(1) + '" y="' + bt.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(1, bb - bt).toFixed(1) + '" fill="' + col + '"/>';
+      });
+    }
+    s += '<text x="' + (w - padR + 4) + '" y="' + (y(hi) + 7) + '" fill="var(--muted)" font-size="9">' + hi.toFixed(0) + "</text>";
+    s += '<text x="' + (w - padR + 4) + '" y="' + (y(lo) - 1) + '" fill="var(--muted)" font-size="9">' + lo.toFixed(0) + "</text>";
+    return '<svg viewBox="0 0 ' + w + " " + h + '" width="100%" height="' + h + '" preserveAspectRatio="none">' + s + "</svg>";
+  }
+  function spyChartPanel() {
+    const idx = (LIVE && LIVE.indices) || [];
+    const spy = idx.find(x => x.sym === "SPY");
+    const ohlc = spy && spy.ohlc, chg = spy ? spy.chg : null;
+    return '<div class="panel spy-chart-panel"><div class="spc-head">' +
+      '<span class="spc-title">SPY · 30 יום</span>' +
+      (chg != null ? '<span class="' + (chg >= 0 ? "pos" : "neg") + '" style="font-weight:700;font-size:12px">' + (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%</span>" : "") +
+      '<span class="spc-toggle"><button class="spc-btn' + (_idxChartMode === "candle" ? " on" : "") + '" data-idxmode="candle">🕯️ נרות</button><button class="spc-btn' + (_idxChartMode === "line" ? " on" : "") + '" data-idxmode="line">📈 קו</button></span>' +
+      "</div><div class=\"spc-body\">" + indexChartSvg(ohlc, _idxChartMode, 340, 150) + "</div></div>";
+  }
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
     const idxRows = idxSrc.map(r =>
@@ -620,6 +659,7 @@
         '<div class="mkt-dash-top">' +
           '<div class="mkt-dash-left">' +
             '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
+            spyChartPanel() +
           "</div>" +
           '<div class="mkt-dash-right">' + candleMapPanel() + "</div>" +
         "</div>" +
@@ -638,6 +678,7 @@
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => setPage("gappers"); }
+    document.querySelectorAll("[data-idxmode]").forEach(b => b.onclick = () => { _idxChartMode = b.dataset.idxmode; reRender(); });
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
     document.querySelectorAll("[data-uni]").forEach(el => el.onclick = () => {
       if (marketUniverse === el.dataset.uni) return;
