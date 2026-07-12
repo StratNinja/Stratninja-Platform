@@ -63,13 +63,19 @@ window.Engine = (function () {
     const lines = text.split(/\r?\n/);
     let header = null;
     const rows = [];
+    // an IBKR statement can hold SEVERAL "Trades" sub-tables (Stocks, then Forex, …) each with its
+    // OWN header + columns. Lock onto the FIRST (stocks/options) header so column positions — incl.
+    // the fee column — stay valid, and skip Forex/Cash/Futures rows so they don't become junk trades.
+    const SKIP_ASSET = /forex|cash|futures|cfd|bond/i;
     for (const line of lines) {
       if (!line.trim()) continue;
       const c = parseCSVLine(line);
-      if (c[0] === "Trades" && c[1] === "Header") header = c.slice(2);
-      else if (c[0] === "Trades" && c[1] === "Data" && header) {
+      if (c[0] === "Trades" && c[1] === "Header") { if (!header) header = c.slice(2); continue; }
+      if (c[0] === "Trades" && c[1] === "Data" && header) {
         const disc = c[2];                                          // DataDiscriminator
-        if (disc === "Order" || disc === "Trade") rows.push(c.slice(2));
+        if (disc !== "Order" && disc !== "Trade") continue;         // skip SubTotal / Total rows
+        if (SKIP_ASSET.test(c[3] || "")) continue;                  // c[3] = Asset Category
+        rows.push(c.slice(2));
       }
     }
     return header ? { header, rows } : null;
