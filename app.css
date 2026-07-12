@@ -689,7 +689,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .spc-btn.on { background: var(--accentbg); color: var(--accent); border-color: rgba(124,108,240,.5); }
 .spc-body { background: var(--panel2); border-radius: 8px; padding: 4px 6px; }
 .spc-body svg { display: block; }
-.mkt-dash-right { min-width: 0; }
+.mkt-dash-right { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+/* SPY chart is now the prominent right panel — fills the column height next to the stacked indices+candle-map */
+.mkt-dash-chart { display: flex; }
+.mkt-dash-chart .spy-chart-panel { flex: 1; display: flex; flex-direction: column; margin: 0; }
+.mkt-dash-chart .spc-body { flex: 1; display: flex; min-height: 240px; }
+.mkt-dash-chart .spc-body svg { height: 100%; width: 100%; }
 .mkt-dash-bottom { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; align-items: stretch; }
 .mkt-dash-bottom .panel { display: flex; flex-direction: column; }
 .mkt-sec-title { font-size: 13px; font-weight: 800; color: var(--muted); letter-spacing: .03em; margin: 6px 2px -1px; }

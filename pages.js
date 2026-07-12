@@ -632,7 +632,7 @@
       '<span class="spc-title">SPY · 30 יום</span>' +
       (chg != null ? '<span class="' + (chg >= 0 ? "pos" : "neg") + '" style="font-weight:700;font-size:12px">' + (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%</span>" : "") +
       '<span class="spc-toggle"><button class="spc-btn' + (_idxChartMode === "candle" ? " on" : "") + '" data-idxmode="candle">🕯️ נרות</button><button class="spc-btn' + (_idxChartMode === "line" ? " on" : "") + '" data-idxmode="line">📈 קו</button></span>' +
-      "</div><div class=\"spc-body\">" + indexChartSvg(ohlc, _idxChartMode, 340, 150) + "</div></div>";
+      "</div><div class=\"spc-body\">" + indexChartSvg(ohlc, _idxChartMode, 520, 300) + "</div></div>";
   }
   function renderMarket() {
     const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
@@ -658,11 +658,11 @@
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
         marketPulse() +
         '<div class="mkt-dash-top">' +
-          '<div class="mkt-dash-left">' +
+          '<div class="mkt-dash-left mkt-dash-chart">' + spyChartPanel() + "</div>" +
+          '<div class="mkt-dash-right">' +
             '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
-            spyChartPanel() +
+            candleMapPanel() +
           "</div>" +
-          '<div class="mkt-dash-right">' + candleMapPanel() + "</div>" +
         "</div>" +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-dash-bottom">' +
