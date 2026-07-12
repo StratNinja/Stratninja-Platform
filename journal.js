@@ -672,6 +672,7 @@
   }
   function handleFiles(files) {
     let pending = files.length, totalAdded = 0, errs = [];
+    const importedAccts = new Set();   // accounts that received data → so we can switch the view to them
     if (!pending) return;
     Array.from(files).forEach(file => {
       const rd = new FileReader();
@@ -679,16 +680,27 @@
         const res = E.parseCSV(rd.result);
         if (res.errors.length) errs = errs.concat(res.errors.slice(0, 3));
         totalAdded += Store.addFills(res.fills);
-        if (--pending === 0) finishImport(totalAdded, errs);
+        (res.fills || []).forEach(f => importedAccts.add((f.account || "").trim()));
+        if (--pending === 0) finishImport(totalAdded, errs, Array.from(importedAccts));
       };
-      rd.onerror = () => { if (--pending === 0) finishImport(totalAdded, errs); };
+      rd.onerror = () => { if (--pending === 0) finishImport(totalAdded, errs, Array.from(importedAccts)); };
       rd.readAsText(file);
     });
   }
-  function finishImport(added, errs) {
+  function finishImport(added, errs, importedAccts) {
     closeModal();
     const accts = Store.accounts();
-    if (!state.account && accts.length) state.account = accts[0];
+    // switch the view to the imported account so the new trades are actually VISIBLE — otherwise, if
+    // the user already had another account selected, the import lands elsewhere and looks like nothing
+    // happened. Prefer an imported account that now exists; fall back to first account / combined view.
+    if (added) {
+      const target = (importedAccts || []).find(a => accts.indexOf(a) >= 0);
+      if (target) state.account = target;
+      else if (!state.account && accts.length) state.account = accts[0];
+      else if (accts.length > 1) state.account = ALL;
+    } else if (!state.account && accts.length) {
+      state.account = accts[0];
+    }
     render();
     if (added) {
       toast("נוספו " + added + " ביצועים חדשים");
