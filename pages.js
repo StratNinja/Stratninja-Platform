@@ -2370,7 +2370,7 @@
       const bucket = ft === 0 ? "mid" : (sb / ft > 0.6 ? "bull" : (sb / ft < 0.4 ? "bear" : "mid"));
       return { name, members, bucket };
     });
-    function secCard(o) {
+    function secCard(o, extra) {
       const name = o.name, members = o.members;
       const ftfc = members.filter(m => m.ftfc).length;
       const green = members.filter(m => (m.D || {}).c === "up").length;
@@ -2381,22 +2381,27 @@
       const ap = tot ? above / tot * 100 : 0;
       const chgHtml = lv ? (" · " + pctSpanBare(lv.chg)) : "";
       const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
-      return '<div class="panel sector-card' + bcls + '" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
+      return '<div class="panel sector-card' + bcls + (extra ? " ss-extra" : "") + '" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:12px">' + members.length + " מניות" + chgHtml + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="bkey" style="margin-top:10px;font-size:12px"><span class="pos">🟢 ' + above + " (" + ap.toFixed(0) + "%)</span><span class=\"neg\">🔴 " + below + '</span><span class="badge-ftfc' + (o.bucket === "bear" ? " bear" : "") + '" style="margin-inline-start:auto">FTFC ' + ftfc + "</span></div></div>";
     }
+    // ONE column per bucket, side by side (RTL: BULL right · neutral middle · BEAR left). Inside each
+    // column: a grid of up to 4-per-row (auto-fits the column width), first 4 shown + "עוד N" toggle.
+    const SS_HEAD = 4;
+    const ssColumn = (title, cls, arr, cardFn) => {
+      const cards = arr.length
+        ? arr.map((o, i) => cardFn(o, i >= SS_HEAD)).join("")
+        : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>';
+      const hidden = Math.max(0, arr.length - SS_HEAD);
+      return '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+        '<div class="ss-col-grid">' + cards + "</div>" +
+        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
+    };
     const secBull = secInfo.filter(o => o.bucket === "bull");
     const secMid = secInfo.filter(o => o.bucket === "mid");
     const secBear = secInfo.filter(o => o.bucket === "bear");
-    const secBlock = (title, cls, arr) =>
-      '<div class="ss-section ' + cls + '"><div class="ss-sec-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-      '<div class="ss-grid">' + (arr.length ? arr.map(secCard).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>') + "</div></div>";
-    const secGrouped =
-      '<div class="ss-spectrum">' +
-        '<div class="ss-sp bull">🟢 BULL <b>' + secBull.length + "</b></div>" +
-        '<div class="ss-sp mid">⚪ נטרלי <b>' + secMid.length + "</b></div>" +
-        '<div class="ss-sp bear">🔴 BEAR <b>' + secBear.length + "</b></div></div>" +
-      secBlock("🟢 BULL", "ss-bull", secBull) + secBlock("⚪ נטרלי", "ss-mid", secMid) + secBlock("🔴 BEAR", "ss-bear", secBear);
+    const secGrouped = '<div class="subsec-3col">' +
+      ssColumn("🟢 BULL", "ss-bull", secBull, secCard) + ssColumn("⚪ נטרלי", "ss-mid", secMid, secCard) + ssColumn("🔴 BEAR", "ss-bear", secBear, secCard) + "</div>";
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
@@ -2430,26 +2435,10 @@
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
     const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
     const ssBear = subInfo.filter(o => o.bucket === "bear").sort((a, b) => b.bearPct - a.bearPct);
-    // TOP: a spectrum header row (🟢 BULL right · ⚪ neutral middle · 🔴 BEAR left).
-    // THEN: each division as its own block — a header + a 4-per-row grid (first 8 shown + "עוד N").
-    const SS_HEAD = 8;
-    const spectrum = '<div class="ss-spectrum">' +
-      '<div class="ss-sp bull">🟢 BULL <b>' + ssBull.length + "</b></div>" +
-      '<div class="ss-sp mid">⚪ בין לבין <b>' + ssMid.length + "</b></div>" +
-      '<div class="ss-sp bear">🔴 BEAR <b>' + ssBear.length + "</b></div></div>";
-    const ssGrid = (title, cls, arr) => {
-      const cardsHtml = arr.length
-        ? arr.map((o, i) => subCard(o, i >= SS_HEAD)).join("")
-        : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>';
-      const hidden = Math.max(0, arr.length - SS_HEAD);
-      return '<div class="ss-section ' + cls + '"><div class="ss-sec-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-        '<div class="ss-grid">' + cardsHtml + "</div>" +
-        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
-    };
     const subSection = indNames.length
-      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (כסף נכנס, מעל 50% FTFC ירוק) · <b>⚪ בין לבין</b> · <b>🔴 BEAR</b> (כסף יוצא, 50%+ FTFC אדום). לחץ על כרטיס למניות.</div></div>' +
-        spectrum +
-        ssGrid("🟢 BULL", "ss-bull", ssBull) + ssGrid("⚪ בין לבין", "ss-mid", ssMid) + ssGrid("🔴 BEAR", "ss-bear", ssBear)
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (מימין — כסף נכנס) · <b>⚪ בין לבין</b> (באמצע) · <b>🔴 BEAR</b> (משמאל — כסף יוצא). לחץ על כרטיס למניות.</div></div>' +
+        '<div class="subsec-3col">' +
+          ssColumn("🟢 BULL", "ss-bull", ssBull, subCard) + ssColumn("⚪ בין לבין", "ss-mid", ssMid, subCard) + ssColumn("🔴 BEAR", "ss-bear", ssBear, subCard) + "</div>"
       : "";
 
     return head + note + secGrouped + subSection;
@@ -2462,12 +2451,12 @@
     document.querySelectorAll(".subsec-card").forEach(c => {
       c.onclick = () => { if (c.dataset.subsec) openSubDrillLive(decodeURIComponent(c.dataset.subsec)); };
     });
-    // "עוד N" — reveal/hide the collapsed sub-sector cards in each division block
+    // "עוד N" — reveal/hide the collapsed cards inside each column
     document.querySelectorAll("[data-sssection]").forEach(b => b.onclick = e => {
       e.stopPropagation();
-      const sec = b.closest(".ss-section"); if (!sec) return;
-      const open = sec.classList.toggle("expanded");
-      b.textContent = open ? "פחות ↑" : ("עוד " + sec.querySelectorAll(".ss-extra").length + " ↓");
+      const col = b.closest(".ss-col"); if (!col) return;
+      const open = col.classList.toggle("expanded");
+      b.textContent = open ? "פחות ↑" : ("עוד " + col.querySelectorAll(".ss-extra").length + " ↓");
     });
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }
