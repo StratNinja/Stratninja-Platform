@@ -677,6 +677,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* ===== market overview — compact single-screen dashboard ===== */
 .mkt-dash { display: grid; grid-template-rows: auto auto; gap: 10px; }
 .mkt-dash-stack { display: flex; flex-direction: column; gap: 10px; }
+/* indices+VIX beside the Candle Map — side by side so the page fits without scrolling */
+.mkt-dash-2col { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 10px; align-items: start; }
+.mkt-idx-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+@media (max-width: 900px) { .mkt-dash-2col { grid-template-columns: minmax(0,1fr); } }
 .mkt-dash-top { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); gap: 10px; align-items: stretch; }
 .mkt-dash-left { display: flex; flex-direction: column; gap: 10px; }
 .mkt-dash-left .mkt-idx-row { height: auto; }
