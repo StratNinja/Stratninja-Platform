@@ -534,7 +534,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
   background: linear-gradient(90deg, rgba(88,101,242,.18), rgba(124,108,240,.12)), var(--panel);
   border: 1px solid rgba(124,108,240,.4); border-radius: 12px; padding: 11px 18px; margin-bottom: 18px;
   text-decoration: none; color: var(--ink); font-size: 14px; font-weight: 600; transition: .15s; }
-.community-cta:hover { border-color: var(--accent); background: linear-gradient(90deg, rgba(88,101,242,.28), rgba(124,108,240,.2)); }
+.community-cta:hover { border-color: var(--accent); background: linear-gradient(90deg, rgba(88,101,242,.28), rgba(124,108,240,.2)), var(--panel); }
 .community-cta .cta-arrow { background: #5865F2; color: #fff; border-radius: 8px; padding: 5px 14px; font-size: 13px; white-space: nowrap; }
 @media (max-width: 600px) { .community-cta { font-size: 12px; padding: 9px 12px; } }
 
