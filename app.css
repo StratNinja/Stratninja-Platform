@@ -346,8 +346,11 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .td-idx { font-size:13px; background:rgba(255,255,255,.04); padding:5px 10px; border-radius:8px; }
 .td-idx b { color:#c3ccdd; margin-inline-end:4px; }
 /* modular layout: market state = full-width row on top, then 3 columns (money-flow left · long · short right) */
-.td-grid3 { display:grid; grid-template-columns:1.05fr 1.05fr 1fr; gap:14px; align-items:start; }
+.td-grid3 { display:grid; grid-template-columns:1.05fr 1.05fr 1fr; gap:14px; align-items:stretch; }
 .td-grid3 > .panel { margin-bottom:0; }
+/* money-flow column fills the same height as the candidate tables (no step at the bottom) */
+.td-grid3 .td-flow { display:flex; flex-direction:column; }
+.td-grid3 .td-flow .tdf-list { flex:1; justify-content:space-between; }
 /* market-state panel — full-width horizontal row + colored accent */
 .td-market { border-inline-start:4px solid var(--line); }
 .td-market-row { display:flex; flex-direction:row; align-items:center; gap:14px 20px; flex-wrap:wrap; margin-bottom:14px; }
