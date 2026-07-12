@@ -40,53 +40,113 @@ window.Engine = (function () {
   }
 
   function isOptionSymbol(sym, clrType) {
-    if (clrType && clrType.toLowerCase().indexOf("opt") === 0) return true;
+    if (clrType && clrType.toLowerCase().indexOf("opt") >= 0) return true;   // "Options", "Equity and Index Options", "Opti"
     return /(CALL|PUT)\s*$/i.test(sym);
   }
 
-  /* Parse a broker CSV string into normalized fills.
-   * Returns { fills: [...], account: "COLH..." | null, errors: [...] } */
-  function parseCSV(text) {
-    const lines = text.split(/\r?\n/).filter(l => l.trim().length);
-    if (!lines.length) return { fills: [], account: null, errors: ["הקובץ ריק"] };
-    const header = parseCSVLine(lines[0]);
-    const idx = {};
-    header.forEach((h, i) => { idx[h.trim()] = i; });
-    const need = ["Trade Date", "Side", "Symbol", "Shares", "Price"];
-    const missing = need.filter(n => !(n in idx));
-    if (missing.length) {
-      return { fills: [], account: null, errors: ["חסרות עמודות בקובץ: " + missing.join(", ")] };
+  // flexible date → YYYY-MM-DD: handles MM/DD/YYYY, YYYY-MM-DD[ ,HH:MM], YYYYMMDD, DD/MM/YYYY-ish
+  function toISOflex(s) {
+    s = (s || "").trim();
+    if (!s) return null;
+    let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);                 // 2024-01-15 or "2024-01-15, 10:30:00"
+    if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+    m = s.match(/^(\d{4})(\d{2})(\d{2})(?:[;\sT]|$)/);               // 20240115 or 20240115;103000 (IBKR flex)
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);                   // MM/DD/YYYY
+    if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+    return null;
+  }
+
+  // Interactive Brokers "Activity Statement" is multi-section — pull the Trades section into a
+  // flat { header, rows } so it parses like any other CSV. Uses "Trades,Header,…" / "Trades,Data,…".
+  function extractIbkrTrades(text) {
+    const lines = text.split(/\r?\n/);
+    let header = null;
+    const rows = [];
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const c = parseCSVLine(line);
+      if (c[0] === "Trades" && c[1] === "Header") header = c.slice(2);
+      else if (c[0] === "Trades" && c[1] === "Data" && header) {
+        const disc = c[2];                                          // DataDiscriminator
+        if (disc === "Order" || disc === "Trade") rows.push(c.slice(2));
+      }
     }
-    const get = (row, name) => (idx[name] != null ? (row[idx[name]] || "").trim() : "");
+    return header ? { header, rows } : null;
+  }
+
+  // column-name aliases (many brokers / IBKR variants) → our canonical fields
+  const ALIAS = {
+    date: ["Trade Date", "TradeDate", "Date/Time", "DateTime", "Date", "T. Date"],
+    side: ["Side", "Buy/Sell", "B/S", "Action"],
+    symbol: ["Symbol", "Ticker", "UnderlyingSymbol"],
+    qty: ["Shares", "Quantity", "Qty"],
+    price: ["Price", "T. Price", "TradePrice", "Trade Price"],
+    account: ["Account", "ClientAccountID", "AccountId", "Account Id"],
+    clr: ["Clr Type", "Asset Category", "AssetClass", "Asset Class"],
+    exec: ["Exec Time", "Time", "Date/Time"],
+  };
+  const FEE_ALIAS = FEE_COLS.concat(["Comm/Fee", "IBCommission", "Comm", "CommFee", "Commission/Fee", "Fee"]);
+  function _col(idx, aliases) { for (const a of aliases) if (a in idx) return idx[a]; return -1; }
+  const _num = s => parseFloat(String(s == null ? "" : s).replace(/[$,\s]/g, "")) || 0;
+
+  /* Parse a broker CSV string into normalized fills. Supports the standard US-broker export AND
+   * Interactive Brokers (Activity Statement + Flex Query, signed quantity, ISO dates).
+   * Returns { fills: [...], account: "…" | null, errors: [...] } */
+  function parseCSV(text) {
+    let header, dataRows;
+    const ib = extractIbkrTrades(text);
+    if (ib) {                                                       // Interactive Brokers activity statement
+      header = ib.header; dataRows = ib.rows;
+    } else {
+      const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+      if (!lines.length) return { fills: [], account: null, errors: ["הקובץ ריק"] };
+      header = parseCSVLine(lines[0]); dataRows = lines.slice(1).map(parseCSVLine);
+    }
+    const idx = {};
+    header.forEach((h, i) => { idx[String(h).trim()] = i; });
+    const cDate = _col(idx, ALIAS.date), cSym = _col(idx, ALIAS.symbol),
+      cQty = _col(idx, ALIAS.qty), cPrice = _col(idx, ALIAS.price),
+      cSide = _col(idx, ALIAS.side), cAcct = _col(idx, ALIAS.account),
+      cClr = _col(idx, ALIAS.clr), cExec = _col(idx, ALIAS.exec);
+    const miss = [];
+    if (cDate < 0) miss.push("תאריך");
+    if (cSym < 0) miss.push("סימבול");
+    if (cQty < 0) miss.push("כמות");
+    if (cPrice < 0) miss.push("מחיר");
+    if (miss.length) {
+      return { fills: [], account: null, errors: ["הקובץ לא בפורמט מוכר — חסרות עמודות: " + miss.join(", ") +
+        ". העמודות שנמצאו: " + header.slice(0, 14).map(h => String(h).trim()).filter(Boolean).join(", ")] };
+    }
+    const cell = (row, i) => (i >= 0 && i < row.length ? String(row[i] || "").trim() : "");
     const fills = [];
     let account = null;
     const errors = [];
-    for (let r = 1; r < lines.length; r++) {
-      const row = parseCSVLine(lines[r]);
-      const sym = get(row, "Symbol");
+    for (let r = 0; r < dataRows.length; r++) {
+      const row = dataRows[r];
+      const sym = cell(row, cSym);
       if (!sym) continue;
-      const iso = toISO(get(row, "Trade Date"));
-      if (!iso) { errors.push("שורה " + (r + 1) + ": תאריך לא תקין"); continue; }
-      const acct = get(row, "Account") || account || "";
+      const iso = toISOflex(cell(row, cDate));
+      if (!iso) { errors.push("שורה " + (r + 2) + ": תאריך לא תקין (" + cell(row, cDate) + ")"); continue; }
+      const acct = cell(row, cAcct) || account || "";
       if (!account && acct) account = acct;
-      const side = get(row, "Side").toUpperCase();
-      const qty = parseFloat(get(row, "Shares")) || 0;
-      const price = parseFloat(get(row, "Price")) || 0;
-      let fees = 0;
-      FEE_COLS.forEach(c => { fees += parseFloat(get(row, c)) || 0; });
-      const clr = get(row, "Clr Type");
+      const qtyRaw = _num(cell(row, cQty));
+      let side;
+      if (cSide >= 0 && cell(row, cSide)) {
+        const s = cell(row, cSide).toUpperCase();
+        side = (s[0] === "S") ? "S" : "B";                          // SELL/SLD/S → S · BUY/BOT/B → B
+      } else {
+        side = qtyRaw < 0 ? "S" : "B";                              // IBKR: signed quantity (no Side column)
+      }
+      const clr = cell(row, cClr);
       const isOpt = isOptionSymbol(sym, clr);
+      let fees = 0;
+      FEE_ALIAS.forEach(fc => { if (fc in idx) fees += Math.abs(_num(cell(row, idx[fc]))); });
       fills.push({
-        account: acct,
-        date: iso,
-        side: side === "B" ? "B" : "S",
-        symbol: sym,
-        qty: qty,
-        price: price,
-        fees: fees,
-        mult: isOpt ? 100 : 1,
-        assetType: isOpt ? "option" : "stock",
-        exec: get(row, "Exec Time"),
+        account: acct, date: iso, side: side, symbol: sym,
+        qty: Math.abs(qtyRaw), price: _num(cell(row, cPrice)), fees: fees,
+        mult: isOpt ? 100 : 1, assetType: isOpt ? "option" : "stock",
+        exec: cExec >= 0 ? cell(row, cExec) : "",
       });
     }
     return { fills, account, errors };

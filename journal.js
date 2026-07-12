@@ -687,7 +687,15 @@
     const accts = Store.accounts();
     if (!state.account && accts.length) state.account = accts[0];
     render();
-    toast(added ? "נוספו " + added + " ביצועים חדשים" : "לא נוספו ביצועים חדשים (כפילויות?)");
+    if (added) {
+      toast("נוספו " + added + " ביצועים חדשים");
+    } else if (errs.length) {
+      // show the REAL reason (unsupported format / bad dates), not a misleading "duplicates?"
+      alert("הייבוא נכשל:\n\n" + errs.slice(0, 4).join("\n") +
+        "\n\n💡 הקובץ צריך לכלול עמודות: תאריך · סימבול · כמות · מחיר (ו-Side או כמות עם +/−). נתמכים גם קובצי Interactive Brokers.");
+    } else {
+      toast("לא נוספו ביצועים חדשים (כנראה כפילויות של ביצועים שכבר ביומן)");
+    }
     if (errs.length) console.warn("Import warnings:", errs);
   }
 
