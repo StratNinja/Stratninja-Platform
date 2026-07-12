@@ -2373,14 +2373,14 @@
       const bucket = bullPct > 50 ? "bull" : (bearPct >= 50 ? "bear" : "mid");
       return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "" };
     });
-    function subCard(o) {
+    function subCard(o, extra) {
       const ap = o.tot ? o.green / o.tot * 100 : 0;
       const ftfcTag = o.bucket === "bull"
         ? '<span class="badge-ftfc" style="margin-inline-start:auto">🟢 FTFC ' + o.bull + " (" + o.bullPct.toFixed(0) + "%)</span>"
         : o.bucket === "bear"
           ? '<span class="badge-ftfc bear" style="margin-inline-start:auto">🔴 FTFC ' + o.bear + " (" + o.bearPct.toFixed(0) + "%)</span>"
           : '<span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + (o.bull + o.bear) + "</span>";
-      return '<div class="panel subsec-card" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
+      return '<div class="panel subsec-card' + (extra ? " ss-extra" : "") + '" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
         '<h3>' + o.name + " " + etfChip(subEtfFor(o.name)) + ' <span class="muted" style="font-size:11px">' + o.tot + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + o.green + "</span><span class=\"neg\">🔴 " + (o.tot - o.green) + "</span>" + ftfcTag + "</div></div>";
@@ -2388,18 +2388,21 @@
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
     const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
     const ssBear = subInfo.filter(o => o.bucket === "bear").sort((a, b) => b.bearPct - a.bearPct);
-    // each column shows its top few, with the rest collapsed behind a toggle (no more infinite scroll)
-    const SS_HEAD = 6;
-    const ssCol = (title, cls, arr) => {
-      const head = arr.slice(0, SS_HEAD), rest = arr.slice(SS_HEAD), restId = "ssrest-" + cls;
-      return '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-        (arr.length ? head.map(subCard).join("") : '<div class="muted" style="padding:12px;font-size:12px;text-align:center">אין כרגע</div>') +
-        (rest.length ? '<div class="ss-rest" id="' + restId + '" hidden>' + rest.map(subCard).join("") + "</div>" +
-          '<button class="btn ghost ss-more" data-ssmore="' + restId + '">עוד ' + rest.length + " ↓</button>" : "") + "</div>";
+    // stacked BULL → neutral → BEAR sections, each a 4-per-row grid (money-in at top, money-out at bottom).
+    // Each section shows its first 8 (2 rows); the rest collapse behind a per-section toggle.
+    const SS_HEAD = 8;
+    const ssGrid = (title, cls, arr) => {
+      const cardsHtml = arr.length
+        ? arr.map((o, i) => subCard(o, i >= SS_HEAD)).join("")
+        : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>';
+      const hidden = Math.max(0, arr.length - SS_HEAD);
+      return '<div class="ss-section ' + cls + '"><div class="ss-sec-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+        '<div class="ss-grid">' + cardsHtml + "</div>" +
+        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
     };
     const subSection = indNames.length
-      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3: <b>BULL</b> (מעל 50% מהמניות ב-FTFC ירוק) · <b>בין לבין</b> · <b>BEAR</b> (50%+ ב-FTFC אדום). הבר מראה את אחוז הנרות הירוקים היומיים · לחץ על כרטיס למניות.</div></div>' +
-        '<div class="subsec-3col">' + ssCol("🟢 BULL", "ss-bull", ssBull) + ssCol("⚪ בין לבין", "ss-mid", ssMid) + ssCol("🔴 BEAR", "ss-bear", ssBear) + "</div>"
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (מעל 50% מהמניות ב-FTFC ירוק — כסף נכנס) · <b>⚪ בין לבין</b> · <b>🔴 BEAR</b> (50%+ ב-FTFC אדום — כסף יוצא). לחץ על כרטיס למניות.</div></div>' +
+        ssGrid("🟢 BULL", "ss-bull", ssBull) + ssGrid("⚪ בין לבין", "ss-mid", ssMid) + ssGrid("🔴 BEAR", "ss-bear", ssBear)
       : "";
 
     return head + note + '<div class="sector-grid">' + cards + "</div>" + subSection;
@@ -2412,12 +2415,12 @@
     document.querySelectorAll(".subsec-card").forEach(c => {
       c.onclick = () => { if (c.dataset.subsec) openSubDrillLive(decodeURIComponent(c.dataset.subsec)); };
     });
-    // "עוד N" — reveal/hide the collapsed sub-sector cards in each column
-    document.querySelectorAll("[data-ssmore]").forEach(b => b.onclick = e => {
+    // "עוד N" — reveal/hide the collapsed sub-sector cards in each BULL/neutral/BEAR section
+    document.querySelectorAll("[data-sssection]").forEach(b => b.onclick = e => {
       e.stopPropagation();
-      const el = document.getElementById(b.dataset.ssmore); if (!el) return;
-      if (el.hasAttribute("hidden")) { el.removeAttribute("hidden"); b.textContent = "פחות ↑"; }
-      else { el.setAttribute("hidden", ""); b.textContent = "עוד " + el.children.length + " ↓"; }
+      const sec = b.closest(".ss-section"); if (!sec) return;
+      const open = sec.classList.toggle("expanded");
+      b.textContent = open ? "פחות ↑" : ("עוד " + sec.querySelectorAll(".ss-extra").length + " ↓");
     });
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }
