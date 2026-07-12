@@ -105,8 +105,15 @@ window.Engine = (function () {
   function parseCSV(text) {
     let header, dataRows;
     const ib = extractIbkrTrades(text);
+    // recognise an IBKR statement even when it has NO Trades section (e.g. a year with no trading) so
+    // we can give a clear message instead of a misleading "unsupported format" error
+    const looksIbkr = /(^|\n)(Statement,Data,Title,Activity Statement|Account Information,Data,Account|Trades,Header)/.test(text);
     if (ib) {                                                       // Interactive Brokers activity statement
       header = ib.header; dataRows = ib.rows;
+    } else if (looksIbkr) {
+      const m = text.match(/\n?Account Information,Data,Account,([^\r\n,]+)/);
+      return { fills: [], account: m ? m[1].trim() : null,
+        errors: ["זהו דוח Interactive Brokers תקין, אך אין בו עסקאות (Trades) בתקופה שבחרת — כנראה לא בוצעו עסקאות בתאריכים האלה. נסה קובץ של שנה/תקופה שבה סחרת."] };
     } else {
       const lines = text.split(/\r?\n/).filter(l => l.trim().length);
       if (!lines.length) return { fills: [], account: null, errors: ["הקובץ ריק"] };

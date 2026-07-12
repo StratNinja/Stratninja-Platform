@@ -703,11 +703,26 @@
     }
     render();
     if (added) {
-      toast("נוספו " + added + " ביצועים חדשים");
+      const r = tradesForAccount();
+      const closed = r.trades.length;
+      const open = (r.openPositions ? r.openPositions.length : 0) + (r.manualOpen ? r.manualOpen.length : 0);
+      if (closed > 0) {
+        toast("נוספו " + added + " ביצועים · " + closed + " עסקאות סגורות" + (open ? " · " + open + " פוזיציות פתוחות" : ""));
+      } else {
+        // fills imported but every one is still OPEN (e.g. a year of buys whose sells are in a later
+        // file) — say so, otherwise the empty stats/calendar look like the import failed
+        alert("נוספו " + added + " ביצועים — אבל כולם פוזיציות שעדיין פתוחות (טרם נסגרו), לכן אין עדיין עסקאות סגורות בסטטיסטיקה ובלוח (רק בפאנל \"פוזיציות פתוחות\").\n\n💡 כדי לראות אותן כעסקאות מלאות, ייבא גם את הקובץ של השנה שבה סגרת אותן — היומן מחבר קנייה→מכירה גם בין קבצים שונים.");
+      }
     } else if (errs.length) {
-      // show the REAL reason (unsupported format / bad dates), not a misleading "duplicates?"
-      alert("הייבוא נכשל:\n\n" + errs.slice(0, 4).join("\n") +
-        "\n\n💡 הקובץ צריך לכלול עמודות: תאריך · סימבול · כמות · מחיר (ו-Side או כמות עם +/−). נתמכים גם קובצי Interactive Brokers.");
+      const noTrades = errs.some(e => e.indexOf("אין בו עסקאות") >= 0);
+      if (noTrades) {
+        // an IBKR statement for a period with no trades — informational, not a failure
+        alert("ℹ️ " + errs[0]);
+      } else {
+        // show the REAL reason (unsupported format / bad dates), not a misleading "duplicates?"
+        alert("הייבוא נכשל:\n\n" + errs.slice(0, 4).join("\n") +
+          "\n\n💡 הקובץ צריך לכלול עמודות: תאריך · סימבול · כמות · מחיר (ו-Side או כמות עם +/−). נתמכים גם קובצי Interactive Brokers.");
+      }
     } else {
       toast("לא נוספו ביצועים חדשים (כנראה כפילויות של ביצועים שכבר ביומן)");
     }
