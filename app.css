@@ -388,6 +388,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .td-flow .tdf-pct.pos { color:#4fe39b; } .td-flow .tdf-pct.neg { color:#ff6b7a; }
 .td-flow .tdf-top { font-size:11px; color:var(--muted); white-space:nowrap; }
 .td-flow .tdf-top .tsym { font-weight:700; }
+.td-flow .tdf-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin:0; }
+.td-flow .tdf-sub { font-size:11px; margin:4px 0 0; }
+.flow-tf { display:inline-flex; gap:3px; flex:none; }
+.flow-tf-btn { font-size:11px; font-weight:700; padding:3px 10px; border-radius:7px; cursor:pointer; background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--line); letter-spacing:.3px; transition:.15s; }
+.flow-tf-btn.on { background:linear-gradient(90deg, rgba(88,101,242,.92), rgba(124,108,240,.85)); color:#fff; border-color:transparent; }
+.flow-tf-btn:hover:not(.on){ color:var(--ink); }
 @media (max-width:560px){ .td-flow .tdf-row { grid-template-columns:92px 1fr 52px; } .td-flow .tdf-top { display:none; } }
 /* money-flow list is compact in the narrower 3-col layout (drop the secondary top-holding).
    wider name column + narrower bar so long names + ETF chips (צריכה בסיסית/מחזורית) fit */

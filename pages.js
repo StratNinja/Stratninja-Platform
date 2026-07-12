@@ -2776,8 +2776,11 @@
     else { mode = "שוק מעורב · זהירות"; emoji = "🟡"; cls = "zero"; }
     return { mode, emoji, cls, idx, vix: LIVE.vix, br };
   }
+  let flowTf = "1d";   // money-flow panel timeframe: 1d / 5d / 20d
+  const FLOW_TF_LBL = { "1d": "היום", "5d": "5 ימים", "20d": "20 ימים" };
   function todaySectors(rows) {
-    const liveChg = {}; if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => liveChg[s.name] = s.chg);
+    const liveChg = {}, live5d = {}, live20d = {};
+    if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => { liveChg[s.name] = s.chg; live5d[s.name] = s.chg5d; live20d[s.name] = s.chg20d; });
     const m = {};
     rows.forEach(t => {
       const s = t.sector || "—";
@@ -2792,6 +2795,8 @@
     return Object.keys(m).filter(s => m[s].n >= 3).map(s => ({
       name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100, top: m[s].top,
       chg: liveChg[s] != null ? liveChg[s] : (m[s].chgN ? m[s].chgSum / m[s].chgN : 0),
+      chg5d: live5d[s] != null ? live5d[s] : null,
+      chg20d: live20d[s] != null ? live20d[s] : null,
     }));
   }
   function todayStockRow(t) {
@@ -2828,20 +2833,33 @@
       marketPanel = '<div class="panel td-market td-market-row"><span class="td-mk-lbl">מצב השוק</span><span class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</span></div>';
     }
 
-    // "where the money flows" — every sector ranked by its daily move, as a diverging
-    // bar (green = money IN → right, red = money OUT → left) with the leading holding.
-    const flow = todaySectors(rows).sort((a, b) => b.chg - a.chg);
-    const maxAbs = Math.max.apply(null, flow.map(s => Math.abs(s.chg)).concat([0.1]));
+    // "where the money flows" — every sector ranked by its move over the selected timeframe
+    // (1D/5D/20D), as a diverging bar (green = money IN → right, red = money OUT → left).
+    const flowValOf = s => flowTf === "5d" ? s.chg5d : flowTf === "20d" ? s.chg20d : s.chg;
+    const flow = todaySectors(rows).sort((a, b) => {
+      const va = flowValOf(a), vb = flowValOf(b);
+      return (vb == null ? -Infinity : vb) - (va == null ? -Infinity : va);
+    });
+    const maxAbs = Math.max.apply(null, flow.map(s => Math.abs(flowValOf(s) || 0)).concat([0.1]));
     const flowRow = s => {
-      const pos = s.chg >= 0, w = Math.min(50, Math.abs(s.chg) / maxAbs * 50);
+      const v = flowValOf(s);
       const top = s.top ? '<span class="tdf-top" title="האחזקה הגדולה בסקטור"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(s.top.chg == null ? 0 : s.top.chg) + "</span>" : '<span class="tdf-top"></span>';
-      return '<div class="tdf-row">' +
-        '<span class="tdf-name">' + secHe(s.name) + (etfFor(s.name) ? " " + etfChip(etfFor(s.name)) : "") + "</span>" +
+      const nameHtml = '<span class="tdf-name">' + secHe(s.name) + (etfFor(s.name) ? " " + etfChip(etfFor(s.name)) : "") + "</span>";
+      if (v == null) {   // no ETF-based value for this timeframe (e.g. Crypto/Other on 5D/20D)
+        return '<div class="tdf-row">' + nameHtml +
+          '<span class="tdf-bar"><span class="tdf-center"></span></span>' +
+          '<span class="tdf-pct muted">—</span>' + top + "</div>";
+      }
+      const pos = v >= 0, w = Math.min(50, Math.abs(v) / maxAbs * 50);
+      return '<div class="tdf-row">' + nameHtml +
         '<span class="tdf-bar"><span class="tdf-center"></span><span class="tdf-fill ' + (pos ? "pos" : "neg") + '" style="width:' + w.toFixed(1) + '%"></span></span>' +
-        '<span class="tdf-pct ' + (pos ? "pos" : "neg") + '">' + (pos ? "+" : "") + s.chg.toFixed(2) + "%</span>" + top +
+        '<span class="tdf-pct ' + (pos ? "pos" : "neg") + '">' + (pos ? "+" : "") + v.toFixed(2) + "%</span>" + top +
       "</div>";
     };
-    const sectorsPanel = '<div class="panel td-flow"><h3>🗂️ לאן הכסף זורם עכשיו <span class="muted" style="font-size:11px">כל הסקטורים לפי התנועה היום · 🟢 כסף נכנס · 🔴 כסף יוצא · + האחזקה הגדולה</span></h3>' +
+    const flowTfSwitch = '<span class="flow-tf">' + ["1d", "5d", "20d"].map(k =>
+      '<button class="flow-tf-btn' + (k === flowTf ? " on" : "") + '" data-flowtf="' + k + '">' + k.toUpperCase() + "</button>").join("") + "</span>";
+    const sectorsPanel = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ לאן הכסף זורם עכשיו</span>' + flowTfSwitch + "</h3>" +
+      '<div class="muted tdf-sub">כל הסקטורים לפי התנועה ב' + FLOW_TF_LBL[flowTf] + ' · 🟢 כסף נכנס · 🔴 כסף יוצא · + האחזקה הגדולה</div>' +
       '<div class="tdf-list">' + (flow.length ? flow.map(flowRow).join("") : '<div class="muted" style="padding:10px">—</div>') + "</div></div>";
 
     const longs = rows.filter(t => (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
@@ -2863,6 +2881,10 @@
   }
   function wireToday() {
     wireCharts($("#page")); wireStars($("#page"));
+    document.querySelectorAll("[data-flowtf]").forEach(b => b.onclick = () => {
+      if (flowTf === b.dataset.flowtf) return;
+      flowTf = b.dataset.flowtf; reRender();
+    });
     document.querySelectorAll(".td-copy").forEach(b => b.onclick = () => {
       const syms = decodeURIComponent(b.dataset.syms), o = b.textContent;
       copyToClipboard(syms, () => { b.textContent = "✓ הועתקו"; setTimeout(() => b.textContent = o, 1500); });
