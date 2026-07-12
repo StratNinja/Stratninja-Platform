@@ -423,15 +423,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .subsec-card:hover { transform:translateY(-2px); border-color:#3a4150; }
 .subsec-card h3 { font-size:14px; margin:0 0 10px; }
 @media (max-width:640px) { .subsec-grid { grid-template-columns:1fr; } }
-/* sub-sectors: one spectrum header (🔴 BEAR · ⚪ neutral · 🟢 BULL) + a single dense 4-per-row grid */
+/* sub-sectors: each bucket its OWN division — header bar + a grid of up to 4 per row */
 .badge-ftfc.bear { background:rgba(224,82,79,.16); color:#ff8b95; }
-.ss-spectrum { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:0 0 12px; }
-.ss-sp { text-align:center; font-weight:800; font-size:13.5px; padding:9px 8px; border-radius:10px; border:1px solid var(--line); }
-.ss-sp b { font-weight:800; }
-.ss-sp.bear { background:rgba(224,82,79,.14); color:#ff6b7a; border-color:rgba(224,82,79,.32); }
-.ss-sp.mid  { background:rgba(255,255,255,.05); color:var(--muted); }
-.ss-sp.bull { background:rgba(38,176,107,.14); color:#4fe39b; border-color:rgba(38,176,107,.32); }
-.ss-section { margin-top:0; }
+.ss-section { margin-top:18px; }
+.ss-sec-h { font-weight:800; font-size:15px; padding:9px 13px; border-radius:10px; margin:0 0 11px; }
+.ss-sec-h .muted { font-weight:700; font-size:13px; }
+.ss-bull .ss-sec-h { background:rgba(38,176,107,.15); color:#4fe39b; border:1px solid rgba(38,176,107,.3); }
+.ss-bear .ss-sec-h { background:rgba(224,82,79,.15); color:#ff6b7a; border:1px solid rgba(224,82,79,.3); }
+.ss-mid  .ss-sec-h { background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--line); }
 .ss-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; align-items:start; }
 .ss-grid .subsec-card { margin:0; }
 .subsec-card.b-bear { border-inline-start:3px solid var(--red); }
@@ -442,7 +441,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ss-more { width:100%; margin-top:8px; font-size:12px; font-weight:600; }
 @media (max-width:1100px){ .ss-grid { grid-template-columns:repeat(3,1fr); } }
 @media (max-width:800px){ .ss-grid { grid-template-columns:repeat(2,1fr); } }
-@media (max-width:520px){ .ss-grid { grid-template-columns:1fr; } .ss-spectrum { font-size:12px; } }
+@media (max-width:520px){ .ss-grid { grid-template-columns:1fr; } }
 .drill-bar { display:flex; align-items:center; gap:10px; margin:0 0 12px; flex-wrap:wrap; }
 /* ===== S&P 500 · sector breadth cards + top movers ===== */
 .sp-card .mv-row { display:flex; flex-wrap:wrap; gap:5px; align-items:center; margin-top:9px; }

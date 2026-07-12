@@ -2389,21 +2389,21 @@
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
     const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
     const ssBear = subInfo.filter(o => o.bucket === "bear").sort((a, b) => b.bearPct - a.bearPct);
-    // ONE spectrum header row (🔴 BEAR · ⚪ neutral · 🟢 BULL) + a single dense 4-per-row grid of ALL
-    // sub-sectors, ordered BEAR → neutral → BULL (money-out → money-in), each card tinted by its bucket.
-    const allSub = ssBear.concat(ssMid, ssBull);   // RTL: bear starts top-right, bull ends bottom-left
-    const SS_HEAD = 12;
-    const spectrum = '<div class="ss-spectrum">' +
-      '<div class="ss-sp bear">🔴 BEAR <b>' + ssBear.length + "</b></div>" +
-      '<div class="ss-sp mid">⚪ בין לבין <b>' + ssMid.length + "</b></div>" +
-      '<div class="ss-sp bull">🟢 BULL <b>' + ssBull.length + "</b></div></div>";
-    const cardsHtml = allSub.map((o, i) => subCard(o, i >= SS_HEAD)).join("");
-    const hidden = Math.max(0, allSub.length - SS_HEAD);
+    // each bucket = its OWN division: a header bar + a grid of up to 4 sub-sectors per row.
+    // Order: 🟢 BULL (money in) → ⚪ neutral → 🔴 BEAR (money out). First 8 shown + "עוד N".
+    const SS_HEAD = 8;
+    const ssGrid = (title, cls, arr) => {
+      const cardsHtml = arr.length
+        ? arr.map((o, i) => subCard(o, i >= SS_HEAD)).join("")
+        : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>';
+      const hidden = Math.max(0, arr.length - SS_HEAD);
+      return '<div class="ss-section ' + cls + '"><div class="ss-sec-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+        '<div class="ss-grid">' + cardsHtml + "</div>" +
+        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
+    };
     const subSection = indNames.length
-      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">ספקטרום כיוון הכסף: <b>🔴 BEAR</b> (50%+ FTFC אדום — כסף יוצא) → <b>⚪ בין לבין</b> → <b>🟢 BULL</b> (50%+ FTFC ירוק — כסף נכנס). הפס בכרטיס = אחוז הנרות הירוקים · לחץ על כרטיס למניות.</div></div>' +
-        spectrum +
-        '<div class="ss-section"><div class="ss-grid">' + cardsHtml + "</div>" +
-        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>"
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (מעל 50% FTFC ירוק — כסף נכנס) · <b>⚪ בין לבין</b> · <b>🔴 BEAR</b> (50%+ FTFC אדום — כסף יוצא). לחץ על כרטיס למניות.</div></div>' +
+        ssGrid("🟢 BULL", "ss-bull", ssBull) + ssGrid("⚪ בין לבין", "ss-mid", ssMid) + ssGrid("🔴 BEAR", "ss-bear", ssBear)
       : "";
 
     return head + note + '<div class="sector-grid">' + cards + "</div>" + subSection;
