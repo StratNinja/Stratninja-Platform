@@ -876,7 +876,7 @@
   // ========== SCANNER ==========
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: false, sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
   let _selPreset = "";   // id of the saved-scan currently chosen in the dropdown (survives reRender so delete/duplicate work)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
@@ -1722,7 +1722,7 @@
     return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
   }
   function resetScan() {
-    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = false;
+    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = "off";
     scanState.sector = "all"; scanState.subsec = "all"; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
@@ -1835,7 +1835,10 @@
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>תבניות (רצף Strat)</label><div class="chips" style="align-items:center"><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>" +
-          (_isCombo(scanState.broad) ? '<button class="chip' + (scanState.inforce ? " on" : "") + '" id="scanInforce" title="IN FORCE = התבנית כבר הושלמה (המהלך קרה). כבוי = לקראת המהלך (סטאפ)">IN FORCE</button>' : "") + "</div></div>" +
+          (_isCombo(scanState.broad) ?
+            '<button class="chip' + (scanState.inforce === "up" ? " on" : "") + '" data-inforce="up" title="IN FORCE שורי — הרצף הושלם והנר המשלים ירוק (ללונג). כבוי = סטאפ לקראת המהלך">IN FORCE 🔼</button>' +
+            '<button class="chip' + (scanState.inforce === "down" ? " on" : "") + '" data-inforce="down" title="IN FORCE דובי — הרצף הושלם והנר המשלים אדום (לשורט). כבוי = סטאפ לקראת המהלך">IN FORCE 🔽</button>'
+            : "") + "</div></div>" +
         '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.sector === s ? " selected" : "") + ">" + s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.subsec === s ? " selected" : "") + ">" + s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
@@ -2044,8 +2047,12 @@
           } else {   // combo pattern (2-1-2 …)
             const p = scanState.broad.split("-"), sq = (c.seq3 || "").split("-");
             if (sq.length < 3) return false;
-            if (scanState.inforce) {
+            const inf = scanState.inforce;                              // "off" | "up" | "down" | true(legacy=any)
+            const inforceOn = inf === true || inf === "up" || inf === "down" || inf === "any";
+            if (inforceOn) {
               if ((c.seq3 || "") !== scanState.broad) return false;     // IN FORCE: full 3-bar pattern completed
+              if (inf === "up" && c.c !== "up") return false;           // 🔼 bullish completion (long)
+              if (inf === "down" && c.c !== "down") return false;       // 🔽 bearish completion (short)
             } else if (sq[1] !== p[0] || sq[2] !== p[1]) return false;  // setup: last 2 bars = first 2 digits (approaching)
           }
         }
@@ -2131,8 +2138,8 @@
     document.querySelectorAll("[data-scanuni]").forEach(b => b.onclick = () => { scanState.universe = b.dataset.scanuni; reRender(); });
     { const sg = $("#scanSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
-    const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = false; reRender(); };
-    { const inf = $("#scanInforce"); if (inf) inf.onclick = () => { scanState.inforce = !scanState.inforce; reRender(); }; }
+    const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = "off"; reRender(); };
+    document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; reRender(); });
     const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; scanState.subsec = "all"; reRender(); };
     const subsec = $("#scanSubsec"); if (subsec) subsec.onchange = () => { scanState.subsec = subsec.value; reRender(); };
     // live filter as you type (not only on Enter) — restore focus + caret after the re-render
