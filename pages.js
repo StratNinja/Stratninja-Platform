@@ -3022,7 +3022,7 @@
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return;
       const url = cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.latest&select=data";
-      const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      const r = await fetch(url, { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
       if (j && j[0] && j[0].data) { LIVE = j[0].data; _liveTs = Date.now(); updateTicker(); if (state.page === "market" || state.page === "today") reRender(); }
@@ -3035,7 +3035,7 @@
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL) return;
       const url = cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.latest&select=data";
-      const r = await fetch(url, { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      const r = await fetch(url, { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
       if (j && j[0] && j[0].data) {
@@ -3058,7 +3058,7 @@
     try {
       const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return;
       const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.news&select=data",
-        { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
       if (j && j[0] && j[0].data) { NEWS = j[0].data; if (_newsOpen) renderNewsFeed(); updateNewsNav(); }
