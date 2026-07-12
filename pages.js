@@ -2051,8 +2051,11 @@
             const inforceOn = inf === true || inf === "up" || inf === "down" || inf === "any";
             if (inforceOn) {
               if ((c.seq3 || "") !== scanState.broad) return false;     // IN FORCE: full 3-bar pattern completed
-              if (inf === "up" && c.c !== "up") return false;           // 🔼 bullish completion (long)
-              if (inf === "down" && c.c !== "down") return false;       // 🔽 bearish completion (short)
+              // direction = the BREAK (2U=broke prior high / 2D=broke prior low), NOT the candle color.
+              // exclude failed breaks: c.br="down" = broke the high then got rejected below it (a bearish
+              // 2U-reversal, e.g. ARQT Q — a 2U that closed back under the trigger, so NOT a real long).
+              if (inf === "up"   && !((c.t === "2U" || (c.t === "3" && c.c === "up"))   && c.br !== "down")) return false;   // 🔼 clean bullish break
+              if (inf === "down" && !((c.t === "2D" || (c.t === "3" && c.c === "down")) && c.br !== "up"))   return false;   // 🔽 clean bearish break
             } else if (sq[1] !== p[0] || sq[2] !== p[1]) return false;  // setup: last 2 bars = first 2 digits (approaching)
           }
         }
