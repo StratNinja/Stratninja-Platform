@@ -14,8 +14,9 @@
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
   const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
   const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"],
+    ["3-2", "🔷 3 → 2 (נר חוץ ← פריצה)"], ["1-2", "1 → 2 (פנימי ← פריצה)"], ["2-2", "2 → 2 (היפוך)"],
     ["2-1-2", "לקראת 2-1-2"], ["3-1-2", "לקראת 3-1-2"], ["1-3-2", "לקראת 1-3-2"], ["1-2-2", "לקראת 1-2-2"], ["3-2-2", "לקראת 3-2-2"]];
-  const _isCombo = v => /^\d-\d-\d$/.test(v || "");
+  const _isCombo = v => /^\d(-\d){1,2}$/.test(v || "");
   // sector → SPDR sector ETF (the ETF that holds the stock)
   const SECTOR_ETF = { "Technology": "XLK", "Financials": "XLF", "Health Care": "XLV", "Energy": "XLE", "Consumer Disc.": "XLY", "Communication": "XLC", "Industrials": "XLI", "Consumer Staples": "XLP", "Materials": "XLB", "Real Estate": "XLRE", "Utilities": "XLU" };
   function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
@@ -2044,19 +2045,21 @@
             const br = c.br || "";
             if (scanState.broad === "any" && !br) return false;
             if ((scanState.broad === "up" || scanState.broad === "down") && br !== scanState.broad) return false;
-          } else {   // combo pattern (2-1-2 …)
+          } else {   // combo pattern — 2-bar (3-2) or 3-bar (2-1-2), matched at the END of the last-3 sequence
             const p = scanState.broad.split("-"), sq = (c.seq3 || "").split("-");
             if (sq.length < 3) return false;
+            const n = p.length;                                         // pattern length (2 or 3)
             const inf = scanState.inforce;                              // "off" | "up" | "down" | true(legacy=any)
             const inforceOn = inf === true || inf === "up" || inf === "down" || inf === "any";
             if (inforceOn) {
-              if ((c.seq3 || "") !== scanState.broad) return false;     // IN FORCE: full 3-bar pattern completed
+              if (sq.slice(3 - n).join("-") !== scanState.broad) return false;   // full pattern completed (last n bars)
               // direction = the BREAK (2U=broke prior high / 2D=broke prior low), NOT the candle color.
-              // exclude failed breaks: c.br="down" = broke the high then got rejected below it (a bearish
-              // 2U-reversal, e.g. ARQT Q — a 2U that closed back under the trigger, so NOT a real long).
-              if (inf === "up"   && !((c.t === "2U" || (c.t === "3" && c.c === "up"))   && c.br !== "down")) return false;   // 🔼 clean bullish break
-              if (inf === "down" && !((c.t === "2D" || (c.t === "3" && c.c === "down")) && c.br !== "up"))   return false;   // 🔽 clean bearish break
-            } else if (sq[1] !== p[0] || sq[2] !== p[1]) return false;  // setup: last 2 bars = first 2 digits (approaching)
+              // exclude failed breaks: c.br="down" = broke the high then got rejected below it (e.g. ARQT Q).
+              if (p[n - 1] === "2") {
+                if (inf === "up"   && !((c.t === "2U" || (c.t === "3" && c.c === "up"))   && c.br !== "down")) return false;   // 🔼 clean bullish break
+                if (inf === "down" && !((c.t === "2D" || (c.t === "3" && c.c === "down")) && c.br !== "up"))   return false;   // 🔽 clean bearish break
+              }
+            } else if (sq.slice(3 - (n - 1)).join("-") !== p.slice(0, n - 1).join("-")) return false;   // setup: approaching the final bar
           }
         }
       }
