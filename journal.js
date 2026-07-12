@@ -71,8 +71,11 @@
       const set = new Set();
       d.fills.forEach(f => set.add((f.account || "").trim()));
       d.manual.forEach(m => set.add((m.account || "").trim()));
-      set.delete("");
-      return Array.from(set).sort();
+      const named = Array.from(set).filter(a => a !== "").sort();
+      if (named.length) return named;                 // real accounts exist → hide the blank bucket
+      // only blank-account data (e.g. a broker CSV with no account column) → keep it selectable,
+      // otherwise the imported trades would have no account to show under and vanish silently
+      return set.size ? [""] : [];
     },
   };
   window.Store = Store;

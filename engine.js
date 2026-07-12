@@ -61,7 +61,7 @@ window.Engine = (function () {
   // flat { header, rows } so it parses like any other CSV. Uses "Trades,Header,…" / "Trades,Data,…".
   function extractIbkrTrades(text) {
     const lines = text.split(/\r?\n/);
-    let header = null;
+    let header = null, account = "";
     const rows = [];
     // an IBKR statement can hold SEVERAL "Trades" sub-tables (Stocks, then Forex, …) each with its
     // OWN header + columns. Lock onto the FIRST (stocks/options) header so column positions — incl.
@@ -70,6 +70,9 @@ window.Engine = (function () {
     for (const line of lines) {
       if (!line.trim()) continue;
       const c = parseCSVLine(line);
+      // the account number lives in a header section, NOT in the trade rows — capture it so the
+      // fills get a non-empty account (else the journal has no account bucket to show them under)
+      if (!account && c[0] === "Account Information" && c[1] === "Data" && c[2] === "Account") account = (c[3] || "").trim();
       if (c[0] === "Trades" && c[1] === "Header") { if (!header) header = c.slice(2); continue; }
       if (c[0] === "Trades" && c[1] === "Data" && header) {
         const disc = c[2];                                          // DataDiscriminator
@@ -78,7 +81,7 @@ window.Engine = (function () {
         rows.push(c.slice(2));
       }
     }
-    return header ? { header, rows } : null;
+    return header ? { header, rows, account } : null;
   }
 
   // column-name aliases (many brokers / IBKR variants) → our canonical fields
@@ -126,7 +129,9 @@ window.Engine = (function () {
     }
     const cell = (row, i) => (i >= 0 && i < row.length ? String(row[i] || "").trim() : "");
     const fills = [];
-    let account = null;
+    // IBKR keeps the account number in a header section, not in the trade rows — seed it so every
+    // fill gets a non-empty account (the journal groups/shows trades BY account)
+    let account = (ib && ib.account) || null;
     const errors = [];
     for (let r = 0; r < dataRows.length; r++) {
       const row = dataRows[r];
