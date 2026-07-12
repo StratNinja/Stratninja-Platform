@@ -2380,7 +2380,8 @@
         : o.bucket === "bear"
           ? '<span class="badge-ftfc bear" style="margin-inline-start:auto">🔴 FTFC ' + o.bear + " (" + o.bearPct.toFixed(0) + "%)</span>"
           : '<span class="badge-ftfc" style="margin-inline-start:auto">FTFC ' + (o.bull + o.bear) + "</span>";
-      return '<div class="panel subsec-card' + (extra ? " ss-extra" : "") + '" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
+      const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
+      return '<div class="panel subsec-card' + bcls + (extra ? " ss-extra" : "") + '" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
         '<h3>' + o.name + " " + etfChip(subEtfFor(o.name)) + ' <span class="muted" style="font-size:11px">' + o.tot + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="bkey" style="margin-top:8px;font-size:11px"><span class="pos">🟢 ' + o.green + "</span><span class=\"neg\">🔴 " + (o.tot - o.green) + "</span>" + ftfcTag + "</div></div>";
@@ -2388,21 +2389,21 @@
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
     const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
     const ssBear = subInfo.filter(o => o.bucket === "bear").sort((a, b) => b.bearPct - a.bearPct);
-    // stacked BULL → neutral → BEAR sections, each a 4-per-row grid (money-in at top, money-out at bottom).
-    // Each section shows its first 8 (2 rows); the rest collapse behind a per-section toggle.
-    const SS_HEAD = 8;
-    const ssGrid = (title, cls, arr) => {
-      const cardsHtml = arr.length
-        ? arr.map((o, i) => subCard(o, i >= SS_HEAD)).join("")
-        : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>';
-      const hidden = Math.max(0, arr.length - SS_HEAD);
-      return '<div class="ss-section ' + cls + '"><div class="ss-sec-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-        '<div class="ss-grid">' + cardsHtml + "</div>" +
-        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
-    };
+    // ONE spectrum header row (🔴 BEAR · ⚪ neutral · 🟢 BULL) + a single dense 4-per-row grid of ALL
+    // sub-sectors, ordered BEAR → neutral → BULL (money-out → money-in), each card tinted by its bucket.
+    const allSub = ssBear.concat(ssMid, ssBull);   // RTL: bear starts top-right, bull ends bottom-left
+    const SS_HEAD = 12;
+    const spectrum = '<div class="ss-spectrum">' +
+      '<div class="ss-sp bear">🔴 BEAR <b>' + ssBear.length + "</b></div>" +
+      '<div class="ss-sp mid">⚪ בין לבין <b>' + ssMid.length + "</b></div>" +
+      '<div class="ss-sp bull">🟢 BULL <b>' + ssBull.length + "</b></div></div>";
+    const cardsHtml = allSub.map((o, i) => subCard(o, i >= SS_HEAD)).join("");
+    const hidden = Math.max(0, allSub.length - SS_HEAD);
     const subSection = indNames.length
-      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (מעל 50% מהמניות ב-FTFC ירוק — כסף נכנס) · <b>⚪ בין לבין</b> · <b>🔴 BEAR</b> (50%+ ב-FTFC אדום — כסף יוצא). לחץ על כרטיס למניות.</div></div>' +
-        ssGrid("🟢 BULL", "ss-bull", ssBull) + ssGrid("⚪ בין לבין", "ss-mid", ssMid) + ssGrid("🔴 BEAR", "ss-bear", ssBear)
+      ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">ספקטרום כיוון הכסף: <b>🔴 BEAR</b> (50%+ FTFC אדום — כסף יוצא) → <b>⚪ בין לבין</b> → <b>🟢 BULL</b> (50%+ FTFC ירוק — כסף נכנס). הפס בכרטיס = אחוז הנרות הירוקים · לחץ על כרטיס למניות.</div></div>' +
+        spectrum +
+        '<div class="ss-section"><div class="ss-grid">' + cardsHtml + "</div>" +
+        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>"
       : "";
 
     return head + note + '<div class="sector-grid">' + cards + "</div>" + subSection;
