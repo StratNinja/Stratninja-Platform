@@ -345,10 +345,15 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .td-strip { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
 .td-idx { font-size:13px; background:rgba(255,255,255,.04); padding:5px 10px; border-radius:8px; }
 .td-idx b { color:#c3ccdd; margin-inline-end:4px; }
-.td-topgrid { display:grid; grid-template-columns:1fr 1.35fr; gap:16px; margin-bottom:16px; align-items:stretch; }
-.td-topgrid > .panel { margin-bottom:0; }
-/* market-state panel — colored accent + breadth gauge, matching the market pulse */
-.td-market { display:flex; flex-direction:column; border-inline-start:4px solid var(--line); }
+/* modular layout: market state = full-width row on top, then 3 columns (money-flow left · long · short right) */
+.td-grid3 { display:grid; grid-template-columns:1.05fr 1.05fr 1fr; gap:14px; align-items:start; }
+.td-grid3 > .panel { margin-bottom:0; }
+/* market-state panel — full-width horizontal row + colored accent */
+.td-market { border-inline-start:4px solid var(--line); }
+.td-market-row { display:flex; flex-direction:row; align-items:center; gap:14px 20px; flex-wrap:wrap; margin-bottom:14px; }
+.td-market-row .td-mode { margin:0; font-size:18px; }
+.td-market-row .td-strip { flex:1; min-width:200px; }
+.td-mk-lbl { font-weight:800; font-size:15px; white-space:nowrap; }
 .td-market.pos { border-inline-start-color:#26b06b; } .td-market.neg { border-inline-start-color:#e0524f; } .td-market.zero { border-inline-start-color:#e0c760; }
 .td-breadth { display:flex; align-items:center; gap:11px; margin-top:auto; padding-top:14px; }
 .td-breadth .td-brlbl { font-size:13px; color:var(--muted); font-weight:700; }
@@ -381,8 +386,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .td-flow .tdf-top { font-size:11px; color:var(--muted); white-space:nowrap; }
 .td-flow .tdf-top .tsym { font-weight:700; }
 @media (max-width:560px){ .td-flow .tdf-row { grid-template-columns:92px 1fr 52px; } .td-flow .tdf-top { display:none; } }
-.td-two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-@media (max-width:900px){ .td-two, .td-secgrid, .td-topgrid { grid-template-columns:1fr; } }
+/* money-flow list is compact in the narrower 3-col layout (drop the secondary top-holding) */
+.td-grid3 .td-flow .tdf-row { grid-template-columns:90px 1fr 52px; }
+.td-grid3 .td-flow .tdf-top { display:none; }
+@media (max-width:1050px){ .td-grid3 { grid-template-columns:1fr; } .td-grid3 .td-flow .tdf-row { grid-template-columns:118px 1fr 60px auto; } .td-grid3 .td-flow .tdf-top { display:block; } }
 /* manual-trade image attach (paste / upload chart screenshot) */
 .img-zone { position:relative; border:1.5px dashed var(--line); border-radius:10px; min-height:78px;
   display:flex; align-items:center; justify-content:center; cursor:pointer; padding:10px; transition:border-color .12s, background .12s; }
@@ -435,6 +442,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ss-mid  .ss-col-h { background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--line); }
 /* auto-fit + no phantom track: cards stretch to fill the full column width */
 .ss-col-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:6px; align-items:stretch; }
+/* S&P 500 breadth cards are richer (with mover tickers) → 2 per row inside each column */
+.sp-col-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; align-items:start; }
+.sp-col-grid .sp-card { margin:0; }
+@media (max-width:1250px){ .sp-col-grid { grid-template-columns:1fr; } }
 .ss-col-grid .subsec-card, .ss-col-grid .sector-card { margin:0; padding:10px 11px; display:flex; flex-direction:column; }
 /* fixed-height name (up to 2 lines) + meta rows → every FTFC bar starts at the same Y */
 .ss-col-grid .sc-nm { font-weight:800; font-size:12.5px; line-height:1.25; display:flex; align-items:center; gap:5px; flex-wrap:wrap; min-height:2.5em; }

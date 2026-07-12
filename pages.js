@@ -754,7 +754,7 @@
     const spMid = withAp.filter(o => o.ap >= 45 && o.ap < 55).sort((a, c) => c.ap - a.ap);
     const spBear = withAp.filter(o => o.ap < 45).sort((a, c) => a.ap - c.ap);
     const spColHtml = (title, cls, arr) => '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-      (arr.length ? arr.map(o => spCard(o.s)).join("") : '<div class="muted" style="padding:12px;font-size:12px;text-align:center">אין כרגע</div>') + "</div>";
+      '<div class="sp-col-grid">' + (arr.length ? arr.map(o => spCard(o.s)).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;font-size:12px;text-align:center">אין כרגע</div>') + "</div></div>";
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · מחולק ל-3 לפי רוחב: <b>BULL</b> (55%+ מעל פתיחה) · <b>בין לבין</b> · <b>BEAR</b> (מתחת 45%). לחץ על סקטור לכל המניות.</div></div>' +
       insightBox + liveBanner() + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
   }
@@ -2740,11 +2740,12 @@
           '<span class="td-brbar"><span class="td-brup" style="width:' + ap.toFixed(1) + '%"></span></span>' +
           '<span class="td-brnum"><span class="pos">' + ms.br.above + '</span>/<span class="neg">' + ms.br.below + "</span></span></div>";
       }
-      marketPanel = '<div class="panel td-market ' + ms.cls + '"><h3>מצב השוק</h3>' +
+      marketPanel = '<div class="panel td-market td-market-row ' + ms.cls + '">' +
+        '<span class="td-mk-lbl">מצב השוק</span>' +
         '<div class="td-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" +
         '<div class="td-strip">' + strip + vixTxt + "</div>" + brBar + "</div>";
     } else {
-      marketPanel = '<div class="panel td-market"><h3>מצב השוק</h3><div class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</div></div>';
+      marketPanel = '<div class="panel td-market td-market-row"><span class="td-mk-lbl">מצב השוק</span><span class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</span></div>';
     }
 
     // "where the money flows" — every sector ranked by its daily move, as a diverging
@@ -2776,8 +2777,8 @@
     };
 
     return head + (isLive ? liveBanner() : DEMO) +
-      '<div class="td-topgrid">' + marketPanel + sectorsPanel + "</div>" +
-      '<div class="td-two">' + tbl(longs, "🟢 מועמדים ללונג") + tbl(shorts, "🔴 מועמדים לשורט") + "</div>" +
+      marketPanel +
+      '<div class="td-grid3">' + tbl(longs, "🟢 מועמדים ללונג") + tbl(shorts, "🔴 מועמדים לשורט") + sectorsPanel + "</div>" +
       '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>Ninja Score</b> מדרג איכות סטאפ (יישור טיימפריימים, ווליום, תבנית, כסף חכם, קרבה לממוצע, נזילות, חוזק סקטור). זהו כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף.</div>';
   }
   function wireToday() {
