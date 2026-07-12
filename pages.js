@@ -2377,7 +2377,9 @@
       const lv = liveMap[name];
       const chgHtml = lv ? (" · " + pctSpanBare(lv.chg)) : "";
       const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
-      return '<div class="panel sector-card' + bcls + (extra ? " ss-extra" : "") + '" data-sec="' + encodeURIComponent(name) + '"><h3>' + name + " " + etfChip(etfFor(name)) + ' <span class="muted" style="font-size:11px">' + tot + " מניות" + chgHtml + "</span></h3>" +
+      return '<div class="panel sector-card' + bcls + (extra ? " ss-extra" : "") + '" data-sec="' + encodeURIComponent(name) + '">' +
+        '<div class="sc-nm">' + name + " " + etfChip(etfFor(name)) + "</div>" +
+        '<div class="sc-meta">' + tot + " מניות" + chgHtml + "</div>" +
         ftfc3Html(fg, fr, tot) + "</div>";
     }
     // ONE column per bucket, side by side (RTL: BULL right · neutral middle · BEAR left). Inside each
@@ -2424,7 +2426,8 @@
     function subCard(o, extra) {
       const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
       return '<div class="panel subsec-card' + bcls + (extra ? " ss-extra" : "") + '" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
-        '<h3>' + o.name + " " + etfChip(subEtfFor(o.name)) + ' <span class="muted" style="font-size:11px">' + o.tot + "</span></h3>" +
+        '<div class="sc-nm">' + o.name + " " + etfChip(subEtfFor(o.name)) + "</div>" +
+        '<div class="sc-meta">' + o.tot + " מניות</div>" +
         ftfc3Html(o.bull, o.bear, o.tot) + "</div>";
     }
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
