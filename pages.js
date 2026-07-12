@@ -659,12 +659,11 @@
       uniSwitch +
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
         marketPulse() +
-        '<div class="mkt-dash-top">' +
-          '<div class="mkt-dash-left mkt-dash-chart">' + spyChartPanel() + "</div>" +
-          '<div class="mkt-dash-right">' +
-            '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
-            candleMapPanel() +
-          "</div>" +
+        // SPY chart removed 2026-07-12 (Adi: felt claustrophobic) — indices+VIX then Candle Map,
+        // both full-width for breathing room. spyChartPanel() kept in code for easy revival elsewhere.
+        '<div class="mkt-dash-stack">' +
+          '<div class="mkt-idx-row">' + idxPanel + vixCard + "</div>" +
+          candleMapPanel() +
         "</div>" +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-dash-bottom">' +
