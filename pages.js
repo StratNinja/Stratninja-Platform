@@ -1871,6 +1871,9 @@
       techInner = !hasTech
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
         : '<div class="frow tech-row">' +
+            '<div class="fgrp tf-ind-grp"><label>אינדיקטורים · מסגרת זמן <span class="muted" style="font-size:10px">(RSI·MFI·RVOL·ATR)</span></label><div class="chips" style="align-items:center"><select id="tTechTf">' +
+              ["D", "W", "M", "Q", "Y"].map(t => opt(t, techState.techTf, t + " · " + (TF_HE_SHORT[t] || t))).join("") + "</select>" +
+              (techState.techTf !== "D" ? '<span class="tf-ind-badge">' + (TF_HE_SHORT[techState.techTf] || techState.techTf) + "</span>" : "") + "</div></div>" +
             '<div class="fgrp"><label>מיקום מול ממוצע (MA)</label><div class="chips" style="align-items:center">' +
               '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
               '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
@@ -1940,11 +1943,11 @@
     // optional result columns — shown if the user toggled them on OR the matching filter is active
     const optCols = [
       { key: "ind", th: "תת-סקטור", tip: "תת-הסקטור (התעשייה) של המניה + תעודת הסל שלה", cell: (k, dma, t) => '<td class="tname" style="text-align:start">' + (t && t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : '<span class="muted">—</span>') + "</td>", active: scanState.subsec !== "all" },
-      { key: "rsi", th: "RSI", tip: "RSI (0–100): מדד מומנטום. מעל 70 = קניית-יתר, מתחת 30 = מכירת-יתר", cell: k => '<td class="' + rsiCls(k.rsi) + '">' + (k.rsi == null ? "—" : k.rsi.toFixed(0)) + "</td>", active: techState.rsiMin > 0 || techState.rsiMax < 100 },
-      { key: "mfi", th: "MFI", tip: "MFI (0–100): תזרים כסף — כמו RSI אך משוקלל בווליום ('כסף חכם'). מעל 80 קניית-יתר, מתחת 20 מכירת-יתר", cell: k => '<td class="' + mfiCls(k.mfi) + '">' + (k.mfi == null ? "—" : k.mfi.toFixed(0)) + "</td>", active: techState.mfiMin > 0 || techState.mfiMax < 100 },
-      { key: "rvol", th: "RVOL", tip: "ווליום יחסי: נפח המסחר היום חלקי הממוצע. מעל 1× = פעילות ערה מהרגיל", cell: k => "<td>" + (k.rvol == null ? "—" : k.rvol.toFixed(2) + "×") + "</td>", active: _rv() > 0 },
+      { key: "rsi", th: "RSI" + _tfSuf(), tip: "RSI (0–100): מדד מומנטום. מעל 70 = קניית-יתר, מתחת 30 = מכירת-יתר" + _tfTip(), cell: k => { const v = _techVal(k, "rsi"); return '<td class="' + rsiCls(v) + '">' + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: techState.rsiMin > 0 || techState.rsiMax < 100 },
+      { key: "mfi", th: "MFI" + _tfSuf(), tip: "MFI (0–100): תזרים כסף — כמו RSI אך משוקלל בווליום ('כסף חכם'). מעל 80 קניית-יתר, מתחת 20 מכירת-יתר" + _tfTip(), cell: k => { const v = _techVal(k, "mfi"); return '<td class="' + mfiCls(v) + '">' + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: techState.mfiMin > 0 || techState.mfiMax < 100 },
+      { key: "rvol", th: "RVOL" + _tfSuf(), tip: "ווליום יחסי: נפח המסחר היום חלקי הממוצע. מעל 1× = פעילות ערה מהרגיל" + _tfTip(), cell: k => { const v = _techVal(k, "rvol"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "×") + "</td>"; }, active: _rv() > 0 },
       { key: "vol", th: "ווליום", tip: "נפח: מספר המניות שנסחרו היום", cell: k => "<td>" + fmtVol(k.vol) + "</td>", active: techState.volMin > 0 },
-      { key: "atrp", th: "ATR%", tip: "ATR%: טווח התנועה היומי הממוצע כאחוז מהמחיר — מדד תנודתיות", cell: k => "<td>" + (k.atrp == null ? "—" : k.atrp.toFixed(2) + "%") + "</td>", active: _atrp() > 0 },
+      { key: "atrp", th: "ATR%" + _tfSuf(), tip: "ATR%: טווח התנועה הממוצע כאחוז מהמחיר — מדד תנודתיות" + _tfTip(), cell: k => { const v = _techVal(k, "atrp"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "%") + "</td>"; }, active: _atrp() > 0 },
       { key: "gap", th: "גאפ", tip: "גאפ: פער הפתיחה של היום מול סגירת אתמול (%)", cell: k => "<td>" + dPct(k.gap) + "</td>", active: _gapActive() },
       { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", tip: "מרחק המחיר משיא 52 השבועות (0% = בשיא)", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
@@ -2097,10 +2100,10 @@
             else { if (d >= 0 || dHi == null || Math.abs(dHi) > techState.maPct) return false; }
           }
         }
-        if ((techState.rsiMin > 0 || techState.rsiMax < 100) && (k.rsi == null || k.rsi < techState.rsiMin || k.rsi > techState.rsiMax)) return false;
-        if ((techState.mfiMin > 0 || techState.mfiMax < 100) && (k.mfi == null || k.mfi < techState.mfiMin || k.mfi > techState.mfiMax)) return false;
+        if (techState.rsiMin > 0 || techState.rsiMax < 100) { const rv = _techVal(k, "rsi"); if (rv == null || rv < techState.rsiMin || rv > techState.rsiMax) return false; }
+        if (techState.mfiMin > 0 || techState.mfiMax < 100) { const mv = _techVal(k, "mfi"); if (mv == null || mv < techState.mfiMin || mv > techState.mfiMax) return false; }
         const rvmin = _rv();
-        if (rvmin > 0 && (k.rvol == null || k.rvol < rvmin)) return false;
+        if (rvmin > 0) { const rvv = _techVal(k, "rvol"); if (rvv == null || rvv < rvmin) return false; }
         if (techState.volMin > 0 && (!k.vol || k.vol < techState.volMin)) return false;
         if (techState.avgVolMin > 0) {
           const av = techState.avgVolPeriod === "90" ? k.avol90 : k.avol30;
@@ -2108,7 +2111,7 @@
         }
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
         if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
-        if (_atrp() > 0 && (k.atrp == null || k.atrp < _atrp())) return false;
+        if (_atrp() > 0) { const av2 = _techVal(k, "atrp"); if (av2 == null || av2 < _atrp()) return false; }
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
       }
@@ -2167,6 +2170,7 @@
     // technical controls
     const bind = (id, ev, fn) => { const e = $("#" + id); if (e) e[ev] = fn; };
     bind("techToggle", "onclick", () => { techState.techOpen = !techState.techOpen; reRender(); });
+    bind("tTechTf", "onchange", e => { techState.techTf = e.target.value; reRender(); });
     bind("tMaType", "onchange", e => { techState.maType = e.target.value; reRender(); });
     bind("tMaPer", "onchange", e => { techState.maPeriod = e.target.value; reRender(); });
     bind("tMaRel", "onchange", e => { techState.maRel = e.target.value; reRender(); });
@@ -2208,6 +2212,7 @@
   // MFI≠0-100 / RVOL>0 / volume>0 / avg-vol>0 / 52w≠off).
   const techState = {
     techOpen: false,
+    techTf: "D",                 // timeframe for RSI/MFI/RVOL/ATR indicators (D/W/M/Q/Y)
     maType: "SMA", maPeriod: "50", maRel: "off", maPct: 2,
     rsiMin: 0, rsiMax: 100,
     mfiMin: 0, mfiMax: 100,
@@ -2224,6 +2229,19 @@
   };
   const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
   const COMP_MAS = ["20", "50", "100", "200"];
+  // RSI/MFI/RVOL/ATR value on the SELECTED indicator timeframe (D uses the daily tech block;
+  // W/M/Q/Y read the per-timeframe block the server attaches as tech.tf). null if unavailable there.
+  function _techVal(k, field) {
+    if (!k) return null;
+    if (techState.techTf && techState.techTf !== "D") {
+      const t = k.tf && k.tf[techState.techTf];
+      return t && t[field] != null ? t[field] : null;
+    }
+    return k[field];
+  }
+  const TF_HE_SHORT = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+  function _tfSuf() { return techState.techTf && techState.techTf !== "D" ? "·" + techState.techTf : ""; }
+  function _tfTip() { return techState.techTf && techState.techTf !== "D" ? " (מסגרת זמן: " + (TF_HE_SHORT[techState.techTf] || techState.techTf) + ")" : ""; }
   function _compSpread(k) {
     if (!k || !k.dsma) return null;
     const vals = COMP_MAS.map(p => k.dsma[p]).filter(v => v != null);
@@ -2265,6 +2283,7 @@
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
     techState.compMax = ""; techState.bbSqMax = ""; techState.swSide = "off"; techState.swPct = 2;
+    techState.techTf = "D";
   }
   function fmtVol(n) {
     if (n == null) return "—";

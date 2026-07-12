@@ -439,6 +439,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ss-rest { display:flex; flex-direction:column; gap:10px; }
 .ss-rest[hidden] { display:none; }
 .ss-more { width:100%; margin-top:2px; font-size:12px; font-weight:600; }
+
+/* scanner · indicator-timeframe selector badge */
+.tf-ind-badge { background:var(--accentbg); color:var(--accent); font-weight:700; font-size:11px; padding:3px 8px; border-radius:7px; border:1px solid rgba(124,108,240,.45); white-space:nowrap; }
 @media (max-width:900px){ .subsec-3col { grid-template-columns:1fr; } }
 .drill-bar { display:flex; align-items:center; gap:10px; margin:0 0 12px; flex-wrap:wrap; }
 /* ===== S&P 500 · sector breadth cards + top movers ===== */
