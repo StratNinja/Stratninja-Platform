@@ -566,7 +566,7 @@
     const pctMode = eqMode === "pct" && base > 0;
     const toVal = eq => pctMode ? eq / base * 100 : eq;                       // $ → % of portfolio
     const fmtVal = v => pctMode ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : money(v, 0);
-    const W = 1600, H = 340, pad = 44;   // wide viewBox → preserveAspectRatio="none" stretches less
+    const W = 1500, H = 420, pad = 46;   // ~3.6:1 aspect (not squished); scaled with "meet" → no distortion
     const eq = pts.map(p => toVal(p.equity));
     const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
     const rng = (maxY - minY) || 1;
@@ -578,7 +578,7 @@
     const zeroY = Y(0);
     const last = eq[eq.length - 1];
     const svg =
-      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" height="100%" preserveAspectRatio="none">' +
+      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet">' +
       '<defs><linearGradient id="eqgrad" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="#7c6cf0" stop-opacity=".35"/><stop offset="1" stop-color="#7c6cf0" stop-opacity="0"/></linearGradient></defs>' +
       '<line class="axis" x1="' + pad + '" y1="' + zeroY + '" x2="' + (W - pad) + '" y2="' + zeroY + '"/>' +

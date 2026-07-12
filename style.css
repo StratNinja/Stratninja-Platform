@@ -88,8 +88,9 @@ button{font-family:inherit}
 svg .axis{stroke:var(--line);vector-effect:non-scaling-stroke}
 svg .eqline{fill:none;stroke:var(--accent);stroke-width:2;vector-effect:non-scaling-stroke}
 svg .eqarea{fill:url(#eqgrad)}
-/* bounded height so the curve doesn't grow with the container width / when zooming out */
-.eqsvg{cursor:crosshair;display:block;width:100%;height:clamp(200px,34vh,320px)}
+/* bounded height (won't grow with width/zoom), uniform-scaled so it isn't squished */
+.eqsvg{cursor:crosshair;display:block;width:100%;max-height:440px;margin:0 auto}
+.eqsvg text{direction:ltr}   /* numbers/dates stay LTR on the RTL page (else the label clips) */
 .eqhover{transition:opacity .1s;pointer-events:none}
 .eqcross{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 4;opacity:.7}
 .eqdot{stroke:#0f1116;stroke-width:2}
