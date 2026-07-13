@@ -638,7 +638,9 @@
   // ---- Trades table ------------------------------------------------------
   function renderTrades(trades, openPositions) {
     const wrap = el("div");
-    const sorted = trades.slice().sort((a, b) => {
+    // position value = entry notional (qty × entry price × multiplier). Precomputed so the column sorts.
+    const withPv = trades.map(t => Object.assign({}, t, { posValue: (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1) }));
+    const sorted = withPv.sort((a, b) => {
       let av = a[state.sortKey], bv = b[state.sortKey];
       if (typeof av === "string") { return (av < bv ? -1 : av > bv ? 1 : 0) * state.sortDir; }
       return (av - bv) * state.sortDir;
@@ -647,7 +649,7 @@
     const cols = [
       ...(showAcct ? [["account", "חשבון"]] : []),
       ["exitDate", "תאריך יציאה"], ["symbol", "סימבול"], ["assetType", "סוג"],
-      ["direction", "כיוון"], ["qty", "כמות"], ["entryPrice", "כניסה"],
+      ["direction", "כיוון"], ["qty", "כמות"], ["entryPrice", "כניסה"], ["posValue", "שווי פוזיציה"],
       ["exitPrice", "יציאה"], ["fees", "עמלות"], ["pnl", "נטו"], ["source", "מקור"],
     ];
     let head = "<tr>";
@@ -666,6 +668,7 @@
         '<td><span class="pill ' + t.direction + '">' + (t.direction === "long" ? "לונג" : "שורט") + "</span></td>" +
         "<td>" + t.qty + "</td>" +
         "<td>" + money(t.entryPrice, 2) + "</td>" +
+        "<td>" + money(t.posValue, 0) + "</td>" +
         "<td>" + money(t.exitPrice, 2) + "</td>" +
         '<td class="zero">' + money(-t.fees, 2) + "</td>" +
         '<td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td>" +
