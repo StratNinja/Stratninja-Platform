@@ -232,6 +232,8 @@
 
   function renderOpenPositions(openTrades) {
     const wrap = el("div", "panel open-pos");
+    const showAcct = state.account === ALL;   // combined view → show which account each position is in
+    const posValOf = t => (+t.entryPrice || 0) * (+t.qty || 0) * (t.mult || 1);   // entry notional
     // derive per-position values first (live prices are STOCK prices — not an option's premium,
     // so Unrealized P&L is only computable for stocks). Needed for both display AND sorting.
     const items = openTrades.map(t => {
@@ -243,11 +245,13 @@
     if (_openSort.col) {
       const sv = it => {
         switch (_openSort.col) {
+          case "account": return (it.t.account || "").toUpperCase();
           case "symbol": return (it.t.symbol || "").toUpperCase();
           case "entryDate": return it.t.entryDate || "";
           case "direction": return it.t.direction || "";
           case "qty": return +it.t.qty || 0;
           case "entryPrice": return +it.t.entryPrice || 0;
+          case "posValue": return posValOf(it.t);
           case "cp": return it.cp == null ? -Infinity : it.cp;
           case "un": return it.un == null ? -Infinity : it.un;
           default: return 0;
@@ -268,17 +272,19 @@
         cpHtml = money(cp, 2);
       } else { haveAll = false; pnlHtml = '<span class="muted">' + (livePrices ? "אין מחיר" : "טוען…") + "</span>"; cpHtml = "—"; }
       return "<tr data-editopen='" + t.id + "' style='cursor:pointer'>" +
+        (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + t.symbol +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
-        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
+        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posValOf(t), 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
           "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
           "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button></td></tr>";
     }).join("");
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
-    const _thead = "<tr>" + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + "<th></th></tr>";
+    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "שווי פוזיציה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + "<th></th></tr>";
+    const footSpan = 7 + (showAcct ? 1 : 0);   // columns before the Unrealized-total cell
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — ה-P&L שלהן יחושב בסגירה</span>' : "";
     const count = openTrades.length;
@@ -289,7 +295,7 @@
         (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + toggleBtn + "</h3>" +
       (openPosMin ? "" :
         "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
-        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='6' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>");
+        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='" + footSpan + "' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>");
     { const tg = wrap.querySelector("#openPosToggle"); if (tg) tg.onclick = () => { openPosMin = !openPosMin; try { localStorage.setItem("sn_openpos_min", openPosMin ? "1" : "0"); } catch (e) {} render(); }; }
     wrap.querySelectorAll("[data-jsort]").forEach(th => th.onclick = () => {
       const c = th.dataset.jsort;
