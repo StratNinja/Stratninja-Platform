@@ -643,7 +643,9 @@
       if (typeof av === "string") { return (av < bv ? -1 : av > bv ? 1 : 0) * state.sortDir; }
       return (av - bv) * state.sortDir;
     });
+    const showAcct = state.account === ALL;   // combined view → show which account each trade is in
     const cols = [
+      ...(showAcct ? [["account", "חשבון"]] : []),
       ["exitDate", "תאריך יציאה"], ["symbol", "סימבול"], ["assetType", "סוג"],
       ["direction", "כיוון"], ["qty", "כמות"], ["entryPrice", "כניסה"],
       ["exitPrice", "יציאה"], ["fees", "עמלות"], ["pnl", "נטו"], ["source", "מקור"],
@@ -657,6 +659,7 @@
     let rows = "";
     sorted.forEach(t => {
       rows += "<tr>" +
+        (showAcct ? '<td class="muted" style="white-space:nowrap">' + (t.account || "—") + "</td>" : "") +
         "<td>" + t.exitDate + "</td>" +
         "<td>" + t.symbol + "</td>" +
         '<td><span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
