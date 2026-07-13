@@ -453,6 +453,16 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* auto-fit + no phantom track: cards stretch to fill the full column width */
 .ss-col-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:6px; align-items:stretch; }
 /* S&P 500 breadth cards are richer (with mover tickers) → 2 per row inside each column */
+/* S&P 500 view toggle + 500-square heatmap */
+.sp-view-switch { display:flex; gap:6px; margin:0 0 14px; }
+.sp-grid-panel { padding:16px; }
+.sp-grid-head { font-size:14px; font-weight:800; margin:0 0 12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.sp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(26px,1fr)); gap:3px; }
+.spq { aspect-ratio:1; border-radius:3px; cursor:pointer; transition:transform .1s ease, outline-color .1s; outline:2px solid transparent; }
+.spq:hover { transform:scale(1.4); outline-color:#fff; position:relative; z-index:3; }
+.sp-grid-did { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:14px; }
+.sp-did-lbl { font-size:13px; font-weight:800; color:var(--muted); white-space:nowrap; }
+.sp-grid-did .cm-insight { margin:0; flex:1; min-width:220px; }
 .sp-col-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; align-items:start; }
 .sp-col-grid .sp-card { margin:0; }
 @media (max-width:1250px){ .sp-col-grid { grid-template-columns:1fr; } }

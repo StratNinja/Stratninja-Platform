@@ -766,6 +766,33 @@
     if (mega.length >= 6) facts.push("מבין <b>12 החברות הגדולות</b> בשוק, <b>" + mega.filter(x => x.ao).length + "</b> מעל מחיר הפתיחה.");
     return facts;
   }
+  // S&P 500 tab has two views, toggled by a button: "sectors" (breakdown) | "grid" (500 squares)
+  let sp500View = "sectors";
+  function sp500ViewSwitch() {
+    return '<div class="sp-view-switch">' +
+      '<button class="uni-btn' + (sp500View === "sectors" ? " on" : "") + '" data-spview="sectors">📊 לפי סקטור</button>' +
+      '<button class="uni-btn' + (sp500View === "grid" ? " on" : "") + '" data-spview="grid">🟩 מפת 500 ריבועים</button></div>';
+  }
+  // the 500-square heatmap: every S&P 500 stock = one square, green (up) / red (down), sorted so
+  // the up/down proportion is visible at a glance. Each square is clickable → its chart.
+  function sp500Grid() {
+    const secs = (LIVE && LIVE.sectors) || [];
+    const all = [];
+    secs.forEach(s => (s.stocks || []).forEach(x => all.push(x)));
+    all.sort((a, b) => (b.c == null ? -999 : b.c) - (a.c == null ? -999 : a.c));
+    const up = all.filter(x => (x.c || 0) > 0).length;
+    const down = all.filter(x => (x.c || 0) < 0).length;
+    const flat = all.length - up - down;
+    const upPct = all.length ? Math.round(up / all.length * 100) : 0;
+    const squares = all.map(x => {
+      const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(2) + "%";
+      return '<span class="spq clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " " + cs + '" style="background:' + chgColor(x.c) + '"></span>';
+    }).join("");
+    return '<div class="sp-grid-head"><span class="pos">🟢 ' + up + ' עולות</span> · <span class="neg">🔴 ' + down + ' יורדות</span>' +
+      (flat ? ' · <span class="muted">⚪ ' + flat + " ללא שינוי</span>" : "") +
+      ' · <span class="muted">' + all.length + " מניות · " + upPct + "% ירוקות</span></div>" +
+      '<div class="sp-grid">' + squares + "</div>";
+  }
   function renderSp500() {
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
     if (!secs || !secs.length) {
@@ -776,6 +803,13 @@
     _spFacts = sp500Facts();
     const firstFact = _spFacts.length ? _spFacts[Math.floor(Math.random() * _spFacts.length)] : "";
     const insightBox = _spFacts.length ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="spInsightText">' + firstFact + "</span></div>" : "";
+    // ── GRID VIEW: 500 squares (toggle) ──
+    if (sp500View === "grid") {
+      return '<div class="page-head"><h1>S&P 500 · מפת 500 ריבועים</h1><div class="sub">כל ריבוע = מניה במדד. 🟢 עולה · 🔴 יורדת · ככל שהצבע חזק יותר, התנועה גדולה יותר. ממוין מהעולה לנופל — כך רואים מיד את היחס בין עולות ליורדות.</div></div>' +
+        sp500ViewSwitch() + liveBanner() +
+        '<div class="panel sp-grid-panel">' + sp500Grid() + "</div>" +
+        (insightBox ? '<div class="sp-grid-did"><span class="sp-did-lbl">🧠 הידעת?</span>' + insightBox + "</div>" : "");
+    }
     const mvChip = x => {
       const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(1) + "%";
       return '<span class="mv-chip clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " " + cs + '" style="background:' + chgColor(x.c) + '">' + x.s + " <b>" + cs + "</b></span>";
@@ -799,7 +833,7 @@
     const spColHtml = (title, cls, arr) => '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
       '<div class="sp-col-grid">' + (arr.length ? arr.map(o => spCard(o.s)).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;font-size:12px;text-align:center">אין כרגע</div>') + "</div></div>";
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · מחולק ל-3 לפי רוחב: <b>BULL</b> (55%+ מעל פתיחה) · <b>בין לבין</b> · <b>BEAR</b> (מתחת 45%). לחץ על סקטור לכל המניות.</div></div>' +
-      insightBox + liveBanner() + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
+      sp500ViewSwitch() + insightBox + liveBanner() + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
   }
   let spDrillSort = { col: "c", dir: -1 };
   function spDrillVal(x, col) {
@@ -844,6 +878,10 @@
   }
   function wireSp500() {
     wireCharts(document);
+    document.querySelectorAll("[data-spview]").forEach(b => b.onclick = () => {
+      if (sp500View === b.dataset.spview) return;
+      sp500View = b.dataset.spview; reRender();
+    });
     document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill)));
     if (_spTimer) { clearInterval(_spTimer); _spTimer = null; }
     if (_spFacts && _spFacts.length > 1) {
