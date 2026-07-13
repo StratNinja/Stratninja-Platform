@@ -142,7 +142,7 @@
     if (!cfg || !cfg.SUPABASE_URL) return {};
     try {
       const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.latest&select=data",
-        { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY, "Cache-Control": "no-cache" } });
       if (!r.ok) return livePrices || {};
       const j = await r.json();
       const rows = (j && j[0] && j[0].data && j[0].data.rows) || [];
@@ -206,8 +206,10 @@
       root.appendChild(content);
     }
 
-    // load live prices once, then re-render so Unrealized P&L fills in
-    if (manualOpen && manualOpen.length && !livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
+    // load live prices once, then re-render so Unrealized P&L fills in — for ANY open position
+    // (CSV-derived OR manual), not just manual ones
+    const anyOpen = (openPositions && openPositions.length) || (manualOpen && manualOpen.length);
+    if (anyOpen && !livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
   }
 
   // discipline nudge — persistent banner + one-time popup when open positions pile up
