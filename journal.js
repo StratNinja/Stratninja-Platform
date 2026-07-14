@@ -135,7 +135,7 @@
   }
 
   // ---- live prices for Unrealized P&L (from the scanner_data snapshot) ----
-  let livePrices = null, livePricesTs = 0;
+  let livePrices = null, livePricesTs = 0, _openPriceTimer = null;
   async function ensureLivePrices() {
     if (livePrices && Date.now() - livePricesTs < 120000) return livePrices;
     const cfg = window.SN_CONFIG;
@@ -206,10 +206,20 @@
       root.appendChild(content);
     }
 
-    // load live prices once, then re-render so Unrealized P&L fills in — for ANY open position
-    // (CSV-derived OR manual), not just manual ones
+    // keep open-position prices LIVE — load once, then refresh from the scanner every 45s while the
+    // journal is open (previously fetched only once → prices froze at whatever they were on open)
     const anyOpen = (openPositions && openPositions.length) || (manualOpen && manualOpen.length);
-    if (anyOpen && !livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
+    if (anyOpen) {
+      if (!livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
+      if (!_openPriceTimer) _openPriceTimer = setInterval(refreshOpenPrices, 45000);
+    } else if (_openPriceTimer) { clearInterval(_openPriceTimer); _openPriceTimer = null; }
+  }
+  function refreshOpenPrices() {
+    const jc = document.getElementById("journalContainer");
+    if (!jc || jc.classList.contains("hidden") || document.getElementById("modalBg")) return;  // not visible / mid-edit
+    livePricesTs = 0;                                    // force a fresh fetch (bypass the 2-min cache)
+    const before = livePrices;
+    ensureLivePrices().then(m => { if (m && before && JSON.stringify(m) !== JSON.stringify(before)) render(); });
   }
 
   // discipline nudge — persistent banner + one-time popup when open positions pile up
