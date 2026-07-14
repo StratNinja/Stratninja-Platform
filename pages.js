@@ -916,7 +916,17 @@
   // ========== SCANNER ==========
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", cap: "all", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  // parse a market-cap input like "2B" / "60B" / "500M" / "1.5T" → dollars. Bare number = billions.
+  function _parseCap(s) {
+    s = String(s == null ? "" : s).trim().toUpperCase().replace(/[$,\s]/g, "");
+    if (!s) return null;
+    const m = s.match(/^([\d.]+)([TBMK]?)$/);
+    if (!m) return null;
+    const n = parseFloat(m[1]);
+    if (isNaN(n)) return null;
+    return n * ({ T: 1e12, B: 1e9, M: 1e6, K: 1e3, "": 1e9 }[m[2]]);
+  }
   let _selPreset = "";   // id of the saved-scan currently chosen in the dropdown (survives reRender so delete/duplicate work)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
@@ -944,14 +954,14 @@
     return {
       s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad, inforce: s.inforce,
         sector: s.sector, subsec: s.subsec, sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
-        cap: s.cap, mtf: JSON.parse(JSON.stringify(s.mtf)) },
+        capMin: s.capMin, capMax: s.capMax, mtf: JSON.parse(JSON.stringify(s.mtf)) },
       t: Object.assign({}, techState),
     };
   }
   function applyScanConfig(cfg) {
     if (!cfg) return;
     const s = cfg.s || {}, t = cfg.t || {};
-    ["dir", "shape", "broad", "inforce", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "cap"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
+    ["dir", "shape", "broad", "inforce", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "capMin", "capMax"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
     if (s.tfs) scanState.tfs = s.tfs.slice();
     scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
     if (s.patterns) scanState.patterns = s.patterns.slice();
@@ -1764,7 +1774,7 @@
   }
   function resetScan() {
     scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = "off";
-    scanState.sector = "all"; scanState.subsec = "all"; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.cap = "all";
+    scanState.sector = "all"; scanState.subsec = "all"; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.capMin = ""; scanState.capMax = "";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
   }
@@ -1884,7 +1894,7 @@
         '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.subsec === s ? " selected" : "") + ">" + s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
-        '<div class="fgrp"><label>שווי שוק</label><select id="scanCap">' + CAP_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.cap === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>שווי שוק <span class="muted" style="font-size:10px">(B=מיליארד · M=מיליון)</span></label><div class="chips" style="align-items:center"><input id="scanCapMin" type="text" placeholder="מ- 2B" style="width:72px" value="' + escAttr(scanState.capMin) + '"><span class="muted">–</span><input id="scanCapMax" type="text" placeholder="עד 100B" style="width:72px" value="' + escAttr(scanState.capMax) + '"></div></div>' +
         '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
         '<div class="fgrp"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
       "</div></div>";
@@ -2007,7 +2017,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.cap !== "all" || scanState.tfs.length > 1 || cnt || mtfCnt || indCnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.capMin !== "" || scanState.capMax !== "" || scanState.tfs.length > 1 || cnt || mtfCnt || indCnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -2068,10 +2078,13 @@
         if (scanState.priceMin !== "" && px < parseFloat(scanState.priceMin)) return false;
         if (scanState.priceMax !== "" && px > parseFloat(scanState.priceMax)) return false;
       }
-      if (scanState.cap !== "all") {
-        const mc = t.mc, rng = CAP_RANGES[scanState.cap];
-        if (mc == null || (rng && (mc < rng[0] || mc >= rng[1]))) return false;
-      }
+      { const cMin = _parseCap(scanState.capMin), cMax = _parseCap(scanState.capMax);
+        if (cMin != null || cMax != null) {
+          const mc = t.mc;
+          if (mc == null) return false;
+          if (cMin != null && mc < cMin) return false;
+          if (cMax != null && mc > cMax) return false;
+        } }
       // daily % move (signed, from–to) — uses the always-present change field, not the tech block
       if (_chgActive()) {
         const cg = t.chg == null ? (t.tech ? t.tech.chg : null) : t.chg;
@@ -2205,7 +2218,8 @@
       if (ns) { ns.focus(); try { ns.setSelectionRange(pos, pos); } catch (e) {} }
     };
     document.querySelectorAll("[data-sortcol]").forEach(th => th.onclick = () => onSortClick(th.dataset.sortcol));
-    const cap = $("#scanCap"); if (cap) cap.onchange = () => { scanState.cap = cap.value; reRender(); };
+    { const cMin = $("#scanCapMin"); if (cMin) cMin.oninput = () => { const p = cMin.selectionStart; scanState.capMin = cMin.value; reRender(); const n = $("#scanCapMin"); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (e) {} } }; }
+    { const cMax = $("#scanCapMax"); if (cMax) cMax.oninput = () => { const p = cMax.selectionStart; scanState.capMax = cMax.value; reRender(); const n = $("#scanCapMax"); if (n) { n.focus(); try { n.setSelectionRange(p, p); } catch (e) {} } }; }
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
