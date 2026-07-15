@@ -137,19 +137,21 @@
   // ---- live prices for Unrealized P&L (from the scanner_data snapshot) ----
   let livePrices = null, livePricesTs = 0, _openPriceTimer = null;
   async function ensureLivePrices() {
-    if (livePrices && Date.now() - livePricesTs < 120000) return livePrices;
+    if (livePrices && Date.now() - livePricesTs < 30000) return livePrices;
     const cfg = window.SN_CONFIG;
     if (!cfg || !cfg.SUPABASE_URL) return {};
     try {
-      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.latest&select=data",
+      // the compact LIVE-prices feed (id='prices') — {sym:[price,chg]} for the whole US market,
+      // refreshed every ~1 min. Tiny vs the 0.5 MB scanner feed, and much fresher for Unrealized P&L.
+      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.prices&select=data",
         { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY, "Cache-Control": "no-cache" } });
       if (!r.ok) return livePrices || {};
       const j = await r.json();
-      const rows = (j && j[0] && j[0].data && j[0].data.rows) || [];
+      const prices = (j && j[0] && j[0].data && j[0].data.prices) || {};
       const map = {};
-      rows.forEach(x => { const p = x.p || (x.tech ? x.tech.px : 0); if (p) map[x.s] = p; });
-      livePrices = map; livePricesTs = Date.now();
-      return map;
+      Object.keys(prices).forEach(sym => { const v = prices[sym]; const p = Array.isArray(v) ? v[0] : v; if (p) map[sym] = p; });
+      if (Object.keys(map).length) { livePrices = map; livePricesTs = Date.now(); }
+      return livePrices || {};
     } catch (e) { return livePrices || {}; }
   }
   function unrealizedPnl(t, cp) {
