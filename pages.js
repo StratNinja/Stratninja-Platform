@@ -3026,7 +3026,7 @@
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
           "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       }).join("");
-      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + body;
   }
@@ -3034,6 +3034,8 @@
     const g = $("#goScanner"); if (g) g.onclick = () => setPage("scanner");
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
+    // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
+    { const rf = $("#favRefresh"); if (rf) rf.onclick = async () => { rf.disabled = true; rf.textContent = "🔄 מרענן…"; try { await fetchScanner(); } catch (e) {} if (state.page === "favorites") reRender(); snToast("ההתראות עודכנו ✓"); }; }
     const fg = $("#favGrid");
     if (fg) fg.onclick = () => {
       const favs = window.Prefs ? window.Prefs.favorites() : [];
@@ -3198,7 +3200,7 @@
       if (j && j[0] && j[0].data) {
         SCAN = j[0].data;
         applyLivePrices();     // overlay the live price/% onto the fresh scan (Strat cells untouched)
-        if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") reRender();
+        if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "favorites") reRender();
         checkPresetAlerts();   // fire preset × favorites alerts on fresh scan data
       }
     } catch (e) { /* keep demo */ }
