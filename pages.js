@@ -1423,10 +1423,20 @@
     if (page === "favorites") {
       const favs = window.Prefs ? Prefs.favorites() : [];
       const rows = src.filter(t => favs.indexOf(t.sym) >= 0);
-      const gainers = rows.filter(t => (t.chg || 0) > 0).sort((a, b) => b.chg - a.chg).slice(0, 5);   // TOP 5 up
-      const losers = rows.filter(t => (t.chg || 0) < 0).sort((a, b) => a.chg - b.chg).slice(0, 5);     // TOP 5 down
-      const strip = gainers.map(t => _shIdx(t.sym, _shNum(t.chg), "pos")).join("") + losers.map(t => _shIdx(t.sym, _shNum(t.chg), "neg")).join("");
-      return { headline: "⭐ המועדפים שלי · " + favs.length, cls: "zero", strip: strip || '<span class="sc-idx">אין מועדפים</span>', picksLabel: "", picks: "" };
+      const chgOf = s => { const r = rows.find(t => t.sym === s); return r ? (r.chg || 0) : 0; };
+      // (1) favorites with an active alert marking (matched a saved scan / fired today) — up to 6
+      const pmatch = favAlertMatches();
+      const alertSyms = Object.keys(pmatch).sort((a, b) => chgOf(b) - chgOf(a)).slice(0, 6);
+      const alertStrip = alertSyms.length
+        ? alertSyms.map(s => _shIdx("🔔 " + s, _shNum(chgOf(s)), chgOf(s) >= 0 ? "pos" : "neg")).join("")
+        : '<span class="sc-idx muted">אין התראות פעילות</span>';
+      // (2) the 3 favorites that rose the most today
+      const gainers = rows.filter(t => (t.chg || 0) > 0).sort((a, b) => b.chg - a.chg).slice(0, 3);
+      const gainStrip = gainers.length ? gainers.map(t => _shIdx("🚀 " + t.sym, _shNum(t.chg), "pos")).join("") : '<span class="sc-idx muted">—</span>';
+      const bodyHtml =
+        '<div class="sc-sec-lbl">🔔 מניות עם התראה</div><div class="sc-strip">' + alertStrip + "</div>" +
+        '<div class="sc-sec-lbl pos" style="margin-top:12px">🚀 העולים היום</div><div class="sc-strip">' + gainStrip + "</div>";
+      return { headline: "⭐ המועדפים שלי · " + favs.length, cls: "zero", bodyHtml: bodyHtml };
     }
     if (page === "journal") {
       const j = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null;
@@ -2974,6 +2984,26 @@
   }
 
   // ========== FAVORITES ==========
+  // favorites' alert markings can be dismissed per-day (re-arm next trading day)
+  function _favDismissed() {
+    try { const d = JSON.parse(localStorage.getItem("sn_fav_alert_dismissed") || "{}"); return new Set(d[new Date().toISOString().slice(0, 10)] || []); } catch (e) { return new Set(); }
+  }
+  function _dismissFavAlert(sym) {
+    try { const today = new Date().toISOString().slice(0, 10); const arr = _favDismissed(); arr.add(sym); const nd = {}; nd[today] = Array.from(arr); localStorage.setItem("sn_fav_alert_dismissed", JSON.stringify(nd)); } catch (e) {}
+  }
+  // {sym: [scan/alert names]} for favorites matching a saved scan OR today's fired alerts, minus dismissed
+  function favAlertMatches() {
+    const favs = window.Prefs ? window.Prefs.favorites() : [];
+    const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
+    const pmatch = {};
+    const add = (sym, name) => { if (favs.indexOf(sym) < 0) return; const a = pmatch[sym] = pmatch[sym] || []; if (a.indexOf(name) < 0) a.push(name); };
+    if (SCAN && SCAN.rows && SCAN.rows.length && presets.length) presets.forEach(p => { let m = []; try { m = evalPreset(p) || []; } catch (e) {} m.forEach(s => add(s, p.name)); });
+    const feed = (window.Prefs && window.Prefs.alertFeed) ? window.Prefs.alertFeed() : [];
+    const today = new Date().toISOString().slice(0, 10);
+    feed.forEach(e => { if (e && e.date === today && favs.indexOf(e.sym) >= 0) add(e.sym, e.preset); });
+    _favDismissed().forEach(s => delete pmatch[s]);
+    return pmatch;
+  }
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
     const list = favs.map(sym => {
@@ -2985,21 +3015,11 @@
     if (!favs.length) {
       body = '<div class="panel"><div class="stub"><div class="big">⭐</div><h2>אין עדיין מועדפים</h2><p>לחץ על הכוכב ⭐ ליד מניות בסורק, בסקטורים או בגאפרים כדי להוסיף אותן לכאן.</p><button class="btn primary" id="goScanner">לסורק העסקאות</button></div></div>';
     } else {
-      // which favorites currently match one or more of the saved scan presets (for the highlight + count badge)
-      const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
-      const pmatch = {};
-      const _addMatch = (sym, name) => { const a = pmatch[sym] = pmatch[sym] || []; if (a.indexOf(name) < 0) a.push(name); };
-      // (a) live matches — re-run each saved preset against the current scan data
-      if (SCAN && SCAN.rows && SCAN.rows.length && presets.length) {
-        presets.forEach(p => { let m = []; try { m = evalPreset(p) || []; } catch (e) {} m.forEach(sym => _addMatch(sym, p.name)); });
-      }
-      // (b) today's fired alerts — covers stocks that matched but aren't in the current scan snapshot
-      const _feed = (window.Prefs && window.Prefs.alertFeed) ? window.Prefs.alertFeed() : [];
-      const _today = new Date().toISOString().slice(0, 10);
-      _feed.forEach(e => { if (e && e.date === _today && favs.indexOf(e.sym) >= 0) _addMatch(e.sym, e.preset); });
+      // which favorites match a saved scan / fired an alert today (for the highlight + dismissible badge)
+      const pmatch = favAlertMatches();
       const rows = list.map(t => {
         const pm = pmatch[t.sym] || [];
-        const badge = pm.length ? '<span class="fav-pcount" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + '">' + pm.length + "</span>" : "";
+        const badge = pm.length ? '<span class="fav-pcount" data-favdismiss="' + escAttr(t.sym) + '" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + ' · לחץ להסרת הסימון">' + pm.length + "</span>" : "";
         return "<tr" + (pm.length ? ' class="fav-inpreset"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + badge + "</span></td>" +
           '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
@@ -3012,6 +3032,8 @@
   }
   function wireFavorites() {
     const g = $("#goScanner"); if (g) g.onclick = () => setPage("scanner");
+    // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
+    document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
     const fg = $("#favGrid");
     if (fg) fg.onclick = () => {
       const favs = window.Prefs ? window.Prefs.favorites() : [];

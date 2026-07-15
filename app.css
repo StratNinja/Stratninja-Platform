@@ -825,7 +825,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .fav-starcell { display: inline-flex; align-items: center; gap: 5px; }
 .fav-pcount { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
   padding: 0 4px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800;
-  box-shadow: 0 0 0 1px rgba(0,0,0,.25); }
+  box-shadow: 0 0 0 1px rgba(0,0,0,.25); cursor: pointer; transition: .12s; position: relative; }
+.fav-pcount:hover { background: #b91c1c; }
+.fav-pcount:hover::after { content: "✕"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: #b91c1c; border-radius: 9px; font-size: 11px; }
 
 /* selected stock-alert style button */
 .al-style.on { border-color: var(--accent, #7c6cf0); color: var(--ink); background: rgba(124,108,240,.18); font-weight: 700; }
