@@ -2991,6 +2991,7 @@
   function _dismissFavAlert(sym) {
     try { const today = new Date().toISOString().slice(0, 10); const arr = _favDismissed(); arr.add(sym); const nd = {}; nd[today] = Array.from(arr); localStorage.setItem("sn_fav_alert_dismissed", JSON.stringify(nd)); } catch (e) {}
   }
+  function _clearFavDismissed() { try { localStorage.removeItem("sn_fav_alert_dismissed"); } catch (e) {} }
   // {sym: [scan/alert names]} for favorites matching a saved scan OR today's fired alerts, minus dismissed
   function favAlertMatches() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
@@ -3035,7 +3036,7 @@
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
     // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
-    { const rf = $("#favRefresh"); if (rf) rf.onclick = async () => { rf.disabled = true; rf.textContent = "🔄 מרענן…"; try { await fetchScanner(); } catch (e) {} if (state.page === "favorites") reRender(); snToast("ההתראות עודכנו ✓"); }; }
+    { const rf = $("#favRefresh"); if (rf) rf.onclick = async () => { rf.disabled = true; rf.textContent = "🔄 מרענן…"; _clearFavDismissed(); try { await fetchScanner(); } catch (e) {} if (state.page === "favorites") reRender(); snToast("ההתראות עודכנו ✓"); }; }
     const fg = $("#favGrid");
     if (fg) fg.onclick = () => {
       const favs = window.Prefs ? window.Prefs.favorites() : [];
