@@ -3175,6 +3175,7 @@
       const j = await r.json();
       if (j && j[0] && j[0].data) {
         SCAN = j[0].data;
+        applyLivePrices();     // overlay the live price/% onto the fresh scan (Strat cells untouched)
         if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") reRender();
         checkPresetAlerts();   // fire preset × favorites alerts on fresh scan data
       }
@@ -3184,6 +3185,30 @@
     if (_scanLoaded) return;
     _scanLoaded = true;
     fetchScanner();
+  }
+  // ---- live prices overlay (id='prices' feed, ~1-min fresh) — keeps the DISPLAYED price/% current
+  // without recomputing the heavy Strat analysis (bar types / FTFC stay on their 15-min cadence) ----
+  let PRICES = null;
+  function applyLivePrices() {
+    // mutate ONLY row.p (price) + row.c (daily %). Never touch r.D/W/M/Q/Y / ftfc / tech.
+    if (!PRICES || !(SCAN && SCAN.rows)) return false;
+    let changed = false;
+    SCAN.rows.forEach(row => { const lp = PRICES[row.s]; if (lp && lp[0]) { row.p = lp[0]; if (lp[1] != null) row.c = lp[1]; changed = true; } });
+    return changed;
+  }
+  async function loadPrices() {
+    try {
+      const cfg = window.SN_CONFIG;
+      if (!cfg || !cfg.SUPABASE_URL) return;
+      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.prices&select=data",
+        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return;
+      const j = await r.json();
+      const prices = j && j[0] && j[0].data && j[0].data.prices;
+      if (!prices || !Object.keys(prices).length) return;
+      PRICES = prices;
+      if (applyLivePrices() && (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today")) reRender();
+    } catch (e) { /* keep last */ }
   }
 
   // ---- Hebrew news feed (opens from the sidebar; not a permanent floating box) ----
@@ -3454,6 +3479,8 @@
     setInterval(loadLive, 60000);
     loadScanner();                                   // ensure scan data (for alerts) even off the scanner page
     setInterval(() => { if (_scanLoaded) fetchScanner(); }, 300000);   // refresh scan + re-check alerts every 5 min
+    loadPrices();                                    // live displayed prices (id='prices'), refreshed every 60s
+    setInterval(loadPrices, 60000);
     updateTicker();
     setInterval(updateTicker, 60000);
     setInterval(updateSync, 1000);
