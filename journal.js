@@ -440,7 +440,7 @@
 
     const grid = el("div", "grid");
     for (let i = 0; i < 7; i++) grid.appendChild(el("div", "dow", DOW[i]));
-    grid.appendChild(el("div", "dow", "שבוע"));
+    grid.appendChild(el("div", "dow dow-wk", "שבוע"));   // dow-wk → hidden on mobile (weekly col drops)
 
     let monTotal = 0, monActive = 0, day = 1, weekNo = 0;
     const weeks = Math.ceil((startDow + daysInMonth) / 7);

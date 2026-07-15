@@ -142,3 +142,32 @@ tr:last-child td{border-bottom:none}
 .note{color:var(--muted);font-size:12px;line-height:1.6;margin-top:16px}
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel);
   border:1px solid var(--line);border-radius:10px;padding:12px 18px;font-size:13px;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.4)}
+
+/* ===== MOBILE (journal) — phone polish (2026-07-15) ===== */
+@media (max-width: 640px) {
+  /* wide trade tables must SCROLL, not get clipped (was overflow:hidden → columns cut off) */
+  .tablebox { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tablebox table { font-size: 12px; }
+  .tablebox th, .tablebox td { padding: 8px 7px; white-space: nowrap; }
+  /* tabs: fit three across, tap-friendly */
+  .tabs { gap: 2px; margin-bottom: 14px; }
+  .tab { padding: 9px 11px; font-size: 13px; }
+  /* stat cards already 2-col via app.css; equity chart box tighter */
+  .chartbox { padding: 13px 12px; margin-bottom: 16px; }
+  .chartbox h3 { font-size: 14px; }
+  /* CSV drop zone smaller */
+  .drop { padding: 22px 14px; }
+  /* CALENDAR: drop the weekly-summary column → clean 7-day month grid that fits the phone */
+  .grid { grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .grid .wk, .grid .dow-wk { display: none; }
+  .dow { font-size: 10px; padding: 4px 1px; letter-spacing: 0; }
+  .cell { min-height: 58px; padding: 5px 4px; border-radius: 7px; }
+  .dnum { font-size: 11px; top: 4px; left: 5px; }
+  .cell .pnl { margin-top: 15px; font-size: 12.5px; }
+  .cell .tcount, .cell .sub { font-size: 9.5px; margin-top: 1px; }
+  /* month nav bar compact */
+  .calbar { gap: 6px; margin-bottom: 12px; }
+  .mlabel { font-size: 16px; min-width: 96px; }
+  .nav button { width: 30px; height: 30px; font-size: 15px; }
+  .badge { padding: 5px 9px; font-size: 12px; }
+}
