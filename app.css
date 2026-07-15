@@ -399,7 +399,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
    wider name column + narrower bar so long names + ETF chips (צריכה בסיסית/מחזורית) fit */
 .td-grid3 .td-flow .tdf-row { grid-template-columns:132px minmax(0,1fr) 48px; }
 .td-grid3 .td-flow .tdf-top { display:none; }
-@media (max-width:1050px){ .td-grid3 { grid-template-columns:1fr; } .td-grid3 .td-flow .tdf-row { grid-template-columns:118px 1fr 60px auto; } .td-grid3 .td-flow .tdf-top { display:block; } }
+@media (max-width:1050px){ .td-grid3 { grid-template-columns:minmax(0,1fr); } .td-grid3 > * { min-width:0; } .td-grid3 .tablewrap { overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%; } .td-grid3 .td-flow .tdf-row { grid-template-columns:118px 1fr 60px auto; } .td-grid3 .td-flow .tdf-top { display:block; } }
 /* manual-trade image attach (paste / upload chart screenshot) */
 .img-zone { position:relative; border:1.5px dashed var(--line); border-radius:10px; min-height:78px;
   display:flex; align-items:center; justify-content:center; cursor:pointer; padding:10px; transition:border-color .12s, background .12s; }
