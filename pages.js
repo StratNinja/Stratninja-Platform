@@ -1759,6 +1759,7 @@
     if (col === "bbsq") return k.bbsq;
     if (col === "swd") return techState.swSide === "low" ? k.swlo_d : k.swhi_d;
     if (col === "trend") return _trendVal(k);
+    if (col === "fib") return k.fibr;
     return null;
   }
   function sortRows(rows) {
@@ -2019,10 +2020,16 @@
               opt("touchsup", techState.trendMode, "נגיעה בתמיכה ⤢") + opt("touchres", techState.trendMode, "נגיעה בהתנגדות ⤡") +
               opt("breakup", techState.trendMode, "פריצת התנגדות ⬆") + opt("breakdn", techState.trendMode, "שבירת תמיכה ⬇") +
               "</select>" + ((techState.trendMode === "touchsup" || techState.trendMode === "touchres") ? '<span class="muted">±</span><input id="tTrendPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.trendPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+            '<div class="fgrp"><label>🌀 פיבונאצי (ריטרייסמנט)</label><div class="chips" style="align-items:center"><select id="tFibLevel">' +
+              opt("off", techState.fibLevel, "— הכל") +
+              opt("23.6", techState.fibLevel, "23.6%") + opt("38.2", techState.fibLevel, "38.2%") +
+              opt("61.8", techState.fibLevel, "61.8%") + opt("78.6", techState.fibLevel, "78.6%") + opt("88.6", techState.fibLevel, "88.6%") +
+              opt("gp", techState.fibLevel, "⭐ Golden Pocket") + "</select>" +
+              (_fibActive() ? '<select id="tFibDir">' + opt("any", techState.fibDir, "כל כיוון") + opt("up", techState.fibDir, "פולבק בטרנד עולה ↗") + opt("down", techState.fibDir, "תיקון בטרנד יורד ↘") + '</select><span class="muted">±</span><input id="tFibTol" type="number" step="0.5" min="0" style="width:50px" value="' + techState.fibTol + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>" +
-          '<div class="note" style="margin-top:8px;font-size:11px">💡 <b>דחיסת ממוצעים</b> = טווח ה-SMA כאחוז מהמחיר (נמוך=צפוף). <b>בולינגר דחיסה</b> = אחוזון רוחב הרצועות מול 6 חודשים (נמוך=לפני פריצה). <b>סווינג</b> = קרוב לרמת שיא/תחתית אחרונה. <b>קווי מגמה</b> = קו אלכסוני שנמתח דרך שיאים/תחתיות: <u>נגיעה</u> = המחיר בטווח ±% מהקו · <u>פריצה/שבירה</u> = המחיר חצה את הקו ביותר מ-%. כל פילטר מוסיף עמודה וממוין בלחיצה על הכותרת — ומצטרף (AND) לכל שאר הסינונים.</div>';
+          '<div class="note" style="margin-top:8px;font-size:11px">💡 <b>דחיסת ממוצעים</b> = טווח ה-SMA כאחוז מהמחיר (נמוך=צפוף). <b>בולינגר דחיסה</b> = אחוזון רוחב הרצועות מול 6 חודשים (נמוך=לפני פריצה). <b>סווינג</b> = קרוב לרמת שיא/תחתית אחרונה. <b>קווי מגמה</b> = קו אלכסוני שנמתח דרך שיאים/תחתיות: <u>נגיעה</u>=בטווח ±% מהקו · <u>פריצה/שבירה</u>=חצה את הקו. <b>פיבונאצי</b> = כמה המחיר תיקן מה-swing האחרון (ZigZag לפי סטיית ATR); בחר רמה (או Golden Pocket 0.618–0.65) + כיוון + ±% קרבה. כל פילטר מוסיף עמודה וממוין בלחיצה על הכותרת — ומצטרף (AND) לכל שאר הסינונים.</div>';
     }
-    const indBadge = indCnt ? ' <span class="badge-ftfc">' + indCnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">דחיסה · בולינגר · סווינג · קווי מגמה</span>';
+    const indBadge = indCnt ? ' <span class="badge-ftfc">' + indCnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">דחיסה · בולינגר · סווינג · קווי מגמה · פיבונאצי</span>';
     const indPanel = '<div class="panel filters"><h3 id="indToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>🎯 סורקי אינדיקטורים' + indBadge + '</span><span style="font-size:14px">' + (scanState.indOpen ? "▲" : "▼") + "</span></h3>" + indInner + "</div>";
 
     const techOn = techActive();
@@ -2047,6 +2054,7 @@
       { key: "bbsq", th: "BB דחיסה", tip: "דחיסת בולינגר: אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = דחוס/קפיץ", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
       { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct(techState.swSide === "low" ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
+      { key: "fib", th: "פיבו %", tip: "אחוז הריטרייסמנט של המחיר מה-swing האחרון (0% = בשיא/שפל האחרון · 100% = חזרה לנקודת ההתחלה). ↗ = פולבק בטרנד עולה · ↘ = תיקון בטרנד יורד", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
     ];
     // a filter becoming active auto-adds its column (once); the user can still remove it via the chip
     optCols.forEach(c => { if (c.active && colState[c.key] == null) colState[c.key] = true; });
@@ -2223,8 +2231,8 @@
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
       }
-      // indicator scanners (compression / Bollinger / swing / trend-lines) — own collapsible panel, stack AND independently
-      if (_compActive() || _bbActive() || _swActive() || _trendActive()) {
+      // indicator scanners (compression / Bollinger / swing / trend-lines / Fibonacci) — own collapsible panel, stack AND independently
+      if (_compActive() || _bbActive() || _swActive() || _trendActive() || _fibActive()) {
         const k = t.tech;
         if (!k) return false;
         if (_compActive()) { const sp = _compSpread(k); if (sp == null || sp > parseFloat(techState.compMax)) return false; }
@@ -2232,6 +2240,7 @@
         if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
         if (techState.swSide === "low" && (k.swlo_d == null || Math.abs(k.swlo_d) > techState.swPct)) return false;
         if (_trendActive() && !_trendPass(k)) return false;
+        if (_fibActive() && !_fibPass(k)) return false;
       }
       return true;
     });
@@ -2308,6 +2317,9 @@
     bind("tSwPct", "onchange", e => { techState.swPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tTrendMode", "onchange", e => { techState.trendMode = e.target.value; reRender(); });
     bind("tTrendPct", "onchange", e => { techState.trendPct = parseFloat(e.target.value) || 0; reRender(); });
+    bind("tFibLevel", "onchange", e => { techState.fibLevel = e.target.value; reRender(); });
+    bind("tFibDir", "onchange", e => { techState.fibDir = e.target.value; reRender(); });
+    bind("tFibTol", "onchange", e => { techState.fibTol = parseFloat(e.target.value) || 0; reRender(); });
     document.querySelectorAll("[data-col]").forEach(b => b.onclick = () => { colState[b.dataset.col] = !colState[b.dataset.col]; reRender(); });
     const grid = $("#scanGrid");
     if (grid) grid.onclick = () => openScannerGrid();
@@ -2367,6 +2379,7 @@
     gid("tBbSqMax", _bbActive());
     gid("tSwSide", _swActive());
     gid("tTrendMode", _trendActive());
+    gid("tFibLevel", _fibActive());
   }
 
   // ========== technical filter state (used by the unified scanner above) ==========
@@ -2392,6 +2405,7 @@
     bbSqMax: "",                 // Bollinger squeeze percentile ≤
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
+    fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
   };
   const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
   const COMP_MAS = ["20", "50", "100", "200"];
@@ -2442,7 +2456,18 @@
       default: return true;
     }
   }
-  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0); }
+  function _fibActive() { return techState.fibLevel && techState.fibLevel !== "off"; }
+  function _fibTol() { const v = parseFloat(techState.fibTol); return isNaN(v) ? 5 : v; }
+  function _fibPass(k) {
+    if (!_fibActive()) return true;
+    if (!k || k.fibr == null) return false;
+    if (techState.fibDir !== "any" && k.fibdir !== techState.fibDir) return false;
+    const tol = _fibTol();
+    if (techState.fibLevel === "gp") return k.fibr >= 61.8 - tol && k.fibr <= 65 + tol;   // Golden Pocket zone ± tol
+    const lvl = parseFloat(techState.fibLevel);
+    return !isNaN(lvl) && Math.abs(k.fibr - lvl) <= tol;
+  }
+  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
@@ -2487,6 +2512,7 @@
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
     techState.compMax = ""; techState.bbSqMax = ""; techState.swSide = "off"; techState.swPct = 2;
     techState.trendMode = "off"; techState.trendPct = 1.5;
+    techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.techTf = "D";
   }
   function fmtVol(n) {
