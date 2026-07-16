@@ -3288,10 +3288,25 @@
       });
       body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
-    return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + body;
+    return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
+  }
+  // discoverable enable-push CTA (the full alert-center lives behind the 🔔 bell in the scanner)
+  function pushStatusBar() {
+    const on = !!(window.Prefs && Prefs.pushSubs && Prefs.pushSubs().length);
+    const permOk = window.Notification && Notification.permission === "granted";
+    if (on && permOk) {
+      return '<div class="panel fav-pushbar on"><span>✅ <b>התראות לפלאפון פעילות</b> — תקבל התראה כשמניה מהמועדפים נכנסת לסריקה עם התראה מופעלת, גם כשהאתר סגור.</span>' +
+        '<button class="btn ghost" id="favAlertsCenter" style="font-size:12px;font-weight:600">🔔 מרכז ההתראות</button></div>';
+    }
+    return '<div class="panel fav-pushbar"><span>📱 <b>רוצה התראות לפלאפון גם כשהאתר סגור?</b> קבל דחיפה כשמניה מהמועדפים נכנסת לסריקה מסומנת. ' +
+      '<span class="muted" style="font-size:11px">🍏 באייפון: הוסף קודם למסך הבית (שיתוף → הוסף למסך הבית), פתח משם, ואז הפעל.</span></span>' +
+      '<span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn primary" id="favEnablePush" style="font-size:13px;font-weight:700">🔔 הפעל התראות לפלאפון</button>' +
+      '<button class="btn ghost" id="favAlertsCenter" style="font-size:12px;font-weight:600">מרכז ההתראות</button></span></div>';
   }
   function wireFavorites() {
     const g = $("#goScanner"); if (g) g.onclick = () => setPage("scanner");
+    { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
+    { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
     // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
