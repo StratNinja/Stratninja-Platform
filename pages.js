@@ -3199,6 +3199,16 @@
     _favDismissed().forEach(s => delete pmatch[s]);
     return pmatch;
   }
+  // symbols that have at least one trade (CSV fill or manual) in the local trade journal
+  function _journalSymbols() {
+    try {
+      if (!window.Store) return new Set();
+      const s = new Set();
+      (window.Store.getFills() || []).forEach(f => { if (f.symbol) s.add(String(f.symbol).toUpperCase()); });
+      (window.Store.getManual() || []).forEach(m => { if (m.symbol) s.add(String(m.symbol).toUpperCase()); });
+      return s;
+    } catch (e) { return new Set(); }
+  }
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
     const list = favs.map(sym => {
@@ -3212,16 +3222,22 @@
     } else {
       // which favorites match a saved scan / fired an alert today (for the highlight + dismissible badge)
       const pmatch = favAlertMatches();
+      const jsyms = _journalSymbols();   // favorites that have a trade in the journal → violet glow
       const rows = list.map(t => {
         const pm = pmatch[t.sym] || [];
+        const hasTrade = jsyms.has(String(t.sym).toUpperCase());
         const badge = pm.length ? '<span class="fav-pcount" data-favdismiss="' + escAttr(t.sym) + '" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + ' · לחץ להסרת הסימון">' + pm.length + "</span>" : "";
-        return "<tr" + (pm.length ? ' class="fav-inpreset"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + badge + "</span></td>" +
-          '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
+        const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך עסקה על המניה הזו ביומן המסחר">📓</span>' : "";
+        const cls = [];
+        if (pm.length) cls.push("fav-inpreset");
+        if (hasTrade) cls.push("fav-journal");
+        return "<tr" + (cls.length ? ' class="' + cls.join(" ") + '"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + badge + "</span></td>" +
+          '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span>" + jtag + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
           "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       }).join("");
-      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + body;
   }
@@ -3231,6 +3247,7 @@
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
     // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
     { const rf = $("#favRefresh"); if (rf) rf.onclick = async () => { rf.disabled = true; rf.textContent = "🔄 מרענן…"; _clearFavDismissed(); try { await fetchScanner(); } catch (e) {} if (state.page === "favorites") reRender(); snToast("ההתראות עודכנו ✓"); }; }
+    { const fc = $("#favCopy"); if (fc) fc.onclick = () => { const favs = window.Prefs ? window.Prefs.favorites() : []; if (!favs.length) { snToast("אין מניות ברשימה"); return; } const o = fc.textContent; copyToClipboard(favs.join(", "), () => { fc.textContent = "✓ הועתקו " + favs.length; setTimeout(() => fc.textContent = o, 1600); }); }; }
     const fg = $("#favGrid");
     if (fg) fg.onclick = () => {
       const favs = window.Prefs ? window.Prefs.favorites() : [];

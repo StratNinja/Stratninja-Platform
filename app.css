@@ -847,6 +847,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .scan-table tr.fav-inpreset { background: rgba(34,197,94,.09); }
 .scan-table tr.fav-inpreset:hover { background: rgba(34,197,94,.15); }
 .scan-table tr.fav-inpreset td:first-child { box-shadow: inset 3px 0 0 rgba(34,197,94,.7); }
+/* violet GLOW on a favorite that has a trade in the journal */
+.scan-table tr.fav-journal { background: rgba(124,108,240,.12); box-shadow: inset 0 0 16px rgba(124,108,240,.16); }
+.scan-table tr.fav-journal:hover { background: rgba(124,108,240,.2); }
+.scan-table tr.fav-journal td:first-child { box-shadow: inset 3px 0 0 rgba(124,108,240,.95); }
+.scan-table tr.fav-journal.fav-inpreset td:first-child { box-shadow: inset 3px 0 0 rgba(34,197,94,.7); }  /* alert wins the left bar; violet stays as the row glow */
+.fav-jtag { font-size: 12px; filter: drop-shadow(0 0 5px rgba(124,108,240,.9)); }
 .fav-starcell { display: inline-flex; align-items: center; gap: 5px; }
 .fav-pcount { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
   padding: 0 4px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800;
