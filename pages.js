@@ -2211,7 +2211,7 @@
     // panel-visibility chips + saved-scan presets
     document.querySelectorAll("[data-panel]").forEach(b => b.onclick = () => togglePanel(b.dataset.panel));
     { const psel = $("#presetSel"); if (psel) psel.onchange = () => { _selPreset = psel.value; if (!_selPreset) { reRender(); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }
-    { const psave = $("#presetSave"); if (psave) psave.onclick = () => { const name = (window.prompt("שם לסריקה השמורה:", "") || "").trim(); if (!name) return; const rec = window.Prefs.saveScanPreset(name, scanConfigSnapshot()); if (rec) _selPreset = rec.id; reRender(); }; }
+    { const psave = $("#presetSave"); if (psave) psave.onclick = () => openPresetSaveDialog(); }
     { const pdup = $("#presetDup"); if (pdup) pdup.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשכפל אותה."); return; } const rec = window.Prefs.duplicateScanPreset(_selPreset); if (rec) _selPreset = rec.id; reRender(); }; }
     { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p && !confirm('למחוק את הסריקה "' + p.name + '"?')) return; window.Prefs.deleteScanPreset(_selPreset); _selPreset = ""; reRender(); }; }
     { const bell = $("#alertBell"); if (bell) bell.onclick = () => openAlertsFeed(); updateAlertBell(); }
@@ -3181,6 +3181,33 @@
     wireCharts(m);
   }
   function closeModal() { const b = $("#pgModal"); if (b) b.remove(); }
+
+  // Save a scan preset. If one is currently active, ask whether to UPDATE it or save a COPY;
+  // otherwise just prompt for a name and create a new one.
+  function openPresetSaveDialog() {
+    const presets = (window.Prefs && window.Prefs.scanPresets) ? (window.Prefs.scanPresets() || []) : [];
+    const cur = _selPreset ? presets.find(p => p.id === _selPreset) : null;
+    const saveNew = () => {
+      const name = (window.prompt("שם לסריקה החדשה:", cur ? cur.name + " (עותק)" : "") || "").trim();
+      if (!name) return;
+      const rec = window.Prefs.saveScanPreset(name, scanConfigSnapshot());
+      if (rec) _selPreset = rec.id;
+      closeModal(); reRender(); snToast("נשמרה סריקה: «" + name + "» ✓");
+    };
+    if (!cur) { saveNew(); return; }   // nothing active → straight to "new"
+    const nm = escHtml(cur.name);
+    const body =
+      '<p class="note" style="margin:2px 0 16px;font-size:13px">שינית את הפילטרים של הסריקה <b>«' + nm + '»</b>. מה לעשות עם השינויים?</p>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<button class="btn" id="psUpdate" style="justify-content:center">💾 עדכן את «' + nm + '» עם הפילטרים הנוכחיים</button>' +
+        '<button class="btn ghost" id="psCopy" style="justify-content:center">📑 שמור כסריקה חדשה (העתק)</button>' +
+      "</div>";
+    modal("💾 שמירת סריקה", body);
+    const u = document.getElementById("psUpdate");
+    if (u) u.onclick = () => { const rec = window.Prefs.saveScanPreset(cur.name, scanConfigSnapshot()); if (rec) _selPreset = rec.id; closeModal(); reRender(); snToast("הסריקה «" + cur.name + "» עודכנה ✓"); };
+    const c = document.getElementById("psCopy");
+    if (c) c.onclick = saveNew;
+  }
 
   // ---------- favorites star wiring ----------
   function wireStars(scope) {
