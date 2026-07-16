@@ -365,6 +365,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* modular layout: market state = full-width row on top, then 3 columns (money-flow left · long · short right) */
 .td-grid3 { display:grid; grid-template-columns:1.05fr 1.05fr 1fr; gap:14px; align-items:stretch; }
 .td-grid3 > .panel { margin-bottom:0; }
+/* "מה לבדוק עכשיו" — two money-flow panels on top, long/short candidate tables below */
+.td-flow2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; margin-bottom:14px; }
+.td-cands2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; }
+.td-flow2 > .panel, .td-cands2 > .panel { margin-bottom:0; min-width:0; }
+.td-flow2 .td-flow { display:flex; flex-direction:column; }
+.td-flow2 .td-flow .tdf-list { flex:1; }
+.td-cands2 .tablewrap { overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%; }
+@media (max-width:900px){ .td-flow2, .td-cands2 { grid-template-columns:minmax(0,1fr); } }
 /* money-flow column fills the same height as the candidate tables (no step at the bottom) */
 .td-grid3 .td-flow { display:flex; flex-direction:column; }
 .td-grid3 .td-flow .tdf-list { flex:1; justify-content:space-between; }
