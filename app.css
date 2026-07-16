@@ -372,6 +372,13 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .td-flow2 .td-flow { display:flex; flex-direction:column; }
 .td-flow2 .td-flow .tdf-list { flex:1; }
 .td-cands2 .tablewrap { overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%; }
+/* the flow panels are half-width, so give the name+ETF-ticker more room and narrow the bar
+   (otherwise long Hebrew sub-sector names + the ETF chip get clipped). */
+@media (min-width:901px){
+  .td-flow2 .td-flow .tdf-row { grid-template-columns:192px minmax(46px,1fr) 46px auto; gap:8px; }
+  .td-flow2 .td-flow .tdf-name { font-size:12px; }
+  .td-flow2 .td-flow .tdf-top { font-size:10.5px; }
+}
 @media (max-width:900px){ .td-flow2, .td-cands2 { grid-template-columns:minmax(0,1fr); } }
 /* money-flow column fills the same height as the candidate tables (no step at the bottom) */
 .td-grid3 .td-flow { display:flex; flex-direction:column; }
