@@ -1445,10 +1445,12 @@
       if (!j || !j.count) return { headline: "📅 יומן מסחר", cls: "zero", strip: '<span class="sc-idx">אין עדיין עסקאות סגורות ביומן</span>', picksLabel: "", picks: "" };
       const pf = j.profitFactor === Infinity ? "∞" : (j.profitFactor || 0).toFixed(2);
       const netTxt = (j.net >= 0 ? "+$" : "-$") + Math.abs(Math.round(j.net)).toLocaleString("en-US");
+      const unTxt = j.unrealized != null ? ((j.unrealized >= 0 ? "+$" : "-$") + Math.abs(Math.round(j.unrealized)).toLocaleString("en-US")) : null;
       const strip = _shIdx("רווח/הפסד נטו", netTxt, j.net >= 0 ? "pos" : "neg") +
         _shIdx("Win Rate", j.winRate + "%", j.winRate >= 50 ? "pos" : "neg") +
         _shIdx("Profit Factor", pf, (j.profitFactor || 0) >= 1 ? "pos" : "neg") +
-        _shIdx("עסקאות", j.count, "") + (j.open ? _shIdx("פתוחות", j.open, "") : "");
+        _shIdx("עסקאות", j.count, "") + (j.open ? _shIdx("פתוחות", j.open, "") : "") +
+        (unTxt != null ? _shIdx("Unrealized", unTxt, j.unrealized >= 0 ? "pos" : "neg") : "");
       return { headline: "📅 יומן מסחר · הביצועים שלי", cls: j.net >= 0 ? "pos" : "neg", strip: strip, picksLabel: "", picks: "" };
     }
     // default = market: show the strongest FULL-TIMEFRAME-CONTINUITY plays — top-2 bullish
@@ -1657,7 +1659,11 @@
     const src = (typeof scanSource === "function" ? scanSource() : []);
     const cash = arr => arr.filter(Boolean).map(s => "$" + s).slice(0, 8).join(" ");
     let cap = "סרקתי את השוק ב-StratNinja 📊", tags = [];
-    if (page === "sectors") {
+    if (page === "journal") {
+      // the journal is personal performance — NOT a watchlist, so no scanner $tickers in the caption
+      cap = "📅 הביצועים שלי ב-StratNinja";
+      tags = [];
+    } else if (page === "sectors") {
       cap = "🗂️ הסקטורים ותתי-הסקטורים המעניינים היום · StratNinja";
       const secC = {}, indC = {};
       src.forEach(t => { if (!t.ftfc) return; const dir = (t.D || {}).c; if (dir !== "up" && dir !== "down") return; const up = dir === "up"; if (t.sector) { const o = secC[t.sector] = secC[t.sector] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } if (t.ind) { const o = indC[t.ind] = indC[t.ind] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } });

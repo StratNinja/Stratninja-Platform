@@ -1205,9 +1205,18 @@
       try {
         const r = tradesForAccount();
         const s = E.stats(r.trades || []);
+        // total Unrealized P&L across open positions (stocks: live feed · options: manually-typed price)
+        const optPx = _optPrices();
+        let un = 0, unHave = false;
+        (r.manualOpen || []).forEach(t => {
+          const isOpt = t.assetType === "option";
+          const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+          if (cp != null) { un += unrealizedPnl(t, cp); unHave = true; }
+        });
         return { net: s.net, winRate: s.winRate, profitFactor: s.profitFactor, count: s.count,
           bestTrade: s.bestTrade, worstTrade: s.worstTrade,
-          open: (r.openPositions || []).length + (r.manualOpen || []).length };
+          open: (r.openPositions || []).length + (r.manualOpen || []).length,
+          unrealized: unHave ? un : null };
       } catch (e) { return null; }
     },
   };
