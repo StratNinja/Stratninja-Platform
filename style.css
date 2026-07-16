@@ -111,6 +111,9 @@ tr:last-child td{border-bottom:none}
 .pill.opt{background:var(--accentbg);color:#b3a9e8} .pill.stk{background:#22303a;color:#7fc4e0}
 .jsym{cursor:pointer;font-weight:700;border-bottom:1px dashed transparent;transition:color .12s}
 .jsym:hover{color:var(--accent);border-bottom-color:currentColor}
+.opt-px{width:84px;background:var(--accentbg);color:var(--ink);border:1px solid var(--accent);border-radius:7px;padding:4px 8px;font-size:13px;font-weight:600}
+.opt-px::placeholder{color:var(--muted);font-weight:400}
+.opt-px:focus{outline:none;box-shadow:0 0 0 2px rgba(124,108,240,.35)}
 .pill.src{background:#2a2a33;color:#aab}
 
 /* forms / modal */

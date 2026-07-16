@@ -158,6 +158,14 @@
     const gross = (t.direction === "short" ? (t.entryPrice - cp) : (cp - t.entryPrice)) * t.qty * (t.mult || 1);
     return gross - (t.fees || 0);
   }
+  // options have no live price feed (it covers stocks only) → the trader types the current premium.
+  // stored per-position id in localStorage (transient current price, not part of the trade record).
+  function _optPrices() { try { return JSON.parse(localStorage.getItem("sn_opt_cur_prices") || "{}"); } catch (e) { return {}; } }
+  function _setOptPrice(id, px) {
+    const m = _optPrices();
+    if (px === "" || px == null || isNaN(+px)) delete m[id]; else m[id] = +px;
+    try { localStorage.setItem("sn_opt_cur_prices", JSON.stringify(m)); } catch (e) {}
+  }
 
   // ---- Rendering ---------------------------------------------------------
   // clickable ticker → opens the same multi-timeframe chart used across the site (pages.js exposes it)
@@ -263,10 +271,12 @@
     const posValOf = t => (+t.entryPrice || 0) * (+t.qty || 0) * (t.mult || 1);   // entry notional
     // derive per-position values first (live prices are STOCK prices — not an option's premium,
     // so Unrealized P&L is only computable for stocks). Needed for both display AND sorting.
+    const optPx = _optPrices();
     const items = openTrades.map(t => {
       const isOpt = t.assetType === "option";
-      const cp = (!isOpt && livePrices) ? livePrices[t.symbol] : null;
-      const un = (!isOpt && cp != null) ? unrealizedPnl(t, cp) : null;
+      // stocks → live feed price · options → the price the trader typed in (if any)
+      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+      const un = (cp != null) ? unrealizedPnl(t, cp) : null;
       return { t: t, isOpt: isOpt, cp: cp, un: un };
     });
     if (_openSort.col) {
@@ -291,8 +301,11 @@
       const t = it.t, isOpt = it.isOpt, cp = it.cp;
       let pnlHtml, cpHtml;
       if (isOpt) {
-        hasOpt = true; cpHtml = '<span class="muted">—</span>';
-        pnlHtml = '<span class="muted" title="אין מחיר אופציה חי בסורק — ה-P&amp;L יחושב בסגירה לפי מחיר היציאה">לא זמין ⓘ</span>';
+        hasOpt = true;
+        // no live option-price feed → let the trader type the current premium; P&L updates live
+        cpHtml = '<input class="opt-px" data-optpx="' + t.id + '" type="number" step="0.01" min="0" placeholder="הזן מחיר" value="' + (cp != null ? cp : "") + '">';
+        if (cp != null && it.un != null) { totUn += it.un; pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>"; }
+        else { pnlHtml = '<span class="muted" title="הזן את מחיר האופציה הנוכחי כדי לחשב רווח/הפסד לא ממומש">הזן מחיר ←</span>'; }
       } else if (cp != null) {
         totUn += it.un;
         pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>";
@@ -313,7 +326,7 @@
     const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "שווי פוזיציה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + "<th></th></tr>";
     const footSpan = 7 + (showAcct ? 1 : 0);   // columns before the Unrealized-total cell
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
-    const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — ה-P&L שלהן יחושב בסגירה</span>' : "";
+    const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
     const count = openTrades.length;
     const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
     const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · Unrealized " + totHtml + "</span>" : "";
@@ -329,6 +342,11 @@
       if (_openSort.col === c) _openSort.dir *= -1;
       else { _openSort.col = c; _openSort.dir = (c === "symbol" || c === "entryDate" || c === "direction") ? 1 : -1; }
       render();
+    });
+    // wire the manual option-price inputs (typing a premium → live Unrealized P&L)
+    wrap.querySelectorAll("[data-optpx]").forEach(inp => {
+      inp.onclick = e => e.stopPropagation();          // focusing the field must not open the row-edit
+      inp.onchange = () => { _setOptPrice(inp.dataset.optpx, inp.value); render(); };
     });
     // wire: click row or close button -> open the edit form (add exit price to close)
     wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => editOpenTrade(tr.dataset.editopen));
