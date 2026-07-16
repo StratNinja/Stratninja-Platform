@@ -1876,6 +1876,41 @@
       default: return "";
     }
   }
+  // Searchable combobox (type-to-filter). opts = [{val,label}]; the label carries the English name +
+  // ETF ticker so typing either narrows the list. The <input> keeps `id` so state/glow logic is unchanged.
+  function searchComboHtml(id, opts, curVal, placeholder) {
+    const cur = opts.find(o => o.val === curVal);
+    const curLabel = (curVal && curVal !== "all" && cur) ? cur.label : "";
+    const list = opts.map(o => '<div class="combo-opt' + (o.val === curVal ? " sel" : "") + '" data-cval="' + escAttr(o.val) + '">' + escHtml(o.label) + "</div>").join("");
+    return '<div class="search-combo" data-combo="' + id + '">' +
+      '<input class="combo-input" id="' + id + '" autocomplete="off" placeholder="' + escAttr(placeholder) + '" value="' + escAttr(curLabel) + '">' +
+      '<span class="combo-caret">▾</span>' +
+      '<div class="combo-list hidden">' + list + "</div></div>";
+  }
+  function wireSearchCombo(id, onPick) {
+    const wrap = document.querySelector('.search-combo[data-combo="' + id + '"]');
+    if (!wrap) return;
+    const input = wrap.querySelector(".combo-input");
+    const list = wrap.querySelector(".combo-list");
+    const opts = Array.prototype.slice.call(list.querySelectorAll(".combo-opt"));
+    const savedLabel = input.value;
+    const doFilter = () => {
+      const q = input.value.trim().toLowerCase();
+      opts.forEach(o => { o.style.display = o.textContent.toLowerCase().indexOf(q) >= 0 ? "" : "none"; });
+    };
+    const close = () => list.classList.add("hidden");
+    input.addEventListener("focus", () => { input.value = ""; list.classList.remove("hidden"); doFilter(); });
+    input.addEventListener("input", () => { list.classList.remove("hidden"); doFilter(); });
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter") { const f = opts.find(o => o.style.display !== "none"); if (f) { e.preventDefault(); onPick(f.dataset.cval); } }
+      else if (e.key === "Escape") { input.value = savedLabel; close(); input.blur(); }
+    });
+    input.addEventListener("blur", () => { setTimeout(() => { close(); input.value = savedLabel; }, 160); });
+    opts.forEach(o => o.addEventListener("mousedown", e => { e.preventDefault(); onPick(o.dataset.cval); }));
+    const caret = wrap.querySelector(".combo-caret");
+    if (caret) caret.addEventListener("mousedown", e => { e.preventDefault(); if (list.classList.contains("hidden")) input.focus(); else { close(); input.blur(); } });
+  }
+
   function renderScanner() {
     const all = scanSource();
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
@@ -1901,8 +1936,8 @@
             '<button class="chip' + (scanState.inforce === "up" ? " on" : "") + '" data-inforce="up" title="IN FORCE שורי — הרצף הושלם והנר המשלים ירוק (ללונג). כבוי = סטאפ לקראת המהלך">IN FORCE 🔼</button>' +
             '<button class="chip' + (scanState.inforce === "down" ? " on" : "") + '" data-inforce="down" title="IN FORCE דובי — הרצף הושלם והנר המשלים אדום (לשורט). כבוי = סטאפ לקראת המהלך">IN FORCE 🔽</button>'
             : "") + "</div></div>" +
-        '<div class="fgrp"><label>סקטור</label><select id="scanSector"><option value="all">הכל</option>' + sectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.sector === s ? " selected" : "") + ">" + s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>תת-סקטור</label><select id="scanSubsec"><option value="all">הכל</option>' + subsectors.map(s => '<option value="' + escAttr(s) + '"' + (scanState.subsec === s ? " selected" : "") + ">" + s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") + "</option>").join("") + "</select></div>" +
+        '<div class="fgrp"><label>סקטור</label>' + searchComboHtml("scanSector", [{ val: "all", label: "הכל" }].concat(sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") }))), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
+        '<div class="fgrp"><label>תת-סקטור</label>' + searchComboHtml("scanSubsec", [{ val: "all", label: "הכל" }].concat(subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") }))), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp"><label>שווי שוק <span class="muted" style="font-size:10px">(B=מיליארד · M=מיליון)</span></label><div class="chips" style="align-items:center"><input id="scanCapMin" type="text" placeholder="מ- 2B" style="width:72px" value="' + escAttr(scanState.capMin) + '"><span class="muted">–</span><input id="scanCapMax" type="text" placeholder="עד 100B" style="width:72px" value="' + escAttr(scanState.capMax) + '"></div></div>' +
@@ -2224,8 +2259,8 @@
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
     const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = "off"; reRender(); };
     document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; reRender(); });
-    const sec = $("#scanSector"); if (sec) sec.onchange = () => { scanState.sector = sec.value; scanState.subsec = "all"; reRender(); };
-    const subsec = $("#scanSubsec"); if (subsec) subsec.onchange = () => { scanState.subsec = subsec.value; reRender(); };
+    wireSearchCombo("scanSector", v => { scanState.sector = v; scanState.subsec = "all"; reRender(); });
+    wireSearchCombo("scanSubsec", v => { scanState.subsec = v; reRender(); });
     // live filter as you type (not only on Enter) — restore focus + caret after the re-render
     const sym = $("#scanSym");
     if (sym) sym.oninput = () => {
