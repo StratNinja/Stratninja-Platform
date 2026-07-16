@@ -82,7 +82,8 @@
 
   // ---- App state ---------------------------------------------------------
   const ALL = "__ALL__";    // pseudo-account: combined view of every account
-  const state = { account: null, tab: "calendar", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1 };
+  const state = { account: null, tab: "calendar", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
+    aggTrades: (function () { try { return localStorage.getItem("sn_agg_trades") !== "0"; } catch (e) { return true; } })() };
   let manualEditId = null;  // when editing a manual trade, its id; null = adding new
   const OPEN_WARN = 5;      // discipline nudge: warn at this many concurrent open positions
   let _lastOpenCount = 0;   // to fire the crossing popup only once per crossing
@@ -687,10 +688,34 @@
   }
 
   // ---- Trades table ------------------------------------------------------
+  // aggregate closed trades on the same symbol + account + direction into ONE line (weighted-avg
+  // prices, summed qty / fees / P&L) so partial fills of one order don't clutter the table. Each
+  // aggregated row keeps its constituents in `_trades` for the "split" view.
+  function aggregateTrades(trades) {
+    const groups = {};
+    trades.forEach(t => { const k = (t.symbol || "") + "|" + (t.account || "") + "|" + (t.direction || ""); (groups[k] = groups[k] || []).push(t); });
+    return Object.keys(groups).map(k => {
+      const g = groups[k];
+      if (g.length === 1) return Object.assign({}, g[0], { _n: 1 });
+      const qty = g.reduce((s, t) => s + (+t.qty || 0), 0);
+      const wavg = f => qty ? g.reduce((s, t) => s + (+t[f] || 0) * (+t.qty || 0), 0) / qty : 0;
+      const src = g.every(t => t.source === "manual") ? "manual" : g.every(t => t.source !== "manual") ? "csv" : "mixed";
+      const f = g[0];
+      return {
+        id: "agg|" + k, symbol: f.symbol, account: f.account, direction: f.direction, assetType: f.assetType, mult: f.mult,
+        qty: qty, entryPrice: wavg("entryPrice"), exitPrice: wavg("exitPrice"),
+        fees: g.reduce((s, t) => s + (+t.fees || 0), 0), pnl: g.reduce((s, t) => s + (+t.pnl || 0), 0),
+        exitDate: g.map(t => t.exitDate).filter(Boolean).sort().slice(-1)[0] || "",
+        source: src, _n: g.length, _agg: true,
+      };
+    });
+  }
   function renderTrades(trades, openPositions) {
     const wrap = el("div");
+    const agg = state.aggTrades !== false;
+    const base = agg ? aggregateTrades(trades) : trades;
     // position value = entry notional (qty × entry price × multiplier). Precomputed so the column sorts.
-    const withPv = trades.map(t => Object.assign({}, t, { posValue: (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1) }));
+    const withPv = base.map(t => Object.assign({}, t, { posValue: (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1) }));
     const sorted = withPv.sort((a, b) => {
       let av = a[state.sortKey], bv = b[state.sortKey];
       if (typeof av === "string") { return (av < bv ? -1 : av > bv ? 1 : 0) * state.sortDir; }
@@ -711,28 +736,37 @@
     head += "<th></th></tr>";
     let rows = "";
     sorted.forEach(t => {
+      const srcTxt = t.source === "mixed" ? "מעורב" : t.source === "manual" ? "ידני" : "CSV";
+      const nBadge = (t._n > 1) ? ' <span class="agg-badge" title="' + t._n + ' עסקאות מאוגדות — כבה \'אגד\' כדי לפצל">×' + t._n + "</span>" : "";
       rows += "<tr>" +
         (showAcct ? '<td class="muted" style="white-space:nowrap">' + (t.account || "—") + "</td>" : "") +
         "<td>" + t.exitDate + "</td>" +
-        "<td>" + chartSym(t.symbol) + "</td>" +
+        "<td>" + chartSym(t.symbol) + nBadge + "</td>" +
         '<td><span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
         '<td><span class="pill ' + t.direction + '">' + (t.direction === "long" ? "לונג" : "שורט") + "</span></td>" +
-        "<td>" + t.qty + "</td>" +
+        "<td>" + (Math.round((t.qty || 0) * 1e4) / 1e4) + "</td>" +
         "<td>" + money(t.entryPrice, 2) + "</td>" +
         "<td>" + money(t.posValue, 0) + "</td>" +
         "<td>" + money(t.exitPrice, 2) + "</td>" +
         '<td class="zero">' + money(-t.fees, 2) + "</td>" +
         '<td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td>" +
-        '<td><span class="pill src">' + (t.source === "manual" ? "ידני" : "CSV") + "</span></td>" +
+        '<td><span class="pill src">' + srcTxt + "</span></td>" +
         "<td>" +
-          (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
-          (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
-          '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>' +
+          (t._agg ? '<span class="muted" style="font-size:11px" title="פצל כדי לערוך/למחוק עסקה בודדת">מאוגד</span>' :
+            ((t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
+             (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
+             '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>')) +
         "</td>" +
         "</tr>";
     });
+    // aggregate/split toggle
+    const aggBar = el("div", "trades-aggbar");
+    aggBar.innerHTML = '<label class="agg-toggle"><input type="checkbox" id="aggToggle"' + (agg ? " checked" : "") + '><span>🧬 אגד עסקאות זהות</span></label>' +
+      '<span class="muted" style="font-size:11px">אותו טיקר + חשבון + כיוון = שורה אחת. כבה כדי לראות כל רכישה/מכירה בנפרד עם ה-P&L שלה.</span>';
+    wrap.appendChild(aggBar);
     const box = el("div", "tablebox");
     box.innerHTML = "<table><thead>" + head + "</thead><tbody>" + rows + "</tbody></table>";
+    { const tg = aggBar.querySelector("#aggToggle"); if (tg) tg.onchange = () => { state.aggTrades = tg.checked; try { localStorage.setItem("sn_agg_trades", tg.checked ? "1" : "0"); } catch (e) {} render(); }; }
     box.querySelectorAll("th[data-k]").forEach(th => {
       th.onclick = () => {
         const k = th.dataset.k;
