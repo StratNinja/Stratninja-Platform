@@ -1514,12 +1514,15 @@
     { const a = document.getElementById("capSummary"); if (a) a.onclick = () => { closeModal(); captureSummaryCard(); }; }
     { const b = document.getElementById("capFull"); if (b) b.onclick = () => { closeModal(); captureFullScreen(); }; }
   }
+  // Capture resolution: supersample by the screen's pixel density (≥2×, capped 4×) so the exported
+  // PNG is as crisp as the live site — a fixed scale:2 looked soft on Hi-DPI displays.
+  function _shotScale() { return Math.min(4, Math.max(2, Math.round((window.devicePixelRatio || 1) * 2))); }
   function captureSummaryCard() {
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
       setTimeout(() => {
-        html2canvas(el, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false })
+        html2canvas(el, { backgroundColor: "#0f1420", scale: _shotScale(), useCORS: true, logging: false })
           .then(cv => { el.remove(); showShareModal(cv); })
           .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
       }, 300);
@@ -1529,20 +1532,22 @@
     const target = state.page === "journal" ? document.getElementById("journalContainer") : document.getElementById("page");
     if (!target) { snToast("אין מה לצלם"); return; }
     snToast("מצלם את המסך…");
-    html2canvas(target, { backgroundColor: "#0f1420", scale: 2, useCORS: true, logging: false }).then(cv => {
-      const w = cv.width, fh = 128;
+    const scale = _shotScale();
+    html2canvas(target, { backgroundColor: "#0f1420", scale: scale, useCORS: true, logging: false }).then(cv => {
+      const k = scale / 2;                       // footer was tuned for scale 2 — scale it with the shot
+      const w = cv.width, fh = Math.round(128 * k);
       const out = document.createElement("canvas");
       out.width = w; out.height = cv.height + fh;
       const ctx = out.getContext("2d");
       ctx.fillStyle = "#0f1420"; ctx.fillRect(0, 0, out.width, out.height);
       ctx.drawImage(cv, 0, 0);
       ctx.fillStyle = "#131a2b"; ctx.fillRect(0, cv.height, w, fh);
-      ctx.fillStyle = "#7c6cf0"; ctx.fillRect(0, cv.height, 6, fh);
+      ctx.fillStyle = "#7c6cf0"; ctx.fillRect(0, cv.height, Math.round(6 * k), fh);
       ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.direction = "rtl";
-      ctx.fillStyle = "#ffffff"; ctx.font = "800 36px Rubik, Arial";
-      ctx.fillText("StratNinja Scanner", w - 40, cv.height + fh / 2 - 20);
-      ctx.fillStyle = "#9aa3b2"; ctx.font = "500 26px Rubik, Arial";
-      ctx.fillText("Adi Koriat · stratninja.win · " + new Date().toLocaleString("he-IL"), w - 40, cv.height + fh / 2 + 24);
+      ctx.fillStyle = "#ffffff"; ctx.font = "800 " + Math.round(36 * k) + "px Rubik, Arial";
+      ctx.fillText("StratNinja Scanner", w - 40 * k, cv.height + fh / 2 - 20 * k);
+      ctx.fillStyle = "#9aa3b2"; ctx.font = "500 " + Math.round(26 * k) + "px Rubik, Arial";
+      ctx.fillText("Adi Koriat · stratninja.win · " + new Date().toLocaleString("he-IL"), w - 40 * k, cv.height + fh / 2 + 24 * k);
       showShareModal(out);
     }).catch(() => snToast("שגיאה בצילום — נסה שוב"));
   }
@@ -1593,7 +1598,7 @@
     const el = buildMtfCardEl(sym, r);
     document.body.appendChild(el);
     setTimeout(() => {
-      html2canvas(el, { backgroundColor: "#0a0f1c", scale: 2, useCORS: true, logging: false })
+      html2canvas(el, { backgroundColor: "#0a0f1c", scale: _shotScale(), useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
     }, 200);
@@ -1607,10 +1612,19 @@
     }
     snToast("בחר \"הכרטיסייה הנוכחית\" בחלון שנפתח…");
     let stream;
+    const dpr = window.devicePixelRatio || 1;
+    const idealW = Math.round((window.screen && window.screen.width || window.innerWidth) * dpr);
+    const idealH = Math.round((window.screen && window.screen.height || window.innerHeight) * dpr);
     try {
-      stream = await navigator.mediaDevices.getDisplayMedia({ video: { displaySurface: "browser" }, preferCurrentTab: true, audio: false });
+      // request the display's FULL physical resolution (dpr-scaled) so the grab isn't downsampled
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { displaySurface: "browser", width: { ideal: idealW }, height: { ideal: idealH }, frameRate: { ideal: 30 } },
+        preferCurrentTab: true, audio: false
+      });
     } catch (e) { snToast("הצילום בוטל"); return; }
     try {
+      const track = stream.getVideoTracks()[0];
+      try { await track.applyConstraints({ width: { ideal: idealW }, height: { ideal: idealH } }); } catch (x) {}
       const video = document.createElement("video");
       video.srcObject = stream; video.muted = true; video.playsInline = true;
       await video.play();
