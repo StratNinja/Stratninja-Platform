@@ -3199,13 +3199,15 @@
     _favDismissed().forEach(s => delete pmatch[s]);
     return pmatch;
   }
-  // symbols that have at least one trade (CSV fill or manual) in the local trade journal
-  function _journalSymbols() {
+  // symbols with an ACTIVE (open) position in the local trade journal — not merely any past trade:
+  // leftover FIFO open lots from CSV fills + manual trades with no exit price.
+  function _openPositionSymbols() {
     try {
-      if (!window.Store) return new Set();
+      if (!window.Store || !window.Engine) return new Set();
       const s = new Set();
-      (window.Store.getFills() || []).forEach(f => { if (f.symbol) s.add(String(f.symbol).toUpperCase()); });
-      (window.Store.getManual() || []).forEach(m => { if (m.symbol) s.add(String(m.symbol).toUpperCase()); });
+      const res = window.Engine.computeTrades(window.Store.getFills() || []);
+      ((res && res.openPositions) || []).forEach(p => { if (p.symbol && Math.abs(p.qty || 0) > 1e-9) s.add(String(p.symbol).toUpperCase()); });
+      (window.Store.getManual() || []).forEach(m => { const t = window.Engine.manualToTrade(m); if (t && t.open && t.symbol) s.add(String(t.symbol).toUpperCase()); });
       return s;
     } catch (e) { return new Set(); }
   }
@@ -3222,12 +3224,12 @@
     } else {
       // which favorites match a saved scan / fired an alert today (for the highlight + dismissible badge)
       const pmatch = favAlertMatches();
-      const jsyms = _journalSymbols();   // favorites that have a trade in the journal → violet glow
+      const jsyms = _openPositionSymbols();   // favorites with an ACTIVE (open) position in the journal → violet glow
       const rows = list.map(t => {
         const pm = pmatch[t.sym] || [];
         const hasTrade = jsyms.has(String(t.sym).toUpperCase());
         const badge = pm.length ? '<span class="fav-pcount" data-favdismiss="' + escAttr(t.sym) + '" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + ' · לחץ להסרת הסימון">' + pm.length + "</span>" : "";
-        const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך עסקה על המניה הזו ביומן המסחר">📓</span>' : "";
+        const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
         const cls = [];
         if (pm.length) cls.push("fav-inpreset");
         if (hasTrade) cls.push("fav-journal");
