@@ -109,6 +109,8 @@ tr:last-child td{border-bottom:none}
 .pill{display:inline-block;border-radius:20px;padding:2px 9px;font-size:11px}
 .pill.long{background:var(--greenbg);color:var(--green)} .pill.short{background:var(--redbg);color:var(--red)}
 .pill.opt{background:var(--accentbg);color:#b3a9e8} .pill.stk{background:#22303a;color:#7fc4e0}
+.jsym{cursor:pointer;font-weight:700;border-bottom:1px dashed transparent;transition:color .12s}
+.jsym:hover{color:var(--accent);border-bottom-color:currentColor}
 .pill.src{background:#2a2a33;color:#aab}
 
 /* forms / modal */

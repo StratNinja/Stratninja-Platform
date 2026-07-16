@@ -160,7 +160,22 @@
   }
 
   // ---- Rendering ---------------------------------------------------------
+  // clickable ticker → opens the same multi-timeframe chart used across the site (pages.js exposes it)
+  function chartSym(sym) {
+    if (!sym) return "—";
+    return '<span class="jsym" data-jchart="' + String(sym).replace(/"/g, "&quot;") + '" title="הצג גרף">' + sym + "</span>";
+  }
+  // one delegated capture-phase listener: a symbol click opens the chart and never triggers the row's edit
+  function _wireJournalCharts() {
+    if (window.__snJChartWired) return;
+    window.__snJChartWired = true;
+    document.addEventListener("click", e => {
+      const el = e.target.closest && e.target.closest("[data-jchart]");
+      if (el) { e.stopPropagation(); e.preventDefault(); if (window._snOpenChart) window._snOpenChart(el.dataset.jchart); }
+    }, true);
+  }
   function render() {
+    _wireJournalCharts();
     const root = $("#view");
     root.innerHTML = "";
     const accts = Store.accounts();
@@ -286,7 +301,7 @@
       return "<tr data-editopen='" + t.id + "' style='cursor:pointer'>" +
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
-        "<td class='sym'>" + t.symbol +
+        "<td class='sym'>" + chartSym(t.symbol) +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posValOf(t), 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
@@ -502,7 +517,7 @@
       (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
       (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
       '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>';
-    return "<tr><td>" + t.symbol + '</td><td><span class="pill ' + t.direction + '">' +
+    return "<tr><td>" + chartSym(t.symbol) + '</td><td><span class="pill ' + t.direction + '">' +
       (t.direction === "long" ? "לונג" : "שורט") + "</span></td><td>" + t.qty + "</td><td>" +
       money(t.entryPrice, 2) + "</td><td>" + money(t.exitPrice, 2) + '</td><td class="' + cls(t.pnl) +
       '">' + money(t.pnl, 2) + "</td><td>" + actions + "</td></tr>";
@@ -681,7 +696,7 @@
       rows += "<tr>" +
         (showAcct ? '<td class="muted" style="white-space:nowrap">' + (t.account || "—") + "</td>" : "") +
         "<td>" + t.exitDate + "</td>" +
-        "<td>" + t.symbol + "</td>" +
+        "<td>" + chartSym(t.symbol) + "</td>" +
         '<td><span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
         '<td><span class="pill ' + t.direction + '">' + (t.direction === "long" ? "לונג" : "שורט") + "</span></td>" +
         "<td>" + t.qty + "</td>" +

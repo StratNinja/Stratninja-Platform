@@ -249,6 +249,8 @@
     { const ms = document.getElementById("mtfShot"); if (ms) ms.onclick = () => captureMtfCard(sym); }
     { const mf = document.getElementById("mtfFull"); if (mf) mf.onclick = () => captureFullShot(); }
   }
+  // exposed so the trade journal (separate module) can open the same multi-timeframe chart on a symbol click
+  window._snOpenChart = openMultiChart;
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
   const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
