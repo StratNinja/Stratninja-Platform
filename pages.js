@@ -3061,35 +3061,28 @@
       chg20d: live20d[s] != null ? live20d[s] : null,
     }));
   }
-  // sub-sector (industry) money flow — aggregated from the scanner stocks per `ind`
-  // (avg of the stocks' 1D / 5D / 20D moves; needs the server-computed tech.c5 / tech.c20).
+  // sub-sector money flow — each sub-sector's REAL ETF move (server LIVE.subsectors), so the % matches
+  // the ETF the user clicks. The largest-cap holding per industry is added from the scanner rows.
   function todaySubsectors(rows) {
-    const m = {};
-    rows.forEach(t => {
-      const s = t.ind; if (!s) return;
-      if (!m[s]) m[s] = { n: 0, green: 0, top: null, s1: 0, n1: 0, s5: 0, n5: 0, s20: 0, n20: 0 };
-      m[s].n++;
-      if ((t.D || {}).c === "up") m[s].green++;
-      const k = t.tech || {};
-      if (t.chg != null) { m[s].s1 += t.chg; m[s].n1++; }
-      if (k.c5 != null) { m[s].s5 += k.c5; m[s].n5++; }
-      if (k.c20 != null) { m[s].s20 += k.c20; m[s].n20++; }
-      if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg };
-    });
-    return Object.keys(m).filter(s => m[s].n >= 3).map(s => ({
-      name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100, top: m[s].top,
-      chg: m[s].n1 ? m[s].s1 / m[s].n1 : null,
-      chg5d: m[s].n5 ? m[s].s5 / m[s].n5 : null,
-      chg20d: m[s].n20 ? m[s].s20 / m[s].n20 : null,
+    const subs = (LIVE && LIVE.subsectors) ? LIVE.subsectors : [];
+    if (!subs.length) return [];
+    const topByInd = {};
+    rows.forEach(t => { if (!t.ind) return; if (t.mc && (!topByInd[t.ind] || t.mc > topByInd[t.ind].mc)) topByInd[t.ind] = { sym: t.sym, mc: t.mc, chg: t.chg }; });
+    return subs.map(s => ({
+      name: s.ind, etf: s.etf, top: topByInd[s.ind] || null,
+      chg: s.chg, chg5d: s.chg5d, chg20d: s.chg20d,
     }));
   }
   // reusable money-flow panel (sectors or sub-sectors) — diverging bars over the selected timeframe
   function _flowPanelHtml(o) {
     const valOf = s => o.tf === "5d" ? s.chg5d : o.tf === "20d" ? s.chg20d : s.chg;
-    const flow = o.data.slice().sort((a, b) => { const va = valOf(a), vb = valOf(b); return (vb == null ? -Infinity : vb) - (va == null ? -Infinity : va); });
+    const byVal = (a, b) => { const va = valOf(a), vb = valOf(b); return (vb == null ? -Infinity : vb) - (va == null ? -Infinity : va); };
+    let flow = o.data.slice().sort(byVal);
+    // keep the panel compact: show only the strongest N flows (biggest |move|), then re-sort for display
+    if (o.limit && flow.length > o.limit) flow = flow.slice().sort((a, b) => Math.abs(valOf(b) || 0) - Math.abs(valOf(a) || 0)).slice(0, o.limit).sort(byVal);
     const maxAbs = Math.max.apply(null, flow.map(s => Math.abs(valOf(s) || 0)).concat([0.1]));
     const nameOf = s => o.isSub ? s.name : secHe(s.name);
-    const etfOf = s => o.isSub ? subEtfFor(s.name) : etfFor(s.name);
+    const etfOf = s => o.isSub ? (s.etf || subEtfFor(s.name)) : etfFor(s.name);
     const row = s => {
       const v = valOf(s);
       const top = s.top ? '<span class="tdf-top" title="האחזקה הגדולה"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(s.top.chg == null ? 0 : s.top.chg) + "</span>" : '<span class="tdf-top"></span>';
@@ -3101,7 +3094,7 @@
     const tfSwitch = '<span class="flow-tf">' + ["1d", "5d", "20d"].map(k =>
       '<button class="flow-tf-btn' + (k === o.tf ? " on" : "") + '" data-' + o.tfAttr + '="' + k + '">' + k.toUpperCase() + "</button>").join("") + "</span>";
     return '<div class="panel td-flow"><h3 class="tdf-head"><span>' + o.title + "</span>" + tfSwitch + "</h3>" +
-      '<div class="muted tdf-sub">' + (o.isSub ? "תתי-סקטורים" : "כל הסקטורים") + " לפי התנועה ב" + FLOW_TF_LBL[o.tf] + ' · 🟢 כסף נכנס · 🔴 כסף יוצא · + האחזקה הגדולה</div>' +
+      '<div class="muted tdf-sub">' + (o.isSub ? "תתי-סקטורים (תנועת תעודת הסל)" : "כל הסקטורים") + " לפי התנועה ב" + FLOW_TF_LBL[o.tf] + ' · 🟢 כסף נכנס · 🔴 כסף יוצא · + האחזקה הגדולה</div>' +
       '<div class="tdf-list">' + (flow.length ? flow.map(row).join("") : '<div class="muted" style="padding:10px">—</div>') + "</div></div>";
   }
   function todayStockRow(t) {
@@ -3141,7 +3134,7 @@
     // "where the money flows" — two diverging-bar panels (money IN → right, OUT → left):
     // sectors (official ETF moves) and sub-sectors/industries (avg of their stocks), each with its own 1D/5D/20D.
     const sectorsPanel = _flowPanelHtml({ title: "🗂️ לאן הכסף זורם — סקטורים", tf: flowTf, tfAttr: "flowtf", data: todaySectors(rows), isSub: false });
-    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTfSub, tfAttr: "flowtfsub", data: todaySubsectors(rows), isSub: true });
+    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTfSub, tfAttr: "flowtfsub", data: todaySubsectors(rows), isSub: true, limit: 14 });
 
     const longs = rows.filter(t => (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
     const shorts = rows.filter(t => (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
@@ -3159,7 +3152,7 @@
       marketPanel +
       '<div class="td-flow2">' + sectorsPanel + subsPanel + "</div>" +
       '<div class="td-cands2">' + tbl(longs, "🟢 מועמדים ללונג") + tbl(shorts, "🔴 מועמדים לשורט") + "</div>" +
-      '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>Ninja Score</b> מדרג איכות סטאפ (יישור טיימפריימים, ווליום, תבנית, כסף חכם, קרבה לממוצע, נזילות, חוזק סקטור). זהו כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף. <b>תתי-סקטורים</b> = ממוצע תנועת המניות בענף (לא תעודת סל רשמית).</div>';
+      '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>Ninja Score</b> מדרג איכות סטאפ (יישור טיימפריימים, ווליום, תבנית, כסף חכם, קרבה לממוצע, נזילות, חוזק סקטור). זהו כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף. <b>תתי-סקטורים</b> = תנועת תעודת הסל של הענף (מוצגים החזקים ביותר).</div>';
   }
   function wireToday() {
     wireCharts($("#page")); wireStars($("#page"));
