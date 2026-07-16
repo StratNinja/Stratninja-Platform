@@ -2283,6 +2283,55 @@
       const orig = copy.textContent;
       copyToClipboard(syms, () => { copy.textContent = "✓ הועתקו " + rows.length; setTimeout(() => copy.textContent = orig, 1600); });
     };
+    markActiveFilters();
+  }
+
+  // Green halo around every control whose value is non-neutral (i.e. actually filtering).
+  // Runs after each render; reuses the same active-conditions the "N פעילים" badges use.
+  function markActiveFilters() {
+    const g = (el, on) => { if (el) el.classList.toggle("filter-on", !!on); };
+    const gid = (id, on) => g(document.getElementById(id), on);
+    // ---- top Strat filters ----
+    const tfDefault = scanState.tfs.length === 1 && scanState.tfs[0] === "D" && scanState.tfsExtra.length === 0;
+    document.querySelectorAll("[data-tff]").forEach(b => g(b, !tfDefault && scanState.tfs.indexOf(b.dataset.tff) >= 0));
+    document.querySelectorAll("[data-pat]").forEach(b => g(b, scanState.patterns.indexOf(b.dataset.pat) >= 0));
+    document.querySelectorAll("[data-dir]").forEach(b => g(b, scanState.dir !== "all" && b.dataset.dir === scanState.dir));
+    document.querySelectorAll("[data-scanuni]").forEach(b => g(b, scanState.universe !== "all" && b.dataset.scanuni === scanState.universe));
+    document.querySelectorAll("[data-inforce]").forEach(b => g(b, scanState.inforce !== "off" && b.dataset.inforce === scanState.inforce));
+    gid("scanShape", scanState.shape !== "all");
+    gid("scanBroad", scanState.broad !== "off");
+    gid("scanSector", scanState.sector !== "all");
+    gid("scanSubsec", scanState.subsec !== "all");
+    gid("scanSym", scanState.sym !== "");
+    gid("scanPmin", scanState.priceMin !== "");
+    gid("scanPmax", scanState.priceMax !== "");
+    gid("scanCapMin", scanState.capMin !== "");
+    gid("scanCapMax", scanState.capMax !== "");
+    gid("scanFtfc", !!scanState.ftfc);
+    // ---- MTF selects ----
+    document.querySelectorAll("[data-mtft]").forEach(s => g(s, !!s.value));
+    document.querySelectorAll("[data-mtfc]").forEach(s => g(s, !!s.value));
+    // ---- technical panel ----
+    gid("tMaRel", techState.maRel !== "off");
+    gid("tMaPct", techState.maRel !== "off" && _maPctShown());
+    gid("tRsiMin", techState.rsiMin > 0);
+    gid("tRsiMax", techState.rsiMax < 100);
+    gid("tMfiMin", techState.mfiMin > 0);
+    gid("tMfiMax", techState.mfiMax < 100);
+    gid("tRvolMin", _rv() > 0);
+    gid("tVolMin", techState.volMin > 0);
+    gid("tVolTrendDir", _volTrendActive());
+    gid("tAvgVolMin", techState.avgVolMin > 0);
+    gid("tExt52", techState.ext52 !== "off");
+    gid("tAtrpMin", _atrp() > 0);
+    gid("tChgMin", techState.chgMin !== "");
+    gid("tChgMax", techState.chgMax !== "");
+    gid("tGapDir", techState.gapDir !== "off");
+    // ---- indicator panel ----
+    gid("tCompMax", _compActive());
+    gid("tBbSqMax", _bbActive());
+    gid("tSwSide", _swActive());
+    gid("tTrendMode", _trendActive());
   }
 
   // ========== technical filter state (used by the unified scanner above) ==========

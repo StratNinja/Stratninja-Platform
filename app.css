@@ -188,6 +188,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .chip.preset:hover { background:rgba(99,102,241,.22); border-color:var(--accent); color:#fff; }
 .fgrp select, .fgrp input { background:var(--bg); color:var(--ink); border:1px solid var(--line);
   border-radius:8px; padding:8px 10px; font-size:13px; min-width:120px; }
+/* green halo around every control that is actively filtering (non-neutral value) */
+.filter-on { border-color:var(--green) !important;
+  box-shadow:0 0 0 1.5px rgba(22,184,119,.5), 0 0 11px 1px rgba(22,184,119,.42) !important;
+  transition:box-shadow .18s ease, border-color .18s ease; }
 /* compact one-row technical filters */
 .tech-row { gap:10px 14px !important; margin-top:6px; }
 .tech-row .fgrp label { font-size:10.5px; }
