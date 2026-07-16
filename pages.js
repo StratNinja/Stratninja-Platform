@@ -2025,7 +2025,7 @@
               opt("23.6", techState.fibLevel, "23.6%") + opt("38.2", techState.fibLevel, "38.2%") +
               opt("61.8", techState.fibLevel, "61.8%") + opt("78.6", techState.fibLevel, "78.6%") + opt("88.6", techState.fibLevel, "88.6%") +
               opt("gp", techState.fibLevel, "⭐ Golden Pocket") + "</select>" +
-              (_fibActive() ? '<select id="tFibDir">' + opt("any", techState.fibDir, "כל כיוון") + opt("up", techState.fibDir, "פולבק בטרנד עולה ↗") + opt("down", techState.fibDir, "תיקון בטרנד יורד ↘") + '</select><span class="muted">±</span><input id="tFibTol" type="number" step="0.5" min="0" style="width:50px" value="' + techState.fibTol + '"><span class="muted">%</span>' : "") + "</div></div>" +
+              (_fibActive() ? '<select id="tFibDir">' + opt("any", techState.fibDir, "כל כיוון") + opt("up", techState.fibDir, "פולבק בטרנד עולה ↗") + opt("down", techState.fibDir, "תיקון בטרנד יורד ↘") + opt("touchAbove", techState.fibDir, "🎯 נגיעה מלמעלה (צל תחתון · תמיכה)") + opt("touchBelow", techState.fibDir, "🎯 נגיעה מלמטה (צל עליון · התנגדות)") + '</select><span class="muted">±</span><input id="tFibTol" type="number" step="0.5" min="0" style="width:50px" value="' + techState.fibTol + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>" +
           '<div class="note" style="margin-top:8px;font-size:11px">💡 <b>דחיסת ממוצעים</b> = טווח ה-SMA כאחוז מהמחיר (נמוך=צפוף). <b>בולינגר דחיסה</b> = אחוזון רוחב הרצועות מול 6 חודשים (נמוך=לפני פריצה). <b>סווינג</b> = קרוב לרמת שיא/תחתית אחרונה. <b>קווי מגמה</b> = קו אלכסוני שנמתח דרך שיאים/תחתיות: <u>נגיעה</u>=בטווח ±% מהקו · <u>פריצה/שבירה</u>=חצה את הקו. <b>פיבונאצי</b> = כמה המחיר תיקן מה-swing האחרון (ZigZag לפי סטיית ATR); בחר רמה (או Golden Pocket 0.618–0.65) + כיוון + ±% קרבה. כל פילטר מוסיף עמודה וממוין בלחיצה על הכותרת — ומצטרף (AND) לכל שאר הסינונים.</div>';
     }
@@ -2458,14 +2458,22 @@
   }
   function _fibActive() { return techState.fibLevel && techState.fibLevel !== "off"; }
   function _fibTol() { const v = parseFloat(techState.fibTol); return isNaN(v) ? 5 : v; }
+  function _fibBand() { return techState.fibLevel === "gp" ? [61.8, 65] : [parseFloat(techState.fibLevel), parseFloat(techState.fibLevel)]; }
   function _fibPass(k) {
     if (!_fibActive()) return true;
     if (!k || k.fibr == null) return false;
-    if (techState.fibDir !== "any" && k.fibdir !== techState.fibDir) return false;
-    const tol = _fibTol();
-    if (techState.fibLevel === "gp") return k.fibr >= 61.8 - tol && k.fibr <= 65 + tol;   // Golden Pocket zone ± tol
-    const lvl = parseFloat(techState.fibLevel);
-    return !isNaN(lvl) && Math.abs(k.fibr - lvl) <= tol;
+    const band = _fibBand(); const lo = band[0], hi = band[1], tol = _fibTol();
+    if (isNaN(lo)) return false;
+    const inBand = v => v != null && v >= lo - tol && v <= hi + tol;   // within the level/zone ± tol
+    switch (techState.fibDir) {
+      // 🎯 touch-from-above: an up-leg pullback whose LOW wicked into the level zone while the CLOSE held ABOVE it (support hold)
+      case "touchAbove": return k.fibdir === "up" && k.fibr < lo && inBand(k.fibrlo);
+      // 🎯 touch-from-below: a down-leg bounce whose HIGH wicked into the level zone while the CLOSE stayed BELOW it (resistance reject)
+      case "touchBelow": return k.fibdir === "down" && k.fibr < lo && inBand(k.fibrhi);
+      case "up":   return k.fibdir === "up" && inBand(k.fibr);
+      case "down": return k.fibdir === "down" && inBand(k.fibr);
+      default:     return inBand(k.fibr);   // "any" — close near the level, either direction
+    }
   }
   function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
