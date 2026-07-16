@@ -3225,7 +3225,7 @@
       // which favorites match a saved scan / fired an alert today (for the highlight + dismissible badge)
       const pmatch = favAlertMatches();
       const jsyms = _openPositionSymbols();   // favorites with an ACTIVE (open) position in the journal → violet glow
-      const rows = list.map(t => {
+      const rowHtml = t => {
         const pm = pmatch[t.sym] || [];
         const hasTrade = jsyms.has(String(t.sym).toUpperCase());
         const badge = pm.length ? '<span class="fav-pcount" data-favdismiss="' + escAttr(t.sym) + '" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + ' · לחץ להסרת הסימון">' + pm.length + "</span>" : "";
@@ -3238,7 +3238,22 @@
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
           "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
-      }).join("");
+      };
+      // group + order: 🔔 עם התראה → 📓 פוזיציה פעילה → שאר המניות (stable within each group)
+      const groups = [[], [], []];
+      list.forEach(t => {
+        const hasAlert = (pmatch[t.sym] || []).length > 0;
+        const hasPos = jsyms.has(String(t.sym).toUpperCase());
+        groups[hasAlert ? 0 : hasPos ? 1 : 2].push(t);
+      });
+      const GHDR = ["🔔 עם התראה", "📓 פוזיציה פעילה", "⭐ שאר המניות"];
+      const nonEmpty = groups.filter(g => g.length).length;
+      let rows = "";
+      groups.forEach((g, i) => {
+        if (!g.length) return;
+        if (nonEmpty > 1) rows += '<tr class="fav-grouphdr"><td colspan="20">' + GHDR[i] + ' <span class="muted">(' + g.length + ")</span></td></tr>";
+        rows += g.map(rowHtml).join("");
+      });
       body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + body;

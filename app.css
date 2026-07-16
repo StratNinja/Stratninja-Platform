@@ -853,6 +853,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .scan-table tr.fav-journal td:first-child { box-shadow: inset 3px 0 0 rgba(124,108,240,.95); }
 .scan-table tr.fav-journal.fav-inpreset td:first-child { box-shadow: inset 3px 0 0 rgba(34,197,94,.7); }  /* alert wins the left bar; violet stays as the row glow */
 .fav-jtag { font-size: 12px; filter: drop-shadow(0 0 5px rgba(124,108,240,.9)); }
+.scan-table tr.fav-grouphdr td { background: var(--panel2); color: var(--muted); font-size: 11px; font-weight: 800;
+  letter-spacing: .04em; text-align: start; padding: 6px 12px; border-top: 1px solid var(--line); }
+.scan-table tr.fav-grouphdr:hover td { background: var(--panel2); }
 .fav-starcell { display: inline-flex; align-items: center; gap: 5px; }
 .fav-pcount { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
   padding: 0 4px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800;
