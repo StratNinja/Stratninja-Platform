@@ -334,7 +334,8 @@
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
     const count = openTrades.length;
-    const gridBtn = "<button class='btn ghost' id='openPosGrid' style='font-size:12px;padding:4px 12px' title='ראה גרפים של כל הפוזיציות הפתוחות'>📊 גרפים</button>";
+    const gridBtn = "<button class='btn ghost' id='openPosGrid' style='font-size:12px;padding:4px 12px' title='ראה גרפים של כל הפוזיציות הפתוחות'>📊 גרפים</button>" +
+      "<button class='btn ghost' id='openPosCopy' style='font-size:12px;padding:4px 12px' title='העתק את רשימת הפוזיציות הפתוחות ללוח'>📋 העתק</button>";
     const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
     const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
@@ -350,6 +351,13 @@
           return { sym: u, price: (lp && lp[0]) || (+t.entryPrice || 0), chg: (lp && lp[1]) || 0 };
         }).filter(r => r.sym && !seen[r.sym] && (seen[r.sym] = 1));   // unique underlyings
         if (grows.length && window._snOpenChartGrid) window._snOpenChartGrid(grows, { title: "פוזיציות פתוחות" });
+      }; }
+    { const cb = wrap.querySelector("#openPosCopy"); if (cb) cb.onclick = () => {
+        const syms = openTrades.map(t => t.symbol).filter(Boolean).join(", ");
+        if (!syms) return;
+        const o = cb.textContent, done = () => { cb.textContent = "✓ הועתקו " + openTrades.length; setTimeout(() => cb.textContent = o, 1500); };
+        const fallback = () => { try { const ta = document.createElement("textarea"); ta.value = syms; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); done(); } catch (e) {} };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(syms).then(done).catch(fallback); else fallback();
       }; }
     { const tg = wrap.querySelector("#openPosToggle"); if (tg) tg.onclick = () => { openPosMin = !openPosMin; try { localStorage.setItem("sn_openpos_min", openPosMin ? "1" : "0"); } catch (e) {} render(); }; }
     wrap.querySelectorAll("[data-jsort]").forEach(th => th.onclick = () => {
