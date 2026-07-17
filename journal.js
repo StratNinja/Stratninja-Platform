@@ -298,12 +298,13 @@
       };
       items.sort((a, b) => { const va = sv(a), vb = sv(b); return typeof va === "string" ? _openSort.dir * va.localeCompare(vb) : _openSort.dir * (va - vb); });
     }
-    let totUn = 0, totInv = 0, haveAll = true, hasOpt = false;
+    let totUn = 0, totInv = 0, totPosVal = 0, haveAll = true, hasOpt = false;
     const pctCell = (un, posVal) => (un != null && posVal > 0)
       ? '<td class="' + cls(un) + '">' + (un >= 0 ? "+" : "") + (un / posVal * 100).toFixed(2) + "%</td>"
       : '<td class="muted">—</td>';
     const rows = items.map(function (it) {
       const t = it.t, isOpt = it.isOpt, cp = it.cp, posVal = posValOf(t);
+      totPosVal += posVal;
       let pnlHtml, cpHtml, pctHtml;
       if (isOpt) {
         hasOpt = true;
@@ -329,7 +330,7 @@
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
     const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "שווי פוזיציה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
-    const footSpan = 7 + (showAcct ? 1 : 0);   // columns before the Unrealized-total cell
+    const labelSpan = 5 + (showAcct ? 1 : 0);   // entryDate..entryPrice (before the שווי-פוזיציה column)
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
@@ -337,13 +338,19 @@
     const gridBtn = "<button class='btn ghost' id='openPosGrid' style='font-size:12px;padding:4px 12px' title='ראה גרפים של כל הפוזיציות הפתוחות'>📊 גרפים</button>" +
       "<button class='btn ghost' id='openPosCopy' style='font-size:12px;padding:4px 12px' title='העתק את רשימת הפוזיציות הפתוחות ללוח'>📋 העתק</button>";
     const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
-    const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · Unrealized " + totHtml + "</span>" : "";
+    const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · שווי " + money(totPosVal, 0) + " · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
       "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
         (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : gridBtn) + toggleBtn + "</h3>" +
       (openPosMin ? "" :
         "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
-        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='" + footSpan + "' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td style='font-weight:800;padding-top:10px'>" + totPct + "</td><td></td></tr></tfoot></table></div>");
+        "<tbody>" + rows + "</tbody><tfoot><tr>" +
+          "<td colspan='" + labelSpan + "' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ</td>" +
+          "<td style='font-weight:800;padding-top:10px' title='סך שווי הפוזיציות הפתוחות'>" + money(totPosVal, 0) + "</td>" +
+          "<td style='padding-top:10px'></td>" +
+          "<td style='font-weight:800;padding-top:10px'>" + totHtml + "</td>" +
+          "<td style='font-weight:800;padding-top:10px'>" + totPct + "</td>" +
+          "<td></td></tr></tfoot></table></div>");
     { const gb = wrap.querySelector("#openPosGrid"); if (gb) gb.onclick = () => {
         const seen = {};
         const grows = openTrades.map(t => {
