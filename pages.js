@@ -3055,7 +3055,7 @@
       m[s].n++;
       if ((t.D || {}).c === "up") m[s].green++;
       if (t.chg != null) { m[s].chgSum += t.chg; m[s].chgN++; }
-      if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg };   // largest holding
+      if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg, chg5d: (t.tech || {}).c5, chg20d: (t.tech || {}).c20 };   // largest holding (+ its 5D/20D)
     });
     // chg = the sector's official daily move (from LIVE.sectors) — the real "money flow";
     // falls back to the average move of its stocks when live data isn't loaded.
@@ -3080,7 +3080,7 @@
         if (t.chg != null) { m[s].s1 += t.chg; m[s].n1++; }
         if (k.c5 != null) { m[s].s5 += k.c5; m[s].n5++; }
         if (k.c20 != null) { m[s].s20 += k.c20; m[s].n20++; }
-        if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg };
+        if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg, chg5d: k.c5, chg20d: k.c20 };
       });
       return Object.keys(m).filter(s => m[s].n >= 3).map(s => ({
         name: s, etf: subEtfFor(s) || "", top: m[s].top,
@@ -3092,7 +3092,7 @@
     const subs = (LIVE && LIVE.subsectors) ? LIVE.subsectors : [];
     if (!subs.length) return [];
     const topByInd = {};
-    rows.forEach(t => { if (!t.ind) return; if (t.mc && (!topByInd[t.ind] || t.mc > topByInd[t.ind].mc)) topByInd[t.ind] = { sym: t.sym, mc: t.mc, chg: t.chg }; });
+    rows.forEach(t => { if (!t.ind) return; if (t.mc && (!topByInd[t.ind] || t.mc > topByInd[t.ind].mc)) topByInd[t.ind] = { sym: t.sym, mc: t.mc, chg: t.chg, chg5d: (t.tech || {}).c5, chg20d: (t.tech || {}).c20 }; });
     return subs.map(s => ({
       name: s.ind, etf: s.etf, top: topByInd[s.ind] || null,
       chg: s.chg, chg5d: s.chg5d, chg20d: s.chg20d,
@@ -3110,7 +3110,8 @@
     const etfOf = s => o.isSub ? (s.etf || subEtfFor(s.name)) : etfFor(s.name);
     const row = s => {
       const v = valOf(s);
-      const top = s.top ? '<span class="tdf-top" title="האחזקה הגדולה"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(s.top.chg == null ? 0 : s.top.chg) + "</span>" : '<span class="tdf-top"></span>';
+      const topV = s.top ? (o.tf === "5d" ? s.top.chg5d : o.tf === "20d" ? s.top.chg20d : s.top.chg) : null;
+      const top = s.top ? '<span class="tdf-top" title="האחזקה הגדולה · תנועה ב' + FLOW_TF_LBL[o.tf] + '"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(topV == null ? 0 : topV) + "</span>" : '<span class="tdf-top"></span>';
       const nameHtml = '<span class="tdf-name">' + nameOf(s) + (etfOf(s) ? " " + etfChip(etfOf(s)) : "") + "</span>";
       if (v == null) return '<div class="tdf-row">' + nameHtml + '<span class="tdf-bar"><span class="tdf-center"></span></span><span class="tdf-pct muted">—</span>' + top + "</div>";
       const pos = v >= 0, w = Math.min(50, Math.abs(v) / maxAbs * 50);
