@@ -251,6 +251,8 @@
   }
   // exposed so the trade journal (separate module) can open the same multi-timeframe chart on a symbol click
   window._snOpenChart = openMultiChart;
+  // exposed so the journal can open a chart-grid of all its open positions
+  window._snOpenChartGrid = (rows, opts) => openChartGrid(rows, opts || {});
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
   const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };

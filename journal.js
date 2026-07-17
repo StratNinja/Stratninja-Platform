@@ -292,51 +292,65 @@
           case "posValue": return posValOf(it.t);
           case "cp": return it.cp == null ? -Infinity : it.cp;
           case "un": return it.un == null ? -Infinity : it.un;
+          case "unpct": { const pv = posValOf(it.t); return (it.un != null && pv > 0) ? it.un / pv * 100 : -Infinity; }
           default: return 0;
         }
       };
       items.sort((a, b) => { const va = sv(a), vb = sv(b); return typeof va === "string" ? _openSort.dir * va.localeCompare(vb) : _openSort.dir * (va - vb); });
     }
-    let totUn = 0, haveAll = true, hasOpt = false;
+    let totUn = 0, totInv = 0, haveAll = true, hasOpt = false;
+    const pctCell = (un, posVal) => (un != null && posVal > 0)
+      ? '<td class="' + cls(un) + '">' + (un >= 0 ? "+" : "") + (un / posVal * 100).toFixed(2) + "%</td>"
+      : '<td class="muted">—</td>';
     const rows = items.map(function (it) {
-      const t = it.t, isOpt = it.isOpt, cp = it.cp;
-      let pnlHtml, cpHtml;
+      const t = it.t, isOpt = it.isOpt, cp = it.cp, posVal = posValOf(t);
+      let pnlHtml, cpHtml, pctHtml;
       if (isOpt) {
         hasOpt = true;
         // no live option-price feed → let the trader type the current premium; P&L updates live
         cpHtml = '<input class="opt-px" data-optpx="' + t.id + '" type="number" step="0.01" min="0" placeholder="הזן מחיר" value="' + (cp != null ? cp : "") + '">';
-        if (cp != null && it.un != null) { totUn += it.un; pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>"; }
-        else { pnlHtml = '<span class="muted" title="הזן את מחיר האופציה הנוכחי כדי לחשב רווח/הפסד לא ממומש">הזן מחיר ←</span>'; }
+        if (cp != null && it.un != null) { totUn += it.un; totInv += posVal; pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>"; pctHtml = pctCell(it.un, posVal); }
+        else { pnlHtml = '<span class="muted" title="הזן את מחיר האופציה הנוכחי כדי לחשב רווח/הפסד לא ממומש">הזן מחיר ←</span>'; pctHtml = '<td class="muted">—</td>'; }
       } else if (cp != null) {
-        totUn += it.un;
+        totUn += it.un; totInv += posVal;
         pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>";
-        cpHtml = money(cp, 2);
-      } else { haveAll = false; pnlHtml = '<span class="muted">' + (livePrices ? "אין מחיר" : "טוען…") + "</span>"; cpHtml = "—"; }
+        cpHtml = money(cp, 2); pctHtml = pctCell(it.un, posVal);
+      } else { haveAll = false; pnlHtml = '<span class="muted">' + (livePrices ? "אין מחיר" : "טוען…") + "</span>"; cpHtml = "—"; pctHtml = '<td class="muted">—</td>'; }
       return "<tr data-editopen='" + t.id + "' style='cursor:pointer'>" +
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + chartSym(t.symbol) +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
-        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posValOf(t), 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" +
+        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
           "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
           "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button></td></tr>";
     }).join("");
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
-    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "שווי פוזיציה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + "<th></th></tr>";
+    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "שווי פוזיציה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
     const footSpan = 7 + (showAcct ? 1 : 0);   // columns before the Unrealized-total cell
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
+    const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
     const count = openTrades.length;
+    const gridBtn = "<button class='btn ghost' id='openPosGrid' style='font-size:12px;padding:4px 12px' title='ראה גרפים של כל הפוזיציות הפתוחות'>📊 גרפים</button>";
     const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
     const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
       "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
-        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + toggleBtn + "</h3>" +
+        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : gridBtn) + toggleBtn + "</h3>" +
       (openPosMin ? "" :
         "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
-        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='" + footSpan + "' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td></td></tr></tfoot></table></div>");
+        "<tbody>" + rows + "</tbody><tfoot><tr><td colspan='" + footSpan + "' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ Unrealized</td><td style='font-weight:800;padding-top:10px'>" + totHtml + "</td><td style='font-weight:800;padding-top:10px'>" + totPct + "</td><td></td></tr></tfoot></table></div>");
+    { const gb = wrap.querySelector("#openPosGrid"); if (gb) gb.onclick = () => {
+        const seen = {};
+        const grows = openTrades.map(t => {
+          const u = String(t.symbol || "").split(" ")[0]; const lp = livePrices && livePrices[u];
+          return { sym: u, price: (lp && lp[0]) || (+t.entryPrice || 0), chg: (lp && lp[1]) || 0 };
+        }).filter(r => r.sym && !seen[r.sym] && (seen[r.sym] = 1));   // unique underlyings
+        if (grows.length && window._snOpenChartGrid) window._snOpenChartGrid(grows, { title: "פוזיציות פתוחות" });
+      }; }
     { const tg = wrap.querySelector("#openPosToggle"); if (tg) tg.onclick = () => { openPosMin = !openPosMin; try { localStorage.setItem("sn_openpos_min", openPosMin ? "1" : "0"); } catch (e) {} render(); }; }
     wrap.querySelectorAll("[data-jsort]").forEach(th => th.onclick = () => {
       const c = th.dataset.jsort;
@@ -715,7 +729,7 @@
     const agg = state.aggTrades !== false;
     const base = agg ? aggregateTrades(trades) : trades;
     // position value = entry notional (qty × entry price × multiplier). Precomputed so the column sorts.
-    const withPv = base.map(t => Object.assign({}, t, { posValue: (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1) }));
+    const withPv = base.map(t => { const pv = (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1); return Object.assign({}, t, { posValue: pv, pnlPct: pv > 0 ? (t.pnl || 0) / pv * 100 : 0 }); });
     const sorted = withPv.sort((a, b) => {
       let av = a[state.sortKey], bv = b[state.sortKey];
       if (typeof av === "string") { return (av < bv ? -1 : av > bv ? 1 : 0) * state.sortDir; }
@@ -726,7 +740,7 @@
       ...(showAcct ? [["account", "חשבון"]] : []),
       ["exitDate", "תאריך יציאה"], ["symbol", "סימבול"], ["assetType", "סוג"],
       ["direction", "כיוון"], ["qty", "כמות"], ["entryPrice", "כניסה"], ["posValue", "שווי פוזיציה"],
-      ["exitPrice", "יציאה"], ["fees", "עמלות"], ["pnl", "נטו"], ["source", "מקור"],
+      ["exitPrice", "יציאה"], ["fees", "עמלות"], ["pnl", "נטו"], ["pnlPct", "% נטו"], ["source", "מקור"],
     ];
     let head = "<tr>";
     cols.forEach(([k, l]) => {
@@ -750,6 +764,7 @@
         "<td>" + money(t.exitPrice, 2) + "</td>" +
         '<td class="zero">' + money(-t.fees, 2) + "</td>" +
         '<td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td>" +
+        '<td class="' + cls(t.pnl) + '">' + (t.posValue > 0 ? (t.pnlPct >= 0 ? "+" : "") + t.pnlPct.toFixed(2) + "%" : "—") + "</td>" +
         '<td><span class="pill src">' + srcTxt + "</span></td>" +
         "<td>" +
           (t._agg ? '<span class="muted" style="font-size:11px" title="פצל כדי לערוך/למחוק עסקה בודדת">מאוגד</span>' :
