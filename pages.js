@@ -1373,17 +1373,19 @@
         picks: top.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
     }
     if (page === "today") {
-      // rich card that reflects the page's value: money flow + long AND short candidates
-      const flow = (typeof todaySectors === "function" ? todaySectors(src) : []).sort((a, b) => b.chg - a.chg);
-      const flowIn = flow.slice(0, 3), flowOut = flow.slice(-3).reverse();
-      const longs = src.filter(t => t.ninja != null && (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 3);
-      const shorts = src.filter(t => t.ninja != null && (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 3);
-      const flowStrip = flowIn.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "pos")).join("") + flowOut.map(s => _shIdx(secHe(s.name), _shNum(s.chg), "neg")).join("");
-      const col = (lbl, cls, arr) => '<div class="sc-col"><div class="sc-picks-lbl ' + cls + '">' + lbl + "</div><div class=\"sc-picks\">" +
-        (arr.length ? arr.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") : '<div class="sc-empty">אין מועמדים ברורים</div>') + "</div></div>";
+      // money-flow card reflecting the SELECTED timeframe (20D/5D/1D) for sectors + sub-sectors — no candidates
+      const TFL = { "1d": "יום", "5d": "5 ימים", "20d": "20 ימים" };
+      const vOf = (s, tf) => tf === "5d" ? s.chg5d : tf === "20d" ? s.chg20d : s.chg;
+      const inOut = (list, tf, n) => {
+        const sorted = list.filter(s => vOf(s, tf) != null).sort((a, b) => vOf(b, tf) - vOf(a, tf));
+        return sorted.slice(0, n).map(s => [s, "pos"]).concat(sorted.slice(-n).reverse().filter(x => sorted.slice(0, n).indexOf(x) < 0).map(s => [s, "neg"]));
+      };
+      const strip = (list, tf, isSub) => inOut(list, tf, 3).map(([s, cls]) => _shIdx(isSub ? s.name : secHe(s.name), _shNum(vOf(s, tf)), cls)).join("");
+      const secStrip = strip(typeof todaySectors === "function" ? todaySectors(src) : [], flowTf, false);
+      const subStrip = strip(typeof todaySubsectors === "function" ? todaySubsectors(src) : [], flowTfSub, true);
       const bodyHtml =
-        (flowStrip ? '<div class="sc-sec-lbl">🗂️ לאן הכסף זורם</div><div class="sc-strip">' + flowStrip + "</div>" : "") +
-        '<div class="sc-two">' + col("🟢 מועמדים ללונג", "pos", longs) + col("🔴 מועמדים לשורט", "neg", shorts) + "</div>";
+        '<div class="sc-sec-lbl">🗂️ סקטורים · ' + TFL[flowTf] + '</div><div class="sc-strip">' + (secStrip || '<span class="sc-idx muted">—</span>') + "</div>" +
+        '<div class="sc-sec-lbl" style="margin-top:12px">🏭 תתי-סקטורים · ' + TFL[flowTfSub] + '</div><div class="sc-strip">' + (subStrip || '<span class="sc-idx muted">—</span>') + "</div>";
       return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 מה לבדוק עכשיו", cls: ms ? ms.cls : "zero", bodyHtml: bodyHtml };
     }
     if (page === "sectors") {
