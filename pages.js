@@ -932,6 +932,7 @@
     return n * ({ T: 1e12, B: 1e9, M: 1e6, K: 1e3, "": 1e9 }[m[2]]);
   }
   let _selPreset = "";   // id of the saved-scan currently chosen in the dropdown (survives reRender so delete/duplicate work)
+  let _presetWheelTs = 0;   // throttle for wheel-cycling presets (module scope so it survives reRender)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
   const colState = {};
@@ -2281,6 +2282,19 @@
     // panel-visibility chips + saved-scan presets
     document.querySelectorAll("[data-panel]").forEach(b => b.onclick = () => togglePanel(b.dataset.panel));
     { const psel = $("#presetSel"); if (psel) psel.onchange = () => { _selPreset = psel.value; if (!_selPreset) { reRender(); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }
+    // scroll the mouse-wheel while hovering the saved-scans dropdown to flip between presets
+    { const psel = $("#presetSel"); if (psel) psel.addEventListener("wheel", e => {
+        if (psel.options.length < 2) return;   // only the "— טען פריסט —" placeholder → nothing to cycle
+        e.preventDefault();
+        const now = Date.now();
+        if (now - _presetWheelTs < 220) return;   // throttle rapid trackpad deltas
+        _presetWheelTs = now;
+        let i = psel.selectedIndex + (e.deltaY > 0 ? 1 : -1);
+        i = Math.max(0, Math.min(psel.options.length - 1, i));
+        if (i === psel.selectedIndex) return;
+        psel.selectedIndex = i;
+        psel.dispatchEvent(new Event("change"));
+      }, { passive: false }); }
     { const psave = $("#presetSave"); if (psave) psave.onclick = () => openPresetSaveDialog(); }
     { const pdup = $("#presetDup"); if (pdup) pdup.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשכפל אותה."); return; } const rec = window.Prefs.duplicateScanPreset(_selPreset); if (rec) _selPreset = rec.id; reRender(); }; }
     { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p && !confirm('למחוק את הסריקה "' + p.name + '"?')) return; window.Prefs.deleteScanPreset(_selPreset); _selPreset = ""; reRender(); }; }
