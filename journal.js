@@ -213,6 +213,7 @@
 
     const content = el("div", "jr-content");
     content.appendChild(renderStatCards(trades));
+    content.appendChild(renderTotalPnl(trades, manualOpen, openPositions));
     if (manualOpen && manualOpen.length) content.appendChild(renderOpenPositions(manualOpen));
     content.appendChild(renderAssetBreakdown(trades));
     if (state.tab === "calendar") content.appendChild(renderCalendar(trades));
@@ -423,6 +424,38 @@
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === state.tab));
   }
 
+  // total unrealized P&L across ALL open positions — manual AND FIFO/CSV-derived. Stocks priced from
+  // the live feed; options only when a current price was typed in. Returns {un, missing}.
+  function totalUnrealized(manualOpen, fifoOpen) {
+    const optPx = _optPrices();
+    let un = 0, missing = 0;
+    (manualOpen || []).forEach(t => {
+      const isOpt = t.assetType === "option";
+      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+      if (cp != null) un += unrealizedPnl(t, cp); else missing++;
+    });
+    (fifoOpen || []).forEach(p => {
+      const isOpt = p.assetType === "option";
+      const cp = isOpt ? null : (livePrices ? livePrices[p.symbol] : null);   // no live/typed price for FIFO option opens
+      if (cp != null) un += (cp - p.avgPrice) * p.qty * (isOpt ? 100 : 1);    // qty is signed → works for shorts too
+      else missing++;
+    });
+    return { un: un, missing: missing };
+  }
+  // "P&L כולל" banner = realized (closed trades) + unrealized (open positions) — the figure that
+  // reconciles with a broker's mark-to-market Net P&L (which counts open positions too).
+  function renderTotalPnl(trades, manualOpen, fifoOpen) {
+    const realized = E.stats(trades).net;
+    const u = totalUnrealized(manualOpen, fifoOpen);
+    const combined = realized + u.un;
+    const wrap = el("div", "panel jr-totalpnl");
+    const note = u.missing ? " · <span style='font-size:11px'>" + u.missing + " פוזיציות בלי מחיר חי (לרוב אופציות) לא נכללו</span>" : "";
+    wrap.innerHTML =
+      "<div class='jtp-top'><span class='jtp-lbl'>💰 P&L כולל <span class='muted' style='font-weight:400;font-size:12px'>(ממומש + לא-ממומש)</span></span>" +
+        "<span class='jtp-val " + cls(combined) + "'>" + money(combined, 2) + "</span></div>" +
+      "<div class='jtp-sub'>ממומש (עסקאות סגורות): <b class='" + cls(realized) + "'>" + money(realized, 2) + "</b>  +  לא-ממומש (פוזיציות פתוחות): <b class='" + cls(u.un) + "'>" + money(u.un, 2) + "</b>" + note + "</div>";
+    return wrap;
+  }
   function renderStatCards(trades) {
     const s = E.stats(trades);
     const wrap = el("div", "cards");

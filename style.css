@@ -121,6 +121,13 @@ tr:last-child td{border-bottom:none}
 .yearly-table th,.yearly-table td{text-align:center;padding:7px 9px;font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .yearly-table tfoot td{border-top:2px solid var(--line);padding-top:9px}
 .yearly-table td.pos{color:#4fe39b}.yearly-table td.neg{color:#ff6b7a}
+.jr-totalpnl{margin:0 0 14px;padding:14px 18px;background:linear-gradient(90deg,rgba(124,108,240,.12),rgba(88,101,242,.05));border:1px solid rgba(124,108,240,.3)}
+.jtp-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.jtp-lbl{font-size:15px;font-weight:800}
+.jtp-val{font-size:27px;font-weight:800;font-variant-numeric:tabular-nums}
+.jtp-val.pos{color:#4fe39b}.jtp-val.neg{color:#ff6b7a}
+.jtp-sub{margin-top:6px;font-size:12.5px;color:var(--muted)}
+.jtp-sub b.pos{color:#4fe39b}.jtp-sub b.neg{color:#ff6b7a}
 .cal-granbar{margin-bottom:10px}
 .cal-mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
 .cal-mgrid.q{grid-template-columns:repeat(3,1fr)}
