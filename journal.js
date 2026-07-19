@@ -83,7 +83,9 @@
   // ---- App state ---------------------------------------------------------
   const ALL = "__ALL__";    // pseudo-account: combined view of every account
   const state = { account: null, tab: "calendar", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
-    aggTrades: (function () { try { return localStorage.getItem("sn_agg_trades") !== "0"; } catch (e) { return true; } })() };
+    aggTrades: (function () { try { return localStorage.getItem("sn_agg_trades") !== "0"; } catch (e) { return true; } })(),
+    calGran: (function () { try { return localStorage.getItem("sn_cal_gran") || "month"; } catch (e) { return "month"; } })(),
+    calYear: null, calQ: null };   // anchor for the quarterly / yearly calendar views
   let manualEditId = null;  // when editing a manual trade, its id; null = adding new
   const OPEN_WARN = 5;      // discipline nudge: warn at this many concurrent open positions
   let _lastOpenCount = 0;   // to fire the crossing popup only once per crossing
@@ -518,7 +520,85 @@
     return wrap;
   }
 
-  // ---- Calendar view -----------------------------------------------------
+  // ---- Calendar view (month day-grid · quarter / year month-grid) --------
+  // monthly P&L aggregate ("YYYY-MM" → {net, n, wins}), for the quarter/year views + month cells
+  function calByMonth(trades) {
+    const m = {};
+    (trades || []).forEach(t => {
+      const d = t.exitDate; if (!d || d.length < 7) return;
+      const ym = d.slice(0, 7);
+      if (!m[ym]) m[ym] = { net: 0, n: 0, wins: 0 };
+      m[ym].net += (t.pnl || 0); m[ym].n++; if ((t.pnl || 0) > 0) m[ym].wins++;
+    });
+    return m;
+  }
+  function calGranBar(gran) {
+    const bar = el("div", "cal-granbar");
+    bar.innerHTML = "<span class='flow-tf cal-gran'>" +
+      [["month", "חודשי"], ["quarter", "רבעוני"], ["year", "שנתי"]].map(x =>
+        "<button class='flow-tf-btn" + (x[0] === gran ? " on" : "") + "' data-calgran='" + x[0] + "'>" + x[1] + "</button>").join("") + "</span>";
+    bar.querySelectorAll("[data-calgran]").forEach(b => b.onclick = () => {
+      const g = b.dataset.calgran;
+      if (g !== "month") {   // entering a period view → anchor it on the month currently shown
+        const ym = (state.months || [])[state.monthIdx] || "";
+        if (ym) { state.calYear = +ym.slice(0, 4); state.calQ = Math.floor((+ym.slice(5, 7) - 1) / 3) + 1; }
+      }
+      state.calGran = g; try { localStorage.setItem("sn_cal_gran", g); } catch (e) {}
+      render();
+    });
+    return bar;
+  }
+  function calMonthCell(ym, a) {
+    const mm = +ym.slice(5, 7), yy = ym.slice(0, 4);
+    const cell = el("div", "cal-mcell" + (a ? (a.net > 0 ? " pos" : a.net < 0 ? " neg" : "") : " empty"));
+    let inner = "<div class='cm-name'>" + HEB[mm - 1] + " " + yy + "</div>";
+    if (a && a.n) {
+      inner += "<div class='cm-pnl " + cls(a.net) + "'>" + money(a.net) + "</div>" +
+        "<div class='cm-sub'>" + a.n + " עסקאות · " + Math.round(100 * a.wins / a.n) + "%</div>";
+      cell.classList.add("clickable");
+      cell.onclick = () => { state.calGran = "month"; try { localStorage.setItem("sn_cal_gran", "month"); } catch (e) {} const i = (state.months || []).indexOf(ym); if (i >= 0) state.monthIdx = i; render(); };
+    } else {
+      inner += "<div class='cm-pnl muted'>—</div><div class='cm-sub muted'>אין עסקאות</div>";
+    }
+    cell.innerHTML = inner;
+    return cell;
+  }
+  function renderCalPeriod(gran, byMonth) {
+    const wrap = el("div");
+    wrap.appendChild(calGranBar(gran));
+    const years = Array.from(new Set(Object.keys(byMonth).map(k => k.slice(0, 4)))).sort();
+    if (!years.length) { wrap.appendChild(el("div", "note", "אין עסקאות סגורות בחשבון זה עדיין.")); return wrap; }
+    const minY = +years[0], maxY = +years[years.length - 1];
+    let cy = Math.max(minY, Math.min(maxY, state.calYear != null ? state.calYear : maxY));
+    let cq = Math.max(1, Math.min(4, state.calQ != null ? state.calQ : 1));
+    state.calYear = cy; state.calQ = cq;
+    let ymList, plabel;
+    if (gran === "year") { ymList = []; for (let mm = 1; mm <= 12; mm++) ymList.push(cy + "-" + String(mm).padStart(2, "0")); plabel = String(cy); }
+    else { const s = (cq - 1) * 3 + 1; ymList = [0, 1, 2].map(k => cy + "-" + String(s + k).padStart(2, "0")); plabel = "Q" + cq + " · " + cy; }
+    const bar = el("div", "calbar");
+    const nav = el("div", "nav"), prev = el("button", null, "‹"), next = el("button", null, "›"), label = el("div", "mlabel");
+    label.textContent = plabel;
+    const step = dir => {
+      if (gran === "year") { const ny = cy + dir; if (ny < minY || ny > maxY) return; state.calYear = ny; }
+      else { let q = cq + dir, y = cy; if (q > 4) { q = 1; y++; } if (q < 1) { q = 4; y--; } if (y < minY || y > maxY) return; state.calYear = y; state.calQ = q; }
+      render();
+    };
+    prev.onclick = () => step(-1); next.onclick = () => step(1);
+    nav.appendChild(prev); nav.appendChild(label); nav.appendChild(next);
+    const lastBtn = el("button", "btn", "לאחרון");
+    lastBtn.onclick = () => { const lm = years.length ? Object.keys(byMonth).sort().slice(-1)[0] : null; state.calYear = maxY; if (lm) state.calQ = Math.floor((+lm.slice(5, 7) - 1) / 3) + 1; render(); };
+    bar.appendChild(nav); bar.appendChild(lastBtn); bar.appendChild(el("div", "spacer"));
+    let pTot = 0, pN = 0, pWins = 0;
+    ymList.forEach(ym => { const a = byMonth[ym]; if (a) { pTot += a.net; pN += a.n; pWins += a.wins; } });
+    bar.appendChild(el("span", "badge lbl", gran === "year" ? "סה\"כ שנתי:" : "סה\"כ רבעוני:"));
+    bar.appendChild(el("span", "badge " + (pTot >= 0 ? "pos" : "neg"), money(pTot)));
+    bar.appendChild(el("span", "badge days", pN + " עסקאות · " + (pN ? Math.round(100 * pWins / pN) : 0) + "%"));
+    wrap.appendChild(bar);
+    const grid = el("div", "cal-mgrid" + (gran === "quarter" ? " q" : ""));
+    ymList.forEach(ym => grid.appendChild(calMonthCell(ym, byMonth[ym])));
+    wrap.appendChild(grid);
+    return wrap;
+  }
   function renderCalendar(trades) {
     const days = E.dailyFromTrades(trades);
     const monthsSet = new Set(Object.keys(days).map(k => k.slice(0, 7)));
@@ -527,7 +607,11 @@
     if (state.monthIdx >= months.length) state.monthIdx = months.length - 1;
     if (state.monthIdx < 0) state.monthIdx = months.length - 1;
 
+    const gran = state.calGran || "month";
+    if (gran !== "month") return renderCalPeriod(gran, calByMonth(trades));
+
     const wrap = el("div");
+    wrap.appendChild(calGranBar("month"));
     const bar = el("div", "calbar");
     const nav = el("div", "nav");
     const prev = el("button", null, "‹"), next = el("button", null, "›");

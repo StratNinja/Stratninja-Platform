@@ -121,6 +121,20 @@ tr:last-child td{border-bottom:none}
 .yearly-table th,.yearly-table td{text-align:center;padding:7px 9px;font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .yearly-table tfoot td{border-top:2px solid var(--line);padding-top:9px}
 .yearly-table td.pos{color:#4fe39b}.yearly-table td.neg{color:#ff6b7a}
+.cal-granbar{margin-bottom:10px}
+.cal-mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:6px}
+.cal-mgrid.q{grid-template-columns:repeat(3,1fr)}
+.cal-mcell{background:#0f1826;border:1px solid var(--line);border-radius:12px;padding:14px 16px;min-height:92px;display:flex;flex-direction:column;gap:5px;transition:border-color .12s}
+.cal-mcell.pos{background:rgba(22,184,119,.09);border-color:rgba(22,184,119,.3)}
+.cal-mcell.neg{background:rgba(224,82,79,.09);border-color:rgba(224,82,79,.3)}
+.cal-mcell.empty{opacity:.5}
+.cal-mcell.clickable{cursor:pointer}
+.cal-mcell.clickable:hover{border-color:var(--accent)}
+.cm-name{font-weight:700;font-size:13.5px;color:var(--ink)}
+.cm-pnl{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums}
+.cm-pnl.pos{color:#4fe39b}.cm-pnl.neg{color:#ff6b7a}
+.cm-sub{font-size:11.5px;color:var(--muted)}
+@media(max-width:640px){.cal-mgrid,.cal-mgrid.q{grid-template-columns:repeat(2,1fr);gap:9px}.cal-mcell{padding:11px 12px;min-height:78px}.cm-pnl{font-size:17px}}
 .pill.src{background:#2a2a33;color:#aab}
 
 /* forms / modal */
