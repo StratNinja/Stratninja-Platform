@@ -215,6 +215,7 @@
     content.appendChild(renderAssetBreakdown(trades));
     if (state.tab === "calendar") content.appendChild(renderCalendar(trades));
     else if (state.tab === "equity") content.appendChild(renderEquity(trades));
+    else if (state.tab === "yearly") content.appendChild(renderYearly(trades));
     else if (state.tab === "trades") content.appendChild(renderTrades(trades, openPositions));
 
     if (_journalPrivate && !_journalPeek) {
@@ -463,6 +464,49 @@
       wrap.appendChild(card);
     });
     if (shown < 1) wrap.style.display = "none";
+    return wrap;
+  }
+
+  // ---- Yearly P&L view (year × month grid + per-year totals) -------------
+  function renderYearly(trades) {
+    const wrap = el("div", "panel");
+    const byYear = {};
+    (trades || []).forEach(t => {
+      const d = t.exitDate; if (!d || d.length < 7) return;
+      const y = d.slice(0, 4), m = parseInt(d.slice(5, 7), 10) - 1;
+      if (isNaN(m) || m < 0 || m > 11) return;
+      if (!byYear[y]) byYear[y] = { m: new Array(12).fill(0), mN: new Array(12).fill(0), total: 0, n: 0, wins: 0 };
+      const o = byYear[y];
+      o.m[m] += (t.pnl || 0); o.mN[m]++;
+      o.total += (t.pnl || 0); o.n++; if ((t.pnl || 0) > 0) o.wins++;
+    });
+    const years = Object.keys(byYear).sort((a, b) => b - a);
+    if (!years.length) {
+      wrap.innerHTML = '<h3>📆 P&L שנתי</h3><div class="muted" style="padding:14px">אין עדיין עסקאות סגורות. ייבא דוח או הזן עסקה כדי לראות סיכום שנתי.</div>';
+      return wrap;
+    }
+    const MON = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יונ", "יול", "אוג", "ספט", "אוק", "נוב", "דצמ"];
+    // all-years column totals (per month) + grand total, for a summary row
+    const colTot = new Array(12).fill(0), colN = new Array(12).fill(0);
+    let grand = 0, grandN = 0, grandWins = 0;
+    years.forEach(y => { const o = byYear[y]; o.m.forEach((v, i) => { colTot[i] += v; colN[i] += o.mN[i]; }); grand += o.total; grandN += o.n; grandWins += o.wins; });
+    const cellOf = (v, has) => has ? '<td class="' + cls(v) + '">' + money(v, 0) + "</td>" : '<td class="muted">—</td>';
+    const head = "<tr><th style='text-align:start'>שנה</th>" + MON.map(m => "<th>" + m + "</th>").join("") + "<th>סה\"כ שנתי</th><th>Win%</th><th>עסקאות</th></tr>";
+    const rows = years.map(y => {
+      const o = byYear[y];
+      const cells = o.m.map((v, i) => cellOf(v, o.mN[i] > 0)).join("");
+      const win = o.n ? Math.round(100 * o.wins / o.n) : 0;
+      return "<tr><td style='font-weight:800;text-align:start'>" + y + "</td>" + cells +
+        '<td class="' + cls(o.total) + '" style="font-weight:800">' + money(o.total, 0) + "</td><td>" + win + "%</td><td class='muted'>" + o.n + "</td></tr>";
+    }).join("");
+    const gwin = grandN ? Math.round(100 * grandWins / grandN) : 0;
+    const foot = years.length > 1
+      ? "<tr><td style='font-weight:800;text-align:start'>כל השנים</td>" + colTot.map((v, i) => cellOf(v, colN[i] > 0)).join("") +
+        '<td class="' + cls(grand) + '" style="font-weight:800">' + money(grand, 0) + "</td><td>" + gwin + "%</td><td class='muted'>" + grandN + "</td></tr>"
+      : "";
+    wrap.innerHTML = "<h3>📆 P&L שנתי <span class='muted' style='font-size:12px;font-weight:400'>· רווח/הפסד לפי חודש ושנה</span></h3>" +
+      "<div class='tablewrap'><table class='scan-table yearly-table'><thead>" + head + "</thead><tbody>" + rows + "</tbody>" +
+      (foot ? "<tfoot>" + foot + "</tfoot>" : "") + "</table></div>";
     return wrap;
   }
 
