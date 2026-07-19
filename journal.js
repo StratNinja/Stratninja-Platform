@@ -467,7 +467,8 @@
     return wrap;
   }
 
-  // ---- Yearly P&L view (year × month grid + per-year totals) -------------
+  // ---- Yearly P&L view (year × month|quarter grid + per-year totals) -----
+  let _yearlyQ = (function () { try { return localStorage.getItem("sn_yearly_q") === "1"; } catch (e) { return false; } })();
   function renderYearly(trades) {
     const wrap = el("div", "panel");
     const byYear = {};
@@ -481,20 +482,26 @@
       o.total += (t.pnl || 0); o.n++; if ((t.pnl || 0) > 0) o.wins++;
     });
     const years = Object.keys(byYear).sort((a, b) => b - a);
+    const q = _yearlyQ;
+    const toggle = "<span class='flow-tf yr-gran'>" +
+      [["month", "חודשי"], ["quarter", "רבעוני"]].map(x => "<button class='flow-tf-btn" + ((x[0] === "quarter") === q ? " on" : "") + "' data-yrgran='" + x[0] + "'>" + x[1] + "</button>").join("") + "</span>";
+    const heading = "<h3 style='display:flex;align-items:center;gap:10px;flex-wrap:wrap'><span>📆 P&L שנתי <span class='muted' style='font-size:12px;font-weight:400'>· רווח/הפסד לפי " + (q ? "רבעון" : "חודש") + " ושנה</span></span>" + toggle + "</h3>";
+    const wire = () => wrap.querySelectorAll("[data-yrgran]").forEach(b => b.onclick = () => { _yearlyQ = b.dataset.yrgran === "quarter"; try { localStorage.setItem("sn_yearly_q", _yearlyQ ? "1" : "0"); } catch (e) {} render(); });
     if (!years.length) {
-      wrap.innerHTML = '<h3>📆 P&L שנתי</h3><div class="muted" style="padding:14px">אין עדיין עסקאות סגורות. ייבא דוח או הזן עסקה כדי לראות סיכום שנתי.</div>';
-      return wrap;
+      wrap.innerHTML = heading + '<div class="muted" style="padding:14px">אין עדיין עסקאות סגורות. ייבא דוח או הזן עסקה כדי לראות סיכום שנתי.</div>';
+      wire(); return wrap;
     }
-    const MON = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יונ", "יול", "אוג", "ספט", "אוק", "נוב", "דצמ"];
-    // all-years column totals (per month) + grand total, for a summary row
-    const colTot = new Array(12).fill(0), colN = new Array(12).fill(0);
-    let grand = 0, grandN = 0, grandWins = 0;
-    years.forEach(y => { const o = byYear[y]; o.m.forEach((v, i) => { colTot[i] += v; colN[i] += o.mN[i]; }); grand += o.total; grandN += o.n; grandWins += o.wins; });
+    const COLS = q ? ["Q1", "Q2", "Q3", "Q4"] : ["ינו", "פבר", "מרץ", "אפר", "מאי", "יונ", "יול", "אוג", "ספט", "אוק", "נוב", "דצמ"];
+    const valAt = (o, i) => q ? (o.m[i * 3] + o.m[i * 3 + 1] + o.m[i * 3 + 2]) : o.m[i];
+    const nAt = (o, i) => q ? (o.mN[i * 3] + o.mN[i * 3 + 1] + o.mN[i * 3 + 2]) : o.mN[i];
     const cellOf = (v, has) => has ? '<td class="' + cls(v) + '">' + money(v, 0) + "</td>" : '<td class="muted">—</td>';
-    const head = "<tr><th style='text-align:start'>שנה</th>" + MON.map(m => "<th>" + m + "</th>").join("") + "<th>סה\"כ שנתי</th><th>Win%</th><th>עסקאות</th></tr>";
+    const colTot = COLS.map(() => 0), colN = COLS.map(() => 0);
+    let grand = 0, grandN = 0, grandWins = 0;
+    years.forEach(y => { const o = byYear[y]; COLS.forEach((_, i) => { colTot[i] += valAt(o, i); colN[i] += nAt(o, i); }); grand += o.total; grandN += o.n; grandWins += o.wins; });
+    const head = "<tr><th style='text-align:start'>שנה</th>" + COLS.map(c => "<th>" + c + "</th>").join("") + "<th>סה\"כ שנתי</th><th>Win%</th><th>עסקאות</th></tr>";
     const rows = years.map(y => {
       const o = byYear[y];
-      const cells = o.m.map((v, i) => cellOf(v, o.mN[i] > 0)).join("");
+      const cells = COLS.map((_, i) => cellOf(valAt(o, i), nAt(o, i) > 0)).join("");
       const win = o.n ? Math.round(100 * o.wins / o.n) : 0;
       return "<tr><td style='font-weight:800;text-align:start'>" + y + "</td>" + cells +
         '<td class="' + cls(o.total) + '" style="font-weight:800">' + money(o.total, 0) + "</td><td>" + win + "%</td><td class='muted'>" + o.n + "</td></tr>";
@@ -504,9 +511,10 @@
       ? "<tr><td style='font-weight:800;text-align:start'>כל השנים</td>" + colTot.map((v, i) => cellOf(v, colN[i] > 0)).join("") +
         '<td class="' + cls(grand) + '" style="font-weight:800">' + money(grand, 0) + "</td><td>" + gwin + "%</td><td class='muted'>" + grandN + "</td></tr>"
       : "";
-    wrap.innerHTML = "<h3>📆 P&L שנתי <span class='muted' style='font-size:12px;font-weight:400'>· רווח/הפסד לפי חודש ושנה</span></h3>" +
+    wrap.innerHTML = heading +
       "<div class='tablewrap'><table class='scan-table yearly-table'><thead>" + head + "</thead><tbody>" + rows + "</tbody>" +
       (foot ? "<tfoot>" + foot + "</tfoot>" : "") + "</table></div>";
+    wire();
     return wrap;
   }
 
