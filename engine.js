@@ -124,7 +124,8 @@ window.Engine = (function () {
     const cDate = _col(idx, ALIAS.date), cSym = _col(idx, ALIAS.symbol),
       cQty = _col(idx, ALIAS.qty), cPrice = _col(idx, ALIAS.price),
       cSide = _col(idx, ALIAS.side), cAcct = _col(idx, ALIAS.account),
-      cClr = _col(idx, ALIAS.clr), cExec = _col(idx, ALIAS.exec);
+      cClr = _col(idx, ALIAS.clr), cExec = _col(idx, ALIAS.exec),
+      cNote = (idx["Note"] != null ? idx["Note"] : (idx["note"] != null ? idx["note"] : -1));
     const miss = [];
     if (cDate < 0) miss.push("תאריך");
     if (cSym < 0) miss.push("סימבול");
@@ -160,12 +161,19 @@ window.Engine = (function () {
       const isOpt = isOptionSymbol(sym, clr);
       let fees = 0;
       FEE_ALIAS.forEach(fc => { if (fc in idx) fees += Math.abs(_num(cell(row, idx[fc]))); });
-      fills.push({
+      // corporate action (stock split / symbol change): the broker books it as a $0 sell of the old
+      // symbol + a $0 buy of the new. Flag it so FIFO carries the cost basis instead of realizing a
+      // fake P&L at $0. Colmex marks these with Clr Type "REOG"; also catch a "Symbol Change" note.
+      const noteTxt = (cNote >= 0 ? cell(row, cNote) : "").toLowerCase();
+      const corp = clr.toUpperCase() === "REOG" || noteTxt.indexOf("symbol change") >= 0;
+      const fill = {
         account: acct, date: iso, side: side, symbol: sym,
         qty: Math.abs(qtyRaw), price: _num(cell(row, cPrice)), fees: fees,
         mult: isOpt ? 100 : 1, assetType: isOpt ? "option" : "stock",
         exec: cExec >= 0 ? cell(row, cExec) : "",
-      });
+      };
+      if (corp) fill.corp = true;
+      fills.push(fill);
     }
     return { fills, account, errors };
   }
@@ -174,9 +182,37 @@ window.Engine = (function () {
     return [f.account, f.date, f.exec, f.symbol, f.side, f.qty, f.price].join("|");
   }
 
+  // Neutralise corporate actions (splits / symbol changes) that the broker books as a $0 sell of the
+  // old symbol + a $0 buy of the new. Treating those as real $0 trades realizes a fake huge P&L; instead
+  // we carry the cost basis: drop the two $0 rows, rename the new symbol back to the old going forward
+  // (handles renames), and split-adjust the earlier lots (qty ×ratio, price ÷ratio — handles splits).
+  function applyCorporateActions(fills) {
+    // a corporate-action leg is flagged (new imports) OR simply priced at $0 (works on already-stored
+    // fills too — you never really SELL a stock for $0, so a $0 sell + $0 buy pair = a split/rename).
+    const isCorp = f => f && (f.corp || +f.price === 0);
+    if (!fills.some(isCorp)) return fills;
+    const out = fills.map((f, i) => ({ f: Object.assign({}, f), i }))   // clone — never mutate the stored fills
+      .sort((a, b) => a.f.date !== b.f.date ? (a.f.date < b.f.date ? -1 : 1) : (a.i - b.i))
+      .map(x => x.f);
+    for (let k = 0; k < out.length; k++) {
+      const from = out[k];
+      if (!from || from.side !== "S" || !isCorp(from)) continue;   // "Symbol Change from X" = $0 sell
+      let j = k + 1;
+      while (j < out.length && !(out[j] && out[j].side === "B" && isCorp(out[j]) && out[j].date === from.date)) j++;
+      if (j >= out.length) continue;
+      const to = out[j], X = from.symbol, Y = to.symbol;
+      const ratio = from.qty ? (to.qty / from.qty) : 1;
+      out[k] = null; out[j] = null;                                // drop both $0 rows
+      if (X !== Y) for (let m = k + 1; m < out.length; m++) { if (out[m] && out[m].symbol === Y) out[m].symbol = X; }   // rename forward
+      if (Math.abs(ratio - 1) > 1e-9) for (let m = 0; m < k; m++) { if (out[m] && out[m].symbol === X) { out[m].qty *= ratio; out[m].price /= ratio; } }   // split-adjust the past
+    }
+    return out.filter(Boolean);
+  }
+
   // ---- FIFO round-trip computation ---------------------------------------
   /* fills -> { trades: [...], openPositions: [...] } */
-  function computeTrades(fills) {
+  function computeTrades(fillsRaw) {
+    const fills = applyCorporateActions(fillsRaw || []);
     const sorted = fills.slice().sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? -1 : 1;
       return (a.exec || "") < (b.exec || "") ? -1 : 1;
