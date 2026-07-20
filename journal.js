@@ -1009,6 +1009,15 @@
       rd.onload = () => {
         const res = E.parseCSV(rd.result);
         if (res.errors.length) errs = errs.concat(res.errors.slice(0, 3));
+        // Some exports (e.g. Colmex "tradeHistory_COLH97415.csv") have NO account column — the account
+        // number lives only in the FILENAME. Stamp it so the trades group under a named account and stay
+        // visible (a blank account gets hidden whenever another named account already exists).
+        if ((res.fills || []).some(f => !(f.account || "").trim())) {
+          const m = String(file.name || "").match(/COL[A-Z]?\d+/i);
+          const fromName = m ? m[0].toUpperCase()
+            : (String(file.name || "").replace(/\.[^.]*$/, "").replace(/[^A-Za-z0-9]+/g, "").slice(0, 24) || "CSV");
+          res.fills.forEach(f => { if (!(f.account || "").trim()) f.account = fromName; });
+        }
         totalAdded += Store.addFills(res.fills);
         (res.fills || []).forEach(f => importedAccts.add((f.account || "").trim()));
         if (--pending === 0) finishImport(totalAdded, errs, Array.from(importedAccts));
