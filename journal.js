@@ -138,7 +138,7 @@
   }
 
   // ---- live prices for Unrealized P&L (from the scanner_data snapshot) ----
-  let livePrices = null, livePricesTs = 0, _openPriceTimer = null;
+  let livePrices = null, livePricesTs = 0, _openPriceTimer = null, _feedUpdated = "";
   async function ensureLivePrices() {
     if (livePrices && Date.now() - livePricesTs < 30000) return livePrices;
     const cfg = window.SN_CONFIG;
@@ -153,7 +153,7 @@
       const prices = (j && j[0] && j[0].data && j[0].data.prices) || {};
       const map = {};
       Object.keys(prices).forEach(sym => { const v = prices[sym]; const p = Array.isArray(v) ? v[0] : v; if (p) map[sym] = p; });
-      if (Object.keys(map).length) { livePrices = map; livePricesTs = Date.now(); }
+      if (Object.keys(map).length) { livePrices = map; livePricesTs = Date.now(); _feedUpdated = (j[0].data && j[0].data.updated) || _feedUpdated; }
       return livePrices || {};
     } catch (e) { return livePrices || {}; }
   }
@@ -236,20 +236,21 @@
       root.appendChild(content);
     }
 
-    // keep open-position prices LIVE — load once, then refresh from the scanner every 45s while the
+    // keep open-position prices LIVE — load once, then refresh from the scanner every 30s while the
     // journal is open (previously fetched only once → prices froze at whatever they were on open)
     const anyOpen = (openPositions && openPositions.length) || (manualOpen && manualOpen.length);
     if (anyOpen) {
       if (!livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
-      if (!_openPriceTimer) _openPriceTimer = setInterval(refreshOpenPrices, 45000);
+      if (!_openPriceTimer) _openPriceTimer = setInterval(refreshOpenPrices, 30000);
     } else if (_openPriceTimer) { clearInterval(_openPriceTimer); _openPriceTimer = null; }
   }
   function refreshOpenPrices() {
     const jc = document.getElementById("journalContainer");
     if (!jc || jc.classList.contains("hidden") || document.getElementById("modalBg")) return;  // not visible / mid-edit
-    livePricesTs = 0;                                    // force a fresh fetch (bypass the 2-min cache)
-    const before = livePrices;
-    ensureLivePrices().then(m => { if (m && before && JSON.stringify(m) !== JSON.stringify(before)) render(); });
+    const prev = _feedUpdated;
+    livePricesTs = 0;                                    // force a fresh fetch (bypass the cache)
+    // re-render only when the SERVER feed actually advanced (cheap timestamp check, not a 12k-ticker diff)
+    ensureLivePrices().then(m => { if (m && Object.keys(m).length && _feedUpdated !== prev) render(); });
   }
 
   // discipline nudge — persistent banner + one-time popup when open positions pile up
@@ -339,13 +340,21 @@
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
     const count = openTrades.length;
+    // live-price freshness: show WHEN the market feed last updated + a manual refresh button, so it's
+    // obvious the Unrealized P&L is tracking the market (not frozen at whatever loaded on open).
+    let pxTimeTxt = "";
+    try { if (_feedUpdated) pxTimeTxt = new Date(_feedUpdated).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }); } catch (e) {}
+    const pxTimeHtml = pxTimeTxt
+      ? "<span class='muted' style='font-size:11px;font-weight:400' title='זמן עדכון מחירי השוק מהשרת'>🕐 מחירים: " + pxTimeTxt + "</span>"
+      : "";
+    const refreshBtn = "<button class='btn ghost' id='openPxRefresh' style='font-size:12px;padding:4px 10px' title='רענן מחירים עכשיו'>🔄 רענן</button>";
     const gridBtn = "<button class='btn ghost' id='openPosGrid' style='font-size:12px;padding:4px 12px' title='ראה גרפים של כל הפוזיציות הפתוחות'>📊 גרפים</button>" +
       "<button class='btn ghost' id='openPosCopy' style='font-size:12px;padding:4px 12px' title='העתק את רשימת הפוזיציות הפתוחות ללוח'>📋 העתק</button>";
     const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
     const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · שווי " + money(totPosVal, 0) + " · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
       "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
-        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : gridBtn) + toggleBtn + "</h3>" +
+        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : (pxTimeHtml + refreshBtn + gridBtn)) + toggleBtn + "</h3>" +
       (openPosMin ? "" :
         "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
         "<tbody>" + rows + "</tbody><tfoot><tr>" +
@@ -355,6 +364,11 @@
           "<td style='font-weight:800;padding-top:10px'>" + totHtml + "</td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totPct + "</td>" +
           "<td></td></tr></tfoot></table></div>");
+    { const rb = wrap.querySelector("#openPxRefresh"); if (rb) rb.onclick = () => {
+        rb.textContent = "⏳ מרענן…"; rb.disabled = true;
+        livePricesTs = 0;                                // bypass cache → pull the freshest feed now
+        ensureLivePrices().then(() => render());
+      }; }
     { const gb = wrap.querySelector("#openPosGrid"); if (gb) gb.onclick = () => {
         const seen = {};
         const grows = openTrades.map(t => {
