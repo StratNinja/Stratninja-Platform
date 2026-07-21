@@ -1395,7 +1395,7 @@
       const bodyHtml =
         '<div class="sc-sec-lbl">🗂️ סקטורים · ' + TFL[flowTf] + '</div><div class="sc-strip">' + (secStrip || '<span class="sc-idx muted">—</span>') + "</div>" +
         '<div class="sc-sec-lbl" style="margin-top:12px">🏭 תתי-סקטורים · ' + TFL[flowTfSub] + '</div><div class="sc-strip">' + (subStrip || '<span class="sc-idx muted">—</span>') + "</div>";
-      return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 מה לבדוק עכשיו", cls: ms ? ms.cls : "zero", bodyHtml: bodyHtml };
+      return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 לאן הכסף הולך", cls: ms ? ms.cls : "zero", bodyHtml: bodyHtml };
     }
     if (page === "sectors") {
       // count full-continuity (FTFC) stocks per sector & sub-sector, split by direction (🟢 up / 🔴 down)
@@ -3160,7 +3160,7 @@
       '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
   }
   function renderToday() {
-    const head = '<div class="page-head"><h1>🎯 מה לבדוק עכשיו?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם, ואיפה ה-Ninja Score הכי גבוה — ללונג ולשורט.</div></div>';
+    const head = '<div class="page-head"><h1>🎯 לאן הכסף הולך?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם, ואיפה ה-Ninja Score הכי גבוה — ללונג ולשורט.</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const rows = scanSource().filter(t => t.ninja != null);
     if (!rows.length) return head + '<div class="panel"><div class="note" style="margin:6px 0">⏳ הנתונים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
@@ -3232,7 +3232,7 @@
         const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
         return r ? { sym: sym, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) } : { sym: sym };
       });
-      if (gridRows.length) openChartGrid(gridRows, { title: "מה לבדוק עכשיו" });
+      if (gridRows.length) openChartGrid(gridRows, { title: "לאן הכסף הולך" });
     });
   }
 
@@ -3698,7 +3698,7 @@
     { page: "market", ico: "📊", t: "סקירת שוק", d: "תמונת השוק במבט אחד: לאן נעים המדדים, ה-VIX (מדד הפחד), רוחב השוק, מפת הנרות של The Strat, הסקטורים החזקים/חלשים והגאפרים של היום." },
     { page: "sp500", ico: "🗺️", t: "S&P 500", d: "מפת חום של 500 החברות הגדולות — לראות בבירור לאן הכסף זורם היום, לפי סקטורים וגודל חברה." },
     { page: "sectors", ico: "🗂️", t: "סקטורים", d: "פירוק לכל סקטור ותת-סקטור: מי מוביל, מי בפיגור, ואילו מניות בולטות בכל אחד." },
-    { page: "today", ico: "🎯", t: "מה לבדוק עכשיו", d: "קיצור דרך: האחזקה הבולטת בכל סקטור והתנועות החשובות — מכאן כדאי להתחיל את הבדיקה היומית." },
+    { page: "today", ico: "🎯", t: "לאן הכסף הולך", d: "קיצור דרך: האחזקה הבולטת בכל סקטור והתנועות החשובות — מכאן כדאי להתחיל את הבדיקה היומית." },
     { page: "scanner", ico: "🔍", t: "סורק העסקאות — הלב של המערכת", d: "מסננים מניות לפי תבניות Strat, טיימפריימים ופילטרים טכניים. כל מניה מקבלת <b>Ninja Score</b> (0–100) שמדרג את איכות הסטאפ. אפשר לשמור <b>סריקות מועדפות (PRESETS)</b> ולקבל 🔔 התראה כשמניה מהמועדפים נכנסת לסריקה." },
     { page: "favorites", ico: "⭐", t: "מועדפים", d: "סמן ★ על כל מניה כדי להוסיף אותה לרשימת המעקב האישית — נשמרת בענן ומסתנכרנת בין כל המכשירים שלך." },
     { page: "journal", ico: "📅", t: "יומן מסחר", d: "העלה דוח מהברוקר או הזן עסקאות ידנית — ותקבל דשבורד רווח/הפסד, לוח שנה וסטטיסטיקות אישיות, בסגנון Tradezella." },
