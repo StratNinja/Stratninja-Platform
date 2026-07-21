@@ -807,10 +807,18 @@
     _spFacts = sp500Facts();
     const firstFact = _spFacts.length ? _spFacts[Math.floor(Math.random() * _spFacts.length)] : "";
     const insightBox = _spFacts.length ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="spInsightText">' + firstFact + "</span></div>" : "";
+    // overall S&P 500 breadth bar (same green/red visual as the market-overview breadth panel) — Adi
+    // wanted the bar on this page too, not just the text summary in the header.
+    const apTop = (b && b.total) ? (b.above / b.total * 100) : 0;
+    const breadthTopBar = (b && b.total)
+      ? '<div class="panel breadth-panel"><h3>רוחב שוק · Breadth <span class="muted" style="font-size:12px">S&P 500 · ' + b.total + ' מניות</span></h3>' +
+        '<div class="bigbreadth"><span class="bseg up" style="width:' + apTop.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - apTop).toFixed(1) + '%"></span></div>' +
+        '<div class="bkey" style="margin-top:10px;font-size:13px"><span class="pos">🟢 ' + b.above + ' מעל פתיחה</span><span class="neg">🔴 ' + b.below + ' מתחת</span><span class="muted">' + apTop.toFixed(0) + '% ירוקים</span></div></div>'
+      : "";
     // ── GRID VIEW: 500 squares (toggle) ──
     if (sp500View === "grid") {
       return '<div class="page-head"><h1>S&P 500 · מפת 500 ריבועים</h1><div class="sub">כל ריבוע = מניה במדד. 🟢 עולה · 🔴 יורדת · ככל שהצבע חזק יותר, התנועה גדולה יותר. ממוין מהעולה לנופל — כך רואים מיד את היחס בין עולות ליורדות.</div></div>' +
-        sp500ViewSwitch() + liveBanner() +
+        sp500ViewSwitch() + liveBanner() + breadthTopBar +
         '<div class="panel sp-grid-panel">' + sp500Grid() + "</div>" +
         (insightBox ? '<div class="sp-grid-did"><span class="sp-did-lbl">🧠 הידעת?</span>' + insightBox + "</div>" : "");
     }
@@ -837,7 +845,7 @@
     const spColHtml = (title, cls, arr) => '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
       '<div class="sp-col-grid">' + (arr.length ? arr.map(o => spCard(o.s)).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;font-size:12px;text-align:center">אין כרגע</div>') + "</div></div>";
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · מחולק ל-3 לפי רוחב: <b>BULL</b> (55%+ מעל פתיחה) · <b>בין לבין</b> · <b>BEAR</b> (מתחת 45%). לחץ על סקטור לכל המניות.</div></div>' +
-      sp500ViewSwitch() + insightBox + liveBanner() + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
+      sp500ViewSwitch() + insightBox + liveBanner() + breadthTopBar + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
   }
   let spDrillSort = { col: "c", dir: -1 };
   function spDrillVal(x, col) {
