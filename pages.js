@@ -1835,6 +1835,7 @@
     if (col === "voltrend") return k.voltrend;
     if (col === "mfitrend") return k.mfitrend;
     if (col === "mfiturn") return k.mfiturn === "up" ? 1 : k.mfiturn === "down" ? -1 : 0;
+    if (col === "earn") return k.earn == null ? 9999 : k.earn;
     if (col === "dhi52") return k.dhi52;
     if (col === "atrp") return k.atrp;
     if (col === "gap") return k.gap;
@@ -2062,6 +2063,8 @@
               (_mfiTrendActive() ? '<span class="muted">≥</span><input id="tMfiTrendDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _mfiTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>🔄 היפוך MFI <span class="muted" style="font-size:10px">(מקיצוניות)</span></label><div class="chips" style="align-items:center"><select id="tMfiTurn">' +
               opt("off", techState.mfiTurn, "— הכל") + opt("up", techState.mfiTurn, "📈 מלמטה (מתחת 20 ↑)") + opt("down", techState.mfiTurn, "📉 מלמעלה (מעל 80 ↓)") + opt("any", techState.mfiTurn, "⚡ שניהם") + "</select></div></div>" +
+            '<div class="fgrp"><label>📅 דיווח תוצאות קרוב <span class="muted" style="font-size:10px">(עד N ימים)</span></label><div class="chips" style="align-items:center"><span class="muted">תוך ≤</span>' +
+              '<input id="tEarnMax" type="number" min="1" max="95" step="1" placeholder="—" style="width:64px" value="' + (techState.earnMax === "" ? "" : techState.earnMax) + '"><span class="muted">ימים</span></div></div>' +
             '<div class="fgrp"><label>ממוצע ≥ (נזילות)</label><div class="chips" style="align-items:center"><select id="tAvgVolMin">' +
               opt("0", techState.avgVolMin, "— הכל") + opt("300000", techState.avgVolMin, "300K") + opt("500000", techState.avgVolMin, "500K") + opt("1000000", techState.avgVolMin, "1M") +
               opt("2000000", techState.avgVolMin, "2M") + opt("5000000", techState.avgVolMin, "5M") + opt("10000000", techState.avgVolMin, "10M") +
@@ -2137,6 +2140,7 @@
       { key: "voltrend", th: "מגמת נפח", tip: "רצף ימים רצופים של ווליום עולה (📈) או יורד (📉) — עקביות מרמזת על עניין בונה או דועך, לקראת שינוי כיוון אפשרי", cell: k => { const v = k.voltrend; return v ? "<td class='" + (v > 0 ? "pos" : "neg") + "'>" + (v > 0 ? "📈 " + v : "📉 " + Math.abs(v)) + " ימים</td>" : '<td class="muted">—</td>'; }, active: _volTrendActive() },
       { key: "mfitrend", th: "מגמת MFI", tip: "רצף ימים רצופים של MFI עולה (📈) או יורד (📉) — תזרים כסף בונה או דועך", cell: k => { const v = k.mfitrend; return v ? "<td class='" + (v > 0 ? "pos" : "neg") + "'>" + (v > 0 ? "📈 " + v : "📉 " + Math.abs(v)) + " ימים</td>" : '<td class="muted">—</td>'; }, active: _mfiTrendActive() },
       { key: "mfiturn", th: "היפוך MFI", tip: "MFI משנה כיוון מקיצוניות: 📈 מלמטה (היה מתחת 20 ומתהפך למעלה) · 📉 מלמעלה (היה מעל 80 ומתהפך למטה)", cell: k => { const v = k.mfiturn; return v === "up" ? '<td class="pos">📈 מלמטה</td>' : v === "down" ? '<td class="neg">📉 מלמעלה</td>' : '<td class="muted">—</td>'; }, active: _mfiTurnActive() },
+      { key: "earn", th: "דיווח", tip: "ימים עד דוח התוצאות הקרוב (מקור: Finnhub). ריק = אין דיווח ידוע ב-95 הימים הקרובים", cell: k => { const v = k.earn; return v == null ? '<td class="muted">—</td>' : "<td class='" + (v <= 7 ? "neg" : "") + "'>📅 " + (v === 0 ? "היום" : "בעוד " + v + " ימים") + "</td>"; }, active: techState.earnMax !== "" },
       { key: "atrp", th: "ATR%" + _tfSuf(), tip: "ATR%: טווח התנועה הממוצע כאחוז מהמחיר — מדד תנודתיות" + _tfTip(), cell: k => { const v = _techVal(k, "atrp"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "%") + "</td>"; }, active: _atrp() > 0 },
       { key: "gap", th: "גאפ", tip: "גאפ: פער הפתיחה של היום מול סגירת אתמול (%)", cell: k => "<td>" + dPct(k.gap) + "</td>", active: _gapActive() },
       { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
@@ -2314,6 +2318,7 @@
         if (!_volTrendPass(k)) return false;
         if (!_mfiTrendPass(k)) return false;
         if (!_mfiTurnPass(k)) return false;
+        if (techState.earnMax !== "" && (k.earn == null || k.earn > +techState.earnMax)) return false;
         if (techState.avgVolMin > 0) {
           const av = techState.avgVolPeriod === "90" ? k.avol90 : k.avol30;
           if (av == null || av < techState.avgVolMin) return false;
@@ -2411,6 +2416,7 @@
     bind("tMfiTrendDir", "onchange", e => { techState.mfiTrendDir = e.target.value; reRender(); });
     bind("tMfiTrendDays", "onchange", e => { techState.mfiTrendDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTurn", "onchange", e => { techState.mfiTurn = e.target.value; reRender(); });
+    bind("tEarnMax", "onchange", e => { const v = e.target.value.trim(); techState.earnMax = v === "" ? "" : Math.max(1, Math.min(95, parseInt(v, 10) || 1)); reRender(); });
     bind("tAvgVolMin", "onchange", e => { techState.avgVolMin = parseInt(e.target.value, 10) || 0; reRender(); });
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
@@ -2479,6 +2485,7 @@
     gid("tVolTrendDir", _volTrendActive());
     gid("tMfiTrendDir", _mfiTrendActive());
     gid("tMfiTurn", _mfiTurnActive());
+    gid("tEarnMax", techState.earnMax !== "");
     gid("tAvgVolMin", techState.avgVolMin > 0);
     gid("tExt52", techState.ext52 !== "off");
     gid("tAtrpMin", _atrp() > 0);
@@ -2510,6 +2517,7 @@
     mfiTrendDir: "off",          // MFI trend direction: off / up (rising) / down (falling)
     mfiTrendDays: 3,             // min consecutive MFI days in the streak (1–7)
     mfiTurn: "off",              // MFI reversal at extremes: off / up (<20 turning up) / down (>80 turning down) / any
+    earnMax: "",                 // upcoming earnings within ≤ N days (empty = off)
     avgVolPeriod: "30", avgVolMin: 0,
     ext52: "off", ext52Pct: 3,
     atrpMin: "",                 // ATR as % of price ≥
@@ -2626,7 +2634,7 @@
   function techActive() {
     return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
-      techState.volMin > 0 || _volTrendActive() || _mfiTrendActive() || _mfiTurnActive() || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
+      techState.volMin > 0 || _volTrendActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMax !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
       _atrp() > 0 || _chgActive() || _gapActive();
   }
   function techActiveCount() {
@@ -2639,6 +2647,7 @@
     if (_volTrendActive()) n++;
     if (_mfiTrendActive()) n++;
     if (_mfiTurnActive()) n++;
+    if (techState.earnMax !== "") n++;
     if (techState.avgVolMin > 0) n++;
     if (techState.ext52 !== "off") n++;
     if (_atrp() > 0) n++;
@@ -2650,7 +2659,7 @@
     techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "off"; techState.maPct = 2;
     techState.rsiMin = 0; techState.rsiMax = 100; techState.mfiMin = 0; techState.mfiMax = 100;
     techState.rvolMin = ""; techState.volMin = 0; techState.volTrendDir = "off"; techState.volTrendDays = 3; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
-    techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off";
+    techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMax = "";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
     techState.compMax = ""; techState.bbSqMax = ""; techState.swSide = "off"; techState.swPct = 2;

@@ -345,6 +345,9 @@ window.Engine = (function () {
       fees: round(fees, 2),
       pnl: hasExit ? round(gross - fees, 2) : 0,
       notes: m.notes || "",
+      exitReason: m.exitReason || "",     // what triggered the exit: stop / target / emotion / plan / other
+      managedWell: m.managedWell || "",   // self-assessment: yes / partial / no
+      feeling: m.feeling || "",           // how the trader felt about the position (close-time reflection)
       tags: m.tags || [],
       img: m.img || null,
     };

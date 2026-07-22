@@ -934,6 +934,13 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ma-grp { display: inline-flex; gap: 5px; flex-wrap: wrap; }
 .ma-sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
 .ma-chip { font-size: 12px; padding: 4px 9px; }
+/* journal close-time reflection */
+.jr-reflect { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.jr-reflect-h { font-weight: 700; font-size: 13px; margin-bottom: 8px; }
+.jr-reflect-view { margin-top: 10px; }
+.rfl-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.rfl-chip { background: var(--panel2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+.rfl-feel { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; white-space: pre-wrap; line-height: 1.5; }
 .cg-tfsel { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .cg-tfsel .cg-tfb { min-width: 30px; text-align: center; font-weight: 700; }
 .cg-dens { display: flex; align-items: center; gap: 6px; }

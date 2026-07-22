@@ -743,8 +743,24 @@
     modal("עסקאות · " + dateKey, body);
     wireTradeActions($("#modalBg"), dayTrades, () => openDay(dateKey));
   }
+  const _EXIT_REASON_HE = { stop: "🛑 Stop Loss", target: "🎯 Take Profit", emotion: "😰 רגש", plan: "📋 לפי התוכנית", other: "אחר" };
+  const _MANAGED_HE = { yes: "✅ ניהול טוב", partial: "🟡 ניהול חלקי", no: "❌ ניהול לא טוב" };
+  function _esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function _hasReflect(t) { return !!(t && (t.exitReason || t.managedWell || t.feeling)); }
+  function _reflectHtml(t) {
+    if (!_hasReflect(t)) return "";
+    const chips = [];
+    if (t.exitReason && _EXIT_REASON_HE[t.exitReason]) chips.push('<span class="rfl-chip">יציאה: ' + _EXIT_REASON_HE[t.exitReason] + "</span>");
+    if (t.managedWell && _MANAGED_HE[t.managedWell]) chips.push('<span class="rfl-chip">' + _MANAGED_HE[t.managedWell] + "</span>");
+    return '<div class="jr-reflect-view">' + (chips.length ? '<div class="rfl-chips">' + chips.join("") + "</div>" : "") +
+      (t.feeling ? '<div class="rfl-feel">🧠 ' + _esc(t.feeling) + "</div>" : "") + "</div>";
+  }
+  function viewReflection(t) {
+    modal("🧠 רפלקציה · " + (t.symbol || ""), _reflectHtml(t) || '<div class="note">אין רפלקציה לעסקה זו.</div>', []);
+  }
   function tradeRow(t) {
     const actions =
+      (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
       (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
       (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
       '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>';
@@ -767,10 +783,13 @@
     container.querySelectorAll("button[data-img]").forEach(b => {
       b.onclick = e => { e.stopPropagation(); const t = byId[b.dataset.img]; if (t && t.img) viewTradeImg(t); };
     });
+    container.querySelectorAll("button[data-reflect]").forEach(b => {
+      b.onclick = e => { e.stopPropagation(); const t = byId[b.dataset.reflect]; if (t) viewReflection(t); };
+    });
   }
   function viewTradeImg(t) {
     modal("📷 " + t.symbol + " · צילום גרף", '<img src="' + t.img + '" alt="צילום גרף" style="max-width:100%;max-height:70vh;border-radius:8px;display:block;margin:0 auto">' +
-      (t.notes ? '<div class="note" style="margin-top:10px">' + t.notes + "</div>" : ""), []);
+      (t.notes ? '<div class="note" style="margin-top:10px">' + _esc(t.notes) + "</div>" : "") + _reflectHtml(t), []);
   }
   function deleteTrade(t, reopen) {
     if (!t) return;
@@ -966,7 +985,8 @@
         '<td><span class="pill src">' + srcTxt + "</span></td>" +
         "<td>" +
           (t._agg ? '<span class="muted" style="font-size:11px" title="פצל כדי לערוך/למחוק עסקה בודדת">מאוגד</span>' :
-            ((t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
+            ((_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
+             (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
              (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
              '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>')) +
         "</td>" +
@@ -1138,6 +1158,9 @@
       exitDate: existing && existing.exitDate ? existing.exitDate : "",
       fees: existing && existing.fees != null ? existing.fees : lastFee(),
       notes: existing ? (existing.notes || "") : "",
+      exitReason: existing ? (existing.exitReason || "") : "",
+      managedWell: existing ? (existing.managedWell || "") : "",
+      feeling: existing ? (existing.feeling || "") : "",
       closeType: "full", closeQty: "",
     };
     manualImg = (existing && existing.img) || null;
@@ -1153,6 +1176,7 @@
     set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("notes", "m_notes");
     set("exitDate", "m_xd"); set("exitPrice", "m_xp"); set("fees", "m_fee");
     set("closeType", "m_closetype"); set("closeQty", "m_closeqty");
+    set("exitReason", "m_exitreason"); set("managedWell", "m_managed"); set("feeling", "m_feeling");
   }
   function gotoStep(n) { syncFromDOM(); _mStep = n; renderManualStep(); }
   function renderManualStep() {
@@ -1205,6 +1229,11 @@
         field("מחיר יציאה", '<input id="m_xp" type="number" step="any" placeholder="מחיר הסגירה" value="' + (d.exitPrice === "" ? "" : d.exitPrice) + '">') +
         field("עמלות", '<input id="m_fee" type="number" step="any" value="' + (d.fees == null ? "0" : d.fees) + '">') +
         "</div>" +
+        '<div class="jr-reflect"><div class="jr-reflect-h">🧠 רפלקציה — איך ניהלת את העסקה?</div><div class="form">' +
+        field("מה גרם ליציאה?", '<select id="m_exitreason">' + opt("", d.exitReason, "— בחר —") + opt("stop", d.exitReason, "🛑 Stop Loss") + opt("target", d.exitReason, "🎯 Take Profit") + opt("emotion", d.exitReason, "😰 רגש / פחד / חמדנות") + opt("plan", d.exitReason, "📋 לפי התוכנית") + opt("other", d.exitReason, "אחר") + "</select>") +
+        field("ניהלת נכון?", '<select id="m_managed">' + opt("", d.managedWell, "— בחר —") + opt("yes", d.managedWell, "✅ כן") + opt("partial", d.managedWell, "🟡 חלקית") + opt("no", d.managedWell, "❌ לא") + "</select>") +
+        field("איך הרגשת עם הפוזיציה?", '<textarea id="m_feeling" placeholder="מה עבר לי בראש? האם פעלתי לפי התוכנית או מתוך רגש? מה אלמד לפעם הבאה?">' + (d.feeling || "") + "</textarea>", true) +
+        "</div></div>" +
         '<div class="pnlpreview" id="m_preview" style="margin-top:14px"></div>' +
         '<div class="price-warn hidden" id="m_pricewarn"></div>';
       actions = [
@@ -1349,14 +1378,15 @@
     if (!fullQty) { alert("צריך כמות"); return; }
     const hasExit = d.exitPrice !== "" && d.exitPrice != null && !isNaN(parseFloat(d.exitPrice));
     try { localStorage.setItem("sn_last_fee", String(d.fees == null ? 0 : d.fees)); } catch (e) {}
-    const base = { account: account, symbol: d.symbol, assetType: d.assetType, direction: d.direction, entryPrice: d.entryPrice, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined };
+    const base = { account: account, symbol: d.symbol, assetType: d.assetType, direction: d.direction, entryPrice: d.entryPrice, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined,
+      exitReason: hasExit ? d.exitReason : "", managedWell: hasExit ? d.managedWell : "", feeling: hasExit ? d.feeling : "" };
     // partial close → a closed record for the sold qty + a remaining OPEN record
     if (isClose && hasExit && d.closeType === "partial") {
       const cq = Math.abs(parseFloat(d.closeQty) || 0);
       if (!cq) { alert("כמה יחידות נסגרו? הזן כמות."); return; }
       if (cq < fullQty) {
         Store.addManual(E.manualToTrade(Object.assign({}, base, { qty: cq, exitPrice: d.exitPrice, exitDate: d.exitDate || d.entryDate, fees: d.fees })));
-        const remain = E.manualToTrade(Object.assign({}, base, { id: manualEditId || undefined, qty: fullQty - cq, exitPrice: "", exitDate: "", fees: 0 }));
+        const remain = E.manualToTrade(Object.assign({}, base, { id: manualEditId || undefined, qty: fullQty - cq, exitPrice: "", exitDate: "", fees: 0, exitReason: "", managedWell: "", feeling: "" }));
         if (manualEditId) Store.updateManual(remain); else Store.addManual(remain);
         finishSave("partial", account); return;
       }
