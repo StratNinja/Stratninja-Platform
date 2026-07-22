@@ -359,9 +359,9 @@
     const tfSel = '<div class="cg-tfsel"><span class="muted" style="font-size:12px">טווח:</span>' + rBtns +
       '<span class="muted" style="font-size:12px">· ' + shown.length + " מניות" + more + "</span></div>";
     const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
-      '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button></div>';
+      '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button><button class="chip" data-cg="5">5</button></div>';
     const sortSel = '<div class="cg-sort"><span class="muted" style="font-size:12px">מיון:</span><select id="cgSortSel" style="font-size:12px">' +
-      '<option value="ninja">Ninja Score</option><option value="chg">% עולה→יורד</option><option value="chgAsc">% יורד→עולה</option><option value="sym">סימבול</option></select></div>';
+      '<option value="ninja">Ninja Score</option><option value="chg">עולה %</option><option value="chgAsc">יורד %</option><option value="sym">סימבול</option></select></div>';
     const shotBtn = '<button class="btn ghost" id="cgShot" style="font-size:12px;font-weight:600" title="צילום מסך של תצוגת הגרפים">🖼️ צילום מסך</button>';
     modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
