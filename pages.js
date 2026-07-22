@@ -1021,6 +1021,13 @@
   function applyScanConfig(cfg) {
     if (!cfg) return;
     const s = cfg.s || {}, t = cfg.t || {};
+    // FULL reset first, so a preset never inherits leftover filters from the previous view — especially
+    // the technical/indicator + MTF tabs. (Older presets don't even include the newer filter keys, so
+    // without this reset they'd silently keep whatever was set → contaminated results + wrong alerts.)
+    // Universe scope and panel open/close are NOT filters → preserved.
+    const keepUni = scanState.universe, keepMtfOpen = scanState.mtfOpen, keepIndOpen = scanState.indOpen, keepTechOpen = techState.techOpen;
+    resetScan();
+    scanState.universe = keepUni; scanState.mtfOpen = keepMtfOpen; scanState.indOpen = keepIndOpen; techState.techOpen = keepTechOpen;
     ["dir", "shape", "broad", "inforce", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "capMin", "capMax"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
     if (s.tfs) scanState.tfs = s.tfs.slice();
     scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
