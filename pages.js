@@ -1833,6 +1833,7 @@
     if (col === "rvol") return k.rvol;
     if (col === "vol") return k.vol;
     if (col === "voltrend") return k.voltrend;
+    if (col === "volavgtrend") return k.volavgtrend;
     if (col === "mfitrend") return k.mfitrend;
     if (col === "mfiturn") return k.mfiturn === "up" ? 1 : k.mfiturn === "down" ? -1 : 0;
     if (col === "earn") return k.earn == null ? 9999 : k.earn;
@@ -2058,6 +2059,9 @@
             '<div class="fgrp"><label>📊 מגמת ווליום <span class="muted" style="font-size:10px">(ימים רצופים · עד 7)</span></label><div class="chips" style="align-items:center"><select id="tVolTrendDir">' +
               opt("off", techState.volTrendDir, "— הכל") + opt("up", techState.volTrendDir, "📈 עולה") + opt("down", techState.volTrendDir, "📉 יורד") + "</select>" +
               (_volTrendActive() ? '<span class="muted">≥</span><input id="tVolTrendDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _volTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
+            '<div class="fgrp"><label>📊 ווליום מול הממוצע <span class="muted" style="font-size:10px">(ימים רצופים · עד 7)</span></label><div class="chips" style="align-items:center"><select id="tVolAvgDir">' +
+              opt("off", techState.volAvgDir, "— הכל") + opt("above", techState.volAvgDir, "📈 מעל הממוצע") + opt("below", techState.volAvgDir, "📉 מתחת לממוצע") + "</select>" +
+              (_volAvgActive() ? '<span class="muted">≥</span><input id="tVolAvgDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _volAvgDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>💧 מגמת MFI <span class="muted" style="font-size:10px">(ימים רצופים · עד 7)</span></label><div class="chips" style="align-items:center"><select id="tMfiTrendDir">' +
               opt("off", techState.mfiTrendDir, "— הכל") + opt("up", techState.mfiTrendDir, "📈 עולה") + opt("down", techState.mfiTrendDir, "📉 יורד") + "</select>" +
               (_mfiTrendActive() ? '<span class="muted">≥</span><input id="tMfiTrendDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _mfiTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
@@ -2138,6 +2142,7 @@
       { key: "rvol", th: "RVOL" + _tfSuf(), tip: "ווליום יחסי: נפח המסחר היום חלקי הממוצע. מעל 1× = פעילות ערה מהרגיל" + _tfTip(), cell: k => { const v = _techVal(k, "rvol"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "×") + "</td>"; }, active: _rv() > 0 },
       { key: "vol", th: "ווליום", tip: "נפח: מספר המניות שנסחרו היום", cell: k => "<td>" + fmtVol(k.vol) + "</td>", active: techState.volMin > 0 },
       { key: "voltrend", th: "מגמת נפח", tip: "רצף ימים רצופים של ווליום עולה (📈) או יורד (📉) — עקביות מרמזת על עניין בונה או דועך, לקראת שינוי כיוון אפשרי", cell: k => { const v = k.voltrend; return v ? "<td class='" + (v > 0 ? "pos" : "neg") + "'>" + (v > 0 ? "📈 " + v : "📉 " + Math.abs(v)) + " ימים</td>" : '<td class="muted">—</td>'; }, active: _volTrendActive() },
+      { key: "volavgtrend", th: "נפח מול ממוצע", tip: "כמה ימים ברציפות הווליום מעל (📈) או מתחת (📉) לממוצע 20 הימים — עניין מוגבר מתמשך או רגיעה", cell: k => { const v = k.volavgtrend; return v ? "<td class='" + (v > 0 ? "pos" : "neg") + "'>" + (v > 0 ? "📈 מעל " + v : "📉 מתחת " + Math.abs(v)) + " ימים</td>" : '<td class="muted">—</td>'; }, active: _volAvgActive() },
       { key: "mfitrend", th: "מגמת MFI", tip: "רצף ימים רצופים של MFI עולה (📈) או יורד (📉) — תזרים כסף בונה או דועך", cell: k => { const v = k.mfitrend; return v ? "<td class='" + (v > 0 ? "pos" : "neg") + "'>" + (v > 0 ? "📈 " + v : "📉 " + Math.abs(v)) + " ימים</td>" : '<td class="muted">—</td>'; }, active: _mfiTrendActive() },
       { key: "mfiturn", th: "היפוך MFI", tip: "MFI משנה כיוון מקיצוניות: 📈 מלמטה (היה מתחת 20 ומתהפך למעלה) · 📉 מלמעלה (היה מעל 80 ומתהפך למטה)", cell: k => { const v = k.mfiturn; return v === "up" ? '<td class="pos">📈 מלמטה</td>' : v === "down" ? '<td class="neg">📉 מלמעלה</td>' : '<td class="muted">—</td>'; }, active: _mfiTurnActive() },
       { key: "earn", th: "דיווח", tip: "ימים עד דוח התוצאות הקרוב (מקור: Finnhub). ריק = אין דיווח ידוע ב-95 הימים הקרובים", cell: k => { const v = k.earn; return v == null ? '<td class="muted">—</td>' : "<td class='" + (v <= 7 ? "neg" : "") + "'>📅 " + (v === 0 ? "היום" : "בעוד " + v + " ימים") + "</td>"; }, active: techState.earnMax !== "" },
@@ -2316,6 +2321,7 @@
         if (rvmin > 0) { const rvv = _techVal(k, "rvol"); if (rvv == null || rvv < rvmin) return false; }
         if (techState.volMin > 0 && (!k.vol || k.vol < techState.volMin)) return false;
         if (!_volTrendPass(k)) return false;
+        if (!_volAvgPass(k)) return false;
         if (!_mfiTrendPass(k)) return false;
         if (!_mfiTurnPass(k)) return false;
         if (techState.earnMax !== "" && (k.earn == null || k.earn > +techState.earnMax)) return false;
@@ -2413,6 +2419,8 @@
     bind("tVolMin", "onchange", e => { techState.volMin = parseInt(e.target.value, 10) || 0; reRender(); });
     bind("tVolTrendDir", "onchange", e => { techState.volTrendDir = e.target.value; reRender(); });
     bind("tVolTrendDays", "onchange", e => { techState.volTrendDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
+    bind("tVolAvgDir", "onchange", e => { techState.volAvgDir = e.target.value; reRender(); });
+    bind("tVolAvgDays", "onchange", e => { techState.volAvgDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTrendDir", "onchange", e => { techState.mfiTrendDir = e.target.value; reRender(); });
     bind("tMfiTrendDays", "onchange", e => { techState.mfiTrendDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTurn", "onchange", e => { techState.mfiTurn = e.target.value; reRender(); });
@@ -2483,6 +2491,7 @@
     gid("tRvolMin", _rv() > 0);
     gid("tVolMin", techState.volMin > 0);
     gid("tVolTrendDir", _volTrendActive());
+    gid("tVolAvgDir", _volAvgActive());
     gid("tMfiTrendDir", _mfiTrendActive());
     gid("tMfiTurn", _mfiTurnActive());
     gid("tEarnMax", techState.earnMax !== "");
@@ -2514,6 +2523,8 @@
     volMin: 0,
     volTrendDir: "off",          // volume trend direction: off / up (rising) / down (falling)
     volTrendDays: 3,             // min consecutive days in the streak (3–7)
+    volAvgDir: "off",            // volume vs 20d avg: off / above / below (consecutive days)
+    volAvgDays: 3,               // min consecutive days above/below the avg (1–7)
     mfiTrendDir: "off",          // MFI trend direction: off / up (rising) / down (falling)
     mfiTrendDays: 3,             // min consecutive MFI days in the streak (1–7)
     mfiTurn: "off",              // MFI reversal at extremes: off / up (<20 turning up) / down (>80 turning down) / any
@@ -2613,6 +2624,17 @@
     if (techState.volTrendDir === "down") return v <= -need;
     return true;
   }
+  function _volAvgActive() { return techState.volAvgDir === "above" || techState.volAvgDir === "below"; }
+  function _volAvgDays() { const d = parseInt(techState.volAvgDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(7, d)); }
+  function _volAvgPass(k) {
+    if (!_volAvgActive()) return true;
+    const v = k ? k.volavgtrend : null;
+    if (v == null) return false;
+    const need = _volAvgDays();
+    if (techState.volAvgDir === "above") return v >= need;
+    if (techState.volAvgDir === "below") return v <= -need;
+    return true;
+  }
   function _mfiTrendActive() { return techState.mfiTrendDir === "up" || techState.mfiTrendDir === "down"; }
   function _mfiTrendDays() { const d = parseInt(techState.mfiTrendDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(7, d)); }
   function _mfiTrendPass(k) {
@@ -2634,7 +2656,7 @@
   function techActive() {
     return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
-      techState.volMin > 0 || _volTrendActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMax !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
+      techState.volMin > 0 || _volTrendActive() || _volAvgActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMax !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
       _atrp() > 0 || _chgActive() || _gapActive();
   }
   function techActiveCount() {
@@ -2645,6 +2667,7 @@
     if (_rv() > 0) n++;
     if (techState.volMin > 0) n++;
     if (_volTrendActive()) n++;
+    if (_volAvgActive()) n++;
     if (_mfiTrendActive()) n++;
     if (_mfiTurnActive()) n++;
     if (techState.earnMax !== "") n++;
@@ -2659,6 +2682,7 @@
     techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "off"; techState.maPct = 2;
     techState.rsiMin = 0; techState.rsiMax = 100; techState.mfiMin = 0; techState.mfiMax = 100;
     techState.rvolMin = ""; techState.volMin = 0; techState.volTrendDir = "off"; techState.volTrendDays = 3; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
+    techState.volAvgDir = "off"; techState.volAvgDays = 3;
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMax = "";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
