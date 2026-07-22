@@ -928,6 +928,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .modal.chartgrid { max-width: none; width: 99vw; height: 97vh; max-height: 97vh; }
 .modal.chartgrid h2 { position: sticky; top: -22px; z-index: 5; background: var(--panel); margin: -4px 0 10px; padding: 8px 0; }
 .cg-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; }
+/* moving-average toggle bar on chart popups */
+.ma-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+.ma-bar .ma-lbl { font-size: 12px; color: var(--muted); font-weight: 700; margin-inline-end: 2px; }
+.ma-grp { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.ma-sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+.ma-chip { font-size: 12px; padding: 4px 9px; }
 .cg-tfsel { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .cg-tfsel .cg-tfb { min-width: 30px; text-align: center; font-weight: 700; }
 .cg-dens { display: flex; align-items: center; gap: 6px; }

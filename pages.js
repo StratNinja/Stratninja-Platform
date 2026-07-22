@@ -219,13 +219,56 @@
     if (!row || !row.ftfc) return "—";
     return '<span class="badge-ftfc' + ((row.D || {}).c === "down" ? " bear" : "") + '">FTFC</span>';
   }
+  // ── moving-average overlays on the embedded TradingView charts ───────────────────────────────
+  // user picks which MAs to draw; applies to EVERY chart (single / multi-TF / grid) and is remembered.
+  // Default = SMA 150 (the StratNinja signature, like the SMA150 Sniper).
+  const MA_DEFS = [
+    { k: "sma20",  type: "SMA", len: 20,  id: "MASimple@tv-basicstudies", he: "SMA 20" },
+    { k: "sma50",  type: "SMA", len: 50,  id: "MASimple@tv-basicstudies", he: "SMA 50" },
+    { k: "sma150", type: "SMA", len: 150, id: "MASimple@tv-basicstudies", he: "SMA 150" },
+    { k: "sma200", type: "SMA", len: 200, id: "MASimple@tv-basicstudies", he: "SMA 200" },
+    { k: "ema20",  type: "EMA", len: 20,  id: "MAExp@tv-basicstudies",    he: "EMA 20" },
+    { k: "ema50",  type: "EMA", len: 50,  id: "MAExp@tv-basicstudies",    he: "EMA 50" },
+    { k: "ema150", type: "EMA", len: 150, id: "MAExp@tv-basicstudies",    he: "EMA 150" },
+    { k: "ema200", type: "EMA", len: 200, id: "MAExp@tv-basicstudies",    he: "EMA 200" },
+  ];
+  let chartMA = (function () {
+    try { const s = JSON.parse(localStorage.getItem("sn_chart_ma")); if (s && typeof s === "object") return s; } catch (e) {}
+    return { sma150: true };   // default: SMA 150 on
+  })();
+  function _saveChartMA() { try { localStorage.setItem("sn_chart_ma", JSON.stringify(chartMA)); } catch (e) {} }
+  // build the &studies=... URL fragment (TradingView) for the active MAs, each with its exact length
+  function maStudiesParam() {
+    const arr = MA_DEFS.filter(m => chartMA[m.k]).map(m => ({ id: m.id, inputs: { length: m.len } }));
+    return arr.length ? "&studies=" + encodeURIComponent(JSON.stringify(arr)) : "";
+  }
+  // the toggle bar shown on chart popups — SMA row + EMA row, active = highlighted
+  function maBarHtml() {
+    const chip = m => '<button class="chip ma-chip' + (chartMA[m.k] ? " on" : "") + '" data-ma="' + m.k + '">' + m.he + "</button>";
+    return '<div class="ma-bar"><span class="ma-lbl">📈 ממוצעים</span>' +
+      '<span class="ma-grp">' + MA_DEFS.filter(m => m.type === "SMA").map(chip).join("") + "</span>" +
+      '<span class="ma-sep"></span>' +
+      '<span class="ma-grp">' + MA_DEFS.filter(m => m.type === "EMA").map(chip).join("") + "</span></div>";
+  }
+  // wire the toggle chips inside `scope`; `onChange` re-renders the chart(s) with the new studies
+  function wireMaChips(scope, onChange) {
+    (scope || document).querySelectorAll("[data-ma]").forEach(b => b.onclick = () => {
+      const k = b.dataset.ma;
+      chartMA[k] = !chartMA[k];
+      _saveChartMA();
+      b.classList.toggle("on", !!chartMA[k]);
+      if (onChange) onChange();
+    });
+  }
   function openChart(sym, tfl) {
     const iv = ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M" })[tfl] || "D";
-    const src = "https://www.tradingview.com/widgetembed/?frameElementId=tvchart&symbol=" + encodeURIComponent(sym) +
+    const base = "https://www.tradingview.com/widgetembed/?frameElementId=tvchart&symbol=" + encodeURIComponent(sym) +
       "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=0&saveimage=1&timezone=America%2FNew_York";
     modal(sym + " · " + tfl,
-      '<iframe src="' + src + '" style="width:100%;height:520px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe>' +
+      maBarHtml() +
+      '<iframe id="ocFrame" src="' + base + maStudiesParam() + '" style="width:100%;height:520px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe>' +
       '<div class="note"><a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "onechart");
+    wireMaChips(document, () => { const f = document.getElementById("ocFrame"); if (f) f.src = base + maStudiesParam(); });
   }
   function openMultiChart(sym) {
     const tfs = [["2h", "120"], ["D", "D"], ["W", "W"], ["M", "M"], ["Q", "3M"], ["Y", "12M"]];
@@ -236,11 +279,12 @@
       if (r) strip = '<div class="mtf-strip">' + ["D", "W", "M", "Q", "Y"].map(k => '<span class="mtf-tf">' + k + " " + tf(r[k]) + "</span>").join("") + "</div>";
     }
     const cells = tfs.map(([lbl, iv]) => {
-      const src = "https://www.tradingview.com/widgetembed/?frameElementId=tv_" + lbl + "&symbol=" + encodeURIComponent(sym) +
+      const base = "https://www.tradingview.com/widgetembed/?frameElementId=tv_" + lbl + "&symbol=" + encodeURIComponent(sym) +
         "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=0&saveimage=1&timezone=America%2FNew_York";
-      return '<div class="mtf-cell"><div class="mtf-lbl">' + lbl + '</div><iframe src="' + src + '" loading="lazy" style="width:100%;height:220px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe></div>';
+      return '<div class="mtf-cell"><div class="mtf-lbl">' + lbl + '</div><iframe class="mtf-frame" data-base="' + base + '" src="' + base + maStudiesParam() + '" loading="lazy" style="width:100%;height:220px;border:0;border-radius:8px;background:#131722" allowfullscreen></iframe></div>';
     }).join("");
     modal(sym + ' · כל הטיימפריימים',
+      maBarHtml() +
       strip + '<div class="mtf-grid">' + cells + "</div>" +
       '<div class="note" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">' +
         '<button class="btn ghost" id="mtfShot" style="font-size:13px;font-weight:600">📸 צילום מעוצב (כרטיס Strat)</button>' +
@@ -248,6 +292,7 @@
         '<a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>', "mtf");
     { const ms = document.getElementById("mtfShot"); if (ms) ms.onclick = () => captureMtfCard(sym); }
     { const mf = document.getElementById("mtfFull"); if (mf) mf.onclick = () => captureFullShot(); }
+    wireMaChips(document, () => document.querySelectorAll(".mtf-frame").forEach(f => { f.src = f.dataset.base + maStudiesParam(); }));
   }
   // exposed so the trade journal (separate module) can open the same multi-timeframe chart on a symbol click
   window._snOpenChart = openMultiChart;
@@ -292,7 +337,7 @@
     function cgSrc(sym, rk) {
       const R = CG_RANGE.find(x => x.k === rk) || CG_RANGE[4];
       return "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(sym) + "&symbol=" + encodeURIComponent(sym) +
-        "&interval=" + R.iv + "&range=" + R.rng + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York";
+        "&interval=" + R.iv + "&range=" + R.rng + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York" + maStudiesParam();
     }
     function cellsHtml(rk) {
       // charts are NOT rendered upfront — each is a placeholder that loads its iframe only
@@ -318,7 +363,7 @@
     const sortSel = '<div class="cg-sort"><span class="muted" style="font-size:12px">מיון:</span><select id="cgSortSel" style="font-size:12px">' +
       '<option value="ninja">Ninja Score</option><option value="chg">% עולה→יורד</option><option value="chgAsc">% יורד→עולה</option><option value="sym">סימבול</option></select></div>';
     const shotBtn = '<button class="btn ghost" id="cgShot" style="font-size:12px;font-weight:600" title="צילום מסך של תצוגת הגרפים">🖼️ צילום מסך</button>';
-    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
+    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
@@ -345,6 +390,8 @@
       grid.querySelectorAll(".cg-ph").forEach(ph => io.observe(ph));
     }
     observeGrid();
+    // moving-average toggles → rebuild the grid cells with the new studies (keeps range/sort/density)
+    wireMaChips(scroller || document, () => { grid.innerHTML = cellsHtml(curRange); observeGrid(); });
 
     // density toggle
     document.querySelectorAll("[data-cg]").forEach(b => b.onclick = () => {
