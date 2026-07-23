@@ -3665,9 +3665,26 @@
     const hint = '<div class="lrn-hint">💡 רחף עם העכבר על כל דיאגרמה כדי לראות איך הנר נוצר ✨</div>';
     return head + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
   }
+  // "התחל כאן" nav badge — shown to everyone, but on the FIRST visit to Learn we ask if they want it gone.
+  function _newbieHidden() { try { return localStorage.getItem("sn_newbie_hide") === "1"; } catch (e) { return false; } }
+  function _hideNewbieBadge() { document.querySelectorAll(".nav-newbie").forEach(el => el.remove()); }
+  function applyNewbieBadge() { if (_newbieHidden()) _hideNewbieBadge(); }
+  function _maybeAskNewbie() {
+    try {
+      if (localStorage.getItem("sn_newbie_hide") === "1") return;      // already removed
+      if (localStorage.getItem("sn_newbie_asked") === "1") return;     // already asked once
+      localStorage.setItem("sn_newbie_asked", "1");
+    } catch (e) { return; }
+    modal('👋 הסימון "התחל כאן"',
+      '<div class="note" style="margin:0 0 16px;font-size:14.5px">שמנו סימון ירוק <b>"התחל כאן"</b> ליד לשונית הלימוד כדי לעזור למתחילים למצוא אותה. עכשיו שאתה כאן — רוצה להסיר אותו?</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" id="nbRemove">✓ כן, הסר את הסימון</button><button class="btn ghost" id="nbKeep">לא, השאר אותו</button></div>');
+    { const rm = $("#nbRemove"); if (rm) rm.onclick = () => { try { localStorage.setItem("sn_newbie_hide", "1"); } catch (e) {} _hideNewbieBadge(); closeModal(); snToast("הסימון הוסר ✓"); }; }
+    { const kp = $("#nbKeep"); if (kp) kp.onclick = () => closeModal(); }
+  }
   function wireLearn() {
     const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
     const b = $("#lrnToToday"); if (b) b.onclick = () => setPage("today");
+    setTimeout(_maybeAskNewbie, 450);   // after the page settles, offer to remove the "start here" badge (once)
   }
 
   // ---------- router ----------
@@ -4021,6 +4038,7 @@
 
   function initNav() {
     document.querySelectorAll(".side-nav a[data-page]").forEach(a => a.onclick = () => setPage(a.dataset.page));
+    applyNewbieBadge();   // remove the "התחל כאן" badge on load if the user already dismissed it
     { const gb = document.getElementById("guideBtn"); if (gb) gb.onclick = () => guideStart(); }
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
