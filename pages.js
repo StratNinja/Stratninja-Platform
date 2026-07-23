@@ -3414,13 +3414,18 @@
       const rowHtml = t => {
         const pm = pmatch[t.sym] || [];
         const hasTrade = jsyms.has(String(t.sym).toUpperCase());
-        const badge = pm.length ? '<span class="fav-pcount" data-favdismiss="' + escAttr(t.sym) + '" title="נמצאת ב-' + pm.length + ' סריקות: ' + escAttr(pm.join(", ")) + ' · לחץ להסרת הסימון">' + pm.length + "</span>" : "";
+        // alert info as a real COLUMN (the scan names the stock matched) instead of a red dot + hover
+        const alertCell = pm.length
+          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escAttr(n) + "</span>").join("") +
+            ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את סימון ההתראה">✕</span></td>'
+          : '<td class="muted" style="text-align:start">—</td>';
         const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
         const cls = [];
         if (pm.length) cls.push("fav-inpreset");
         if (hasTrade) cls.push("fav-journal");
-        return "<tr" + (cls.length ? ' class="' + cls.join(" ") + '"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + badge + "</span></td>" +
+        return "<tr" + (cls.length ? ' class="' + cls.join(" ") + '"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + "</span></td>" +
           '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span>" + jtag + "</td>" +
+          alertCell +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
           "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
@@ -3440,7 +3445,7 @@
         if (nonEmpty > 1) rows += '<tr class="fav-grouphdr"><td colspan="20">' + GHDR[i] + ' <span class="muted">(' + g.length + ")</span></td></tr>";
         rows += g.map(rowHtml).join("");
       });
-      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>🔔 התראה</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
