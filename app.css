@@ -393,7 +393,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* market-state panel — full-width horizontal row + colored accent */
 .td-market { border-inline-start:4px solid var(--line); }
 .td-market-row { display:flex; flex-direction:row; align-items:center; gap:14px 20px; flex-wrap:wrap; margin-bottom:14px; }
+.td-modewrap { display:flex; flex-direction:column; gap:2px; }
 .td-market-row .td-mode { margin:0; font-size:18px; }
+.td-why { font-size:12px; color:var(--muted); font-weight:600; max-width:48ch; line-height:1.35; }
 .td-market-row .td-strip { flex:1; min-width:200px; }
 .td-mk-lbl { font-weight:800; font-size:15px; white-space:nowrap; }
 .td-market.pos { border-inline-start-color:#26b06b; } .td-market.neg { border-inline-start-color:#e0524f; } .td-market.zero { border-inline-start-color:#e0c760; }
@@ -807,6 +809,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt-pulse .mp-left { display: flex; flex-direction: column; gap: 2px; }
 .mkt-pulse .mp-mode { font-weight: 800; font-size: 16px; }
 .mkt-pulse .mp-sess { font-size: 12px; color: var(--muted); }
+.mkt-pulse .mp-why { font-size: 11.5px; color: var(--muted); font-weight: 600; max-width: 46ch; line-height: 1.35; margin-top: 1px; }
 .mkt-pulse .mp-strip { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
 .mkt-pulse .mp-idx { font-size: 13px; background: rgba(255,255,255,.04); padding: 4px 10px; border-radius: 8px; }
 .mkt-pulse .mp-idx b { color: #c3ccdd; margin-inline-end: 4px; }

@@ -601,7 +601,8 @@
         '<span class="mp-brbar"><span class="mp-brup" style="width:' + ap.toFixed(1) + '%"></span></span>' +
         '<span class="mp-brnum"><span class="pos">' + ms.br.above + '</span>/<span class="neg">' + ms.br.below + "</span></span></div>";
     }
-    return '<div class="panel mkt-pulse ' + ms.cls + '"><div class="mp-left"><span class="mp-mode">' + ms.emoji + " " + ms.mode + '</span><span class="mp-sess">' + sess + "</span></div>" +
+    return '<div class="panel mkt-pulse ' + ms.cls + '"><div class="mp-left"><span class="mp-mode">' + ms.emoji + " " + ms.mode + '</span><span class="mp-sess">' + sess + "</span>" +
+      (ms.why ? '<span class="mp-why">' + ms.why + "</span>" : "") + "</div>" +
       '<div class="mp-strip">' + idx + vix + "</div>" + breadth + "</div>";
   }
   // minutes since midnight in Israel time (works regardless of the viewer's own TZ)
@@ -3188,7 +3189,17 @@
     if (green > red && (brGreen == null || brGreen >= 0.5)) { mode = "שוק חיובי · Risk-On"; emoji = "🟢"; cls = "pos"; }
     else if (red > green && (brGreen == null || brGreen < 0.5)) { mode = "שוק שלילי · Risk-Off"; emoji = "🔴"; cls = "neg"; }
     else { mode = "שוק מעורב · זהירות"; emoji = "🟡"; cls = "zero"; }
-    return { mode, emoji, cls, idx, vix: LIVE.vix, br };
+    // plain-language "why" — explains the read, and especially the conflict behind "מעורב"
+    const brPct = (brGreen == null) ? null : Math.round(brGreen * 100);
+    const brTxt = (brPct == null) ? "" : brPct + "% מהמניות מעל הפתיחה";
+    let why;
+    if (cls === "pos") why = "רוב המדדים ירוקים" + (brPct != null ? " והרוחב מחזיק — " + brTxt : "");
+    else if (cls === "neg") why = "רוב המדדים אדומים" + (brPct != null ? " והרוחב חלש — רק " + brTxt : "");
+    else if (green === red) why = "המדדים חצויים — אין כיוון ברור" + (brPct != null ? " (" + brTxt + ")" : "");
+    else if (red > green && brPct != null) why = "המדדים אדומים בגלל הענקיות, אבל " + brTxt + " — הרוחב מחזיק";
+    else if (green > red && brPct != null) why = "המדדים ירוקים אבל רק " + brTxt + " — העלייה מרוכזת בענקיות";
+    else why = "המדדים והרוחב לא מסכימים";
+    return { mode, emoji, cls, why, idx, vix: LIVE.vix, br };
   }
   let flowTf = "1d";        // sector money-flow panel timeframe: 1d / 5d / 20d
   let flowTfSub = "1d";     // sub-sector money-flow panel timeframe (independent)
@@ -3306,7 +3317,8 @@
       }
       marketPanel = '<div class="panel td-market td-market-row ' + ms.cls + '">' +
         '<span class="td-mk-lbl">מצב השוק</span>' +
-        '<div class="td-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" +
+        '<div class="td-modewrap"><div class="td-mode ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</div>" +
+        (ms.why ? '<div class="td-why">' + ms.why + "</div>" : "") + "</div>" +
         '<div class="td-strip">' + strip + vixTxt + "</div>" + brBar + "</div>";
     } else {
       marketPanel = '<div class="panel td-market td-market-row"><span class="td-mk-lbl">מצב השוק</span><span class="muted">התחבר לנתונים חיים כדי לראות מצב שוק בזמן אמת.</span></div>';
