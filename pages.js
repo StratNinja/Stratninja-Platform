@@ -3614,7 +3614,7 @@
   // Animated candle diagram. On hover the CURRENT candle FORMS the way it really does — a bar starts
   // inside (1), then breaks one side (2), and a "3" only becomes a 3 AFTER it was a 2 (breaks the
   // other side too). Uses SMIL so it can animate the actual high/low geometry through stages.
-  function _candleDiagram(type) {
+  function _candleDiagram(type, autoplay) {
     const hi = 28, lo = 122, cx = 140;
     const sid = "snd" + type.replace(/[^A-Za-z0-9]/g, "");
     const guides =
@@ -3644,9 +3644,12 @@
     // when NOT hovering the "3" shows its static final shape; hover replays the formation loop and
     // STOPS on mouse-leave (begin/end events). Other candles animate once on hover.
     const bW1 = loop3 ? "12" : last(W1), bW2 = loop3 ? "140" : last(W2), bBY = loop3 ? "30" : last(BY), bBH = loop3 ? "80" : last(BH), bFill = loop3 ? "#f2b64a" : finalFill;
-    const timing = loop3
-      ? 'begin="' + sid + '.mouseenter" end="' + sid + '.mouseleave" repeatCount="indefinite"'
-      : 'begin="' + sid + '.mouseenter" fill="freeze" restart="always"';
+    // autoplay (the lesson modal): start at t=0 — synthetic hover events aren't "trusted" so SMIL ignores them.
+    const timing = autoplay
+      ? (loop3 ? 'begin="0s" repeatCount="indefinite"' : 'begin="0s" fill="freeze"')
+      : (loop3
+        ? 'begin="' + sid + '.mouseenter" end="' + sid + '.mouseleave" repeatCount="indefinite"'
+        : 'begin="' + sid + '.mouseenter" fill="freeze" restart="always"');
     const A = (attr, vals) => '<animate attributeName="' + attr + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + dur + '" ' + timing + '/>';
     const colorAnim = fill.indexOf(";") >= 0 ? A("stroke", fill) : "";
     const bodyColorAnim = fill.indexOf(";") >= 0 ? A("fill", fill) : "";
@@ -3774,11 +3777,12 @@
     tfEl.textContent = "🔭 מסגרת זמן גבוהה";
     callout.innerHTML = "זה <b>" + CL_NAME[type] + "</b> במסגרת זמן גבוהה. בוא נצלול פנימה ונראה מאילו נרות קטנים הוא מורכב.";
     stage.className = "cl-stage";
-    stage.innerHTML = _candleDiagram(type).replace("max-width:230px", "max-width:340px");
-    { const big = stage.querySelector("svg"); if (big) { try { big.dispatchEvent(new MouseEvent("mouseenter")); } catch (e) {} } }
-    _clTimers.push(setTimeout(() => { stage.classList.add("cl-zoom"); tfEl.textContent = "🔎 זום אין → מסגרת זמן נמוכה"; callout.innerHTML = "צוללים פנימה…"; }, 2500));
-    _clTimers.push(setTimeout(() => { stage.classList.remove("cl-zoom"); tfEl.textContent = "🕯️ מסגרת זמן נמוכה — מה קורה בפנים"; stage.innerHTML = _internalCandles(type); }, 3400));
-    _clTimers.push(setTimeout(() => { callout.innerHTML = CL_TEXT[type]; }, 3400 + 8 * 260 + 300));
+    stage.innerHTML = _candleDiagram(type, true).replace("max-width:230px", "max-width:340px");
+    // give נר 3 longer up top — its formation loop (1→2U→3) takes ~3.5s; simple candles form fast.
+    const ZOOM = (type === "3") ? 3800 : 2500, INNER = ZOOM + 900;
+    _clTimers.push(setTimeout(() => { stage.classList.add("cl-zoom"); tfEl.textContent = "🔎 זום אין → מסגרת זמן נמוכה"; callout.innerHTML = "צוללים פנימה…"; }, ZOOM));
+    _clTimers.push(setTimeout(() => { stage.classList.remove("cl-zoom"); tfEl.textContent = "🕯️ מסגרת זמן נמוכה — מה קורה בפנים"; stage.innerHTML = _internalCandles(type); }, INNER));
+    _clTimers.push(setTimeout(() => { callout.innerHTML = CL_TEXT[type]; }, INNER + 8 * 260 + 300));
     // נר 3 נוצר לשני הכיוונים — אחרי הסיפור העולה (נמוך→היפוך→גבוה) מציגים בלופ גם את ההפוך (גבוה→היפוך→נמוך)
     if (type === "3") {
       const REVEAL = 8 * 260 + 300, HOLD = 3400;
@@ -3789,7 +3793,7 @@
         callout.innerHTML = showDown ? CL_TEXT3_DOWN : CL_TEXT["3"];   // callout matches the story on screen (no lag)
         _clTimers.push(setTimeout(() => { showDown = !showDown; cycle(); }, REVEAL + HOLD));
       };
-      _clTimers.push(setTimeout(cycle, 3400 + REVEAL + HOLD));
+      _clTimers.push(setTimeout(cycle, INNER + REVEAL + HOLD));
     }
   }
   function openCandleLesson(type) {
