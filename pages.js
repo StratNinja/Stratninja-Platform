@@ -976,7 +976,7 @@
   // ========== SCANNER ==========
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
   // parse a market-cap input like "2B" / "60B" / "500M" / "1.5T" → dollars. Bare number = billions.
   function _parseCap(s) {
     s = String(s == null ? "" : s).trim().toUpperCase().replace(/[$,\s]/g, "");
@@ -1422,7 +1422,7 @@
   // ---- screenshot & share ----
   const _shNum = v => (v >= 0 ? "+" : "") + (v == null ? 0 : v).toFixed(2) + "%";
   function _shPick(score, sym, chg) {
-    return '<div class="sc-pick"><div class="sc-pk-score">' + score + '</div><div class="sc-pk-sym">' + sym +
+    return '<div class="sc-pick"><div class="sc-pk-score">' + (score == null ? "—" : score) + '</div><div class="sc-pk-sym">' + sym +
       '</div><div class="sc-pk-chg ' + ((chg || 0) >= 0 ? "pos" : "neg") + '">' + _shNum(chg) + "</div></div>";
   }
   function _shIdx(label, val, cls) { return '<span class="sc-idx' + (cls ? " " + cls : "") + '"><b>' + label + "</b> " + val + "</span>"; }
@@ -1432,8 +1432,12 @@
     const src = (typeof scanSource === "function" ? scanSource() : []);
     if (page === "scanner") {
       let rows = []; try { rows = filterRows(src); } catch (e) { rows = src; }
-      const top = rows.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 4);
-      return { headline: "🔍 סורק עסקאות · " + rows.length + " תוצאות", cls: "zero", strip: "", picksLabel: "Top Ninja Score",
+      // the 5 at the TOP of the current filtered+sorted list (as the user sees them) — NOT re-ranked by Ninja Score
+      const top = sortRows(rows).slice(0, 5);
+      const SORT_HE = { ninja: "Ninja Score", chg: "שינוי %", price: "מחיר", mc: "שווי שוק", sym: "סימבול", ftfc: "FTFC", sec: "סקטור" };
+      const sLbl = SORT_HE[scanSort.col] || "הסינון";
+      const dLbl = (!scanSort.col || scanSort.col === "sym") ? "" : (scanSort.dir < 0 ? " ▼" : " ▲");
+      return { headline: "🔍 סורק עסקאות · " + rows.length + " תוצאות", cls: "zero", strip: "", picksLabel: "5 העליונות · לפי " + sLbl + dLbl,
         picks: top.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
     }
     if (page === "today") {
@@ -2138,7 +2142,12 @@
 
     const techOn = techActive();
     const maLabel = techState.maType + techState.maPeriod;
-    const rows = sortRows(filterRows(all));
+    let rows = sortRows(filterRows(all));
+    // ★ "favorites on top": stable-partition the (already sorted) rows so starred symbols rise to the head
+    if (scanState.favTop && window.Prefs) {
+      const fav = rows.filter(t => window.Prefs.isFav(t.sym)), rest = rows.filter(t => !window.Prefs.isFav(t.sym));
+      if (fav.length) rows = fav.concat(rest);
+    }
     const CAP = 300;
     const shown = rows.slice(0, CAP);
     const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
@@ -2195,7 +2204,7 @@
       "</div>";
 
     const head =
-      "<th></th>" + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') + sortableTh("סקטור", "sec", ' title="הסקטור של המניה"') + sortableTh("ת\"ס", "etf", ' title="תעודת הסל (ETF) שמייצגת את הסקטור"') + sortableTh("מחיר", "price", ' title="המחיר הנוכחי"') + sortableTh("שווי", "mc", ' title="שווי שוק (מחיר × מספר מניות)"') + sortableTh("%", "chg", ' title="שינוי במחיר היום באחוזים"') +
+      '<th class="fav-th"><button class="fav-toptgl' + (scanState.favTop ? " on" : "") + '" id="favTopTgl" title="' + (scanState.favTop ? "בטל — הצג לפי המיון הרגיל" : "הצג את המועדפים (⭐) בראש הרשימה") + '">★</button></th>' + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') + sortableTh("סקטור", "sec", ' title="הסקטור של המניה"') + sortableTh("ת\"ס", "etf", ' title="תעודת הסל (ETF) שמייצגת את הסקטור"') + sortableTh("מחיר", "price", ' title="המחיר הנוכחי"') + sortableTh("שווי", "mc", ' title="שווי שוק (מחיר × מספר מניות)"') + sortableTh("%", "chg", ' title="שינוי במחיר היום באחוזים"') +
       sortableTh("Y", "Y", ' title="נר Strat בטיימפריים השנתי"') + sortableTh("Q", "Q", ' title="נר Strat בטיימפריים הרבעוני"') + sortableTh("M", "M", ' title="נר Strat בטיימפריים החודשי"') + sortableTh("W", "W", ' title="נר Strat בטיימפריים השבועי"') + sortableTh("D", "D", ' title="נר Strat בטיימפריים היומי"') + sortableTh("FTFC", "ftfc", ' title="FTFC — המשכיות טיימפריימים מלאה: כל הטיימפריימים באותו כיוון (ירוק=עולה, אדום=יורד)"') +
       sortableTh("Ninja", "ninja", ' title="Ninja Score 0-100: איכות הסטאפ — יישור טיימפריימים, ווליום יחסי, תבנית, כסף חכם, קרבה לממוצע, נזילות וחוזק הסקטור"') +
       visCols.map(c => sortableTh(c.th, c.key, c.tip ? ' title="' + escAttr(c.tip) + '"' : "")).join("") +
@@ -2364,6 +2373,7 @@
     // multi-timeframe (MTF) controls
     { const mt = $("#mtfToggle"); if (mt) mt.onclick = () => { scanState.mtfOpen = !scanState.mtfOpen; reRender(); }; }
     { const it = $("#indToggle"); if (it) it.onclick = () => { scanState.indOpen = !scanState.indOpen; reRender(); }; }
+    { const ft = $("#favTopTgl"); if (ft) ft.onclick = () => { scanState.favTop = !scanState.favTop; reRender(); }; }
     // panel-visibility chips + saved-scan presets
     document.querySelectorAll("[data-panel]").forEach(b => b.onclick = () => togglePanel(b.dataset.panel));
     { const psel = $("#presetSel"); if (psel) psel.onchange = () => { _selPreset = psel.value; if (!_selPreset) { reRender(); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }

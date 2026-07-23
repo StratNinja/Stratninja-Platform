@@ -315,7 +315,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .share-card .sc-idx b { color:#c3ccdd; margin-inline-end:6px; }
 .share-card .sc-picks-lbl { font-size:16px; color:#9aa3b2; margin-bottom:10px; font-weight:700; }
 .share-card .sc-picks { display:flex; gap:16px; }
-.share-card .sc-pick { flex:1; background:rgba(255,255,255,.06); border-radius:16px; padding:18px; text-align:center; }
+.share-card .sc-pick { flex:1; min-width:0; background:rgba(255,255,255,.06); border-radius:16px; padding:16px 12px; text-align:center; }
 .share-card .sc-pk-score { display:inline-block; background:rgba(38,176,107,.22); color:#4fe39b; font-weight:800; font-size:26px; padding:3px 16px; border-radius:12px; }
 .share-card .sc-pk-sym { font-size:26px; font-weight:800; margin:10px 0 4px; }
 .share-card .sc-pk-chg { font-size:20px; font-weight:700; }
@@ -473,6 +473,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .starbtn { background:none; border:none; cursor:pointer; font-size:16px; color:var(--muted); padding:2px 4px; line-height:1; }
 .starbtn.on { color:#f5c451; }
 .starbtn:hover { color:#f5c451; }
+/* header toggle: pull all favorited (in-filter) rows to the top */
+.fav-toptgl { background:none; border:1px solid transparent; cursor:pointer; font-size:15px; color:var(--muted); padding:2px 5px; line-height:1; border-radius:7px; }
+.fav-toptgl:hover { color:#f5c451; }
+.fav-toptgl.on { color:#f5c451; background:rgba(245,196,81,.14); border-color:rgba(245,196,81,.45); }
 
 /* ===== sectors ===== */
 .sector-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
