@@ -3620,12 +3620,13 @@
       '<text x="18" y="' + (hi - 5) + '" fill="#8894b5" font-size="10">גבוה קודם</text>' +
       '<text x="18" y="' + (lo + 14) + '" fill="#8894b5" font-size="10">נמוך קודם</text>';
     const prior = _cndl(62, hi, lo, 46, 100, "#5b6690");        // reference candle (grey-blue)
-    let cur;
-    if (type === "1") cur = _cndl(140, 52, 104, 64, 92, GREY);
-    else if (type === "2U") cur = _cndl(140, 12, 82, 20, 58, GREEN);
-    else if (type === "2D") cur = _cndl(140, 68, 140, 92, 132, RED);
-    else cur = _cndl(140, 12, 140, 40, 110, AMBER);            // "3" outside
-    return '<svg viewBox="0 0 214 150" width="100%" style="max-width:230px" role="img" aria-label="דיאגרמת נר ' + type + '">' + guides + prior + cur + "</svg>";
+    let cur, origin;                                            // origin = where the candle "grows from" on hover
+    if (type === "1") { cur = _cndl(140, 52, 104, 64, 92, GREY); origin = "both"; }
+    else if (type === "2U") { cur = _cndl(140, 12, 82, 20, 58, GREEN); origin = "up"; }   // shoots up (breaks the high)
+    else if (type === "2D") { cur = _cndl(140, 68, 140, 92, 132, RED); origin = "down"; } // drops down (breaks the low)
+    else { cur = _cndl(140, 12, 140, 40, 110, AMBER); origin = "both"; }                  // "3" outside — expands both
+    return '<svg viewBox="0 0 214 150" width="100%" style="max-width:230px" role="img" aria-label="דיאגרמת נר ' + type + '">' +
+      guides + prior + '<g class="sn-cur ' + origin + '">' + cur + "</g></svg>";
   }
   function renderLearn() {
     const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
@@ -3661,7 +3662,8 @@
       '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">סרטון קצר לכל עמוד — יוטבעו כאן</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
-    return head + intro + '<div class="lrn-cards">' + cards + "</div>" + next;
+    const hint = '<div class="lrn-hint">💡 רחף עם העכבר על כל דיאגרמה כדי לראות איך הנר נוצר ✨</div>';
+    return head + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
   }
   function wireLearn() {
     const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
