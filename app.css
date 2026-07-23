@@ -906,9 +906,13 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .modal.candlelesson { max-width: 640px; }
 .cl-wrap { text-align: center; }
 .cl-tf { color: var(--purple); font-weight: 800; font-size: 13px; letter-spacing: .04em; min-height: 18px; transition: opacity .3s; }
-.cl-stage { min-height: 280px; display: flex; align-items: center; justify-content: center; margin: 10px 0;
-  transition: transform .8s cubic-bezier(.5,0,.3,1), opacity .8s; }
-.cl-stage.cl-zoom { transform: scale(1.3); opacity: .06; }
+.cl-stage { min-height: 280px; display: flex; align-items: center; justify-content: center; margin: 10px 0; }
+/* seamless zoom: the higher-TF candle "dives in" (scales up + fades), then the lower-TF frame "arrives" and settles */
+.cl-stage.cl-diving { animation: clDive .46s cubic-bezier(.55,0,.75,.35) forwards; }
+.cl-stage.cl-arriving { animation: clArrive .5s cubic-bezier(.2,.75,.3,1); }
+@keyframes clDive { from { transform: scale(1); opacity: 1; } to { transform: scale(1.85); opacity: 0; } }
+@keyframes clArrive { from { transform: scale(1.14); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce){ .cl-stage.cl-diving, .cl-stage.cl-arriving { animation: none; } }
 .cl-callout { min-height: 56px; color: var(--ink); font-size: 15px; max-width: 60ch; margin: 6px auto 0; line-height: 1.55; }
 .cl-callout b { color: #fff; }
 .cl-icandle { opacity: 0; }

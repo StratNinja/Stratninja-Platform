@@ -3637,7 +3637,7 @@
     const prior = _cndl(62, hi, lo, 46, 100, "#5b6690");        // static reference candle
     // per-type keyframes: wick top(y1)/bottom(y2), body y/height, color, timing
     const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-    const loop3 = (type === "3") && !reduce;   // the "3" auto-loops BOTH ways it can form (1→2U→3, then 1→2D→3)
+    const loop3 = (type === "3") && !reduce && !autoplay;   // the "3" auto-loops on hover; in the lesson (autoplay) it forms once, fast
     let W1, W2, BY, BH, kt, dur, fill;
     if (type === "1") { W1 = "78;52"; W2 = "78;104"; BY = "78;64"; BH = "0;28"; kt = "0;1"; dur = "0.7s"; fill = "#7b88ad"; }
     else if (type === "2U") { W1 = "52;52;12"; W2 = "82;82;82"; BY = "44;44;20"; BH = "14;14;38"; kt = "0;0.4;1"; dur = "0.9s"; fill = "#22c55e"; }
@@ -3651,6 +3651,7 @@
       fill = "#7b88ad;#7b88ad;#22c55e;#22c55e;#f2b64a;#f2b64a;#7b88ad;#7b88ad;#ef4444;#ef4444;#f2b64a;#7b88ad";
     }
     else { W1 = "52;52;12;12"; W2 = "104;104;104;140"; BY = "64;64;30;30"; BH = "28;28;62;80"; kt = "0;0.28;0.62;1"; dur = "1.6s"; fill = "#7b88ad;#22c55e;#22c55e;#f2b64a"; }
+    if (autoplay) dur = "1s";   // the lesson wants a quick formation (~1s) before the zoom
     const finalFill = fill.indexOf(";") >= 0 ? fill.split(";").pop() : fill;
     const last = s => s.split(";").pop();
     // when NOT hovering the "3" shows its static final shape; hover replays the formation loop and
@@ -3790,10 +3791,15 @@
     callout.innerHTML = "זה <b>" + CL_NAME[type] + "</b> במסגרת זמן גבוהה. בוא נצלול פנימה ונראה מאילו נרות קטנים הוא מורכב.";
     stage.className = "cl-stage";
     stage.innerHTML = _candleDiagram(type, true).replace("max-width:230px", "max-width:340px");
-    // give נר 3 longer up top — its formation loop (1→2U→3) takes ~3.5s; simple candles form fast.
-    const ZOOM = (type === "3") ? 3800 : 2500, INNER = ZOOM + 900;
-    _clTimers.push(setTimeout(() => { stage.classList.add("cl-zoom"); tfEl.textContent = "🔎 זום אין → מסגרת זמן נמוכה"; callout.innerHTML = "צוללים פנימה…"; }, ZOOM));
-    _clTimers.push(setTimeout(() => { stage.classList.remove("cl-zoom"); tfEl.textContent = "🕯️ מסגרת זמן נמוכה — מה קורה בפנים"; stage.innerHTML = _internalCandles(type); }, INNER));
+    // quick formation (~1s) → seamless "dive in" → the lower-TF frame "arrives" and settles
+    const ZOOM = 1200, INNER = ZOOM + 460;
+    _clTimers.push(setTimeout(() => { stage.classList.add("cl-diving"); tfEl.textContent = "🔎 זום אין → מסגרת זמן נמוכה"; callout.innerHTML = "צוללים פנימה…"; }, ZOOM));
+    _clTimers.push(setTimeout(() => {
+      stage.classList.remove("cl-diving"); stage.classList.add("cl-arriving");
+      tfEl.textContent = "🕯️ מסגרת זמן נמוכה — מה קורה בפנים";
+      stage.innerHTML = _internalCandles(type);
+      _clTimers.push(setTimeout(() => stage.classList.remove("cl-arriving"), 520));
+    }, INNER));
     _clTimers.push(setTimeout(() => { callout.innerHTML = CL_TEXT[type]; }, INNER + 8 * 260 + 300));
     // נר 3 נוצר לשני הכיוונים — אחרי הסיפור העולה (נמוך→היפוך→גבוה) מציגים בלופ גם את ההפוך (גבוה→היפוך→נמוך)
     if (type === "3") {
