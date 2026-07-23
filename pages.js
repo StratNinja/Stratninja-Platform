@@ -3641,11 +3641,17 @@
     else { W1 = "52;52;12;12"; W2 = "104;104;104;140"; BY = "64;64;30;30"; BH = "28;28;62;80"; kt = "0;0.28;0.62;1"; dur = "1.6s"; fill = "#7b88ad;#22c55e;#22c55e;#f2b64a"; }
     const finalFill = fill.indexOf(";") >= 0 ? fill.split(";").pop() : fill;
     const last = s => s.split(";").pop();
-    const A = (attr, vals) => '<animate attributeName="' + attr + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + dur + '" ' + (loop3 ? 'begin="0s" repeatCount="indefinite"' : 'begin="' + sid + '.mouseenter" fill="freeze" restart="always"') + '/>';
+    // when NOT hovering the "3" shows its static final shape; hover replays the formation loop and
+    // STOPS on mouse-leave (begin/end events). Other candles animate once on hover.
+    const bW1 = loop3 ? "12" : last(W1), bW2 = loop3 ? "140" : last(W2), bBY = loop3 ? "30" : last(BY), bBH = loop3 ? "80" : last(BH), bFill = loop3 ? "#f2b64a" : finalFill;
+    const timing = loop3
+      ? 'begin="' + sid + '.mouseenter" end="' + sid + '.mouseleave" repeatCount="indefinite"'
+      : 'begin="' + sid + '.mouseenter" fill="freeze" restart="always"';
+    const A = (attr, vals) => '<animate attributeName="' + attr + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + dur + '" ' + timing + '/>';
     const colorAnim = fill.indexOf(";") >= 0 ? A("stroke", fill) : "";
     const bodyColorAnim = fill.indexOf(";") >= 0 ? A("fill", fill) : "";
-    const wick = '<line x1="' + cx + '" x2="' + cx + '" y1="' + last(W1) + '" y2="' + last(W2) + '" stroke="' + finalFill + '" stroke-width="2.5" stroke-linecap="round">' + A("y1", W1) + A("y2", W2) + colorAnim + "</line>";
-    const body = '<rect x="' + (cx - 12) + '" width="24" y="' + last(BY) + '" height="' + last(BH) + '" rx="3" fill="' + finalFill + '">' + A("y", BY) + A("height", BH) + bodyColorAnim + "</rect>";
+    const wick = '<line x1="' + cx + '" x2="' + cx + '" y1="' + bW1 + '" y2="' + bW2 + '" stroke="' + bFill + '" stroke-width="2.5" stroke-linecap="round">' + A("y1", W1) + A("y2", W2) + colorAnim + "</line>";
+    const body = '<rect x="' + (cx - 12) + '" width="24" y="' + bBY + '" height="' + bBH + '" rx="3" fill="' + bFill + '">' + A("y", BY) + A("height", BH) + bodyColorAnim + "</rect>";
     return '<svg id="' + sid + '" viewBox="0 0 214 150" width="100%" style="max-width:230px" role="img" aria-label="דיאגרמת נר ' + type + '">' +
       guides + prior + wick + body + "</svg>";
   }
@@ -3683,7 +3689,7 @@
       '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">סרטון קצר לכל עמוד — יוטבעו כאן</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
-    const hint = '<div class="lrn-hint">💡 רחף עם העכבר על דיאגרמה כדי לראות איך הנר נוצר · נר 3 מתנגן אוטומטית (שתי הדרכים שהוא נוצר) ✨</div>';
+    const hint = '<div class="lrn-hint">💡 רחף עם העכבר על דיאגרמה כדי לראות איך הנר נוצר · נר 3 מראה בריחוף את שתי הדרכים שהוא נוצר ✨</div>';
     const badgeCtl = _newbieHidden() ? "" :
       '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
     return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
