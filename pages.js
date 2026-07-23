@@ -3730,16 +3730,20 @@
     "2D": '💪🔴 <b>שבירה בעוצמה.</b> הנרות הקטנים שוברים <b>מתחת לנמוך הקודם</b> — המוכרים לקחו שליטה. כיוון ברור מטה.',
     "3": '🔄 <b>התרחבות מחיר.</b> קודם המחיר עשה <b>נמוך חדש</b> (🔴), ואז <b>התהפך</b> ועשה <b>גבוה חדש</b> (🟢). הנר לקח את שני הצדדים — עוצמה מקסימלית, אבל צריך לזהות את ההיפוך.'
   };
+  // נר 3 יכול להיווצר גם בכיוון ההפוך — קודם גבוה חדש ואז היפוך מטה לנמוך חדש
+  const CL_TEXT3_DOWN = '🔄 <b>התרחבות מחיר — הכיוון ההפוך.</b> הפעם קודם <b>גבוה חדש</b> (🟢), ואז <b>התהפך</b> ועשה <b>נמוך חדש</b> (🔴). זה עדיין נר 3 — לקח את שני הצדדים — רק שהסגירה מטה.';
   // internal lower-TF price path (y in a 0..260 stage · higher y = lower price). walls: prior high y=54, low y=206
   const CL_PATH = { "1": [150,118,152,124,156,126,150,130], "2U": [160,150,134,112,86,58,42,30], "2D": [100,112,132,160,188,214,230,242], "3": [120,150,182,214,236,180,110,40] };
-  function _internalCandles(type) {
+  const CL_PATH3_DOWN = [156,126,94,62,40,96,166,236];   // נר 3 הפוך: קודם גבוה חדש ואז שבירה לנמוך חדש
+  function _internalCandles(type, variant) {
     const hiY = 54, loY = 206, x0 = 70, dx = 42, W = 440, H = 264;
     const walls =
       '<line x1="30" y1="' + hiY + '" x2="' + (W - 20) + '" y2="' + hiY + '" stroke="#6b7699" stroke-width="1.5" stroke-dasharray="6 5"/>' +
       '<line x1="30" y1="' + loY + '" x2="' + (W - 20) + '" y2="' + loY + '" stroke="#6b7699" stroke-width="1.5" stroke-dasharray="6 5"/>' +
       '<text x="' + (W / 2) + '" y="' + (hiY - 7) + '" fill="#9aa6c6" font-size="12" text-anchor="middle">גבוה קודם</text>' +
       '<text x="' + (W / 2) + '" y="' + (loY + 18) + '" fill="#9aa6c6" font-size="12" text-anchor="middle">נמוך קודם</text>';
-    const pts = CL_PATH[type]; let cndls = "";
+    const down3 = (type === "3" && variant === "down");
+    const pts = down3 ? CL_PATH3_DOWN : CL_PATH[type]; let cndls = "";
     for (let i = 0; i < pts.length; i++) {
       const open = i === 0 ? pts[0] : pts[i - 1], close = pts[i];
       const up = close < open, col = up ? "#22c55e" : "#ef4444";
@@ -3750,7 +3754,11 @@
         '<rect x="' + (cx - 9) + '" y="' + bt + '" width="18" height="' + Math.max(4, bb - bt) + '" rx="2" fill="' + col + '"/></g>';
     }
     let marks = "";
-    if (type === "3") marks =
+    if (down3) marks =
+      '<text class="cl-mark" x="' + (x0 + 4 * dx) + '" y="24" fill="#22c55e" font-size="12" text-anchor="middle">גבוה חדש</text>' +
+      '<text class="cl-mark" x="' + (x0 + 5 * dx) + '" y="118" fill="#f2b64a" font-size="12" text-anchor="middle">היפוך ↓</text>' +
+      '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="256" fill="#ef4444" font-size="12" text-anchor="middle">נמוך חדש</text>';
+    else if (type === "3") marks =
       '<text class="cl-mark" x="' + (x0 + 4 * dx) + '" y="256" fill="#ef4444" font-size="12" text-anchor="middle">נמוך חדש</text>' +
       '<text class="cl-mark" x="' + (x0 + 5 * dx) + '" y="176" fill="#f2b64a" font-size="12" text-anchor="middle">היפוך ↑</text>' +
       '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="30" fill="#22c55e" font-size="12" text-anchor="middle">גבוה חדש</text>';
@@ -3771,6 +3779,18 @@
     _clTimers.push(setTimeout(() => { stage.classList.add("cl-zoom"); tfEl.textContent = "🔎 זום אין → מסגרת זמן נמוכה"; callout.innerHTML = "צוללים פנימה…"; }, 2500));
     _clTimers.push(setTimeout(() => { stage.classList.remove("cl-zoom"); tfEl.textContent = "🕯️ מסגרת זמן נמוכה — מה קורה בפנים"; stage.innerHTML = _internalCandles(type); }, 3400));
     _clTimers.push(setTimeout(() => { callout.innerHTML = CL_TEXT[type]; }, 3400 + 8 * 260 + 300));
+    // נר 3 נוצר לשני הכיוונים — אחרי הסיפור העולה (נמוך→היפוך→גבוה) מציגים בלופ גם את ההפוך (גבוה→היפוך→נמוך)
+    if (type === "3") {
+      const REVEAL = 8 * 260 + 300, HOLD = 3400;
+      let showDown = true;
+      const cycle = () => {
+        stage.innerHTML = _internalCandles("3", showDown ? "down" : "up");
+        tfEl.textContent = showDown ? "🕯️ מסגרת זמן נמוכה — הכיוון ההפוך ↓" : "🕯️ מסגרת זמן נמוכה — מה קורה בפנים";
+        callout.innerHTML = showDown ? CL_TEXT3_DOWN : CL_TEXT["3"];   // callout matches the story on screen (no lag)
+        _clTimers.push(setTimeout(() => { showDown = !showDown; cycle(); }, REVEAL + HOLD));
+      };
+      _clTimers.push(setTimeout(cycle, 3400 + REVEAL + HOLD));
+    }
   }
   function openCandleLesson(type) {
     modal("🔬 " + CL_NAME[type] + " — מבט מבפנים",
