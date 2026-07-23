@@ -3611,22 +3611,33 @@
     return '<line x1="' + cx + '" y1="' + wickTop + '" x2="' + cx + '" y2="' + wickBot + '" stroke="' + col + '" stroke-width="2.5" stroke-linecap="round"/>' +
       '<rect x="' + (cx - 12) + '" y="' + bodyTop + '" width="24" height="' + Math.max(4, bodyBot - bodyTop) + '" rx="3" fill="' + col + '"/>';
   }
+  // Animated candle diagram. On hover the CURRENT candle FORMS the way it really does — a bar starts
+  // inside (1), then breaks one side (2), and a "3" only becomes a 3 AFTER it was a 2 (breaks the
+  // other side too). Uses SMIL so it can animate the actual high/low geometry through stages.
   function _candleDiagram(type) {
-    const GREY = "#7b88ad", GREEN = "#22c55e", RED = "#ef4444", AMBER = "#f2b64a";
-    const hi = 28, lo = 122;                                    // prior candle high/low levels
+    const hi = 28, lo = 122, cx = 140;
+    const sid = "snd" + type.replace(/[^A-Za-z0-9]/g, "");
     const guides =
       '<line x1="18" y1="' + hi + '" x2="196" y2="' + hi + '" stroke="#57608a" stroke-width="1" stroke-dasharray="4 4"/>' +
       '<line x1="18" y1="' + lo + '" x2="196" y2="' + lo + '" stroke="#57608a" stroke-width="1" stroke-dasharray="4 4"/>' +
       '<text x="18" y="' + (hi - 5) + '" fill="#8894b5" font-size="10">גבוה קודם</text>' +
       '<text x="18" y="' + (lo + 14) + '" fill="#8894b5" font-size="10">נמוך קודם</text>';
-    const prior = _cndl(62, hi, lo, 46, 100, "#5b6690");        // reference candle (grey-blue)
-    let cur, origin;                                            // origin = where the candle "grows from" on hover
-    if (type === "1") { cur = _cndl(140, 52, 104, 64, 92, GREY); origin = "both"; }
-    else if (type === "2U") { cur = _cndl(140, 12, 82, 20, 58, GREEN); origin = "up"; }   // shoots up (breaks the high)
-    else if (type === "2D") { cur = _cndl(140, 68, 140, 92, 132, RED); origin = "down"; } // drops down (breaks the low)
-    else { cur = _cndl(140, 12, 140, 40, 110, AMBER); origin = "both"; }                  // "3" outside — expands both
-    return '<svg viewBox="0 0 214 150" width="100%" style="max-width:230px" role="img" aria-label="דיאגרמת נר ' + type + '">' +
-      guides + prior + '<g class="sn-cur ' + origin + '">' + cur + "</g></svg>";
+    const prior = _cndl(62, hi, lo, 46, 100, "#5b6690");        // static reference candle
+    // per-type keyframes: wick top(y1)/bottom(y2), body y/height, color, timing
+    let W1, W2, BY, BH, kt, dur, fill;
+    if (type === "1") { W1 = "78;52"; W2 = "78;104"; BY = "78;64"; BH = "0;28"; kt = "0;1"; dur = "0.7s"; fill = "#7b88ad"; }
+    else if (type === "2U") { W1 = "52;52;12"; W2 = "82;82;82"; BY = "44;44;20"; BH = "14;14;38"; kt = "0;0.4;1"; dur = "0.9s"; fill = "#22c55e"; }
+    else if (type === "2D") { W1 = "68;68;68"; W2 = "104;104;140"; BY = "78;78;92"; BH = "14;14;40"; kt = "0;0.4;1"; dur = "0.9s"; fill = "#ef4444"; }
+    else { W1 = "52;52;12;12"; W2 = "104;104;104;140"; BY = "64;64;30;30"; BH = "28;28;62;80"; kt = "0;0.28;0.62;1"; dur = "1.6s"; fill = "#7b88ad;#22c55e;#22c55e;#f2b64a"; }
+    const finalFill = fill.indexOf(";") >= 0 ? fill.split(";").pop() : fill;
+    const last = s => s.split(";").pop();
+    const A = (attr, vals) => '<animate attributeName="' + attr + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + dur + '" begin="' + sid + '.mouseenter" fill="freeze" restart="always"/>';
+    const colorAnim = fill.indexOf(";") >= 0 ? A("stroke", fill) : "";
+    const bodyColorAnim = fill.indexOf(";") >= 0 ? A("fill", fill) : "";
+    const wick = '<line x1="' + cx + '" x2="' + cx + '" y1="' + last(W1) + '" y2="' + last(W2) + '" stroke="' + finalFill + '" stroke-width="2.5" stroke-linecap="round">' + A("y1", W1) + A("y2", W2) + colorAnim + "</line>";
+    const body = '<rect x="' + (cx - 12) + '" width="24" y="' + last(BY) + '" height="' + last(BH) + '" rx="3" fill="' + finalFill + '">' + A("y", BY) + A("height", BH) + bodyColorAnim + "</rect>";
+    return '<svg id="' + sid + '" viewBox="0 0 214 150" width="100%" style="max-width:230px" role="img" aria-label="דיאגרמת נר ' + type + '">' +
+      guides + prior + wick + body + "</svg>";
   }
   function renderLearn() {
     const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
@@ -3663,27 +3674,33 @@
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
     const hint = '<div class="lrn-hint">💡 רחף עם העכבר על כל דיאגרמה כדי לראות איך הנר נוצר ✨</div>';
-    return head + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
+    const badgeCtl = _newbieHidden() ? "" :
+      '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
+    return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
   }
   // "התחל כאן" nav badge — shown to everyone, but on the FIRST visit to Learn we ask if they want it gone.
   function _newbieHidden() { try { return localStorage.getItem("sn_newbie_hide") === "1"; } catch (e) { return false; } }
   function _hideNewbieBadge() { document.querySelectorAll(".nav-newbie").forEach(el => el.remove()); }
   function applyNewbieBadge() { if (_newbieHidden()) _hideNewbieBadge(); }
+  function _newbiePopup() {                 // the actual dialog — can be re-opened from the Learn page any time
+    modal('👋 הסימון "התחל כאן"',
+      '<div class="note" style="margin:0 0 16px;font-size:14.5px">שמנו סימון ירוק <b>"התחל כאן"</b> ליד לשונית הלימוד כדי לעזור למתחילים למצוא אותה. רוצה להסיר אותו מהתפריט?</div>' +
+      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" id="nbRemove">✓ כן, הסר את הסימון</button><button class="btn ghost" id="nbKeep">לא, השאר אותו</button></div>');
+    { const rm = $("#nbRemove"); if (rm) rm.onclick = () => { try { localStorage.setItem("sn_newbie_hide", "1"); } catch (e) {} _hideNewbieBadge(); closeModal(); snToast("הסימון הוסר ✓"); if (state.page === "learn") reRender(); }; }
+    { const kp = $("#nbKeep"); if (kp) kp.onclick = () => closeModal(); }
+  }
   function _maybeAskNewbie() {
     try {
       if (localStorage.getItem("sn_newbie_hide") === "1") return;      // already removed
       if (localStorage.getItem("sn_newbie_asked") === "1") return;     // already asked once
       localStorage.setItem("sn_newbie_asked", "1");
     } catch (e) { return; }
-    modal('👋 הסימון "התחל כאן"',
-      '<div class="note" style="margin:0 0 16px;font-size:14.5px">שמנו סימון ירוק <b>"התחל כאן"</b> ליד לשונית הלימוד כדי לעזור למתחילים למצוא אותה. עכשיו שאתה כאן — רוצה להסיר אותו?</div>' +
-      '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" id="nbRemove">✓ כן, הסר את הסימון</button><button class="btn ghost" id="nbKeep">לא, השאר אותו</button></div>');
-    { const rm = $("#nbRemove"); if (rm) rm.onclick = () => { try { localStorage.setItem("sn_newbie_hide", "1"); } catch (e) {} _hideNewbieBadge(); closeModal(); snToast("הסימון הוסר ✓"); }; }
-    { const kp = $("#nbKeep"); if (kp) kp.onclick = () => closeModal(); }
+    _newbiePopup();
   }
   function wireLearn() {
     const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
     const b = $("#lrnToToday"); if (b) b.onclick = () => setPage("today");
+    { const rb = $("#lrnRemoveBadge"); if (rb) rb.onclick = () => _newbiePopup(); }   // re-open the remove dialog on demand
     setTimeout(_maybeAskNewbie, 450);   // after the page settles, offer to remove the "start here" badge (once)
   }
 

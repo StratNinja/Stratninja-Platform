@@ -897,14 +897,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .lrn-body { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
 .lrn-svg { flex: 0 0 auto; background: rgba(11,15,26,.5); border: 1px solid var(--line); border-radius: 12px; padding: 8px; cursor: pointer; }
 .lrn-hint { text-align: center; color: var(--muted); font-size: 13px; margin: 12px 0 2px; }
-/* hover → the current candle "forms" (grows into place from where price opened) */
-.lrn-svg .sn-cur { transform-box: fill-box; transform-origin: center; }
-.lrn-svg .sn-cur.up { transform-origin: bottom; }     /* 2U shoots up */
-.lrn-svg .sn-cur.down { transform-origin: top; }      /* 2D drops down */
-@media (prefers-reduced-motion: no-preference){
-  .lrn-svg:hover .sn-cur { animation: snForm .7s cubic-bezier(.2,.75,.2,1); }
-}
-@keyframes snForm { 0%{transform:scaleY(.02);opacity:.35} 55%{transform:scaleY(1.08)} 100%{transform:scaleY(1);opacity:1} }
+.lrn-badgectl { margin: 6px 0 0; }
+.lrn-badgectl .btn { font-size: 12.5px; }
 .lrn-txt { flex: 1 1 220px; min-width: 0; }
 .lrn-txt p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink); line-height: 1.55; }
 .lrn-inscan { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 7px; }
