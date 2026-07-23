@@ -332,6 +332,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .share-card .sc-foot { display:flex; justify-content:space-between; padding:20px 44px; background:rgba(0,0,0,.35); font-size:18px; color:#c3ccdd; font-weight:600; }
 /* "what to check now" share card — money flow + long/short columns */
 .share-card .sc-sec-lbl { font-size:17px; font-weight:800; color:#c3ccdd; margin:4px 0 10px; }
+/* money-flow share: a row of risers, a row of fallers, each card tagged with its source panel */
+.share-card .sc-mv-row { display:flex; align-items:flex-start; gap:16px; margin-bottom:12px; }
+.share-card .sc-mv-lbl { flex:0 0 92px; font-size:16px; font-weight:800; padding-top:10px; }
+.share-card .sc-mv-lbl.pos { color:#4fe39b; } .share-card .sc-mv-lbl.neg { color:#ff7a86; }
+.share-card .sc-mv-row .sc-strip { flex:1; margin-bottom:0; }
+.share-card .sc-idx-src { display:block; font-size:12px; font-weight:600; font-style:normal; color:#7f8aa3; margin-top:3px; }
 .share-card .sc-two { display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:20px; }
 .share-card .sc-two .sc-picks-lbl { margin-bottom:12px; }
 .share-card .sc-two .sc-picks-lbl.pos { color:#4fe39b; } .share-card .sc-two .sc-picks-lbl.neg { color:#ff7a86; }

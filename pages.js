@@ -1431,6 +1431,8 @@
       '</div><div class="sc-pk-chg ' + ((chg || 0) >= 0 ? "pos" : "neg") + '">' + _shNum(chg) + "</div></div>";
   }
   function _shIdx(label, val, cls) { return '<span class="sc-idx' + (cls ? " " + cls : "") + '"><b>' + label + "</b> " + val + "</span>"; }
+  // like _shIdx but with a small source tag (which site panel the card came from)
+  function _shIdxSrc(label, val, cls, src) { return '<span class="sc-idx' + (cls ? " " + cls : "") + '"><b>' + label + "</b> " + val + (src ? '<i class="sc-idx-src">' + src + "</i>" : "") + "</span>"; }
   // page-aware summary content for the share card
   function shareSummaryFor(page) {
     const ms = todayMarketState();
@@ -1446,19 +1448,21 @@
         picks: top.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
     }
     if (page === "today") {
-      // money-flow card reflecting the SELECTED timeframe (20D/5D/1D) for sectors + sub-sectors — no candidates
+      // money-flow card for the SELECTED timeframe (20D/5D/1D): each panel split into a row of risers + a row of fallers
       const TFL = { "1d": "יום", "5d": "5 ימים", "20d": "20 ימים" };
       const vOf = (s, tf) => tf === "5d" ? s.chg5d : tf === "20d" ? s.chg20d : s.chg;
-      const inOut = (list, tf, n) => {
+      const section = (list, tf, src, isSub) => {
         const sorted = list.filter(s => vOf(s, tf) != null).sort((a, b) => vOf(b, tf) - vOf(a, tf));
-        return sorted.slice(0, n).map(s => [s, "pos"]).concat(sorted.slice(-n).reverse().filter(x => sorted.slice(0, n).indexOf(x) < 0).map(s => [s, "neg"]));
+        const ups = sorted.filter(s => vOf(s, tf) > 0).slice(0, 3);
+        const downs = sorted.filter(s => vOf(s, tf) < 0).slice(-3).reverse();   // most-negative first
+        const card = (s, cls) => _shIdxSrc(isSub ? s.name : secHe(s.name), _shNum(vOf(s, tf)), cls, src);
+        const row = (arr, cls, lbl) => '<div class="sc-mv-row"><span class="sc-mv-lbl ' + cls + '">' + lbl + '</span><div class="sc-strip">' +
+          (arr.length ? arr.map(s => card(s, cls)).join("") : '<span class="sc-idx muted">—</span>') + "</div></div>";
+        return row(ups, "pos", "🟢 עולות") + row(downs, "neg", "🔴 יורדות");
       };
-      const strip = (list, tf, isSub) => inOut(list, tf, 3).map(([s, cls]) => _shIdx(isSub ? s.name : secHe(s.name), _shNum(vOf(s, tf)), cls)).join("");
-      const secStrip = strip(typeof todaySectors === "function" ? todaySectors(src) : [], flowTf, false);
-      const subStrip = strip(typeof todaySubsectors === "function" ? todaySubsectors(src) : [], flowTfSub, true);
       const bodyHtml =
-        '<div class="sc-sec-lbl">🗂️ סקטורים · ' + TFL[flowTf] + '</div><div class="sc-strip">' + (secStrip || '<span class="sc-idx muted">—</span>') + "</div>" +
-        '<div class="sc-sec-lbl" style="margin-top:12px">🏭 תתי-סקטורים · ' + TFL[flowTfSub] + '</div><div class="sc-strip">' + (subStrip || '<span class="sc-idx muted">—</span>') + "</div>";
+        '<div class="sc-sec-lbl">🗂️ סקטורים · ' + TFL[flowTf] + "</div>" + section(typeof todaySectors === "function" ? todaySectors(src) : [], flowTf, "סקטור", false) +
+        '<div class="sc-sec-lbl" style="margin-top:16px">🏭 תתי-סקטורים · ' + TFL[flowTfSub] + "</div>" + section(typeof todaySubsectors === "function" ? todaySubsectors(src) : [], flowTfSub, "תת-סקטור", true);
       return { headline: ms ? ms.emoji + " " + ms.mode : "🎯 לאן הכסף הולך", cls: ms ? ms.cls : "zero", bodyHtml: bodyHtml };
     }
     if (page === "sectors") {
