@@ -3737,8 +3737,8 @@
     const walls =
       '<line x1="30" y1="' + hiY + '" x2="' + (W - 20) + '" y2="' + hiY + '" stroke="#6b7699" stroke-width="1.5" stroke-dasharray="6 5"/>' +
       '<line x1="30" y1="' + loY + '" x2="' + (W - 20) + '" y2="' + loY + '" stroke="#6b7699" stroke-width="1.5" stroke-dasharray="6 5"/>' +
-      '<text x="34" y="' + (hiY - 7) + '" fill="#9aa6c6" font-size="12">גבוה קודם</text>' +
-      '<text x="34" y="' + (loY + 18) + '" fill="#9aa6c6" font-size="12">נמוך קודם</text>';
+      '<text x="' + (W / 2) + '" y="' + (hiY - 7) + '" fill="#9aa6c6" font-size="12" text-anchor="middle">גבוה קודם</text>' +
+      '<text x="' + (W / 2) + '" y="' + (loY + 18) + '" fill="#9aa6c6" font-size="12" text-anchor="middle">נמוך קודם</text>';
     const pts = CL_PATH[type]; let cndls = "";
     for (let i = 0; i < pts.length; i++) {
       const open = i === 0 ? pts[0] : pts[i - 1], close = pts[i];
@@ -3756,7 +3756,7 @@
       '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="30" fill="#22c55e" font-size="12" text-anchor="middle">גבוה חדש</text>';
     else if (type === "2U") marks = '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="26" fill="#22c55e" font-size="13" text-anchor="middle">פריצה! 🚀</text>';
     else if (type === "2D") marks = '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="258" fill="#ef4444" font-size="13" text-anchor="middle">שבירה! 💥</text>';
-    else marks = '<text class="cl-mark" x="' + (x0 + 3.5 * dx) + '" y="135" fill="#9aa6c6" font-size="14" text-anchor="middle">↔ בלי כיוון</text>';
+    else marks = '<text class="cl-mark" x="' + (x0 + 3.5 * dx) + '" y="95" fill="#9aa6c6" font-size="14" text-anchor="middle">↔ בלי כיוון</text>';
     return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:520px">' + walls + cndls + marks + "</svg>";
   }
   let _clTimers = [];
