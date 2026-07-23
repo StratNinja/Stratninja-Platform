@@ -976,7 +976,10 @@
   // ========== SCANNER ==========
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: "all", subsec: "all", universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
+  // sector / subsec are MULTI-select: arrays of selected names (empty = "all")
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
+  // normalize a stored sector/subsec value (old presets held a string "all"/name) to a selection array
+  function _toSelArr(v) { return Array.isArray(v) ? v.slice() : (v && v !== "all" ? [v] : []); }
   // parse a market-cap input like "2B" / "60B" / "500M" / "1.5T" → dollars. Bare number = billions.
   function _parseCap(s) {
     s = String(s == null ? "" : s).trim().toUpperCase().replace(/[$,\s]/g, "");
@@ -1014,7 +1017,7 @@
     const s = scanState;
     return {
       s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad, inforce: s.inforce,
-        sector: s.sector, subsec: s.subsec, sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
+        sector: s.sector.slice(), subsec: s.subsec.slice(), sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
         capMin: s.capMin, capMax: s.capMax, mtf: JSON.parse(JSON.stringify(s.mtf)) },
       t: Object.assign({}, techState),
     };
@@ -1029,7 +1032,9 @@
     const keepUni = scanState.universe, keepMtfOpen = scanState.mtfOpen, keepIndOpen = scanState.indOpen, keepTechOpen = techState.techOpen;
     resetScan();
     scanState.universe = keepUni; scanState.mtfOpen = keepMtfOpen; scanState.indOpen = keepIndOpen; techState.techOpen = keepTechOpen;
-    ["dir", "shape", "broad", "inforce", "sector", "subsec", "sym", "ftfc", "priceMin", "priceMax", "capMin", "capMax"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
+    ["dir", "shape", "broad", "inforce", "sym", "ftfc", "priceMin", "priceMax", "capMin", "capMax"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
+    if (s.sector !== undefined) scanState.sector = _toSelArr(s.sector);   // migrate old string presets → array
+    if (s.subsec !== undefined) scanState.subsec = _toSelArr(s.subsec);
     if (s.tfs) scanState.tfs = s.tfs.slice();
     scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
     if (s.patterns) scanState.patterns = s.patterns.slice();
@@ -1884,7 +1889,7 @@
   }
   function resetScan() {
     scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = "off";
-    scanState.sector = "all"; scanState.subsec = "all"; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.capMin = ""; scanState.capMax = "";
+    scanState.sector = []; scanState.subsec = []; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.capMin = ""; scanState.capMax = "";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
   }
@@ -2009,13 +2014,53 @@
     const caret = wrap.querySelector(".combo-caret");
     if (caret) caret.addEventListener("mousedown", e => { e.preventDefault(); if (list.classList.contains("hidden")) input.focus(); else { close(); input.blur(); } });
   }
+  // multi-select variant: checkboxes, pick several without closing, apply (reRender) on close
+  function multiComboHtml(id, opts, sel, placeholder) {
+    const selArr = sel || [];
+    const summary = !selArr.length ? "" : (selArr.length === 1 ? (opts.find(o => o.val === selArr[0]) || { label: selArr[0] }).label : selArr.length + " נבחרו");
+    const list = opts.map(o => { const on = selArr.indexOf(o.val) >= 0;
+      return '<div class="combo-opt-m' + (on ? " on" : "") + '" data-cval="' + escAttr(o.val) + '"><span class="cbx">' + (on ? "☑" : "☐") + "</span>" + escHtml(o.label) + "</div>"; }).join("");
+    return '<div class="search-combo multi" data-combo="' + id + '">' +
+      '<input class="combo-input" id="' + id + '" autocomplete="off" placeholder="' + escAttr(placeholder) + '" value="' + escAttr(summary) + '">' +
+      '<span class="combo-caret">▾</span>' +
+      '<div class="combo-list hidden">' + (opts.length ? '<div class="combo-clear" data-clear="1">✕ נקה בחירה (הכל)</div>' : "") + list + "</div></div>";
+  }
+  // `arr` MUST be the live scanState array (mutated in place). onClose fires only if something changed.
+  function wireMultiCombo(id, arr, onClose) {
+    const wrap = document.querySelector('.search-combo[data-combo="' + id + '"]');
+    if (!wrap) return;
+    const input = wrap.querySelector(".combo-input");
+    const list = wrap.querySelector(".combo-list");
+    const opts = Array.prototype.slice.call(list.querySelectorAll(".combo-opt-m"));
+    let dirty = false;
+    const labelOf = v => { const o = opts.find(x => x.dataset.cval === v); return o ? o.textContent.replace(/^[☑☐]\s*/, "").trim() : v; };
+    const summary = () => !arr.length ? "" : (arr.length === 1 ? labelOf(arr[0]) : arr.length + " נבחרו");
+    const doFilter = () => { const q = input.value.trim().toLowerCase(); opts.forEach(o => { o.style.display = o.textContent.toLowerCase().indexOf(q) >= 0 ? "" : "none"; }); };
+    const closeList = () => { list.classList.add("hidden"); input.value = summary(); if (dirty) { dirty = false; onClose(); } };
+    input.addEventListener("focus", () => { input.value = ""; list.classList.remove("hidden"); doFilter(); });
+    input.addEventListener("input", () => { list.classList.remove("hidden"); doFilter(); });
+    input.addEventListener("keydown", e => { if (e.key === "Escape") { closeList(); input.blur(); } });
+    input.addEventListener("blur", () => setTimeout(closeList, 160));
+    const setMark = o => { const on = arr.indexOf(o.dataset.cval) >= 0; o.classList.toggle("on", on); const c = o.querySelector(".cbx"); if (c) c.textContent = on ? "☑" : "☐"; };
+    opts.forEach(o => o.addEventListener("mousedown", e => {   // preventDefault keeps focus on the input → list stays open
+      e.preventDefault(); const v = o.dataset.cval, i = arr.indexOf(v);
+      if (i >= 0) arr.splice(i, 1); else arr.push(v);
+      setMark(o); dirty = true;
+    }));
+    const clear = list.querySelector("[data-clear]");
+    if (clear) clear.addEventListener("mousedown", e => { e.preventDefault(); if (arr.length) { arr.length = 0; opts.forEach(setMark); dirty = true; } });
+    const caret = wrap.querySelector(".combo-caret");
+    if (caret) caret.addEventListener("mousedown", e => { e.preventDefault(); if (list.classList.contains("hidden")) input.focus(); else { closeList(); input.blur(); } });
+  }
 
   function renderScanner() {
     const all = scanSource();
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const hasTech = all.some(t => t.tech);
     const sectors = Array.from(new Set(all.map(t => t.sector))).sort();
-    const subsectors = Array.from(new Set(all.filter(t => scanState.sector === "all" || t.sector === scanState.sector).map(t => t.ind).filter(Boolean))).sort();
+    const subsectors = Array.from(new Set(all.filter(t => !scanState.sector.length || scanState.sector.indexOf(t.sector) >= 0).map(t => t.ind).filter(Boolean))).sort();
+    // drop any selected sub-sector that no longer belongs to the chosen sectors (prevents a stuck-empty result)
+    if (scanState.subsec.length) scanState.subsec = scanState.subsec.filter(x => subsectors.indexOf(x) >= 0);
     const patBtn = p => '<button class="chip' + (scanState.patterns.indexOf(p) >= 0 ? " on" : "") + '" data-pat="' + p + '">' + p + "</button>";
     const tfBtn = f => '<button class="chip' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + "</button>";
     const dirBtn = (v, l) => '<button class="chip' + (scanState.dir === v ? " on" : "") + '" data-dir="' + v + '">' + l + "</button>";
@@ -2035,8 +2080,8 @@
             '<button class="chip' + (scanState.inforce === "up" ? " on" : "") + '" data-inforce="up" title="IN FORCE שורי — הרצף הושלם והנר המשלים ירוק (ללונג). כבוי = סטאפ לקראת המהלך">IN FORCE 🔼</button>' +
             '<button class="chip' + (scanState.inforce === "down" ? " on" : "") + '" data-inforce="down" title="IN FORCE דובי — הרצף הושלם והנר המשלים אדום (לשורט). כבוי = סטאפ לקראת המהלך">IN FORCE 🔽</button>'
             : "") + "</div></div>" +
-        '<div class="fgrp"><label>סקטור</label>' + searchComboHtml("scanSector", [{ val: "all", label: "הכל" }].concat(sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") }))), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
-        '<div class="fgrp"><label>תת-סקטור</label>' + searchComboHtml("scanSubsec", [{ val: "all", label: "הכל" }].concat(subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") }))), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
+        '<div class="fgrp"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
+        '<div class="fgrp"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp"><label>שווי שוק <span class="muted" style="font-size:10px">(B=מיליארד · M=מיליון)</span></label><div class="chips" style="align-items:center"><input id="scanCapMin" type="text" placeholder="מ- 2B" style="width:72px" value="' + escAttr(scanState.capMin) + '"><span class="muted">–</span><input id="scanCapMax" type="text" placeholder="עד 100B" style="width:72px" value="' + escAttr(scanState.capMax) + '"></div></div>' +
@@ -2153,7 +2198,7 @@
     const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
     // optional result columns — shown if the user toggled them on OR the matching filter is active
     const optCols = [
-      { key: "ind", th: "תת-סקטור", tip: "תת-הסקטור (התעשייה) של המניה + תעודת הסל שלה", cell: (k, dma, t) => '<td class="tname" style="text-align:start">' + (t && t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : '<span class="muted">—</span>') + "</td>", active: scanState.subsec !== "all" },
+      { key: "ind", th: "תת-סקטור", tip: "תת-הסקטור (התעשייה) של המניה + תעודת הסל שלה", cell: (k, dma, t) => '<td class="tname" style="text-align:start">' + (t && t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : '<span class="muted">—</span>') + "</td>", active: scanState.subsec.length > 0 },
       { key: "rsi", th: "RSI" + _tfSuf(), tip: "RSI (0–100): מדד מומנטום. מעל 70 = קניית-יתר, מתחת 30 = מכירת-יתר" + _tfTip(), cell: k => { const v = _techVal(k, "rsi"); return '<td class="' + rsiCls(v) + '">' + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: techState.rsiMin > 0 || techState.rsiMax < 100 },
       { key: "mfi", th: "MFI" + _tfSuf(), tip: "MFI (0–100): תזרים כסף — כמו RSI אך משוקלל בווליום ('כסף חכם'). מעל 80 קניית-יתר, מתחת 20 מכירת-יתר" + _tfTip(), cell: k => { const v = _techVal(k, "mfi"); return '<td class="' + mfiCls(v) + '">' + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: techState.mfiMin > 0 || techState.mfiMax < 100 },
       { key: "rvol", th: "RVOL" + _tfSuf(), tip: "ווליום יחסי: נפח המסחר היום חלקי הממוצע. מעל 1× = פעילות ערה מהרגיל" + _tfTip(), cell: k => { const v = _techVal(k, "rvol"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "×") + "</td>"; }, active: _rv() > 0 },
@@ -2194,7 +2239,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector !== "all" || scanState.subsec !== "all" || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.capMin !== "" || scanState.capMax !== "" || scanState.tfs.length > 1 || cnt || mtfCnt || indCnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape !== "all" || scanState.broad !== "off" || scanState.sector.length || scanState.subsec.length || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.capMin !== "" || scanState.capMax !== "" || scanState.tfs.length > 1 || cnt || mtfCnt || indCnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -2246,8 +2291,8 @@
     return all.filter(t => {
       if (scanState.universe === "sp500" && !t.sp) return false;
       if (scanState.universe === "comm" && !t.comm) return false;
-      if (scanState.sector !== "all" && t.sector !== scanState.sector) return false;
-      if (scanState.subsec !== "all" && t.ind !== scanState.subsec) return false;
+      if (scanState.sector.length && scanState.sector.indexOf(t.sector) < 0) return false;
+      if (scanState.subsec.length && scanState.subsec.indexOf(t.ind) < 0) return false;
       if (scanState.sym && t.sym.indexOf(scanState.sym.toUpperCase()) < 0) return false;
       if (scanState.ftfc && !t.ftfc) return false;
       if (scanState.priceMin !== "" || scanState.priceMax !== "") {
@@ -2403,8 +2448,8 @@
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
     const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = "off"; reRender(); };
     document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; reRender(); });
-    wireSearchCombo("scanSector", v => { scanState.sector = v; scanState.subsec = "all"; reRender(); });
-    wireSearchCombo("scanSubsec", v => { scanState.subsec = v; reRender(); });
+    wireMultiCombo("scanSector", scanState.sector, () => reRender());
+    wireMultiCombo("scanSubsec", scanState.subsec, () => reRender());
     // live filter as you type (not only on Enter) — restore focus + caret after the re-render
     const sym = $("#scanSym");
     if (sym) sym.oninput = () => {
@@ -2488,8 +2533,8 @@
     document.querySelectorAll("[data-inforce]").forEach(b => g(b, scanState.inforce !== "off" && b.dataset.inforce === scanState.inforce));
     gid("scanShape", scanState.shape !== "all");
     gid("scanBroad", scanState.broad !== "off");
-    gid("scanSector", scanState.sector !== "all");
-    gid("scanSubsec", scanState.subsec !== "all");
+    gid("scanSector", scanState.sector.length > 0);
+    gid("scanSubsec", scanState.subsec.length > 0);
     gid("scanSym", scanState.sym !== "");
     gid("scanPmin", scanState.priceMin !== "");
     gid("scanPmax", scanState.priceMax !== "");

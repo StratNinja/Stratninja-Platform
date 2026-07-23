@@ -212,6 +212,15 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .combo-opt { padding:7px 10px; border-radius:6px; font-size:13px; cursor:pointer; white-space:nowrap; color:var(--ink); }
 .combo-opt:hover { background:var(--accent); color:#fff; }
 .combo-opt.sel { background:rgba(124,108,240,.18); }
+/* multi-select combo: checkbox rows + a clear action */
+.combo-opt-m { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:6px; font-size:13px; cursor:pointer; white-space:nowrap; color:var(--ink); }
+.combo-opt-m:hover { background:var(--accent); color:#fff; }
+.combo-opt-m.on { background:rgba(124,108,240,.18); }
+.combo-opt-m .cbx { font-size:14px; line-height:1; color:var(--muted); }
+.combo-opt-m.on .cbx { color:#a99cff; }
+.combo-opt-m:hover .cbx { color:#fff; }
+.combo-clear { padding:6px 10px; margin-bottom:4px; border-bottom:1px solid var(--line); font-size:12px; color:var(--muted); cursor:pointer; border-radius:6px; }
+.combo-clear:hover { color:#ff7a86; }
 /* compact one-row technical filters */
 .tech-row { gap:10px 14px !important; margin-top:6px; }
 .tech-row .fgrp label { font-size:10.5px; }
