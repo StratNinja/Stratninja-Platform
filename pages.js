@@ -3624,14 +3624,24 @@
       '<text x="18" y="' + (lo + 14) + '" fill="#8894b5" font-size="10">נמוך קודם</text>';
     const prior = _cndl(62, hi, lo, 46, 100, "#5b6690");        // static reference candle
     // per-type keyframes: wick top(y1)/bottom(y2), body y/height, color, timing
+    const reduce = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    const loop3 = (type === "3") && !reduce;   // the "3" auto-loops BOTH ways it can form (1→2U→3, then 1→2D→3)
     let W1, W2, BY, BH, kt, dur, fill;
     if (type === "1") { W1 = "78;52"; W2 = "78;104"; BY = "78;64"; BH = "0;28"; kt = "0;1"; dur = "0.7s"; fill = "#7b88ad"; }
     else if (type === "2U") { W1 = "52;52;12"; W2 = "82;82;82"; BY = "44;44;20"; BH = "14;14;38"; kt = "0;0.4;1"; dur = "0.9s"; fill = "#22c55e"; }
     else if (type === "2D") { W1 = "68;68;68"; W2 = "104;104;140"; BY = "78;78;92"; BH = "14;14;40"; kt = "0;0.4;1"; dur = "0.9s"; fill = "#ef4444"; }
+    else if (loop3) {          // inside→2U→3, then inside→2D→3, then repeat (last frame == first = seamless)
+      kt  = "0;0.07;0.18;0.26;0.38;0.46;0.5;0.57;0.68;0.76;0.88;1"; dur = "7s";
+      W1  = "52;52;12;12;12;12;52;52;52;52;12;52";
+      W2  = "104;104;104;104;140;140;104;104;140;140;140;104";
+      BY  = "64;64;30;30;30;30;64;64;64;64;30;64";
+      BH  = "28;28;62;62;80;80;28;28;56;56;90;28";
+      fill = "#7b88ad;#7b88ad;#22c55e;#22c55e;#f2b64a;#f2b64a;#7b88ad;#7b88ad;#ef4444;#ef4444;#f2b64a;#7b88ad";
+    }
     else { W1 = "52;52;12;12"; W2 = "104;104;104;140"; BY = "64;64;30;30"; BH = "28;28;62;80"; kt = "0;0.28;0.62;1"; dur = "1.6s"; fill = "#7b88ad;#22c55e;#22c55e;#f2b64a"; }
     const finalFill = fill.indexOf(";") >= 0 ? fill.split(";").pop() : fill;
     const last = s => s.split(";").pop();
-    const A = (attr, vals) => '<animate attributeName="' + attr + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + dur + '" begin="' + sid + '.mouseenter" fill="freeze" restart="always"/>';
+    const A = (attr, vals) => '<animate attributeName="' + attr + '" values="' + vals + '" keyTimes="' + kt + '" dur="' + dur + '" ' + (loop3 ? 'begin="0s" repeatCount="indefinite"' : 'begin="' + sid + '.mouseenter" fill="freeze" restart="always"') + '/>';
     const colorAnim = fill.indexOf(";") >= 0 ? A("stroke", fill) : "";
     const bodyColorAnim = fill.indexOf(";") >= 0 ? A("fill", fill) : "";
     const wick = '<line x1="' + cx + '" x2="' + cx + '" y1="' + last(W1) + '" y2="' + last(W2) + '" stroke="' + finalFill + '" stroke-width="2.5" stroke-linecap="round">' + A("y1", W1) + A("y2", W2) + colorAnim + "</line>";
@@ -3673,7 +3683,7 @@
       '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">סרטון קצר לכל עמוד — יוטבעו כאן</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
-    const hint = '<div class="lrn-hint">💡 רחף עם העכבר על כל דיאגרמה כדי לראות איך הנר נוצר ✨</div>';
+    const hint = '<div class="lrn-hint">💡 רחף עם העכבר על דיאגרמה כדי לראות איך הנר נוצר · נר 3 מתנגן אוטומטית (שתי הדרכים שהוא נוצר) ✨</div>';
     const badgeCtl = _newbieHidden() ? "" :
       '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
     return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
