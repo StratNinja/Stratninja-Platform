@@ -3606,6 +3606,68 @@
     });
   }
 
+  // ========== LEARN / ACADEMY ==========
+  function _cndl(cx, wickTop, wickBot, bodyTop, bodyBot, col) {
+    return '<line x1="' + cx + '" y1="' + wickTop + '" x2="' + cx + '" y2="' + wickBot + '" stroke="' + col + '" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<rect x="' + (cx - 12) + '" y="' + bodyTop + '" width="24" height="' + Math.max(4, bodyBot - bodyTop) + '" rx="3" fill="' + col + '"/>';
+  }
+  function _candleDiagram(type) {
+    const GREY = "#7b88ad", GREEN = "#22c55e", RED = "#ef4444", AMBER = "#f2b64a";
+    const hi = 28, lo = 122;                                    // prior candle high/low levels
+    const guides =
+      '<line x1="18" y1="' + hi + '" x2="196" y2="' + hi + '" stroke="#57608a" stroke-width="1" stroke-dasharray="4 4"/>' +
+      '<line x1="18" y1="' + lo + '" x2="196" y2="' + lo + '" stroke="#57608a" stroke-width="1" stroke-dasharray="4 4"/>' +
+      '<text x="18" y="' + (hi - 5) + '" fill="#8894b5" font-size="10">גבוה קודם</text>' +
+      '<text x="18" y="' + (lo + 14) + '" fill="#8894b5" font-size="10">נמוך קודם</text>';
+    const prior = _cndl(62, hi, lo, 46, 100, "#5b6690");        // reference candle (grey-blue)
+    let cur;
+    if (type === "1") cur = _cndl(140, 52, 104, 64, 92, GREY);
+    else if (type === "2U") cur = _cndl(140, 12, 82, 20, 58, GREEN);
+    else if (type === "2D") cur = _cndl(140, 68, 140, 92, 132, RED);
+    else cur = _cndl(140, 12, 140, 40, 110, AMBER);            // "3" outside
+    return '<svg viewBox="0 0 214 150" width="100%" style="max-width:230px" role="img" aria-label="דיאגרמת נר ' + type + '">' + guides + prior + cur + "</svg>";
+  }
+  function renderLearn() {
+    const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
+    const card = (letter, title, sub, type, body, badge) =>
+      '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter">' + letter + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
+      '<div class="lrn-body"><div class="lrn-svg">' + _candleDiagram(type) + "</div><div class=\"lrn-txt\">" + body +
+      '<div class="lrn-inscan">בסורק: ' + badge + "</div></div></div></div>";
+    const head =
+      '<div class="page-head"><h1>📚 לימוד — יסודות TheStrat</h1><div class="sub">כל החומר הלימודי במרוכז. מתחילים כאן: <b>סוגי הנרות</b> — האלף־בית של השיטה. אחריהם FTFC, Ninja Score, וסרטוני המדריכים.</div></div>';
+    const intro =
+      '<div class="panel lrn-intro"><div class="lrn-intro-in"><div style="font-size:34px">🕯️</div><div>' +
+      '<h2 style="margin:0 0 6px">שלושת סוגי הנרות — ורק הם</h2>' +
+      '<p class="muted" style="margin:0;max-width:64ch">בכל טיימפריים, מחיר יכול לעשות רק <b style="color:#eaf0ff">3 דברים</b>: להישאר בתוך הטווח של הנר הקודם (1), לפרוץ בכיוון אחד (2U/2D), או לפרוץ את שני הצדדים (3). ברגע שאתה מזהה אותם — אתה קורא כל גרף.</p>' +
+      "</div></div></div>";
+    const cards =
+      card("1", "נר 1 · פנימי (Inside)", "התכנסות מחיר — הנר כולו בתוך טווח הנר הקודם", "1",
+        '<p>הנר <b>לא</b> עשה גבוה חדש ולא נמוך חדש — הוא "נבלע" בתוך הנר הקודם. זו <b>התכנסות</b>: קפיץ דחוס. לא סוחרים בתוכה — <b>מחכים לפריצה</b>.</p>',
+        scanBadge("1", "b1")) +
+      card("2U", "נר 2U · כיווני מעלה", "פרץ את הגבוה של הנר הקודם", "2U",
+        '<p>הנר <b>פרץ מעל הגבוה</b> של הנר הקודם. אות כיוון מעלה — הקונים לקחו שליטה. זו נקודת פריצה שאפשר לסחור.</p>',
+        scanBadge("2U", "b2u")) +
+      card("2D", "נר 2D · כיווני מטה", "שבר את הנמוך של הנר הקודם", "2D",
+        '<p>הנר <b>שבר מתחת לנמוך</b> של הנר הקודם. אות כיוון מטה — המוכרים לקחו שליטה.</p>',
+        scanBadge("2D", "b2d")) +
+      card("3", "נר 3 · חיצוני (Outside)", "פרץ גם את הגבוה וגם את הנמוך — התרחבות/עוצמה", "3",
+        '<p>הנר <b>פרץ את שני הצדדים</b> של הנר הקודם — התרחבות ועוצמה. <b>חשוב:</b> נר 3 תמיד מגיע אחרי נר 2 (קודם פורצים צד אחד, ואז גם את השני).</p>',
+        scanBadge("3", "b3"));
+    const next =
+      '<div class="panel lrn-next"><h3 style="margin:0 0 10px">🎬 בקרוב — הרחבה</h3>' +
+      '<div class="lrn-nextgrid">' +
+      '<div class="lrn-nextitem"><b>המשכיות טיימפריימים (FTFC)</b><span class="muted">כשכל הזמנים מיושרים לאותו כיוון = אות חזק</span></div>' +
+      '<div class="lrn-nextitem"><b>Ninja Score</b><span class="muted">איך הציון 0–100 מדרג את איכות הסטאפ</span></div>' +
+      '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">סרטון קצר לכל עמוד — יוטבעו כאן</span></div>' +
+      "</div>" +
+      '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
+    return head + intro + '<div class="lrn-cards">' + cards + "</div>" + next;
+  }
+  function wireLearn() {
+    const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
+    const b = $("#lrnToToday"); if (b) b.onclick = () => setPage("today");
+  }
+
   // ---------- router ----------
   const PAGES = {
     market: { render: renderMarket, wire: wireMarket },
@@ -3615,6 +3677,7 @@
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
+    learn: { render: renderLearn, wire: wireLearn },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
   };
   const state = { page: "market" };

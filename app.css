@@ -877,6 +877,32 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
   border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; margin: 1px 0 1px 4px; white-space: nowrap; }
 .fav-alert-x { cursor: pointer; color: var(--muted); font-size: 11px; padding: 0 4px; }
 .fav-alert-x:hover { color: #ef4444; }
+/* ===== Learn / Academy page ===== */
+.lrn-intro { background: linear-gradient(180deg, rgba(124,108,240,.10), transparent); }
+.lrn-intro-in { display: flex; gap: 16px; align-items: flex-start; }
+.lrn-cards { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; margin-top: 14px; }
+@media (max-width: 720px){ .lrn-cards { grid-template-columns: 1fr; } }
+.lrn-card { display: flex; flex-direction: column; }
+.lrn-top { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.lrn-top h3 { margin: 0; font-size: 17px; }
+.lrn-letter { flex: 0 0 auto; min-width: 46px; height: 40px; padding: 0 10px; border-radius: 11px; display: grid; place-items: center;
+  font-weight: 900; font-size: 16px; color: #fff; background: linear-gradient(160deg, #6a5cf0, #4b3fc4); box-shadow: 0 3px 10px rgba(90,70,220,.35); }
+.lrn-body { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+.lrn-svg { flex: 0 0 auto; background: rgba(11,15,26,.5); border: 1px solid var(--line); border-radius: 12px; padding: 8px; }
+.lrn-txt { flex: 1 1 220px; min-width: 0; }
+.lrn-txt p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink); line-height: 1.55; }
+.lrn-inscan { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 7px; }
+.lrn-badge { display: inline-grid; place-items: center; min-width: 34px; height: 24px; padding: 0 8px; border-radius: 7px; font-weight: 800; font-size: 12px; color: #0b1220; }
+.lrn-badge.b1 { background: #7b88ad; }
+.lrn-badge.b2u { background: #22c55e; }
+.lrn-badge.b2d { background: #ef4444; color: #fff; }
+.lrn-badge.b3 { background: #f2b64a; }
+.lrn-next { margin-top: 14px; }
+.lrn-nextgrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+@media (max-width: 720px){ .lrn-nextgrid { grid-template-columns: 1fr; } }
+.lrn-nextitem { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+.lrn-nextitem b { font-size: 14px; }
+.lrn-nextitem .muted { font-size: 12px; }
 .fav-pcount { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px;
   padding: 0 4px; border-radius: 9px; background: #ef4444; color: #fff; font-size: 11px; font-weight: 800;
   box-shadow: 0 0 0 1px rgba(0,0,0,.25); cursor: pointer; transition: .12s; position: relative; }
