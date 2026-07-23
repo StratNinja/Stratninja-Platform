@@ -3659,7 +3659,7 @@
     const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
     const card = (letter, title, sub, type, body, badge) =>
       '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter">' + letter + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
-      '<div class="lrn-body"><div class="lrn-svg">' + _candleDiagram(type) + "</div><div class=\"lrn-txt\">" + body +
+      '<div class="lrn-body"><div class="lrn-svg" data-cltype="' + type + '" title="לחץ למבט מבפנים 🔬">' + _candleDiagram(type) + "</div><div class=\"lrn-txt\">" + body +
       '<div class="lrn-inscan">בסורק: ' + badge + "</div></div></div></div>";
     const head =
       '<div class="page-head"><h1>📚 לימוד — יסודות TheStrat</h1><div class="sub">כל החומר הלימודי במרוכז. מתחילים כאן: <b>סוגי הנרות</b> — האלף־בית של השיטה. אחריהם FTFC, Ninja Score, וסרטוני המדריכים.</div></div>';
@@ -3689,7 +3689,7 @@
       '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">סרטון קצר לכל עמוד — יוטבעו כאן</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
-    const hint = '<div class="lrn-hint">💡 רחף עם העכבר על דיאגרמה כדי לראות איך הנר נוצר · נר 3 מראה בריחוף את שתי הדרכים שהוא נוצר ✨</div>';
+    const hint = '<div class="lrn-hint">💡 רחף על דיאגרמה כדי לראות איך הנר נוצר · <b>לחץ עליה</b> לזום פנימה ולראות את הנרות הקטנים שמרכיבים אותה 🔬</div>';
     const badgeCtl = _newbieHidden() ? "" :
       '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
     return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
@@ -3717,7 +3717,68 @@
     const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
     const b = $("#lrnToToday"); if (b) b.onclick = () => setPage("today");
     { const rb = $("#lrnRemoveBadge"); if (rb) rb.onclick = () => _newbiePopup(); }   // re-open the remove dialog on demand
+    document.querySelectorAll("#page [data-cltype]").forEach(el => el.onclick = () => openCandleLesson(el.dataset.cltype));
     setTimeout(_maybeAskNewbie, 450);   // after the page settles, offer to remove the "start here" badge (once)
+  }
+
+  // ---- interactive candle lesson: click a diagram → zoom into the LOWER timeframe and watch the
+  //      small candles that make up the bar. Teaches WHY each type means what it means. ----
+  const CL_NAME = { "1": "נר 1 · פנימי", "2U": "נר 2U · כיווני מעלה", "2D": "נר 2D · כיווני מטה", "3": "נר 3 · חיצוני" };
+  const CL_TEXT = {
+    "1": '🚫 <b>בפנים אין כיוון.</b> המחיר מתנדנד בתוך הטווח של הנר הקודם — עולה, יורד, ושוב, בלי הכרעה. לכן <b>לא סוחרים בהתכנסות</b>: אין יתרון, רק רעש. מחכים לפריצה.',
+    "2U": '💪🟢 <b>פריצה בעוצמה.</b> הנרות הקטנים בונים לחץ ואז פורצים <b>מעל הגבוה הקודם</b> — הקונים לקחו שליטה. כיוון ברור מעלה.',
+    "2D": '💪🔴 <b>שבירה בעוצמה.</b> הנרות הקטנים שוברים <b>מתחת לנמוך הקודם</b> — המוכרים לקחו שליטה. כיוון ברור מטה.',
+    "3": '🔄 <b>התרחבות מחיר.</b> קודם המחיר עשה <b>נמוך חדש</b> (🔴), ואז <b>התהפך</b> ועשה <b>גבוה חדש</b> (🟢). הנר לקח את שני הצדדים — עוצמה מקסימלית, אבל צריך לזהות את ההיפוך.'
+  };
+  // internal lower-TF price path (y in a 0..260 stage · higher y = lower price). walls: prior high y=54, low y=206
+  const CL_PATH = { "1": [150,118,152,124,156,126,150,130], "2U": [160,150,134,112,86,58,42,30], "2D": [100,112,132,160,188,214,230,242], "3": [120,150,182,214,236,180,110,40] };
+  function _internalCandles(type) {
+    const hiY = 54, loY = 206, x0 = 70, dx = 42, W = 440, H = 264;
+    const walls =
+      '<line x1="30" y1="' + hiY + '" x2="' + (W - 20) + '" y2="' + hiY + '" stroke="#6b7699" stroke-width="1.5" stroke-dasharray="6 5"/>' +
+      '<line x1="30" y1="' + loY + '" x2="' + (W - 20) + '" y2="' + loY + '" stroke="#6b7699" stroke-width="1.5" stroke-dasharray="6 5"/>' +
+      '<text x="34" y="' + (hiY - 7) + '" fill="#9aa6c6" font-size="12">גבוה קודם</text>' +
+      '<text x="34" y="' + (loY + 18) + '" fill="#9aa6c6" font-size="12">נמוך קודם</text>';
+    const pts = CL_PATH[type]; let cndls = "";
+    for (let i = 0; i < pts.length; i++) {
+      const open = i === 0 ? pts[0] : pts[i - 1], close = pts[i];
+      const up = close < open, col = up ? "#22c55e" : "#ef4444";
+      const bt = Math.min(open, close), bb = Math.max(open, close), cx = x0 + i * dx;
+      const wt = bt - (7 + (i % 3) * 4), wb = bb + (7 + ((i + 1) % 3) * 4);
+      cndls += '<g class="cl-icandle" style="--d:' + (i * 0.26).toFixed(2) + 's">' +
+        '<line x1="' + cx + '" y1="' + wt + '" x2="' + cx + '" y2="' + wb + '" stroke="' + col + '" stroke-width="2"/>' +
+        '<rect x="' + (cx - 9) + '" y="' + bt + '" width="18" height="' + Math.max(4, bb - bt) + '" rx="2" fill="' + col + '"/></g>';
+    }
+    let marks = "";
+    if (type === "3") marks =
+      '<text class="cl-mark" x="' + (x0 + 4 * dx) + '" y="256" fill="#ef4444" font-size="12" text-anchor="middle">נמוך חדש</text>' +
+      '<text class="cl-mark" x="' + (x0 + 5 * dx) + '" y="176" fill="#f2b64a" font-size="12" text-anchor="middle">היפוך ↑</text>' +
+      '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="30" fill="#22c55e" font-size="12" text-anchor="middle">גבוה חדש</text>';
+    else if (type === "2U") marks = '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="26" fill="#22c55e" font-size="13" text-anchor="middle">פריצה! 🚀</text>';
+    else if (type === "2D") marks = '<text class="cl-mark" x="' + (x0 + 7 * dx) + '" y="258" fill="#ef4444" font-size="13" text-anchor="middle">שבירה! 💥</text>';
+    else marks = '<text class="cl-mark" x="' + (x0 + 3.5 * dx) + '" y="135" fill="#9aa6c6" font-size="14" text-anchor="middle">↔ בלי כיוון</text>';
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:520px">' + walls + cndls + marks + "</svg>";
+  }
+  let _clTimers = [];
+  function _clClear() { _clTimers.forEach(clearTimeout); _clTimers = []; }
+  function runCandleLesson(type, stage, callout, tfEl) {
+    _clClear();
+    tfEl.textContent = "🔭 מסגרת זמן גבוהה";
+    callout.innerHTML = "זה <b>" + CL_NAME[type] + "</b> במסגרת זמן גבוהה. בוא נצלול פנימה ונראה מאילו נרות קטנים הוא מורכב.";
+    stage.className = "cl-stage";
+    stage.innerHTML = _candleDiagram(type).replace("max-width:230px", "max-width:340px");
+    { const big = stage.querySelector("svg"); if (big) { try { big.dispatchEvent(new MouseEvent("mouseenter")); } catch (e) {} } }
+    _clTimers.push(setTimeout(() => { stage.classList.add("cl-zoom"); tfEl.textContent = "🔎 זום אין → מסגרת זמן נמוכה"; callout.innerHTML = "צוללים פנימה…"; }, 2500));
+    _clTimers.push(setTimeout(() => { stage.classList.remove("cl-zoom"); tfEl.textContent = "🕯️ מסגרת זמן נמוכה — מה קורה בפנים"; stage.innerHTML = _internalCandles(type); }, 3400));
+    _clTimers.push(setTimeout(() => { callout.innerHTML = CL_TEXT[type]; }, 3400 + 8 * 260 + 300));
+  }
+  function openCandleLesson(type) {
+    modal("🔬 " + CL_NAME[type] + " — מבט מבפנים",
+      '<div class="cl-wrap"><div class="cl-tf" id="clTf"></div><div class="cl-stage" id="clStage"></div><div class="cl-callout" id="clCallout"></div>' +
+      '<div style="margin-top:14px"><button class="btn primary" id="clReplay">▶ הפעל שוב</button></div></div>', "candlelesson");
+    const stage = $("#clStage"), callout = $("#clCallout"), tfEl = $("#clTf");
+    runCandleLesson(type, stage, callout, tfEl);
+    { const rp = $("#clReplay"); if (rp) rp.onclick = () => runCandleLesson(type, stage, callout, tfEl); }
   }
 
   // ---------- router ----------

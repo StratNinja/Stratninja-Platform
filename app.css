@@ -899,6 +899,23 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .lrn-hint { text-align: center; color: var(--muted); font-size: 13px; margin: 12px 0 2px; }
 .lrn-badgectl { margin: 6px 0 0; }
 .lrn-badgectl .btn { font-size: 12.5px; }
+/* interactive "look inside" candle lesson */
+.modal.candlelesson { max-width: 640px; }
+.cl-wrap { text-align: center; }
+.cl-tf { color: var(--purple); font-weight: 800; font-size: 13px; letter-spacing: .04em; min-height: 18px; transition: opacity .3s; }
+.cl-stage { min-height: 280px; display: flex; align-items: center; justify-content: center; margin: 10px 0;
+  transition: transform .8s cubic-bezier(.5,0,.3,1), opacity .8s; }
+.cl-stage.cl-zoom { transform: scale(1.3); opacity: .06; }
+.cl-callout { min-height: 56px; color: var(--ink); font-size: 15px; max-width: 60ch; margin: 6px auto 0; line-height: 1.55; }
+.cl-callout b { color: #fff; }
+.cl-icandle { opacity: 0; }
+.cl-mark { opacity: 0; font-weight: 700; }
+@media (prefers-reduced-motion: no-preference){
+  .cl-icandle { animation: clFadeIn .42s var(--d,0s) both; }
+  .cl-mark { animation: clFadeIn .5s 2.3s both; }
+}
+@media (prefers-reduced-motion: reduce){ .cl-icandle, .cl-mark { opacity: 1; } }
+@keyframes clFadeIn { from { opacity: 0; } to { opacity: 1; } }
 .lrn-txt { flex: 1 1 220px; min-width: 0; }
 .lrn-txt p { margin: 0 0 10px; font-size: 14.5px; color: var(--ink); line-height: 1.55; }
 .lrn-inscan { font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 7px; }
