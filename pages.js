@@ -977,7 +977,7 @@
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
   // sector / subsec are MULTI-select: arrays of selected names (empty = "all")
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: "all", broad: "off", inforce: "off", sigShape: "all", sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
   // normalize a stored sector/subsec value (old presets held a string "all"/name) to a selection array
   function _toSelArr(v) { return Array.isArray(v) ? v.slice() : (v && v !== "all" ? [v] : []); }
   // parse a market-cap input like "2B" / "60B" / "500M" / "1.5T" → dollars. Bare number = billions.
@@ -1016,7 +1016,7 @@
   function scanConfigSnapshot() {
     const s = scanState;
     return {
-      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad, inforce: s.inforce,
+      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape, broad: s.broad, inforce: s.inforce, sigShape: s.sigShape,
         sector: s.sector.slice(), subsec: s.subsec.slice(), sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
         capMin: s.capMin, capMax: s.capMax, mtf: JSON.parse(JSON.stringify(s.mtf)) },
       t: Object.assign({}, techState),
@@ -1032,7 +1032,7 @@
     const keepUni = scanState.universe, keepMtfOpen = scanState.mtfOpen, keepIndOpen = scanState.indOpen, keepTechOpen = techState.techOpen;
     resetScan();
     scanState.universe = keepUni; scanState.mtfOpen = keepMtfOpen; scanState.indOpen = keepIndOpen; techState.techOpen = keepTechOpen;
-    ["dir", "shape", "broad", "inforce", "sym", "ftfc", "priceMin", "priceMax", "capMin", "capMax"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
+    ["dir", "shape", "broad", "inforce", "sigShape", "sym", "ftfc", "priceMin", "priceMax", "capMin", "capMax"].forEach(k => { if (s[k] !== undefined) scanState[k] = s[k]; });
     if (s.sector !== undefined) scanState.sector = _toSelArr(s.sector);   // migrate old string presets → array
     if (s.subsec !== undefined) scanState.subsec = _toSelArr(s.subsec);
     if (s.tfs) scanState.tfs = s.tfs.slice();
@@ -1892,7 +1892,7 @@
     return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
   }
   function resetScan() {
-    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = "off";
+    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = "all"; scanState.broad = "off"; scanState.inforce = "off"; scanState.sigShape = "all";
     scanState.sector = []; scanState.subsec = []; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.capMin = ""; scanState.capMax = "";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
@@ -2078,12 +2078,18 @@
         "</div></div>" +
         '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
-        '<div class="fgrp"><label>צורת נר</label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
-        '<div class="fgrp"><label>תבניות (רצף Strat)</label><div class="chips" style="align-items:center"><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>" +
-          (_isCombo(scanState.broad) ?
-            '<button class="chip' + (scanState.inforce === "up" ? " on" : "") + '" data-inforce="up" title="IN FORCE שורי — הרצף הושלם והנר המשלים ירוק (ללונג). כבוי = סטאפ לקראת המהלך">IN FORCE 🔼</button>' +
-            '<button class="chip' + (scanState.inforce === "down" ? " on" : "") + '" data-inforce="down" title="IN FORCE דובי — הרצף הושלם והנר המשלים אדום (לשורט). כבוי = סטאפ לקראת המהלך">IN FORCE 🔽</button>'
-            : "") + "</div></div>" +
+        '<div class="fgrp"><label>צורת נר <span class="muted" style="font-size:10px">· הנר הנוכחי</span></label><select id="scanShape">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.shape === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div>" +
+        // IN FORCE — standalone (works WITHOUT a sequence pattern): the close is holding beyond the prior bar's extreme.
+        // 🔼 = above the prior high (2U in force / long trigger) · 🔽 = below the prior low. Optionally require the
+        // prior "signal" bar to be a given shape → e.g. 🔼 + פטיש = "we're above the high of a prior hammer".
+        '<div class="fgrp"><label>IN FORCE <span class="muted" style="font-size:10px">· מעבר לקצה הנר הקודם</span></label><div class="chips" style="align-items:center">' +
+          '<button class="chip' + (scanState.inforce === "up" ? " on" : "") + '" data-inforce="up" title="הסגירה מעל הגבוה של הנר הקודם בטיימפריים הנבחר — טריגר לונג מוחזק (עובד גם בלי תבנית)">🔼 מעל הגבוה</button>' +
+          '<button class="chip' + (scanState.inforce === "down" ? " on" : "") + '" data-inforce="down" title="הסגירה מתחת לנמוך של הנר הקודם — טריגר שורט מוחזק">🔽 מתחת לנמוך</button>' +
+          ((scanState.inforce === "up" || scanState.inforce === "down")
+            ? '<select id="scanSigShape" title="צורת נר האיתות — הנר הקודם שאת הקצה שלו פרצנו (למשל פטיש)">' + SHAPE_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.sigShape === o[0] ? " selected" : "") + ">" + (o[0] === "all" ? "כל נר איתות" : o[1]) + "</option>").join("") + "</select>"
+            : "") +
+        "</div></div>" +
+        '<div class="fgrp"><label>תבניות (רצף Strat)</label><div class="chips" style="align-items:center"><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div></div>" +
         '<div class="fgrp"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
@@ -2323,6 +2329,15 @@
         if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
         if (scanState.dir !== "all" && c.c !== scanState.dir) return false;
         if (scanState.shape !== "all" && (c.sh || "") !== scanState.shape) return false;
+        // IN FORCE (standalone): the CLOSE is holding beyond the prior bar's extreme — ifc="up" (above prior high)
+        // / "down" (below prior low). Works with any candle type and WITHOUT a sequence pattern. When a signal
+        // shape is set, also require the prior bar (the one we broke) to be that shape → e.g. above a prior hammer.
+        if (scanState.inforce === "up" || scanState.inforce === "down") {
+          const ifcVal = (c.ifc !== undefined) ? c.ifc
+            : (c.t === "2U" && c.br !== "down" ? "up" : (c.t === "2D" && c.br !== "up" ? "down" : ""));
+          if (ifcVal !== scanState.inforce) return false;
+          if (scanState.sigShape !== "all" && (c.psh || "") !== scanState.sigShape) return false;
+        }
         if (scanState.broad !== "off") {
           if (scanState.broad === "any" || scanState.broad === "up" || scanState.broad === "down") {
             const br = c.br || "";
@@ -2334,16 +2349,10 @@
             const n = p.length;                                         // pattern length (2 or 3)
             const inf = scanState.inforce;                              // "off" | "up" | "down" | true(legacy=any)
             const inforceOn = inf === true || inf === "up" || inf === "down" || inf === "any";
+            // IN FORCE toggle also means "the sequence is COMPLETED" (last n bars) vs a setup approaching the final bar.
+            // (the precise close-beyond-extreme check is handled by the standalone IN FORCE block above.)
             if (inforceOn) {
               if (sq.slice(3 - n).join("-") !== scanState.broad) return false;   // full pattern completed (last n bars)
-              // IN FORCE (precise): the current CLOSE must be HOLDING beyond the prior bar's extreme —
-              // ifc="up" = close above the prior high (real long trigger) / ifc="down" = close below the
-              // prior low. A bar that broke the high then fell back (AAP/ELS Q) has ifc="" → not in force,
-              // it's a reversal. (fallback to bar-type if ifc missing on pre-rescan data.)
-              const ifcVal = (c.ifc !== undefined) ? c.ifc
-                : (c.t === "2U" && c.br !== "down" ? "up" : (c.t === "2D" && c.br !== "up" ? "down" : ""));
-              if (inf === "up"   && ifcVal !== "up")   return false;   // 🔼 holding above the prior high
-              if (inf === "down" && ifcVal !== "down") return false;   // 🔽 holding below the prior low
             } else if (sq.slice(3 - (n - 1)).join("-") !== p.slice(0, n - 1).join("-")) return false;   // setup: approaching the final bar
           }
         }
@@ -2451,7 +2460,8 @@
     { const sg = $("#scanSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     const shp = $("#scanShape"); if (shp) shp.onchange = () => { scanState.shape = shp.value; reRender(); };
     const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = "off"; reRender(); };
-    document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; reRender(); });
+    document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; if (scanState.inforce === "off") scanState.sigShape = "all"; reRender(); });
+    { const sg = $("#scanSigShape"); if (sg) sg.onchange = () => { scanState.sigShape = sg.value; reRender(); }; }
     wireMultiCombo("scanSector", scanState.sector, () => reRender());
     wireMultiCombo("scanSubsec", scanState.subsec, () => reRender());
     // live filter as you type (not only on Enter) — restore focus + caret after the re-render
