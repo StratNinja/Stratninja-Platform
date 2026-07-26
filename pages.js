@@ -539,11 +539,25 @@
     const body = CMAP_ROWS.map(([key, desc, cls]) =>
       '<tr><td class="cm-type" title="' + desc + '">' + key + "</td>" +
       cols.map(tf => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + desc + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
+    // prominent auto-verdict: dominant candle structure · strongest (most bullish) timeframe · leading sector
+    let domB = null, domN = -1;
+    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    let bestTf = null, bestScore = -Infinity;
+    cols.forEach(tf => {
+      const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0);
+      const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0);
+      if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; }
+    });
+    const cmLead = (mktU().sectorLeaders || [])[0];
+    const verdict = '<div class="cm-verdict">' +
+      '<span class="cmv-item"><span class="cmv-k">המבנה הדומיננטי</span><span class="cmv-v">' + (domB || "—") + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">הטיימפריים החזק</span><span class="cmv-v">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">הסקטור המוביל</span><span class="cmv-v pos">' + (cmLead ? secHe(cmLead.name) : "—") + "</span></span></div>";
     _cmFacts = candleMapFacts();
     const firstFact = _cmFacts.length ? _cmFacts[Math.floor(Math.random() * _cmFacts.length)] : "";
-    const insightBox = _cmFacts.length
+    const insightBox = verdict + (_cmFacts.length
       ? '<div class="cm-insight"><span class="cm-bulb">💡</span><span id="cmInsightText">' + firstFact + "</span></div>"
-      : "";
+      : "");
     return '<div class="panel"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימה</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div>" + insightBox + "</div>";
   }
@@ -728,10 +742,13 @@
     if (list.length < 4) list = idx.slice(0, 6);
     return '<div class="idx-row">' + list.map(r => {
       const v = r.chg, col = v == null ? "var(--muted)" : v > 0.05 ? "var(--green)" : v < -0.05 ? "var(--red)" : "var(--muted)";
+      const dt = (r.D && r.D.t) ? r.D.t : null;   // daily Strat candle type
+      const dCls = (r.D && r.D.c) ? (r.D.c === "up" ? "pos" : r.D.c === "down" ? "neg" : "") : "";
       return '<div class="idx-card ' + ((v || 0) >= 0 ? "up" : "dn") + '">' +
         '<span class="sym tsym clickable" data-chart="' + r.sym + '" data-tf="D">' + r.sym + "</span>" +
-        '<span class="chg" style="color:' + col + '"><span class="arrow">' + _arrow(v) + "</span>" + (v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%") + "</span>" +
-        '<span class="px">' + (r.price != null ? Number(r.price).toFixed(2) : (r.name || "")) + "</span></div>";
+        '<span class="ic-px">' + (r.price != null ? Number(r.price).toFixed(2) : "") + "</span>" +
+        '<span class="ic-chg" style="color:' + col + '"><span class="arrow">' + _arrow(v) + "</span>" + (v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%") + "</span>" +
+        (dt ? '<span class="ic-cndl ' + dCls + '">' + dt + "</span>" : "") + "</div>";
     }).join("") + "</div>";
   }
   function renderMarket() {
@@ -2945,7 +2962,7 @@
     }
     function secCard(o, extra) {
       const lv = liveMap[o.name];
-      return _ssCard({ kind: "sector", key: o.name, name: o.name, etf: etfFor(o.name), bucket: o.bucket, fg: o.fg, fr: o.fr, tot: o.tot, chg: (lv && lv.chg != null ? lv.chg : null), extra });
+      return _ssCard({ kind: "sector", key: o.name, name: secHe(o.name), etf: etfFor(o.name), bucket: o.bucket, fg: o.fg, fr: o.fr, tot: o.tot, chg: (lv && lv.chg != null ? lv.chg : null), extra });
     }
     // ONE column per bucket, side by side (RTL: BULL right · neutral middle · BEAR left). Inside each
     // column: a grid of up to 4-per-row (auto-fits the column width), first 4 shown + "עוד N" toggle.
