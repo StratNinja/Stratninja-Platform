@@ -40,6 +40,16 @@
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="landing.css">
 <link rel="stylesheet" href="app.css">
+<!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
+<script>
+(function(){try{if(localStorage.getItem('sn_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+function snToggleTheme(){var d=document.documentElement,light=d.getAttribute('data-theme')==='light';
+  if(light){d.removeAttribute('data-theme');try{localStorage.setItem('sn_theme','dark');}catch(e){}}
+  else{d.setAttribute('data-theme','light');try{localStorage.setItem('sn_theme','light');}catch(e){}}
+  snUpdateThemeLabel();}
+function snUpdateThemeLabel(){var b=document.getElementById('themeLbl');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'מצב כהה':'מצב בהיר';}
+document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
+</script>
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
@@ -106,6 +116,7 @@
       </nav>
       <div class="side-foot">
         <nav class="side-nav side-nav-sec">
+          <a class="side-act" onclick="snToggleTheme()" title="החלף בין מצב כהה לבהיר">🌗 <span class="lbl" id="themeLbl">מצב בהיר</span></a>
           <a class="side-about" onclick="openLegal('about')">👤 <span class="lbl">עלי</span></a>
           <a class="side-act" id="sideNews">🗞️ <span class="lbl">חדשות</span></a>
           <a class="side-act" id="sideCam">📷 <span class="lbl">שתף מסך</span></a>

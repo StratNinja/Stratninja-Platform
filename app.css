@@ -952,6 +952,30 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt-dash-tight .cmap-table td, .mkt-dash-tight .cmap-table th { padding:5px 7px !important; }
 .mkt-dash .cmap-table th { font-size:12px; }
 
+/* light-mode polish: darken the "bright" accent greens/reds so they read on white; overlays get a dark tint */
+html[data-theme="light"] .rk.u2 .fill { background:#047a4b; } html[data-theme="light"] .rk.u2 .pct { color:#047a4b; }
+html[data-theme="light"] .rk.d2 .fill { background:#a11c1a; } html[data-theme="light"] .rk.d2 .pct { color:#a11c1a; }
+html[data-theme="light"] .ss-tag.bull, html[data-theme="light"] .ss-cross .ssc-lbl.bull, html[data-theme="light"] .cm-verdict .cmv-v.pos { color:#0e9d63; }
+html[data-theme="light"] .ss-tag.bear, html[data-theme="light"] .ss-cross .ssc-lbl.bear { color:#cf3a37; }
+html[data-theme="light"] .ss-card2 .ss2-etf, html[data-theme="light"] .ss-card2 .ss-tag.mid, html[data-theme="light"] .idx-card .ic-cndl { background:var(--soft); }
+html[data-theme="light"] .flow-ai .fa-card, html[data-theme="light"] .ss-cross { background:var(--soft2); }
+html[data-theme="light"] .idx-card .ic-cndl.pos { color:#0e9d63; background:rgba(14,157,99,.13); }
+html[data-theme="light"] .idx-card .ic-cndl.neg { color:#cf3a37; background:rgba(207,58,55,.13); }
+html[data-theme="light"] .ss-bull .ss-col-h { color:#0e9d63; background:rgba(14,157,99,.12); border-color:rgba(14,157,99,.3); }
+html[data-theme="light"] .ss-bear .ss-col-h { color:#cf3a37; background:rgba(207,58,55,.12); border-color:rgba(207,58,55,.3); }
+/* legal / About pages use light hardcoded text — darken for light mode */
+html[data-theme="light"] .legal-body p, html[data-theme="light"] .legal-body li { color:#39415a; }
+html[data-theme="light"] .legal-body a { color:#4a63d8; }
+html[data-theme="light"] .about-lead { color:#1a2233; }
+/* candle-diagram SVG labels (גבוה/נמוך קודם, ↔ בלי כיוון) are hardcoded light grey — darken in light mode
+   (colored .cl-mark labels keep their green/red/amber) */
+html[data-theme="light"] .lrn-svg text,
+html[data-theme="light"] .cl-stage svg text:not(.cl-mark) { fill:#4a5268; }
+/* other in-app hardcoded light greys → readable on white */
+html[data-theme="light"] .tf.doji { color:#5a6478; }
+html[data-theme="light"] .ninja-badge.nj-lo { color:#4a5268; }
+html[data-theme="light"] .td-idx b, html[data-theme="light"] .mkt-pulse .mp-idx b { color:#3a4256; }
+html[data-theme="light"] .demo-flag { color:#4a4076; }
 .cm-click { cursor: pointer; transition: .12s; }
 .cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }
 /* Candle Map auto-verdict card (dominant structure · strongest TF · leading sector) */

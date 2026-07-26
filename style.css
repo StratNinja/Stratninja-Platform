@@ -4,7 +4,20 @@
   --red:#e0524f; --redbg:rgba(224,82,79,.13); --redbd:rgba(224,82,79,.5);
   --ink:#e7ebf2; --muted:#a0a9bb; --accent:#7c6cf0; --accentbg:#2a2740;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
+  --soft:rgba(255,255,255,.06);      /* subtle on-panel overlay — flips to a dark tint in light mode */
+  --soft2:rgba(255,255,255,.035);
+  --panelsh:none;
 }
+html[data-theme="light"]{
+  --bg:#dfe4ee; --panel:#ffffff; --panel2:#eef1f7; --cell:#d5dbe7; --line:#c2cbdb;
+  --green:#0e9d63; --greenbg:rgba(14,157,99,.13); --greenbd:rgba(14,157,99,.45);
+  --red:#cf3a37; --redbg:rgba(207,58,55,.13); --redbd:rgba(207,58,55,.45);
+  --ink:#141a26; --muted:#59627a; --accent:#5b4bd6; --accentbg:#e6e3fb;
+  --soft:rgba(20,26,38,.06); --soft2:rgba(20,26,38,.04);
+  --panelsh:0 1px 3px rgba(20,26,38,.11),0 1px 2px rgba(20,26,38,.06);
+}
+html[data-theme="light"] body{ background:var(--bg); color:var(--ink); }
+html[data-theme="light"] .panel{ box-shadow:var(--panelsh); }
 *{box-sizing:border-box}
 html,body{margin:0}
 body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--ink);}
