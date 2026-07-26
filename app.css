@@ -532,7 +532,20 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ss-bear .ss-col-h { background:rgba(224,82,79,.15); color:#ff6b7a; border:1px solid rgba(224,82,79,.3); }
 .ss-mid  .ss-col-h { background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--line); }
 /* auto-fit + no phantom track: cards stretch to fill the full column width */
-.ss-col-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:6px; align-items:stretch; }
+.ss-col-grid { display:flex; flex-direction:column; gap:7px; align-items:stretch; }
+/* redesigned sector / sub-sector card: big name, BULL/BEAR tag + %, strength score, FTFC bar */
+.ss-card2 { padding:11px 13px !important; display:flex; flex-direction:column; gap:6px; }
+.ss-card2 .ss2-top { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.ss-card2 .ss2-name { font-size:16px; font-weight:800; color:var(--ink); line-height:1.2; }
+.ss-card2 .ss2-etf { font-size:12px; font-weight:700; color:var(--muted); background:rgba(255,255,255,.06); padding:2px 7px; border-radius:6px; }
+.ss-card2 .ss2-tagline { display:flex; align-items:center; gap:9px; flex-wrap:wrap; font-size:12.5px; }
+.ss-card2 .ss-tag { font-weight:800; font-size:11.5px; padding:2px 8px; border-radius:6px; }
+.ss-card2 .ss-tag.bull { color:#4fe39b; background:rgba(38,176,107,.16); }
+.ss-card2 .ss-tag.bear { color:#ff6b7a; background:rgba(224,82,79,.16); }
+.ss-card2 .ss-tag.mid { color:var(--muted); background:rgba(255,255,255,.06); }
+.ss-card2 .ss2-pct { font-weight:800; font-variant-numeric:tabular-nums; }
+.ss-card2 .ss2-pct.pos { color:var(--green); } .ss-card2 .ss2-pct.neg { color:var(--red); }
+.ss-card2 .ss2-score { margin-inline-start:auto; font-size:11.5px; font-weight:700; color:var(--muted); }
 /* S&P 500 breadth cards are richer (with mover tickers) → 2 per row inside each column */
 /* S&P 500 view toggle + 500-square heatmap */
 .sp-view-switch { display:flex; gap:6px; margin:0 0 14px; }

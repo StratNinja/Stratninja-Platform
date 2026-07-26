@@ -2923,23 +2923,29 @@
     // classify each main sector by its FTFC directional bias (of its FTFC stocks, more green or red?)
     const secInfo = names.map(name => {
       const members = bySec[name];
-      const sb = members.filter(m => secFtfcDir(m, TFS) === "up").length;
-      const sr = members.filter(m => secFtfcDir(m, TFS) === "down").length;
-      const ft = sb + sr;
-      const bucket = ft === 0 ? "mid" : (sb / ft > 0.6 ? "bull" : (sb / ft < 0.4 ? "bear" : "mid"));
-      return { name, members, bucket };
-    });
-    function secCard(o, extra) {
-      const name = o.name, members = o.members, tot = members.length;
       const fg = members.filter(m => secFtfcDir(m, TFS) === "up").length;
       const fr = members.filter(m => secFtfcDir(m, TFS) === "down").length;
-      const lv = liveMap[name];
-      const chgHtml = lv ? (" · " + pctSpanBare(lv.chg)) : "";
-      const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
-      return '<div class="panel sector-card' + bcls + (extra ? " ss-extra" : "") + '" data-sec="' + encodeURIComponent(name) + '">' +
-        '<div class="sc-nm">' + name + " " + etfChip(etfFor(name)) + "</div>" +
-        '<div class="sc-meta">' + tot + " מניות" + chgHtml + "</div>" +
-        ftfc3Html(fg, fr, tot) + "</div>";
+      const tot = members.length, ft = fg + fr;
+      const bucket = ft === 0 ? "mid" : (fg / ft > 0.6 ? "bull" : (fg / ft < 0.4 ? "bear" : "mid"));
+      return { name, members, bucket, fg, fr, tot };
+    });
+    // signal strength 0-100: how strongly the sector leans its way (used for the score badge + sorting)
+    function _ssStrength(o) { return o.bucket === "bull" ? Math.round(o.fg / (o.tot || 1) * 100) : o.bucket === "bear" ? Math.round(o.fr / (o.tot || 1) * 100) : Math.round((o.fg - o.fr) / (o.tot || 1) * 100 + 50); }
+    // shared card: big name, BULL/BEAR tag + % move, strength/weakness score, and the FTFC breadth bar
+    function _ssCard(c) {
+      const bcls = c.bucket === "bull" ? " b-bull" : c.bucket === "bear" ? " b-bear" : " b-mid";
+      const tag = c.bucket === "bull" ? '<span class="ss-tag bull">🟢 BULL</span>' : c.bucket === "bear" ? '<span class="ss-tag bear">🔴 BEAR</span>' : '<span class="ss-tag mid">⚪ ניטרלי</span>';
+      const sc = _ssStrength(c), scLbl = c.bucket === "bull" ? "חוזק " + sc : c.bucket === "bear" ? "חולשה " + sc : "מאזן " + sc;
+      const pctHtml = (c.chg != null) ? '<span class="ss2-pct ' + (c.chg > 0 ? "pos" : c.chg < 0 ? "neg" : "") + '">' + _arrow(c.chg) + " " + (c.chg >= 0 ? "+" : "") + c.chg.toFixed(2) + "%</span>" : "";
+      const attr = (c.kind === "sector") ? ' data-sec="' + encodeURIComponent(c.key) + '"' : ' data-subsec="' + encodeURIComponent(c.key) + '" data-sec="' + encodeURIComponent(c.sec || "") + '"';
+      return '<div class="panel ss-card2 ' + (c.kind === "sector" ? "sector-card" : "subsec-card") + bcls + (c.extra ? " ss-extra" : "") + '"' + attr + '>' +
+        '<div class="ss2-top"><span class="ss2-name">' + c.name + "</span>" + (c.etf ? '<span class="ss2-etf">' + c.etf + "</span>" : "") + "</div>" +
+        '<div class="ss2-tagline">' + tag + pctHtml + '<span class="ss2-score">' + scLbl + "</span></div>" +
+        ftfc3Html(c.fg, c.fr, c.tot) + "</div>";
+    }
+    function secCard(o, extra) {
+      const lv = liveMap[o.name];
+      return _ssCard({ kind: "sector", key: o.name, name: o.name, etf: etfFor(o.name), bucket: o.bucket, fg: o.fg, fr: o.fr, tot: o.tot, chg: (lv && lv.chg != null ? lv.chg : null), extra });
     }
     // ONE column per bucket, side by side (RTL: BULL right · neutral middle · BEAR left). Inside each
     // column: a grid of up to 4-per-row (auto-fits the column width), first 4 shown + "עוד N" toggle.
@@ -2953,9 +2959,10 @@
         '<div class="ss-col-grid">' + cards + "</div>" +
         (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
     };
-    const secBull = secInfo.filter(o => o.bucket === "bull");
-    const secMid = secInfo.filter(o => o.bucket === "mid");
-    const secBear = secInfo.filter(o => o.bucket === "bear");
+    // strongest first in BULL, weakest first in BEAR — so the sector to check leads its column
+    const secBull = secInfo.filter(o => o.bucket === "bull").sort((a, b) => b.fg / b.tot - a.fg / a.tot);
+    const secMid = secInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.fg - b.fr) / b.tot - (a.fg - a.fr) / a.tot);
+    const secBear = secInfo.filter(o => o.bucket === "bear").sort((a, b) => b.fr / b.tot - a.fr / a.tot);
     const secGrouped = '<div class="subsec-3col">' +
       ssColumn("🟢 BULL", "ss-bull", secBull, secCard) + ssColumn("⚪ נטרלי", "ss-mid", secMid, secCard) + ssColumn("🔴 BEAR", "ss-bear", secBear, secCard) + "</div>";
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
@@ -2983,11 +2990,7 @@
         '<div class="ftfc3-key"><span class="pos">🟢 ' + fg + '</span><span class="gy">⚪ ' + gray + '</span><span class="neg">🔴 ' + fr + "</span></div>";
     }
     function subCard(o, extra) {
-      const bcls = o.bucket === "bull" ? " b-bull" : o.bucket === "bear" ? " b-bear" : " b-mid";
-      return '<div class="panel subsec-card' + bcls + (extra ? " ss-extra" : "") + '" data-subsec="' + encodeURIComponent(o.name) + '" data-sec="' + encodeURIComponent(o.parentSec) + '">' +
-        '<div class="sc-nm">' + o.name + " " + etfChip(subEtfFor(o.name)) + "</div>" +
-        '<div class="sc-meta">' + o.tot + " מניות</div>" +
-        ftfc3Html(o.bull, o.bear, o.tot) + "</div>";
+      return _ssCard({ kind: "subsec", key: o.name, sec: o.parentSec, name: o.name, etf: subEtfFor(o.name), bucket: o.bucket, fg: o.bull, fr: o.bear, tot: o.tot, chg: null, extra });
     }
     const ssBull = subInfo.filter(o => o.bucket === "bull").sort((a, b) => b.bullPct - a.bullPct);
     const ssMid = subInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.bullPct - b.bearPct) - (a.bullPct - a.bearPct));
