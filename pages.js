@@ -426,11 +426,17 @@
   function pctSpan(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '" style="font-size:13px">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
   function mkLead(items, cls, isSector) {
     if (!items || !items.length) return '<div class="muted" style="padding:8px 12px;font-size:13px">ממתין לנתוני מסחר…</div>';
-    return items.map(x => {
-      const label = isSector ? (secHe(x.name) + (etfFor(x.name) ? " " + etfChip(etfFor(x.name)) : "")) : x.s;
-      const chg = isSector ? x.chg : x.c;
-      return '<div class="lead-row ' + cls + '"><span>' + label + "</span>" + pctSpan(chg) + "</div>";
-    }).join("");
+    const max = Math.max(0.01, ...items.map(x => Math.abs((isSector ? x.chg : x.c) || 0)));
+    return '<div class="rank">' + items.map(x => {
+      const v = (isSector ? x.chg : x.c) || 0;
+      const chart = isSector ? etfFor(x.name) : x.s;
+      const sym = isSector ? (etfFor(x.name) || secHe(x.name)) : x.s;
+      const w = Math.max(6, Math.round(Math.abs(v) / max * 100));
+      return '<div class="rk ' + _moveTier(v) + '">' +
+        '<span class="sym' + (chart ? ' tsym clickable" data-chart="' + chart + '" data-tf="D' : "") + '">' + sym + "</span>" +
+        '<span class="pct"><span class="arrow">' + _arrow(v) + "</span>" + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>" +
+        '<span class="track"><span class="fill" style="width:' + w + '%"></span></span></div>';
+    }).join("") + "</div>";
   }
   function breadthBar() {
     const b = mktU().breadth;
@@ -691,41 +697,66 @@
       '<span class="spc-toggle"><button class="spc-btn' + (_idxChartMode === "candle" ? " on" : "") + '" data-idxmode="candle">🕯️ נרות</button><button class="spc-btn' + (_idxChartMode === "line" ? " on" : "") + '" data-idxmode="line">📈 קו</button></span>' +
       "</div><div class=\"spc-body\">" + indexChartSvg(ohlc, _idxChartMode, 520, 300) + "</div></div>";
   }
+  // ── Market Cockpit: one clear status bar (state + breadth + VIX + SPY + why) ──
+  function marketCockpit() {
+    const ms = todayMarketState();
+    const b = mktU().breadth || {};
+    const ap = b.total ? (b.above / b.total * 100) : 50;
+    const vix = (LIVE && LIVE.vix) || null;
+    const spy = ((LIVE && LIVE.indices) || []).find(x => x.sym === "SPY");
+    const cCol = ms ? (ms.cls === "pos" ? "var(--green)" : ms.cls === "neg" ? "var(--red)" : "#e0c760") : "#8892a6";
+    const sv = spy && spy.chg != null ? spy.chg : null;
+    const sCol = sv == null ? "var(--muted)" : (sv > 0.05 ? "var(--green)" : sv < -0.05 ? "var(--red)" : "var(--muted)");
+    return '<div class="cockpit">' +
+      '<div class="cp-state"><span class="cp-dot" style="background:' + cCol + '"></span>' +
+        '<div><div class="k">מצב שוק</div><div class="v" style="color:' + cCol + '">' + (ms ? ms.emoji + " " + ms.mode : "—") + "</div></div></div>" +
+      '<div class="cp-sep"></div>' +
+      '<div class="cp-breadth clickable" id="cockpitBreadth" title="לחץ לרוחב שוק לפי סקטור →">' +
+        '<div class="k"><span>רוחב שוק · Breadth</span><span><b class="pos">' + (b.above || 0) + " ▲</b> / <b class=\"neg\">" + (b.below || 0) + ' ▼</b></span></div>' +
+        '<div class="cp-brbar"><span style="width:' + ap.toFixed(1) + '%"></span></div></div>' +
+      '<div class="cp-sep"></div>' +
+      '<div class="cp-metric"><div class="k">VIX</div><div class="v">' + (vix ? vix.level.toFixed(2) : "—") + "</div></div>" +
+      '<div class="cp-sep"></div>' +
+      '<div class="cp-metric"><div class="k">SPY</div><div class="v" style="color:' + sCol + '">' + (sv == null ? "—" : _arrow(sv) + " " + (sv >= 0 ? "+" : "") + sv.toFixed(2) + "%") + "</div></div>" +
+      (ms && ms.why ? '<div class="why">💡 ' + ms.why + "</div>" : "") +
+      "</div>";
+  }
+  function indexCards() {
+    const idx = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
+    const byS = {}; idx.forEach(r => { byS[r.sym] = r; });
+    let list = ["DIA", "IWM", "QQQ", "SPY", "BTC"].map(s => byS[s]).filter(Boolean);
+    if (list.length < 4) list = idx.slice(0, 6);
+    return '<div class="idx-row">' + list.map(r => {
+      const v = r.chg, col = v == null ? "var(--muted)" : v > 0.05 ? "var(--green)" : v < -0.05 ? "var(--red)" : "var(--muted)";
+      return '<div class="idx-card ' + ((v || 0) >= 0 ? "up" : "dn") + '">' +
+        '<span class="sym tsym clickable" data-chart="' + r.sym + '" data-tf="D">' + r.sym + "</span>" +
+        '<span class="chg" style="color:' + col + '"><span class="arrow">' + _arrow(v) + "</span>" + (v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%") + "</span>" +
+        '<span class="px">' + (r.price != null ? Number(r.price).toFixed(2) : (r.name || "")) + "</span></div>";
+    }).join("") + "</div>";
+  }
   function renderMarket() {
-    const idxSrc = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : INDICES;
-    const idxRows = idxSrc.map(r =>
-      '<tr><td class="sym"><span class="tsym clickable" data-chart="' + r.sym + '" data-tf="D">' + r.sym + '</span> <span class="tname">' + r.name + "</span></td>" +
-      '<td class="idx-chg">' + (r.chg != null ? pctSpanBare(r.chg) : '<span class="muted">—</span>') + extSpan(r) + "</td>" + tfCells(r) + "</tr>").join("");
-    const dist = DIST.map(d => '<div class="tile"><div class="k"><span class="dot ' + d.dot + '"></span>' + d.k + '</div><div class="v">' + d.n + "</div></div>").join("");
-    const breadth = BREADTH_IDX.map(b => '<div class="tile"><div class="k">' + b.sym + " · " + b.desc + '</div><div class="v muted">—</div></div>').join("");
-    const rank = (arr, cls) => arr.map((s, i) => '<div class="lead-row ' + cls + '"><span>' + s + '</span><span class="rank">#' + (i + 1) + "</span></div>").join("");
-    const vixVal = (LIVE && LIVE.vix)
-      ? '<div class="v">' + LIVE.vix.level.toFixed(2) + '</div><div class="sub ' + (LIVE.vix.chg >= 0 ? "neg" : "pos") + '">' + (LIVE.vix.chg >= 0 ? "+" : "") + LIVE.vix.chg.toFixed(2) + "%</div>"
-      : '<div class="v muted">—</div>';
-    const idxPanel = '<div class="panel idx-panel"><h3>מדדים ראשיים</h3><div class="tablewrap"><table class="idx-table"><thead><tr><th style="text-align:start">סימבול</th><th>% יומי</th>' + tfHeadCols() + "</tr></thead><tbody>" + idxRows + "</tbody></table></div></div>";
-    const vixCard = '<div class="panel vix-card"><div class="vix-lbl">VIX · מדד הפחד</div>' + vixVal + "</div>";
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
       '<button class="uni-btn' + (marketUniverse === "sp500" ? " on" : "") + '" data-uni="sp500">S&P 500</button>' +
       '<button class="uni-btn' + (marketUniverse === "all" ? " on" : "") + '" data-uni="all">StratNinja</button>' +
       "</div>";
+    const dSecUp = [{ name: "חומרי גלם", chg: 1.9 }, { name: "תקשורת", chg: 1.2 }, { name: "אנרגיה", chg: 0.8 }];
+    const dSecDn = [{ name: "מוצרי צריכה", chg: -1.4 }, { name: "בריאות", chg: -0.9 }, { name: "שירותים", chg: -0.5 }];
+    const dStkUp = [{ s: "SMCI", c: 6.2 }, { s: "PLTR", c: 4.1 }, { s: "MARA", c: 3.3 }];
+    const dStkDn = [{ s: "SNAP", c: -5.1 }, { s: "LCID", c: -3.2 }, { s: "NIO", c: -2.4 }];
     return (
-      '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">תמונת השוק במבט אחד: לאן נעים המדדים, מצב הפחד (VIX), רוחב השוק ואילו סקטורים חזקים או חלשים היום.</div></div>' +
+      '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">תמונת השוק במבט אחד: מצב השוק, רוחב, VIX, המדדים, ומי חזק או חלש היום.</div></div>' +
       uniSwitch +
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
-        marketPulse() +
-        // SPY chart removed 2026-07-12 (Adi: felt claustrophobic). Indices+VIX and Candle Map
-        // SIDE BY SIDE (no need to scroll). spyChartPanel() kept in code for easy revival elsewhere.
-        '<div class="mkt-dash-2col">' +
-          '<div class="mkt-idx-col">' + idxPanel + vixCard + "</div>" +
-          candleMapPanel() +
-        "</div>" +
+        marketCockpit() +
+        indexCards() +
+        candleMapPanel() +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
-        '<div class="mkt-dash-bottom">' +
-          '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + (LIVE ? mkLead((mktU().sectorLeaders || []).slice(0, 5), "up", true) : rank(["חומרי גלם", "תקשורת", "אנרגיה"], "up")) + "</div>" +
-          '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + (LIVE ? mkLead((mktU().sectorLaggards || []).slice(0, 5), "down", true) : rank(["מוצרי צריכה", "בריאות", "שירותים"], "down")) + "</div>" +
-          '<div class="panel"><h3>🟢 מניות מובילות</h3>' + (LIVE ? mkLead((mktU().leaders || []).slice(0, 5), "up", false) : rank(["SMCI", "PLTR", "MARA"], "up")) + "</div>" +
-          '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + (LIVE ? mkLead((mktU().laggards || []).slice(0, 5), "down", false) : rank(["SNAP", "LCID", "NIO"], "down")) + "</div>" +
+        '<div class="mkt-rank-grid">' +
+          '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + mkLead(LIVE ? (mktU().sectorLeaders || []).slice(0, 5) : dSecUp, "up", true) + "</div>" +
+          '<div class="panel"><h3>🔴 סקטורים בפיגור</h3>' + mkLead(LIVE ? (mktU().sectorLaggards || []).slice(0, 5) : dSecDn, "down", true) + "</div>" +
+          '<div class="panel"><h3>🟢 מניות מובילות</h3>' + mkLead(LIVE ? (mktU().leaders || []).slice(0, 5) : dStkUp, "up", false) + "</div>" +
+          '<div class="panel"><h3>🔴 מניות בפיגור</h3>' + mkLead(LIVE ? (mktU().laggards || []).slice(0, 5) : dStkDn, "down", false) + "</div>" +
         "</div>" +
         gappersMini() +
       "</div>"
@@ -734,6 +765,7 @@
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
+    { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => setPage("gappers"); }
     document.querySelectorAll("[data-idxmode]").forEach(b => b.onclick = () => { _idxChartMode = b.dataset.idxmode; reRender(); });
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
@@ -959,6 +991,9 @@
     }
   }
   function pctSpanBare(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
+  // 5-tier move classification for the Market Cockpit: extreme up / up / neutral / down / extreme down (+ ▲▼)
+  function _moveTier(v) { v = v || 0; if (v >= 5) return "u2"; if (v > 0.05) return "u1"; if (v <= -5) return "d2"; if (v < -0.05) return "d1"; return "neu"; }
+  function _arrow(v) { v = v || 0; return v > 0.05 ? "▲" : v < -0.05 ? "▼" : "▬"; }
   function extSpan(r) {
     if (r == null || r.ext == null || r.extChg == null) return "";
     const lbl = r.extType === "pre" ? "Pre" : "After";

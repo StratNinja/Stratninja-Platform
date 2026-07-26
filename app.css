@@ -876,6 +876,61 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt-dash-tight .cm-pill { padding: 3px 0; font-size: 12px; min-width: 34px; }
 .mkt-dash-tight .cmap-table .cm-type { font-size: 12px; }
 .cm-pill { display: block; padding: 6px 0; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px; min-width: 42px; }
+
+/* ===================== Market Cockpit redesign ===================== */
+.cockpit { background:linear-gradient(100deg, rgba(124,108,240,.14), rgba(124,108,240,.02));
+  border:1px solid var(--line); border-radius:16px; padding:15px 20px; margin-bottom:12px;
+  display:flex; align-items:center; gap:13px 24px; flex-wrap:wrap; }
+.cockpit .cp-state { display:flex; align-items:center; gap:11px; }
+.cockpit .cp-dot { width:14px; height:14px; border-radius:50%; box-shadow:0 0 0 4px rgba(255,255,255,.05); flex:none; }
+.cockpit .k { font-size:11.5px; color:var(--muted); font-weight:600; }
+.cockpit .cp-state .v { font-size:23px; font-weight:800; line-height:1.15; }
+.cockpit .cp-sep { width:1px; align-self:stretch; min-height:34px; background:var(--line); }
+.cockpit .cp-metric { display:flex; flex-direction:column; gap:3px; }
+.cockpit .cp-metric .v { font-size:20px; font-weight:800; font-variant-numeric:tabular-nums; }
+.cockpit .cp-breadth { display:flex; flex-direction:column; gap:5px; min-width:190px; flex:1; }
+.cockpit .cp-breadth .k { display:flex; justify-content:space-between; gap:10px; font-variant-numeric:tabular-nums; }
+.cockpit .cp-brbar { height:9px; border-radius:6px; overflow:hidden; display:flex; background:var(--red); }
+.cockpit .cp-brbar span { background:var(--green); }
+.cockpit .why { flex-basis:100%; font-size:12.5px; color:var(--muted); margin-top:-2px; line-height:1.4; }
+.cockpit .why b { color:var(--ink); }
+.cockpit .cp-breadth.clickable { cursor:pointer; }
+
+.idx-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(148px,1fr)); gap:12px; margin-bottom:12px; }
+.idx-card { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:13px 16px;
+  display:flex; flex-direction:column; gap:5px; position:relative; overflow:hidden; }
+.idx-card::before { content:""; position:absolute; inset-block:0; inset-inline-start:0; width:3px; }
+.idx-card.up::before { background:var(--green); } .idx-card.dn::before { background:var(--red); }
+.idx-card .sym { font-size:21px; font-weight:800; color:var(--ink); cursor:pointer; }
+.idx-card .chg { font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:5px; }
+.idx-card .chg .arrow { font-size:12px; }
+.idx-card .px { font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+.mkt-rank-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:12px; }
+.mkt-rank-grid > .panel { margin:0; min-width:0; }
+@media (max-width:820px){ .mkt-rank-grid { grid-template-columns:1fr; } }
+.rank { display:flex; flex-direction:column; gap:7px; }
+.rk { display:grid; grid-template-columns:78px 84px 1fr; align-items:center; gap:12px; }
+.rk .sym { font-size:16px; font-weight:800; color:var(--ink); }
+.rk .sym.clickable { cursor:pointer; }
+.rk .pct { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:4px; justify-content:flex-end; }
+.rk .pct .arrow { font-size:11px; }
+.rk .track { height:16px; border-radius:6px; background:var(--cell); overflow:hidden; }
+.rk .fill { height:100%; border-radius:6px; min-width:4px; }
+.rk.u1 .fill { background:var(--green); } .rk.u2 .fill { background:#4dffb0; }
+.rk.d1 .fill { background:var(--red); } .rk.d2 .fill { background:#ff5a56; }
+.rk.neu .fill { background:var(--muted); }
+.rk.u1 .pct { color:var(--green); } .rk.u2 .pct { color:#4dffb0; }
+.rk.d1 .pct { color:var(--red); } .rk.d2 .pct { color:#ff5a56; }
+.rk.neu .pct { color:var(--muted); }
+
+/* bigger, prominent Candle Map (override the tight/small market rules) */
+.mkt-dash .cmap-table .cm-pill, .mkt-dash-tight .cm-pill { font-size:16px !important; padding:9px 0 !important; min-width:56px !important; }
+.mkt-dash .cmap-table .cm-type, .mkt-dash-tight .cmap-table .cm-type { font-size:15px !important; }
+.mkt-dash .cmap-table td, .mkt-dash .cmap-table th,
+.mkt-dash-tight .cmap-table td, .mkt-dash-tight .cmap-table th { padding:5px 7px !important; }
+.mkt-dash .cmap-table th { font-size:12px; }
+
 .cm-click { cursor: pointer; transition: .12s; }
 .cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }
 .cm-insight { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 11px 14px; border-radius: 10px;
