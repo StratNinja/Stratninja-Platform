@@ -328,12 +328,18 @@
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
     // remembered column density (fewer columns = fewer charts loading at once = faster). default 3.
     let cgDensity = (function () { try { const d = localStorage.getItem("sn_cg_density"); if (["2", "3", "4", "5"].indexOf(d) >= 0) return d; } catch (e) {} return "3"; })();
-    let cgSort = "chg";   // charts order (like sorting the scanner table) — re-orderable below
+    let cgSort = "table"; // default: keep the scanner table's current order (rows come in already sorted)
+    let cgFavTop = false; // optional: pull favorited stocks to the front (off by default each time)
     function cgSorted() {
-      const arr = rows.slice();
-      if (cgSort === "chgAsc") arr.sort((a, b) => (a.chg || 0) - (b.chg || 0));
+      let arr = rows.slice();
+      if (cgSort === "chg") arr.sort((a, b) => (b.chg || 0) - (a.chg || 0));
+      else if (cgSort === "chgAsc") arr.sort((a, b) => (a.chg || 0) - (b.chg || 0));
       else if (cgSort === "sym") arr.sort((a, b) => (a.sym || "").localeCompare(b.sym || ""));
-      else arr.sort((a, b) => (b.chg || 0) - (a.chg || 0));   // default: biggest gainers first (עולה %)
+      // else "table" → keep the incoming order (matches how the scanner table is sorted right now)
+      if (cgFavTop && window.Prefs) {   // favorites first, keeping the sort within each group
+        const fav = arr.filter(t => window.Prefs.isFav(t.sym)), rest = arr.filter(t => !window.Prefs.isFav(t.sym));
+        if (fav.length) arr = fav.concat(rest);
+      }
       return arr.slice(0, GCAP);
     }
     let shown = cgSorted();
@@ -366,9 +372,10 @@
     const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
       ["2", "3", "4", "5"].map(n => '<button class="chip' + (n === cgDensity ? " on" : "") + '" data-cg="' + n + '">' + n + "</button>").join("") + "</div>";
     const sortSel = '<div class="cg-sort"><span class="muted" style="font-size:12px">מיון:</span><select id="cgSortSel" style="font-size:12px">' +
-      '<option value="chg">עולה %</option><option value="chgAsc">יורד %</option><option value="sym">סימבול</option></select></div>';
+      '<option value="table">לפי הטבלה</option><option value="chg">עולה %</option><option value="chgAsc">יורד %</option><option value="sym">סימבול</option></select></div>';
+    const favBtn = '<button class="chip cg-favtop' + (cgFavTop ? " on" : "") + '" id="cgFavTop" title="הבא את המניות מהמועדפים לראש הרשימה">⭐ מועדפים ראשונים</button>';
     const shotBtn = '<button class="btn ghost" id="cgShot" style="font-size:12px;font-weight:600" title="צילום מסך של תצוגת הגרפים">🖼️ צילום מסך</button>';
-    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-' + cgDensity + '" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
+    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + favBtn + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-' + cgDensity + '" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
@@ -413,6 +420,8 @@
     });
     // sort selector — re-orders the charts (like sorting the scanner table)
     { const ss = $("#cgSortSel"); if (ss) ss.onchange = () => { cgSort = ss.value; shown = cgSorted(); if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); } }; }
+    // "⭐ מועדפים ראשונים" — bring favorited stocks to the front (keeps the current sort within groups)
+    { const fb = $("#cgFavTop"); if (fb) fb.onclick = () => { cgFavTop = !cgFavTop; fb.classList.toggle("on", cgFavTop); shown = cgSorted(); if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); } }; }
     // full screenshot of the chart grid (captures the live TradingView charts)
     { const sh = $("#cgShot"); if (sh) sh.onclick = () => captureFullShot(); }
   }
