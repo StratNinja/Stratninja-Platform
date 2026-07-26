@@ -17,6 +17,7 @@
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
   const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
   const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"],
+    ["1-1", "🎯 התכנסות כפולה (1 → 1) — קפיץ דחוס לפני פריצה"],
     ["3-2", "🔷 3 → 2 (נר חוץ ← פריצה)"], ["1-2", "1 → 2 (פנימי ← פריצה)"], ["2-2", "2 → 2 (היפוך)"],
     ["2-1-2", "לקראת 2-1-2"], ["3-1-2", "לקראת 3-1-2"], ["1-3-2", "לקראת 1-3-2"], ["1-2-2", "לקראת 1-2-2"], ["3-2-2", "לקראת 3-2-2"]];
   const _isCombo = v => /^\d(-\d){1,2}$/.test(v || "");
@@ -2410,7 +2411,11 @@
           if (ifcVal !== scanState.inforce) return false;
           if (scanState.sigShape !== "all" && (c.psh || "") !== scanState.sigShape) return false;
         }
-        if (scanState.broad !== "off") {
+        if (scanState.broad === "1-1") {
+          // double inside — the last TWO bars are both inside (1). coiled consolidation before a breakout.
+          const sq = (c.seq3 || "").split("-");
+          if (sq.length < 2 || sq[sq.length - 1] !== "1" || sq[sq.length - 2] !== "1") return false;
+        } else if (scanState.broad !== "off") {
           if (scanState.broad === "any" || scanState.broad === "up" || scanState.broad === "down") {
             const br = c.br || "";
             if (scanState.broad === "any" && !br) return false;
