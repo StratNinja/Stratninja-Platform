@@ -8,6 +8,8 @@
   const $ = s => document.querySelector(s);
   let LIVE = null;  // live market snapshot from Supabase (null = show demo)
   let SCAN = null;  // live per-ticker scanner data (null = show demo)
+  let SCAN_YDAY = null;   // yesterday's snapshot (loaded lazily when the scanner "📅 אתמול" view is opened)
+  let scanView = "live";  // scanner data view: "live" | "yday"
 
   // ---------- helpers ----------
   const SHAPE_HE = { doji: "דוג'י", hammer: "פטיש 🔨", shooter: "כוכב נופל ⭐", marubozu: "מרובוזו", spinning: "סביבון", normal: "נר רגיל", flat: "—" };
@@ -1438,7 +1440,8 @@
     const ms = todayMarketState();
     const src = (typeof scanSource === "function" ? scanSource() : []);
     if (page === "scanner") {
-      let rows = []; try { rows = filterRows(src); } catch (e) { rows = src; }
+      const scSrc = (typeof scanRowsView === "function") ? scanRowsView() : src;   // respect the live/yesterday view
+      let rows = []; try { rows = filterRows(scSrc); } catch (e) { rows = scSrc; }
       // the 5 at the TOP of the current filtered+sorted list (as the user sees them) — NOT re-ranked by Ninja Score
       const top = sortRows(rows).slice(0, 5);
       const SORT_HE = { ninja: "Ninja Score", chg: "שינוי %", price: "מחיר", mc: "שווי שוק", sym: "סימבול", ftfc: "FTFC", sec: "סקטור" };
@@ -1920,16 +1923,24 @@
     });
     setTimeout(() => document.addEventListener("click", _tfMenuOutside), 0);
   }
+  function _mapScanRows(rows) {
+    return rows.map(r => {
+      const o = { sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
+        chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc, ninja: r.ninja,
+        Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech, sp: r.sp, comm: r.comm };
+      EXTRA_TFS.forEach(tf => { if (r[tf]) o[tf] = r[tf]; });   // custom Strat timeframes
+      return o;
+    });
+  }
+  // LIVE scan data — used by market / sectors / today / alerts (always current)
   function scanSource() {
-    if (SCAN && SCAN.rows && SCAN.rows.length) {
-      return SCAN.rows.map(r => {
-        const o = { sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
-          chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc, ninja: r.ninja,
-          Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech, sp: r.sp, comm: r.comm };
-        EXTRA_TFS.forEach(tf => { if (r[tf]) o[tf] = r[tf]; });   // custom Strat timeframes
-        return o;
-      });
-    }
+    if (SCAN && SCAN.rows && SCAN.rows.length) return _mapScanRows(SCAN.rows);
+    return TICKERS;
+  }
+  // scanner PAGE only: live OR yesterday's completed-daily snapshot (the "📅 אתמול" toggle)
+  function scanRowsView() {
+    if (scanView === "yday") return (SCAN_YDAY && SCAN_YDAY.rows && SCAN_YDAY.rows.length) ? _mapScanRows(SCAN_YDAY.rows) : [];   // never silently fall back to live
+    if (SCAN && SCAN.rows && SCAN.rows.length) return _mapScanRows(SCAN.rows);
     return TICKERS;
   }
   function scanInsights(rows, universe) {
@@ -2058,11 +2069,12 @@
   }
 
   function renderScanner() {
-    const all = scanSource();
+    const all = scanRowsView();
+    const uni = scanSource();     // stable LIVE universe — keeps the sector/sub-sector option lists filled in yesterday view
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
-    const hasTech = all.some(t => t.tech);
-    const sectors = Array.from(new Set(all.map(t => t.sector))).sort();
-    const subsectors = Array.from(new Set(all.filter(t => !scanState.sector.length || scanState.sector.indexOf(t.sector) >= 0).map(t => t.ind).filter(Boolean))).sort();
+    const hasTech = all.some(t => t.tech) || uni.some(t => t.tech);
+    const sectors = Array.from(new Set(uni.map(t => t.sector))).sort();
+    const subsectors = Array.from(new Set(uni.filter(t => !scanState.sector.length || scanState.sector.indexOf(t.sector) >= 0).map(t => t.ind).filter(Boolean))).sort();
     // drop any selected sub-sector that no longer belongs to the chosen sectors (prevents a stuck-empty result)
     if (scanState.subsec.length) scanState.subsec = scanState.subsec.filter(x => subsectors.indexOf(x) >= 0);
     const patBtn = p => '<button class="chip' + (scanState.patterns.indexOf(p) >= 0 ? " on" : "") + '" data-pat="' + p + '">' + p + "</button>";
@@ -2279,6 +2291,10 @@
     if (_selPreset && !presets.some(p => p.id === _selPreset)) _selPreset = "";  // stale id (deleted) → clear
     const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '"' + (p.id === _selPreset ? " selected" : "") + ">" + escAttr(p.name) + "</option>").join("");
     const topBar = '<div class="panel filters scan-topbar">' +
+      '<div class="stb-grp stb-view"><span class="muted stb-lbl">👁️ תצוגה:</span>' +
+        '<button class="btn ' + (scanView === "live" ? "primary" : "ghost") + ' sm" data-scanview="live" title="הסריקה החיה — נר הטיימפריים הנוכחי שמתהווה עכשיו">🔴 לייב</button>' +
+        '<button class="btn ' + (scanView === "yday" ? "primary" : "ghost") + ' sm" data-scanview="yday" title="הסריקה כפי שנסגרה אתמול — נרות יומיים מושלמים (למצוא פטיש/2U של אתמול)">📅 אתמול' + (scanView === "yday" && SCAN_YDAY && SCAN_YDAY.snapDate ? " · " + SCAN_YDAY.snapDate : "") + "</button>" +
+      "</div>" +
       '<div class="stb-grp"><span class="muted stb-lbl">🧩 פאנלים:</span>' + panelChips +
         '<button class="btn ghost stb-reset" id="scanReset" title="נקה את כל הפילטרים">↺ איפוס פילטרים</button>' + "</div>" +
       '<div class="stb-grp stb-presets"><span class="muted stb-lbl">⭐ סריקות שמורות:</span>' +
@@ -2289,7 +2305,10 @@
         '<button class="btn ghost" id="alertBell" title="מרכז התראות — התראה כשמניה מהמועדפים נכנסת לסריקה">🔔<span class="al-badge" id="alBadge"></span></button>' +
       "</div></div>";
     return (
-      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וכל מניה מקבלת <b>Ninja Score</b> שמדרג כמה שווה לבדוק אותה עכשיו.</div></div>' + (isLive ? liveBanner() : DEMO) +
+      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וכל מניה מקבלת <b>Ninja Score</b> שמדרג כמה שווה לבדוק אותה עכשיו.</div></div>' +
+      (scanView === "yday"
+        ? '<div class="scan-yday-note">📅 <b>תצוגת אתמול</b> — ' + (SCAN_YDAY ? "הסריקה כפי שנסגרה" + (SCAN_YDAY.snapDate ? " (" + SCAN_YDAY.snapDate + ")" : "") + ", עם נרות יומיים מושלמים. " : (_ydayLoaded ? "אין עדיין נתוני אתמול — הסנאפשוט נשמר אוטומטית אחרי סגירת המסחר בארה\"ב. " : "טוען נתונים… ")) + '<button class="btn ghost sm" data-scanview="live">🔴 חזור ללייב</button></div>'
+        : (isLive ? liveBanner() : DEMO)) +
       topBar +
       (pv.filters ? filters : "") + (pv.mtf ? mtfPanel : "") + (pv.tech ? techPanel : "") + (pv.ind ? indPanel : "") +
       '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
@@ -2479,7 +2498,9 @@
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); scanSort.col = "ninja"; scanSort.dir = -1; reRender(); };
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); _selPreset = ""; scanSort.col = "ninja"; scanSort.dir = -1; reRender(); };   // clearing filters also clears the loaded preset
+    // live / yesterday view toggle (buttons in the top bar + the yesterday banner)
+    document.querySelectorAll("[data-scanview]").forEach(b => b.onclick = () => { const v = b.dataset.scanview; if (v === scanView) return; scanView = v; if (v === "yday") fetchYesterday(); reRender(); });
     // technical controls
     const bind = (id, ev, fn) => { const e = $("#" + id); if (e) e[ev] = fn; };
     bind("techToggle", "onclick", () => { techState.techOpen = !techState.techOpen; reRender(); });
@@ -3958,6 +3979,23 @@
     if (_scanLoaded) return;
     _scanLoaded = true;
     fetchScanner();
+  }
+  // yesterday's snapshot — loaded lazily the first time the scanner "📅 אתמול" view is opened
+  let _ydayLoading = false, _ydayLoaded = false;
+  async function fetchYesterday() {
+    if (SCAN_YDAY || _ydayLoading) return;
+    _ydayLoading = true;
+    try {
+      const cfg = window.SN_CONFIG;
+      if (!cfg || !cfg.SUPABASE_URL) return;
+      const url = cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.yesterday&select=data";
+      const r = await fetch(url, { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && j[0] && j[0].data) SCAN_YDAY = j[0].data;
+      _ydayLoaded = true;
+      if (state.page === "scanner" && scanView === "yday") reRender();
+    } catch (e) { /* stay on whatever the view shows */ } finally { _ydayLoading = false; }
   }
   // ---- live prices overlay (id='prices' feed, ~1-min fresh) — keeps the DISPLAYED price/% current
   // without recomputing the heavy Strat analysis (bar types / FTFC stay on their 15-min cadence) ----
