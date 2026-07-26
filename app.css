@@ -334,6 +334,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .share-card .sc-pk-sym { font-size:26px; font-weight:800; margin:10px 0 4px; }
 .share-card .sc-pk-chg { font-size:20px; font-weight:700; }
 .share-card .sc-pk-chg.pos { color:#4fe39b; } .share-card .sc-pk-chg.neg { color:#ff7a86; }
+.share-card .sc-pk-sym.big { font-size:30px; margin:4px 0 10px; }
+.share-card .sc-pk-chg.xl { font-size:26px; }
 .share-card .sc-foot { display:flex; justify-content:space-between; padding:20px 44px; background:rgba(0,0,0,.35); font-size:18px; color:#c3ccdd; font-weight:600; }
 /* "what to check now" share card — money flow + long/short columns */
 .share-card .sc-sec-lbl { font-size:17px; font-weight:800; color:#c3ccdd; margin:4px 0 10px; }

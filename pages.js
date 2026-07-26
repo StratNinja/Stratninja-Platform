@@ -325,13 +325,12 @@
     // TradingView auto-switch to intraday 2h candles, which Adi doesn't want).
     const RANGE_DEF = { D: "12M", W: "12M", M: "60M", Q: "60M", Y: "60M" };
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
-    let cgSort = "ninja";   // charts order (like sorting the scanner table) — re-orderable below
+    let cgSort = "chg";   // charts order (like sorting the scanner table) — re-orderable below
     function cgSorted() {
       const arr = rows.slice();
-      if (cgSort === "chg") arr.sort((a, b) => (b.chg || 0) - (a.chg || 0));
-      else if (cgSort === "chgAsc") arr.sort((a, b) => (a.chg || 0) - (b.chg || 0));
+      if (cgSort === "chgAsc") arr.sort((a, b) => (a.chg || 0) - (b.chg || 0));
       else if (cgSort === "sym") arr.sort((a, b) => (a.sym || "").localeCompare(b.sym || ""));
-      else arr.sort((a, b) => (b.ninja || 0) - (a.ninja || 0));   // default: best Ninja Score first
+      else arr.sort((a, b) => (b.chg || 0) - (a.chg || 0));   // default: biggest gainers first (עולה %)
       return arr.slice(0, GCAP);
     }
     let shown = cgSorted();
@@ -364,7 +363,7 @@
     const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
       '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button><button class="chip" data-cg="5">5</button></div>';
     const sortSel = '<div class="cg-sort"><span class="muted" style="font-size:12px">מיון:</span><select id="cgSortSel" style="font-size:12px">' +
-      '<option value="ninja">Ninja Score</option><option value="chg">עולה %</option><option value="chgAsc">יורד %</option><option value="sym">סימבול</option></select></div>';
+      '<option value="chg">עולה %</option><option value="chgAsc">יורד %</option><option value="sym">סימבול</option></select></div>';
     const shotBtn = '<button class="btn ghost" id="cgShot" style="font-size:12px;font-weight:600" title="צילום מסך של תצוגת הגרפים">🖼️ צילום מסך</button>';
     modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
@@ -1481,9 +1480,9 @@
 
   // ---- screenshot & share ----
   const _shNum = v => (v >= 0 ? "+" : "") + (v == null ? 0 : v).toFixed(2) + "%";
-  function _shPick(score, sym, chg) {
-    return '<div class="sc-pick"><div class="sc-pk-score">' + (score == null ? "—" : score) + '</div><div class="sc-pk-sym">' + sym +
-      '</div><div class="sc-pk-chg ' + ((chg || 0) >= 0 ? "pos" : "neg") + '">' + _shNum(chg) + "</div></div>";
+  function _shPick(sym, chg) {
+    return '<div class="sc-pick"><div class="sc-pk-sym big">' + sym +
+      '</div><div class="sc-pk-chg xl ' + ((chg || 0) >= 0 ? "pos" : "neg") + '">' + _shNum(chg) + "</div></div>";
   }
   function _shIdx(label, val, cls) { return '<span class="sc-idx' + (cls ? " " + cls : "") + '"><b>' + label + "</b> " + val + "</span>"; }
   // like _shIdx but with a small source tag (which site panel the card came from)
@@ -1497,11 +1496,11 @@
       let rows = []; try { rows = filterRows(scSrc); } catch (e) { rows = scSrc; }
       // the 5 at the TOP of the current filtered+sorted list (as the user sees them) — NOT re-ranked by Ninja Score
       const top = sortRows(rows).slice(0, 5);
-      const SORT_HE = { ninja: "Ninja Score", chg: "שינוי %", price: "מחיר", mc: "שווי שוק", sym: "סימבול", ftfc: "FTFC", sec: "סקטור" };
+      const SORT_HE = { chg: "שינוי %", price: "מחיר", mc: "שווי שוק", sym: "סימבול", ftfc: "FTFC", sec: "סקטור" };
       const sLbl = SORT_HE[scanSort.col] || "הסינון";
       const dLbl = (!scanSort.col || scanSort.col === "sym") ? "" : (scanSort.dir < 0 ? " ▼" : " ▲");
       return { headline: "🔍 סורק עסקאות · " + rows.length + " תוצאות", cls: "zero", strip: "", picksLabel: "5 העליונות · לפי " + sLbl + dLbl,
-        picks: top.map(t => _shPick(t.ninja, t.sym, t.chg)).join("") };
+        picks: top.map(t => _shPick(t.sym, t.chg)).join("") };
     }
     if (page === "today") {
       // money-flow card for the SELECTED timeframe (20D/5D/1D): each panel split into a row of risers + a row of fallers
@@ -1593,9 +1592,9 @@
     // default = market: show the strongest FULL-TIMEFRAME-CONTINUITY plays — top-2 bullish
     // (FTFC green) + top-2 bearish (FTFC red) by Ninja Score.
     const idx = ms ? ms.idx.map(i => _shIdx(i.sym, _shNum(i.chg))).join("") + (ms.vix ? _shIdx("VIX", ms.vix.level.toFixed(1)) : "") : "";
-    const ftfcUp = src.filter(t => t.ftfc && (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 2);
-    const ftfcDn = src.filter(t => t.ftfc && (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 2);
-    const picks = ftfcUp.concat(ftfcDn).map(t => _shPick(t.ninja, t.sym, t.chg)).join("");
+    const ftfcUp = src.filter(t => t.ftfc && (t.D || {}).c === "up").sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 2);
+    const ftfcDn = src.filter(t => t.ftfc && (t.D || {}).c === "down").sort((a, b) => (a.chg || 0) - (b.chg || 0)).slice(0, 2);
+    const picks = ftfcUp.concat(ftfcDn).map(t => _shPick(t.sym, t.chg)).join("");
     return { headline: ms ? ms.emoji + " " + ms.mode : "📡 סקירת שוק", cls: ms ? ms.cls : "zero", strip: idx,
       picksLabel: "FTFC · 2🟢 המשכיות עולה / 2🔴 יורדת", picks: picks };
   }
@@ -1711,7 +1710,6 @@
     };
     const badges = [];
     if (r.ftfc) { const ftfcBear = (r.D || {}).c === "down"; badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:800;font-size:13px;color:#0a0f1c;background:' + (ftfcBear ? "#ef4444" : "#22c55e") + '">FTFC ' + (ftfcBear ? "↓" : "✓") + "</span>"); }
-    if (r.ninja != null) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:800;font-size:13px;color:#fff;background:#2b3550">Ninja Score ' + r.ninja + "</span>");
     if (r.sec) badges.push('<span style="padding:6px 12px;border-radius:9px;font-weight:700;font-size:13px;color:#cbd5e6;background:#1b2438">' + r.sec + "</span>");
     const el = document.createElement("div");
     el.style.cssText = "position:fixed;left:-9999px;top:0;width:660px;padding:30px;background:linear-gradient(150deg,#101a2c,#0a0f1c);border:1px solid #223;border-radius:22px;font-family:Rubik,Arial,sans-serif;direction:rtl;color:#eef2f8;box-sizing:border-box";
@@ -1810,10 +1808,10 @@
     } else if (page === "scanner") {
       cap = "🔍 הסטאפים החזקים היום ב-StratNinja";
       let rows = []; try { rows = filterRows(src); } catch (e) { rows = src; }
-      tags = rows.filter(t => t.ninja != null).sort((a, b) => b.ninja - a.ninja).slice(0, 5).map(t => t.sym);
+      tags = rows.slice().sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
     } else if (page === "today") {
       cap = "🎯 מה לבדוק היום · StratNinja";
-      tags = src.filter(t => t.ninja != null && (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 4).map(t => t.sym);
+      tags = src.filter(t => (t.D || {}).c === "up").sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 4).map(t => t.sym);
     } else if (page === "gappers") {
       cap = "⚡ הגאפרים של היום · StratNinja";
       const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
@@ -1823,7 +1821,7 @@
       tags = (window.Prefs ? Prefs.favorites() : []).slice(0, 6);
     } else {
       cap = "📊 סקירת השוק היום ב-StratNinja";
-      tags = src.filter(t => t.ftfc).sort((a, b) => (b.ninja || 0) - (a.ninja || 0)).slice(0, 5).map(t => t.sym);
+      tags = src.filter(t => t.ftfc).sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
     }
     const tagStr = cash(tags);
     return cap + (tagStr ? "\n\n" + tagStr : "") + "\n\nstratninja.win";
@@ -1882,7 +1880,7 @@
     return "$" + n;
   }
   // ---- table sorting ----
-  const scanSort = { col: "ninja", dir: -1 };   // default: best Ninja Score first. dir: -1 desc, 1 asc
+  const scanSort = { col: "chg", dir: -1 };   // default: biggest gainers first (עולה %). dir: -1 desc, 1 asc
   function dirRank(cell) { const c = cell && cell.c; return c === "up" ? 1 : c === "down" ? -1 : 0; }
   // rank a Strat timeframe cell by bar TYPE (2U > 3 > 2D > 1), color as tiebreak — so sorting a TF
   // column groups by pattern: 2U (new high) at the top, 1 (inside) at the bottom. null = no data → last.
@@ -2308,7 +2306,6 @@
         "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + ftfcBadge(t) + "</td>" +
-        "<td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
         techCells +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
       "</tr>";
@@ -2326,10 +2323,9 @@
     const head =
       '<th class="fav-th"><button class="fav-toptgl' + (scanState.favTop ? " on" : "") + '" id="favTopTgl" title="' + (scanState.favTop ? "בטל — הצג לפי המיון הרגיל" : "הצג את המועדפים (⭐) בראש הרשימה") + '">★</button></th>' + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') + sortableTh("סקטור", "sec", ' title="הסקטור של המניה"') + sortableTh("ת\"ס", "etf", ' title="תעודת הסל (ETF) שמייצגת את הסקטור"') + sortableTh("מחיר", "price", ' title="המחיר הנוכחי"') + sortableTh("שווי", "mc", ' title="שווי שוק (מחיר × מספר מניות)"') + sortableTh("%", "chg", ' title="שינוי במחיר היום באחוזים"') +
       sortableTh("Y", "Y", ' title="נר Strat בטיימפריים השנתי"') + sortableTh("Q", "Q", ' title="נר Strat בטיימפריים הרבעוני"') + sortableTh("M", "M", ' title="נר Strat בטיימפריים החודשי"') + sortableTh("W", "W", ' title="נר Strat בטיימפריים השבועי"') + sortableTh("D", "D", ' title="נר Strat בטיימפריים היומי"') + sortableTh("FTFC", "ftfc", ' title="FTFC — המשכיות טיימפריימים מלאה: כל הטיימפריימים באותו כיוון (ירוק=עולה, אדום=יורד)"') +
-      sortableTh("Ninja", "ninja", ' title="Ninja Score 0-100: איכות הסטאפ — יישור טיימפריימים, ווליום יחסי, תבנית, כסף חכם, קרבה לממוצע, נזילות וחוזק הסקטור"') +
       visCols.map(c => sortableTh(c.th, c.key, c.tip ? ' title="' + escAttr(c.tip) + '"' : "")).join("") +
       "<th></th>";
-    const nCols = 15 + visCols.length;
+    const nCols = 14 + visCols.length;
     const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
       optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '" title="' + escAttr((c.tip ? c.tip : c.th) + (c.active ? " · פילטר פעיל" : "")) + '">' + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
@@ -2358,7 +2354,7 @@
         '<button class="btn ghost" id="alertBell" title="מרכז התראות — התראה כשמניה מהמועדפים נכנסת לסריקה">🔔<span class="al-badge" id="alBadge"></span></button>' +
       "</div></div>";
     return (
-      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וכל מניה מקבלת <b>Ninja Score</b> שמדרג כמה שווה לבדוק אותה עכשיו.</div></div>' +
+      '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וממוינים לפי <b>העולות/היורדות</b> של היום.</div></div>' +
       (scanView === "yday"
         ? '<div class="scan-yday-note">📅 <b>תצוגת אתמול</b> — ' + (SCAN_YDAY ? "הסריקה כפי שנסגרה" + (SCAN_YDAY.snapDate ? " (" + SCAN_YDAY.snapDate + ")" : "") + ", עם נרות יומיים מושלמים. " : (_ydayLoaded ? "אין עדיין נתוני אתמול — הסנאפשוט נשמר אוטומטית אחרי סגירת המסחר בארה\"ב. " : "טוען נתונים… ")) + '<button class="btn ghost sm" data-scanview="live">🔴 חזור ללייב</button></div>'
         : (isLive ? liveBanner() : DEMO)) +
@@ -2551,7 +2547,7 @@
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); _selPreset = ""; scanSort.col = "ninja"; scanSort.dir = -1; reRender(); };   // clearing filters also clears the loaded preset
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); _selPreset = ""; scanSort.col = "chg"; scanSort.dir = -1; reRender(); };   // clearing filters also clears the loaded preset
     // live / yesterday view toggle (buttons in the top bar + the yesterday banner)
     document.querySelectorAll("[data-scanview]").forEach(b => b.onclick = () => { const v = b.dataset.scanview; if (v === scanView) return; scanView = v; if (v === "yday") fetchYesterday(); reRender(); });
     // technical controls
