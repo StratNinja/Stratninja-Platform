@@ -574,7 +574,7 @@
     return '<div class="panel"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימה</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div>" + insightBox + "</div>";
   }
-  let cmDrill = { bucket: null, tfk: null, col: null, dir: -1 };
+  let cmDrill = { bucket: null, tfk: null, col: null, dir: -1, favTop: false };
   function cmSortVal(r, col, tfk) {
     if (col === "sym") return r.s;
     if (col === "sec") return r.sec || "";
@@ -583,7 +583,7 @@
     if (col === "cndl") { const c = (r[tfk] || {}).c; return c === "up" ? 2 : (c === "down" ? 0 : 1); }
     return null;
   }
-  function openCandleMapDrill(bucket, tfk) { cmDrill = { bucket, tfk, col: null, dir: -1 }; renderCmDrill(); }
+  function openCandleMapDrill(bucket, tfk) { cmDrill = { bucket, tfk, col: null, dir: -1, favTop: false }; renderCmDrill(); }
   function renderCmDrill() {
     if (!(SCAN && SCAN.rows)) return;
     const bucket = cmDrill.bucket, tfk = cmDrill.tfk;
@@ -599,6 +599,10 @@
     } else {
       members = members.slice().sort((a, b) => a.s.localeCompare(b.s));
     }
+    if (cmDrill.favTop && window.Prefs) {   // favorites first, keeping the sort within each group
+      const fav = members.filter(r => window.Prefs.isFav(r.s)), rest = members.filter(r => !window.Prefs.isFav(r.s));
+      if (fav.length) members = fav.concat(rest);
+    }
     const th = (label, col, start) => {
       const arrow = cmDrill.col === col ? (cmDrill.dir < 0 ? " ▼" : " ▲") : "";
       return '<th class="sortable" data-cmsort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>";
@@ -609,13 +613,15 @@
     const syms = members.map(r => r.s).join(", ");
     modal("🗺️ " + title + " · " + (TF_HE[tfk] || tfk) + " · " + members.length + " מניות",
       '<div class="drill-bar"><button class="btn ghost" id="cmapGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
-      '<button class="btn ghost" id="cmapCopy" style="font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button></div>" +
+      '<button class="btn ghost" id="cmapCopy" style="font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button>" +
+      '<button class="chip cg-favtop' + (cmDrill.favTop ? " on" : "") + '" id="cmapFav" title="הבא את המניות מהמועדפים לראש">⭐ מועדפים ראשונים</button></div>' +
       '<div class="note" style="margin-bottom:8px">' + (CMAP_DESC[bucket] || "") + ' · לחץ על כל כותרת למיון (נר = 🟢 ירוק / 🔴 אדום)</div>' +
       '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th>' + th("סימבול", "sym", true) + th("סקטור", "sec", true) + th("מחיר", "price") + th("נר " + tfk, "cndl") + "</tr></thead><tbody>" + rows + "</tbody></table></div>");
     const cp = $("#cmapCopy");
     if (cp) cp.onclick = () => { copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + members.length; }); };
     const gb = $("#cmapGrid");
     if (gb) gb.onclick = () => openChartGrid(members.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || 0, chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: title });
+    { const fv = $("#cmapFav"); if (fv) fv.onclick = () => { cmDrill.favTop = !cmDrill.favTop; renderCmDrill(); }; }
     document.querySelectorAll("[data-cmsort]").forEach(h => h.onclick = () => {
       const c = h.dataset.cmsort;
       if (cmDrill.col === c) cmDrill.dir *= -1; else { cmDrill.col = c; cmDrill.dir = c === "sym" ? 1 : -1; }
