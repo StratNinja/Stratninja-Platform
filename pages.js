@@ -2967,21 +2967,32 @@
     // ONE column per bucket, side by side (RTL: BULL right · neutral middle · BEAR left). Inside each
     // column: a grid of up to 4-per-row (auto-fits the column width), first 4 shown + "עוד N" toggle.
     const SS_HEAD = 4;
-    const ssColumn = (title, cls, arr, cardFn) => {
+    const ssColumn = (title, cls, arr, cardFn, footer) => {
       const cards = arr.length
         ? arr.map((o, i) => cardFn(o, i >= SS_HEAD)).join("")
         : '<div class="muted" style="padding:12px;grid-column:1/-1;text-align:center;font-size:12px">אין כרגע</div>';
       const hidden = Math.max(0, arr.length - SS_HEAD);
       return '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
         '<div class="ss-col-grid">' + cards + "</div>" +
-        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
+        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") +
+        (footer || "") + "</div>";
     };
+    // fills the neutral column's empty space: which neutral sectors are closest to flipping BULL / BEAR
+    function _closeToCross(midArr, nameFn) {
+      const wr = midArr.map(o => { const g = (o.fg != null ? o.fg : o.bull) || 0, r = (o.fr != null ? o.fr : o.bear) || 0; return { o, ratio: (g + r) ? g / (g + r) : 0.5, has: (g + r) > 0 }; }).filter(x => x.has);
+      if (!wr.length) return "";
+      const nearBull = wr.slice().sort((a, b) => b.ratio - a.ratio).slice(0, 2).map(x => nameFn(x.o));
+      const nearBear = wr.slice().sort((a, b) => a.ratio - b.ratio).slice(0, 2).map(x => nameFn(x.o));
+      return '<div class="ss-cross"><div class="ssc-h">🔀 קרובים למעבר</div>' +
+        (nearBull.length ? '<div class="ssc-row"><span class="ssc-lbl bull">↗ ל-BULL</span> ' + nearBull.join(" · ") + "</div>" : "") +
+        (nearBear.length ? '<div class="ssc-row"><span class="ssc-lbl bear">↘ ל-BEAR</span> ' + nearBear.join(" · ") + "</div>" : "") + "</div>";
+    }
     // strongest first in BULL, weakest first in BEAR — so the sector to check leads its column
     const secBull = secInfo.filter(o => o.bucket === "bull").sort((a, b) => b.fg / b.tot - a.fg / a.tot);
     const secMid = secInfo.filter(o => o.bucket === "mid").sort((a, b) => (b.fg - b.fr) / b.tot - (a.fg - a.fr) / a.tot);
     const secBear = secInfo.filter(o => o.bucket === "bear").sort((a, b) => b.fr / b.tot - a.fr / a.tot);
     const secGrouped = '<div class="subsec-3col">' +
-      ssColumn("🟢 BULL", "ss-bull", secBull, secCard) + ssColumn("⚪ נטרלי", "ss-mid", secMid, secCard) + ssColumn("🔴 BEAR", "ss-bear", secBear, secCard) + "</div>";
+      ssColumn("🟢 BULL", "ss-bull", secBull, secCard) + ssColumn("⚪ נטרלי", "ss-mid", secMid, secCard, _closeToCross(secMid, o => secHe(o.name))) + ssColumn("🔴 BEAR", "ss-bear", secBear, secCard) + "</div>";
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
@@ -3015,7 +3026,7 @@
     const subSection = indNames.length
       ? '<div class="page-head" style="margin-top:28px"><h2 style="font-size:20px;margin:0 0 4px">🏭 תתי-סקטורים לפי FTFC</h2><div class="sub">מחולק ל-3 לפי כיוון הכסף: <b>🟢 BULL</b> (מימין) · <b>⚪ בין לבין</b> (אמצע) · <b>🔴 BEAR</b> (שמאל). הבר = הרכב <b>FTFC (' + TFLBL + ')</b>: <span class="pos">🟢 מעלה</span> · <span class="muted">⚪ ללא</span> · <span class="neg">🔴 מטה</span>. לחץ על כרטיס למניות.</div></div>' +
         '<div class="subsec-3col">' +
-          ssColumn("🟢 BULL", "ss-bull", ssBull, subCard) + ssColumn("⚪ בין לבין", "ss-mid", ssMid, subCard) + ssColumn("🔴 BEAR", "ss-bear", ssBear, subCard) + "</div>"
+          ssColumn("🟢 BULL", "ss-bull", ssBull, subCard) + ssColumn("⚪ בין לבין", "ss-mid", ssMid, subCard, _closeToCross(ssMid, o => o.name)) + ssColumn("🔴 BEAR", "ss-bear", ssBear, subCard) + "</div>"
       : "";
 
     return head + note + secGrouped + subSection;

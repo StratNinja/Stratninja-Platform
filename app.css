@@ -546,6 +546,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ss-card2 .ss2-pct { font-weight:800; font-variant-numeric:tabular-nums; }
 .ss-card2 .ss2-pct.pos { color:var(--green); } .ss-card2 .ss2-pct.neg { color:var(--red); }
 .ss-card2 .ss2-score { margin-inline-start:auto; font-size:11.5px; font-weight:700; color:var(--muted); }
+/* "close to crossing" summary — fills the neutral column's empty space */
+.ss-cross { margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,.035); border:1px dashed var(--line); font-size:12px; }
+.ss-cross .ssc-h { font-weight:800; color:var(--muted); font-size:11.5px; margin-bottom:6px; }
+.ss-cross .ssc-row { display:flex; gap:7px; flex-wrap:wrap; color:var(--ink); line-height:1.7; }
+.ss-cross .ssc-lbl { font-weight:800; white-space:nowrap; }
+.ss-cross .ssc-lbl.bull { color:#4fe39b; } .ss-cross .ssc-lbl.bear { color:#ff6b7a; }
 /* S&P 500 breadth cards are richer (with mover tickers) → 2 per row inside each column */
 /* S&P 500 view toggle + 500-square heatmap */
 .sp-view-switch { display:flex; gap:6px; margin:0 0 14px; }
