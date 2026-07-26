@@ -325,6 +325,8 @@
     // TradingView auto-switch to intraday 2h candles, which Adi doesn't want).
     const RANGE_DEF = { D: "12M", W: "12M", M: "60M", Q: "60M", Y: "60M" };
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
+    // remembered column density (fewer columns = fewer charts loading at once = faster). default 3.
+    let cgDensity = (function () { try { const d = localStorage.getItem("sn_cg_density"); if (["2", "3", "4", "5"].indexOf(d) >= 0) return d; } catch (e) {} return "3"; })();
     let cgSort = "chg";   // charts order (like sorting the scanner table) — re-orderable below
     function cgSorted() {
       const arr = rows.slice();
@@ -361,11 +363,11 @@
     const tfSel = '<div class="cg-tfsel"><span class="muted" style="font-size:12px">טווח:</span>' + rBtns +
       '<span class="muted" style="font-size:12px">· ' + shown.length + " מניות" + more + "</span></div>";
     const dens = '<div class="cg-dens"><span class="muted" style="font-size:12px">צפיפות:</span>' +
-      '<button class="chip" data-cg="2">2</button><button class="chip on" data-cg="3">3</button><button class="chip" data-cg="4">4</button><button class="chip" data-cg="5">5</button></div>';
+      ["2", "3", "4", "5"].map(n => '<button class="chip' + (n === cgDensity ? " on" : "") + '" data-cg="' + n + '">' + n + "</button>").join("") + "</div>";
     const sortSel = '<div class="cg-sort"><span class="muted" style="font-size:12px">מיון:</span><select id="cgSortSel" style="font-size:12px">' +
       '<option value="chg">עולה %</option><option value="chgAsc">יורד %</option><option value="sym">סימבול</option></select></div>';
     const shotBtn = '<button class="btn ghost" id="cgShot" style="font-size:12px;font-weight:600" title="צילום מסך של תצוגת הגרפים">🖼️ צילום מסך</button>';
-    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-3" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
+    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-' + cgDensity + '" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
@@ -397,7 +399,9 @@
 
     // density toggle
     document.querySelectorAll("[data-cg]").forEach(b => b.onclick = () => {
-      if (grid) grid.className = "cg-grid cg-" + b.dataset.cg;
+      cgDensity = b.dataset.cg;
+      try { localStorage.setItem("sn_cg_density", cgDensity); } catch (e) {}   // remember the choice
+      if (grid) grid.className = "cg-grid cg-" + cgDensity;
       document.querySelectorAll("[data-cg]").forEach(x => x.classList.toggle("on", x === b));
     });
     // manual range (lookback) selector — rebuilds the charts in place (re-observes for lazy loading)
