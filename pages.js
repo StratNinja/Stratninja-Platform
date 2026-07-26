@@ -3471,7 +3471,7 @@
       return '<div class="panel flow-ai"><h3>🤖 ניתוח זרימת הכסף — לאן ומדוע <span class="muted" style="font-size:12px">AI</span></h3>' +
         '<div class="muted" style="padding:12px">הניתוח מתעדכן אוטומטית כל ~30 דקות בשעות המסחר. חזור בקרוב…</div></div>';
     }
-    const when = f.updated ? hh(new Date(f.updated)) : "";
+    const when = f.updated ? (d => String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"))(new Date(f.updated)) : "";
     return '<div class="panel flow-ai">' +
       '<h3>🤖 ניתוח זרימת הכסף — לאן ומדוע <span class="muted" style="font-size:12px">AI' + (when ? " · עודכן " + when : "") + "</span></h3>" +
       (f.headline ? '<div class="fa-headline">' + escHtml(f.headline) + "</div>" : "") +
