@@ -393,6 +393,19 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .td-grid3 { display:grid; grid-template-columns:1.05fr 1.05fr 1fr; gap:14px; align-items:stretch; }
 .td-grid3 > .panel { margin-bottom:0; }
 /* "לאן הכסף הולך" — two money-flow panels on top, long/short candidate tables below */
+/* AI money-flow analysis panel (replaces the old Ninja-Score candidate tables) */
+.flow-ai { margin-top:14px; }
+.flow-ai .fa-headline { font-size:16px; font-weight:800; color:var(--ink); margin:2px 0 14px; line-height:1.45; }
+.flow-ai .fa-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.flow-ai .fa-card { background:rgba(255,255,255,.035); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.flow-ai .fa-card.out { border-inline-start:3px solid var(--red); }
+.flow-ai .fa-card.inn { border-inline-start:3px solid var(--green); }
+.flow-ai .fa-lbl { font-size:13px; font-weight:800; margin-bottom:6px; }
+.flow-ai .fa-txt { font-size:14.5px; line-height:1.6; color:var(--ink); }
+.flow-ai .fa-reason { margin-top:14px; background:rgba(124,108,240,.1); border:1px solid rgba(124,108,240,.32);
+  border-radius:12px; padding:12px 16px; display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+.flow-ai .fa-reason .fa-lbl { margin:0; white-space:nowrap; }
+@media (max-width:720px){ .flow-ai .fa-grid { grid-template-columns:1fr; } }
 .td-flow2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; margin-bottom:14px; }
 .td-cands2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:stretch; }
 .td-flow2 > .panel, .td-cands2 > .panel { margin-bottom:0; min-width:0; }

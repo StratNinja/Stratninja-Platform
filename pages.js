@@ -7,6 +7,7 @@
   "use strict";
   const $ = s => document.querySelector(s);
   let LIVE = null;  // live market snapshot from Supabase (null = show demo)
+  let FLOW = null;  // AI money-flow analysis (market_snapshot id='flow') for the "לאן הכסף הולך" page
   let SCAN = null;  // live per-ticker scanner data (null = show demo)
   let SCAN_YDAY = null;   // yesterday's snapshot (loaded lazily when the scanner "📅 אתמול" view is opened)
   let scanView = "live";  // scanner data view: "live" | "yday"
@@ -3419,23 +3420,29 @@
     const sectorsPanel = _flowPanelHtml({ title: "🗂️ לאן הכסף זורם — סקטורים", tf: flowTf, tfAttr: "flowtf", data: todaySectors(rows), isSub: false });
     const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTfSub, tfAttr: "flowtfsub", data: todaySubsectors(rows), isSub: true, limit: 14 });
 
-    const longs = rows.filter(t => (t.D || {}).c === "up").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
-    const shorts = rows.filter(t => (t.D || {}).c === "down").sort((a, b) => b.ninja - a.ninja).slice(0, 8);
-    const tbl = (list, title) => {
-      const syms = list.map(t => t.sym).join(", ");
-      const btns = list.length
-        ? '<span style="display:flex;gap:6px"><button class="btn ghost td-grid" data-syms="' + encodeURIComponent(syms) + '" style="font-size:12px;font-weight:600">📊 גרפים</button>' +
-          '<button class="btn ghost td-copy" data-syms="' + encodeURIComponent(syms) + '" style="font-size:12px;font-weight:600">📋 העתק ' + list.length + "</button></span>"
-        : "";
-      return '<div class="panel"><h3 class="td-tbl-head"><span>' + title + ' <span class="muted" style="font-size:12px">Top ' + list.length + " לפי Ninja Score</span></span>" + btns + "</h3>" +
-        (list.length ? '<div class="tablewrap"><table class="scan-table"><thead><tr><th>Score</th><th></th><th style="text-align:start">סימבול</th><th style="text-align:start">סקטור</th><th>מחיר</th><th>%</th><th>FTFC</th><th></th></tr></thead><tbody>' + list.map(todayStockRow).join("") + "</tbody></table></div>" : '<div class="muted" style="padding:14px">אין מועמדים ברורים כרגע.</div>') + "</div>";
-    };
-
     return head + (isLive ? liveBanner() : DEMO) +
       marketPanel +
       '<div class="td-flow2">' + sectorsPanel + subsPanel + "</div>" +
-      '<div class="td-cands2">' + tbl(longs, "🟢 מועמדים ללונג") + tbl(shorts, "🔴 מועמדים לשורט") + "</div>" +
-      '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>Ninja Score</b> מדרג איכות סטאפ (יישור טיימפריימים, ווליום, תבנית, כסף חכם, קרבה לממוצע, נזילות, חוזק סקטור). זהו כלי מיון — לא המלצת קנייה/מכירה. תמיד אמת בגרף. <b>תתי-סקטורים</b>: <u>תעודת סל</u> = תנועת ה-ETF (משוקלל שווי, תואם ללחיצה) · <u>ממוצע ענף</u> = ממוצע המניות (רוחב). מוצגים החזקים ביותר.</div>';
+      flowAnalysisPanel() +
+      '<div class="note" style="margin-top:6px;font-size:11px">💡 <b>תתי-סקטורים</b>: <u>תעודת סל</u> = תנועת ה-ETF (משוקלל שווי, תואם ללחיצה) · <u>ממוצע ענף</u> = ממוצע המניות (רוחב). מוצגים החזקים ביותר. הניתוח למטה נוצר אוטומטית ע"י AI מנתוני הזרימה והחדשות — לא ייעוץ השקעות.</div>';
+  }
+  // AI narrative: where money is flowing OUT / IN and whether the reason is known (from market_snapshot id='flow')
+  function flowAnalysisPanel() {
+    const f = FLOW;
+    if (!f || (!f.out && !f.in && !f.headline)) {
+      return '<div class="panel flow-ai"><h3>🤖 ניתוח זרימת הכסף — לאן ומדוע <span class="muted" style="font-size:12px">AI</span></h3>' +
+        '<div class="muted" style="padding:12px">הניתוח מתעדכן אוטומטית כל ~30 דקות בשעות המסחר. חזור בקרוב…</div></div>';
+    }
+    const when = f.updated ? hh(new Date(f.updated)) : "";
+    return '<div class="panel flow-ai">' +
+      '<h3>🤖 ניתוח זרימת הכסף — לאן ומדוע <span class="muted" style="font-size:12px">AI' + (when ? " · עודכן " + when : "") + "</span></h3>" +
+      (f.headline ? '<div class="fa-headline">' + escHtml(f.headline) + "</div>" : "") +
+      '<div class="fa-grid">' +
+        '<div class="fa-card out"><div class="fa-lbl">🔴 מאיפה הכסף יוצא</div><div class="fa-txt">' + escHtml(f.out || "—") + "</div></div>" +
+        '<div class="fa-card inn"><div class="fa-lbl">🟢 לאן הכסף נכנס</div><div class="fa-txt">' + escHtml(f.in || "—") + "</div></div>" +
+      "</div>" +
+      (f.reason ? '<div class="fa-reason"><span class="fa-lbl">💡 הסיבה</span><span class="fa-txt">' + escHtml(f.reason) + "</span></div>" : "") +
+      "</div>";
   }
   function wireToday() {
     wireCharts($("#page")); wireStars($("#page"));
@@ -3941,7 +3948,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
-    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") { loadScanner(); if (state.page === "today") loadLive(); }
+    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") { loadScanner(); if (state.page === "today") { loadLive(); loadFlow(); } }
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
   }
   window.setPageExternal = setPage;
@@ -4023,6 +4030,16 @@
   }
 
   // ---- Hebrew news feed (opens from the sidebar; not a permanent floating box) ----
+  async function loadFlow() {
+    try {
+      const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return;
+      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.flow&select=data",
+        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j && j[0] && j[0].data) { FLOW = j[0].data; if (state.page === "today") reRender(); }
+    } catch (e) {}
+  }
   let NEWS = null, _newsOpen = false;
   try { _newsOpen = localStorage.getItem("sn_news_open") === "1"; } catch (e) {}
   async function loadNews() {
