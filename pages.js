@@ -945,11 +945,11 @@
       const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(1) + "%";
       return '<span class="mv-chip clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " " + cs + '" style="background:' + chgColor(x.c) + '">' + x.s + " <b>" + cs + "</b></span>";
     };
-    const spCard = s => {
+    const spCard = (s, extra) => {
       const ap = s.above / (s.total || 1) * 100;
       const st = s.stocks.slice().sort((x, y) => (y.c == null ? 0 : y.c) - (x.c == null ? 0 : x.c));
       const gain = st.slice(0, 4), lose = st.slice(-4).reverse();
-      return '<div class="panel sector-card sp-card" data-spdrill="' + encodeURIComponent(s.name) + '">' +
+      return '<div class="panel sector-card sp-card' + (extra ? " ss-extra" : "") + '" data-spdrill="' + encodeURIComponent(s.name) + '">' +
         "<h3>" + secHe(s.name) + " " + etfChip(etfFor(s.name)) + ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " · " + ap.toFixed(0) + "% · " + pctSpanBare(s.chg) + "</span></h3>" +
         '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
         '<div class="mv-row"><span class="mv-lbl">🟢 מובילים</span>' + gain.map(mvChip).join("") + "</div>" +
@@ -961,10 +961,17 @@
     const spBull = withAp.filter(o => o.ap >= 55).sort((a, c) => c.ap - a.ap);
     const spMid = withAp.filter(o => o.ap >= 45 && o.ap < 55).sort((a, c) => c.ap - a.ap);
     const spBear = withAp.filter(o => o.ap < 45).sort((a, c) => a.ap - c.ap);
-    const spColHtml = (title, cls, arr) => '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-      '<div class="sp-col-grid">' + (arr.length ? arr.map(o => spCard(o.s)).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;font-size:12px;text-align:center">אין כרגע</div>') + "</div></div>";
+    const SP_HEAD = 2;   // show 2 cards per column; the rest collapse behind an "עוד N" button
+    const spColHtml = (title, cls, arr) => {
+      const cards = arr.length ? arr.map((o, i) => spCard(o.s, i >= SP_HEAD)).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;font-size:12px;text-align:center">אין כרגע</div>';
+      const hidden = Math.max(0, arr.length - SP_HEAD);
+      return '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
+        '<div class="sp-col-grid">' + cards + "</div>" +
+        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
+    };
+    const secGridBtn = '<button class="btn ghost" id="spSectorGrid" style="font-size:12px;font-weight:600" title="פתח את כל תעודות-הסל של הסקטורים בתצוגת גרפים">📊 כל הסקטורים בגרפים</button>';
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · מחולק ל-3 לפי רוחב: <b>BULL</b> (55%+ מעל פתיחה) · <b>בין לבין</b> · <b>BEAR</b> (מתחת 45%). לחץ על סקטור לכל המניות.</div></div>' +
-      sp500ViewSwitch() + insightBox + liveBanner() + breadthTopBar + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
+      '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" + insightBox + liveBanner() + breadthTopBar + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
   }
   let spDrillSort = { col: "c", dir: -1 };
   function spDrillVal(x, col) {
@@ -1014,6 +1021,14 @@
       sp500View = b.dataset.spview; reRender();
     });
     document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill)));
+    // "עוד N" — reveal/hide the collapsed sector cards inside each column
+    document.querySelectorAll("[data-sssection]").forEach(bt => bt.onclick = e => {
+      e.stopPropagation();
+      const col = bt.closest(".ss-col"); if (!col) return;
+      const open = col.classList.toggle("expanded");
+      bt.textContent = open ? "פחות ↑" : ("עוד " + col.querySelectorAll(".ss-extra").length + " ↓");
+    });
+    { const sg = $("#spSectorGrid"); if (sg) sg.onclick = () => openSectorChartGrid(); }
     if (_spTimer) { clearInterval(_spTimer); _spTimer = null; }
     if (_spFacts && _spFacts.length > 1) {
       let idx = _spFacts.indexOf((document.getElementById("spInsightText") || {}).innerHTML);
@@ -1025,6 +1040,14 @@
         setTimeout(() => { el.innerHTML = _spFacts[idx]; el.style.opacity = "1"; }, 250);
       }, 10000);
     }
+  }
+  // open all the SPDR sector ETFs (XLK/XLF/...) as a chart grid — a visual view of every sector at once
+  function openSectorChartGrid() {
+    const secs = (LIVE && LIVE.sectors) || [];
+    const seen = {}, rows = [];
+    secs.forEach(s => { const etf = etfFor(s.name); if (etf && !seen[etf]) { seen[etf] = 1; rows.push({ sym: etf, sector: secHe(s.name), ind: "", price: 0, chg: s.chg != null ? s.chg : 0 }); } });
+    if (!rows.length) { snToast("אין נתוני סקטורים כרגע"); return; }
+    openChartGrid(rows, { title: "כל הסקטורים" });
   }
   function pctSpanBare(v) { v = v == null ? 0 : v; return '<span class="' + (v > 0 ? "pos" : v < 0 ? "neg" : "zero") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>"; }
   // 5-tier move classification for the Market Cockpit: extreme up / up / neutral / down / extreme down (+ ▲▼)

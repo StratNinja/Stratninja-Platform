@@ -557,6 +557,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* S&P 500 breadth cards are richer (with mover tickers) → 2 per row inside each column */
 /* S&P 500 view toggle + 500-square heatmap */
 .sp-view-switch { display:flex; gap:6px; margin:0 0 14px; }
+.sp-view-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+.sp-view-row .sp-view-switch { margin:0; }
 .sp-grid-panel { padding:16px; }
 .sp-grid-head { font-size:14px; font-weight:800; margin:0 0 12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
 .sp-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(26px,1fr)); gap:3px; }
