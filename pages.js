@@ -347,8 +347,10 @@
     let curRange = RANGE_DEF[derived] || "12M";
     function cgSrc(sym, rk) {
       const R = CG_RANGE.find(x => x.k === rk) || CG_RANGE[4];
+      // hide_legend — the card header already shows sym/price/%, so the TradingView legend (long name + OHLC)
+      // is redundant clutter in the grid; hiding it gives each mini-chart more room to read.
       return "https://www.tradingview.com/widgetembed/?frameElementId=cg_" + encodeURIComponent(sym) + "&symbol=" + encodeURIComponent(sym) +
-        "&interval=" + R.iv + "&range=" + R.rng + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&saveimage=0&timezone=America%2FNew_York" + maStudiesParam();
+        "&interval=" + R.iv + "&range=" + R.rng + "&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&hide_legend=1&saveimage=0&timezone=America%2FNew_York" + maStudiesParam();
     }
     function cellsHtml(rk) {
       // charts are NOT rendered upfront — each is a placeholder that loads its iframe only
