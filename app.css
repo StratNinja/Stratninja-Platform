@@ -941,7 +941,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .rk .pct { font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; align-items:center; gap:4px; justify-content:flex-end; }
 .rk .pct .arrow { font-size:11px; }
 .rk .track { height:16px; border-radius:6px; background:var(--cell); overflow:hidden; }
-.rk .fill { height:100%; border-radius:6px; min-width:4px; }
+.rk .fill { display:block; height:100%; border-radius:6px; min-width:4px; }
 .rk.u1 .fill { background:var(--green); } .rk.u2 .fill { background:#4dffb0; }
 .rk.d1 .fill { background:var(--red); } .rk.d2 .fill { background:#ff5a56; }
 .rk.neu .fill { background:var(--muted); }
