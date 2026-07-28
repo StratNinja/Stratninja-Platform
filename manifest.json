@@ -1,7 +1,7 @@
 {
   "name": "StratNinja Scanner",
   "short_name": "StratNinja",
-  "description": "סורק שוק ההון האמריקאי בזמן אמת לפי The Strat — סקירת שוק, סורק תבניות, Ninja Score, יומן מסחר והתראות.",
+  "description": "סורק שוק ההון האמריקאי בזמן אמת לפי The Strat — סקירת שוק, סורק תבניות, סקטורים, יומן מסחר והתראות.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

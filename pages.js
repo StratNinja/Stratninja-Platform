@@ -3500,7 +3500,7 @@
       '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
   }
   function renderToday() {
-    const head = '<div class="page-head"><h1>🎯 לאן הכסף הולך?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם, ואיפה ה-Ninja Score הכי גבוה — ללונג ולשורט.</div></div>';
+    const head = '<div class="page-head"><h1>🎯 לאן הכסף הולך?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם — מאילו סקטורים הוא יוצא ולאן הוא נכנס, עם ניתוח AI.</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const rows = scanSource().filter(t => t.ninja != null);
     if (!rows.length) return head + '<div class="panel"><div class="note" style="margin:6px 0">⏳ הנתונים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
@@ -3886,7 +3886,7 @@
       '<div class="lrn-body"><div class="lrn-svg" data-cltype="' + type + '" title="לחץ למבט מבפנים 🔬">' + _candleDiagram(type) + "</div><div class=\"lrn-txt\">" + body +
       '<div class="lrn-inscan">בסורק: ' + badge + "</div></div></div></div>";
     const head =
-      '<div class="page-head"><h1>📚 לימוד — יסודות TheStrat</h1><div class="sub">כל החומר הלימודי במרוכז. מתחילים כאן: <b>סוגי הנרות</b> — האלף־בית של השיטה. אחריהם FTFC, Ninja Score, וסרטוני המדריכים.</div></div>';
+      '<div class="page-head"><h1>📚 לימוד — יסודות TheStrat</h1><div class="sub">כל החומר הלימודי במרוכז. מתחילים כאן: <b>סוגי הנרות</b> — האלף־בית של השיטה. אחריהם FTFC, IN FORCE, וסרטוני המדריכים.</div></div>';
     const intro =
       '<div class="panel lrn-intro"><div class="lrn-intro-in"><div style="font-size:34px">🕯️</div><div>' +
       '<h2 style="margin:0 0 6px">שלושת סוגי הנרות — ורק הם</h2>' +
@@ -3909,7 +3909,7 @@
       '<div class="panel lrn-next"><h3 style="margin:0 0 10px">🎬 בקרוב — הרחבה</h3>' +
       '<div class="lrn-nextgrid">' +
       '<div class="lrn-nextitem"><b>המשכיות טיימפריימים (FTFC)</b><span class="muted">כשכל הזמנים מיושרים לאותו כיוון = אות חזק</span></div>' +
-      '<div class="lrn-nextitem"><b>Ninja Score</b><span class="muted">איך הציון 0–100 מדרג את איכות הסטאפ</span></div>' +
+      '<div class="lrn-nextitem"><b>IN FORCE</b><span class="muted">מתי נר מחזיק מעבר לקצה הקודם — טריגר אמיתי</span></div>' +
       '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">סרטון קצר לכל עמוד — יוטבעו כאן</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
@@ -4284,7 +4284,7 @@
     { page: "sp500", ico: "🗺️", t: "S&P 500", d: "מפת חום של 500 החברות הגדולות — לראות בבירור לאן הכסף זורם היום, לפי סקטורים וגודל חברה." },
     { page: "sectors", ico: "🗂️", t: "סקטורים", d: "פירוק לכל סקטור ותת-סקטור: מי מוביל, מי בפיגור, ואילו מניות בולטות בכל אחד." },
     { page: "today", ico: "🎯", t: "לאן הכסף הולך", d: "קיצור דרך: האחזקה הבולטת בכל סקטור והתנועות החשובות — מכאן כדאי להתחיל את הבדיקה היומית." },
-    { page: "scanner", ico: "🔍", t: "סורק העסקאות — הלב של המערכת", d: "מסננים מניות לפי תבניות Strat, טיימפריימים ופילטרים טכניים. כל מניה מקבלת <b>Ninja Score</b> (0–100) שמדרג את איכות הסטאפ. אפשר לשמור <b>סריקות מועדפות (PRESETS)</b> ולקבל 🔔 התראה כשמניה מהמועדפים נכנסת לסריקה." },
+    { page: "scanner", ico: "🔍", t: "סורק העסקאות — הלב של המערכת", d: "מסננים מניות לפי תבניות Strat, טיימפריימים, IN FORCE ופילטרים טכניים. הטבלה ממוינת לפי העולות/יורדות של היום. אפשר לשמור <b>סריקות מועדפות (PRESETS)</b> ולקבל 🔔 התראה כשמניה מהמועדפים נכנסת לסריקה." },
     { page: "favorites", ico: "⭐", t: "מועדפים", d: "סמן ★ על כל מניה כדי להוסיף אותה לרשימת המעקב האישית — נשמרת בענן ומסתנכרנת בין כל המכשירים שלך." },
     { page: "journal", ico: "📅", t: "יומן מסחר", d: "העלה דוח מהברוקר או הזן עסקאות ידנית — ותקבל דשבורד רווח/הפסד, לוח שנה וסטטיסטיקות אישיות, בסגנון Tradezella." },
     { page: null, ico: "🗞️", t: "חדשות, שיתוף והתראות לפלאפון", d: "בסרגל הצד: 🗞️ חדשות שוק מתורגמות לעברית, ו-📷 שיתוף מסך. בסורק אפשר להפעיל <b>התראות לפלאפון (Push)</b> שיקפיצו אותך גם כשהאתר סגור." },
