@@ -3617,6 +3617,42 @@
       return s;
     } catch (e) { return new Set(); }
   }
+  // ---- favorites table sorting (self-contained; null col = default alert-grouped order) ----
+  const favSort = { col: null, dir: -1 };
+  function favSortVal(t, col) {
+    if (col === "sym") return t.sym;
+    if (col === "alert") return t._alertN || 0;
+    if (col === "sec") return t.sector || "";
+    if (col === "ind") return t.ind || "";
+    if (col === "price") return t.price;
+    if (col === "chg") return t.chg;
+    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(t[col]);
+    return null;
+  }
+  function favSortRows(rows) {
+    const col = favSort.col, dir = favSort.dir;
+    return rows.slice().sort((a, b) => {
+      let va = favSortVal(a, col), vb = favSortVal(b, col);
+      const na = va == null || va === "" || (typeof va === "number" && isNaN(va));
+      const nb = vb == null || vb === "" || (typeof vb === "number" && isNaN(vb));
+      if (na && nb) return 0; if (na) return 1; if (nb) return -1;   // blanks always last
+      if (typeof va === "string") return dir * va.localeCompare(vb);
+      return dir * (va - vb);
+    });
+  }
+  function favTh(label, col, alignStart) {
+    const active = favSort.col === col;
+    const arrow = active ? (favSort.dir < 0 ? " ▼" : " ▲") : "";
+    const st = "cursor:pointer;user-select:none" + (alignStart ? ";text-align:start" : "");
+    return "<th class='sortable' data-favsort='" + col + "' style='" + st + "' title='לחץ למיון · שוב להיפוך · שלישית לביטול'>" + label + arrow + "</th>";
+  }
+  function favSortClick(col) {
+    const def = col === "sym" ? 1 : -1;   // default direction for a fresh column
+    if (favSort.col !== col) { favSort.col = col; favSort.dir = def; }
+    else if (favSort.dir === def) { favSort.dir = -def; }   // 2nd click → reverse
+    else { favSort.col = null; }                            // 3rd click → back to grouped default
+    reRender();
+  }
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
     const list = favs.map(sym => {
@@ -3650,22 +3686,25 @@
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
           "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       };
-      // group + order: 🔔 עם התראה → 📓 פוזיציה פעילה → שאר המניות (stable within each group)
-      const groups = [[], [], []];
-      list.forEach(t => {
-        const hasAlert = (pmatch[t.sym] || []).length > 0;
-        const hasPos = jsyms.has(String(t.sym).toUpperCase());
-        groups[hasAlert ? 0 : hasPos ? 1 : 2].push(t);
-      });
-      const GHDR = ["🔔 עם התראה", "📓 פוזיציה פעילה", "⭐ שאר המניות"];
-      const nonEmpty = groups.filter(g => g.length).length;
+      // annotate each row for sorting (alert count / open-position) + the default grouping
+      list.forEach(t => { t._alertN = (pmatch[t.sym] || []).length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); });
       let rows = "";
-      groups.forEach((g, i) => {
-        if (!g.length) return;
-        if (nonEmpty > 1) rows += '<tr class="fav-grouphdr"><td colspan="20">' + GHDR[i] + ' <span class="muted">(' + g.length + ")</span></td></tr>";
-        rows += g.map(rowHtml).join("");
-      });
-      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th><th style=\'text-align:start\'>סימבול</th><th style=\'text-align:start\'>🔔 התראה</th><th style=\'text-align:start\'>סקטור</th><th style=\'text-align:start\'>תת-סקטור</th><th>מחיר</th><th>%</th>' + tfHeadCols() + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+      if (favSort.col) {
+        // an active column sort → one flat sorted list (per-row alert/position highlights are kept)
+        rows = favSortRows(list).map(rowHtml).join("");
+      } else {
+        // default order: 🔔 עם התראה → 📓 פוזיציה פעילה → שאר המניות (stable within each group)
+        const groups = [[], [], []];
+        list.forEach(t => groups[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
+        const GHDR = ["🔔 עם התראה", "📓 פוזיציה פעילה", "⭐ שאר המניות"];
+        const nonEmpty = groups.filter(g => g.length).length;
+        groups.forEach((g, i) => {
+          if (!g.length) return;
+          if (nonEmpty > 1) rows += '<tr class="fav-grouphdr"><td colspan="20">' + GHDR[i] + ' <span class="muted">(' + g.length + ")</span></td></tr>";
+          rows += g.map(rowHtml).join("");
+        });
+      }
+      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
@@ -3684,6 +3723,8 @@
   }
   function wireFavorites() {
     const g = $("#goScanner"); if (g) g.onclick = () => setPage("scanner");
+    // sortable column headers (click to sort · again to reverse · third time back to grouped default)
+    document.querySelectorAll("[data-favsort]").forEach(th => th.onclick = () => favSortClick(th.dataset.favsort));
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
     { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
