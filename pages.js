@@ -1097,8 +1097,10 @@
   // multi-timeframe per-TF conditions: {D:{t,c}, W:{t,c}, ...}  (t = bar type "1/2U/2D/3", c = color "up/down", "" = any)
   const MTF_TFS = ["D", "W", "M", "Q", "Y"];
   const MTF_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
-  function newMtf() { const o = {}; ["D", "W", "M", "Q", "Y"].forEach(function (k) { o[k] = { t: "", c: "" }; }); return o; }
-  function mtfActiveCount() { let n = 0; MTF_TFS.forEach(function (k) { if (scanState.mtf[k].t || scanState.mtf[k].c) n++; }); return n; }
+  function newMtf() { const o = {}; ["D", "W", "M", "Q", "Y"].forEach(function (k) { o[k] = { t: [], c: "" }; }); return o; }
+  // migrate any config where a TF's bar-type was a single string (legacy) into the multi-select array form
+  function _normMtf(m) { ["D", "W", "M", "Q", "Y"].forEach(function (k) { const o = m[k] || (m[k] = { t: [], c: "" }); if (!Array.isArray(o.t)) o.t = o.t ? [o.t] : []; if (o.c == null) o.c = ""; }); return m; }
+  function mtfActiveCount() { let n = 0; MTF_TFS.forEach(function (k) { const o = scanState.mtf[k]; if ((o.t && o.t.length) || o.c) n++; }); return n; }
   // ---- scanner panel visibility (declutter): hide whole filter areas per trader ----
   const SCAN_PANELS = [{ k: "filters", t: "Strat" }, { k: "mtf", t: "MTF" }, { k: "tech", t: "טכני" }, { k: "ind", t: "אינדיקטורים" }];
   function panelVis() {
@@ -1137,7 +1139,7 @@
     if (s.tfs) scanState.tfs = s.tfs.slice();
     scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
     if (s.patterns) scanState.patterns = s.patterns.slice();
-    scanState.mtf = s.mtf ? JSON.parse(JSON.stringify(s.mtf)) : newMtf();
+    scanState.mtf = _normMtf(s.mtf ? JSON.parse(JSON.stringify(s.mtf)) : newMtf());
     Object.keys(techState).forEach(k => { if (k === "techOpen") return; if (t[k] !== undefined) techState[k] = t[k]; });
   }
 
@@ -2263,7 +2265,8 @@
 
     // ---- multi-timeframe (MTF) analysis: a separate bar-type+color condition per timeframe ----
     const mtfCnt = mtfActiveCount();
-    const mtfTypeSel = tf => '<select data-mtft="' + tf + '">' + ["", "1", "2U", "2D", "3"].map(v => '<option value="' + v + '"' + (scanState.mtf[tf].t === v ? " selected" : "") + ">" + (v === "" ? "— כל" : v) + "</option>").join("") + "</select>";
+    const MTF_TYPE_OPTS = [{ val: "1", label: "1" }, { val: "2U", label: "2U" }, { val: "2D", label: "2D" }, { val: "3", label: "3" }];
+    const mtfTypeSel = tf => multiComboHtml("mtft_" + tf, MTF_TYPE_OPTS, scanState.mtf[tf].t, "— כל —");
     const mtfColorSel = tf => '<select data-mtfc="' + tf + '">' + [["", "— כל"], ["up", "🟢 ירוק"], ["down", "🔴 אדום"]].map(o => '<option value="' + o[0] + '"' + (scanState.mtf[tf].c === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
     let mtfInner = "";
     if (scanState.mtfOpen) {
@@ -2477,10 +2480,10 @@
       // multi-timeframe (MTF): a separate per-TF condition (type + color), all must hold together (AND)
       for (let m = 0; m < MTF_TFS.length; m++) {
         const tf = MTF_TFS[m], cond = scanState.mtf[tf];
-        if (!cond || (!cond.t && !cond.c)) continue;
+        if (!cond || ((!cond.t || !cond.t.length) && !cond.c)) continue;
         const cell = t[tf];
         if (!cell) return false;
-        if (cond.t && cell.t !== cond.t) return false;
+        if (cond.t && cond.t.length && cond.t.indexOf(cell.t) < 0) return false;   // cell must be one of the chosen types
         if (cond.c && cell.c !== cond.c) return false;
       }
       if (techOn) {
@@ -2569,7 +2572,7 @@
     { const pdup = $("#presetDup"); if (pdup) pdup.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשכפל אותה."); return; } const rec = window.Prefs.duplicateScanPreset(_selPreset); if (rec) _selPreset = rec.id; reRender(); }; }
     { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p && !confirm('למחוק את הסריקה "' + p.name + '"?')) return; window.Prefs.deleteScanPreset(_selPreset); _selPreset = ""; reRender(); }; }
     { const bell = $("#alertBell"); if (bell) bell.onclick = () => openAlertsFeed(); updateAlertBell(); }
-    document.querySelectorAll("[data-mtft]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtft].t = s.value; reRender(); });
+    MTF_TFS.forEach(tf => wireMultiCombo("mtft_" + tf, scanState.mtf[tf].t, reRender));   // multi-select bar-type per timeframe
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
     document.querySelectorAll("[data-dir]").forEach(b => b.onclick = () => { scanState.dir = b.dataset.dir; reRender(); });
@@ -2675,7 +2678,6 @@
     gid("scanCapMax", scanState.capMax !== "");
     gid("scanFtfc", !!scanState.ftfc);
     // ---- MTF selects ----
-    document.querySelectorAll("[data-mtft]").forEach(s => g(s, !!s.value));
     document.querySelectorAll("[data-mtfc]").forEach(s => g(s, !!s.value));
     // ---- technical panel ----
     gid("tMaRel", techState.maRel !== "off");

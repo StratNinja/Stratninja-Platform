@@ -609,6 +609,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mtf-cond { display:flex; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
 .mtf-tf-lbl { font-weight:700; font-size:13px; min-width:50px; }
 .mtf-cond select { flex:1; min-width:0; }
+.mtf-cond .search-combo { flex:1; min-width:0; }   /* multi-select bar-type combo behaves like the color select */
+.mtf-cond .search-combo .combo-input { padding-block:7px; }
 .brow { display:flex; align-items:center; gap:10px; margin-bottom:7px; }
 .btf { width:18px; color:var(--muted); font-size:12px; font-weight:700; }
 .breadth { flex:1; display:flex; height:14px; border-radius:5px; overflow:hidden; background:var(--panel2); }
