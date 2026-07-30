@@ -201,7 +201,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
   transition:box-shadow .18s ease, border-color .18s ease; }
 /* searchable combobox (type-to-filter sector / sub-sector) */
 .search-combo { position:relative; }
-.search-combo .combo-input { width:100%; padding-inline-start:26px; cursor:text; }
+.search-combo .combo-input { width:100%; padding:8px 10px; padding-inline-start:26px; cursor:text;
+  background:var(--bg); color:var(--ink); border:1px solid var(--line); border-radius:8px; font-size:13px; }
+.search-combo .combo-input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 2px rgba(124,108,240,.22); }
 .combo-caret { position:absolute; inset-inline-start:9px; top:50%; transform:translateY(-50%);
   color:var(--muted); font-size:11px; cursor:pointer; user-select:none; }
 .combo-list { position:absolute; z-index:60; top:calc(100% + 4px); inset-inline-start:0;
