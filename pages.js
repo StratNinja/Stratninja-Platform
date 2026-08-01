@@ -1097,6 +1097,42 @@
   // multi-timeframe per-TF conditions: {D:{t,c}, W:{t,c}, ...}  (t = bar type "1/2U/2D/3", c = color "up/down", "" = any)
   const MTF_TFS = ["D", "W", "M", "Q", "Y"];
   const MTF_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+
+  // ---- guide videos (YouTube): a collapsible "איזור לימוד" per page + a centralized grid on the Learn page ----
+  const VID = {
+    intro:   { id: "B2JJyEf6epw", t: "כל השוק במסך אחד · אינטרו" },
+    market:  { id: "hPLOC19gTNs", t: "מה קורה בשוק? · סקירת שוק" },
+    sp500:   { id: "ZR76J-TTjLw", t: "הראלי אמיתי? · רוחב שוק" },
+    sectors: { id: "1OnfHj_hu6Y", t: "מי מוביל היום? · סקטורים" },
+    today:   { id: "nHVENnlTl2E", t: "לאן הכסף זורם?" },
+    scan1:   { id: "mKyKglzpng0", t: "הסורק · חלק 1 — סינון Strat" },
+    scan2:   { id: "TzWduQ783BA", t: "הסורק · חלק 2 — פילטרים טכניים" },
+    scan3:   { id: "10Z11_k3U7o", t: "הסורק · חלק 3 — התראות" },
+    journal: { id: "KauU0b-cBAc", t: "יומן מסחר" },
+  };
+  const GUIDE_BY_PAGE = { market: ["market"], sp500: ["sp500"], sectors: ["sectors"], today: ["today"], scanner: ["scan1", "scan2", "scan3"], favorites: ["scan3"], journal: ["journal"] };
+  const GUIDE_ALL = ["intro", "market", "sp500", "sectors", "today", "scan1", "scan2", "scan3", "journal"];
+  function ytFacade(key) {
+    const v = VID[key]; if (!v) return "";
+    const th = "https://i.ytimg.com/vi/" + v.id + "/hqdefault.jpg";
+    return '<div class="yt-embed"><div class="yt-facade" data-yt="' + v.id + '" onclick="snPlayYT(this)" style="background-image:url(' + th + ')" title="' + escAttr(v.t) + '"><button class="yt-play" aria-label="נגן">▶</button><span class="yt-title">' + escHtml(v.t) + "</span></div></div>";
+  }
+  // click a facade → swap the thumbnail for the real YouTube iframe (lazy: nothing loads until clicked)
+  window.snPlayYT = function (el) {
+    const id = el.getAttribute("data-yt"); if (!id) return;
+    el.parentElement.innerHTML = '<iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1" title="StratNinja" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
+  };
+  function guideSection(page) {
+    const keys = GUIDE_BY_PAGE[page]; if (!keys || !keys.length) return "";
+    const multi = keys.length > 1;
+    return '<details class="guide-sec"><summary>🎥 <b>איזור לימוד</b> — צפה במדריך' + (multi ? " (" + keys.length + " חלקים)" : "") + ' לעמוד זה</summary><div class="guide-body' + (multi ? " multi" : "") + '">' + keys.map(ytFacade).join("") + "</div></details>";
+  }
+  window.snGuide = guideSection;   // exposed so the separate journal module can drop in its own guide
+  function guidesPanel() {
+    return '<div class="panel lrn-guides"><h3 style="margin:0 0 4px">🎥 סרטוני מדריך — כל הסדרה</h3>' +
+      '<div class="muted" style="font-size:13px;margin-bottom:12px">סרטון קצר לכל עמוד באתר — לחץ לצפייה. <a href="https://www.youtube.com/playlist?list=PLduENm0L_4tM" target="_blank" rel="noopener" style="color:var(--accent)">פתח את הפלייליסט המלא ב-YouTube ↗</a></div>' +
+      '<div class="guide-grid">' + GUIDE_ALL.map(ytFacade).join("") + "</div></div>";
+  }
   function newMtf() { const o = {}; ["D", "W", "M", "Q", "Y"].forEach(function (k) { o[k] = { t: [], c: "" }; }); return o; }
   // migrate any config where a TF's bar-type was a single string (legacy) into the multi-select array form
   function _normMtf(m) { ["D", "W", "M", "Q", "Y"].forEach(function (k) { const o = m[k] || (m[k] = { t: [], c: "" }); if (!Array.isArray(o.t)) o.t = o.t ? [o.t] : []; if (o.c == null) o.c = ""; }); return m; }
@@ -3953,13 +3989,13 @@
       '<div class="lrn-nextgrid">' +
       '<div class="lrn-nextitem"><b>המשכיות טיימפריימים (FTFC)</b><span class="muted">כשכל הזמנים מיושרים לאותו כיוון = אות חזק</span></div>' +
       '<div class="lrn-nextitem"><b>IN FORCE</b><span class="muted">מתי נר מחזיק מעבר לקצה הקודם — טריגר אמיתי</span></div>' +
-      '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">סרטון קצר לכל עמוד — יוטבעו כאן</span></div>' +
+      '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">✅ כבר כאן — גלול מטה לכל הסדרה 👇</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
     const hint = '<div class="lrn-hint">💡 רחף על דיאגרמה כדי לראות איך הנר נוצר · <b>לחץ עליה</b> לזום פנימה ולראות את הנרות הקטנים שמרכיבים אותה 🔬</div>';
     const badgeCtl = _newbieHidden() ? "" :
       '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
-    return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + next;
+    return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + guidesPanel() + next;
   }
   // "התחל כאן" nav badge — shown to everyone, but on the FIRST visit to Learn we ask if they want it gone.
   function _newbieHidden() { try { return localStorage.getItem("sn_newbie_hide") === "1"; } catch (e) { return false; } }
@@ -4090,7 +4126,7 @@
 
   function reRender() {
     const p = PAGES[state.page]; if (!p) return;
-    $("#page").innerHTML = p.render();
+    $("#page").innerHTML = p.render() + guideSection(state.page);   // append the page's guide-video area
     if (p.wire) p.wire();
     wireStars($("#page"));
     wireCharts($("#page"));

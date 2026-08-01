@@ -1042,6 +1042,29 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
   border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; margin: 1px 0 1px 4px; white-space: nowrap; }
 .fav-alert-x { cursor: pointer; color: var(--muted); font-size: 11px; padding: 0 4px; }
 .fav-alert-x:hover { color: #ef4444; }
+/* ===== guide video embeds (YouTube facade → iframe on click) ===== */
+.guide-sec { margin:14px 0 4px; border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden; }
+.guide-sec > summary { cursor:pointer; padding:11px 16px; font-size:14px; list-style:none; user-select:none; display:flex; align-items:center; gap:8px; }
+.guide-sec > summary::-webkit-details-marker { display:none; }
+.guide-sec > summary::after { content:"▾"; margin-inline-start:auto; color:var(--muted); font-size:12px; }
+.guide-sec[open] > summary::after { content:"▴"; }
+.guide-sec[open] > summary { border-bottom:1px solid var(--line); }
+.guide-body { padding:14px 16px; }
+.guide-body.multi { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+.guide-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+.lrn-guides { margin-top:16px; }
+.yt-embed { position:relative; width:100%; aspect-ratio:16/9; max-width:560px; margin:0 auto; }
+.guide-body.multi .yt-embed, .guide-grid .yt-embed { max-width:none; }
+.yt-embed iframe { position:absolute; inset:0; width:100%; height:100%; border:0; border-radius:10px; }
+.yt-facade { position:absolute; inset:0; border-radius:10px; background-size:cover; background-position:center; cursor:pointer;
+  display:flex; align-items:flex-end; justify-content:center; overflow:hidden; border:1px solid var(--line); }
+.yt-facade::before { content:""; position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.04) 40%,rgba(0,0,0,.6)); }
+.yt-facade:hover .yt-play { transform:translate(-50%,-50%) scale(1.08); background:#ff0000; }
+.yt-play { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:2;
+  width:58px; height:40px; border:0; border-radius:11px; background:rgba(230,0,0,.92); color:#fff; font-size:17px; cursor:pointer;
+  display:grid; place-items:center; box-shadow:0 4px 14px rgba(0,0,0,.45); transition:.14s; padding-inline-start:3px; }
+.yt-title { position:relative; z-index:2; color:#fff; font-size:12.5px; font-weight:700; padding:8px 10px; text-align:center;
+  text-shadow:0 1px 6px rgba(0,0,0,.85); width:100%; }
 /* ===== Learn / Academy page ===== */
 .lrn-intro { background: linear-gradient(180deg, rgba(124,108,240,.10), transparent); }
 .lrn-intro-in { display: flex; gap: 16px; align-items: flex-start; }

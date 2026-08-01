@@ -236,6 +236,9 @@
       root.appendChild(content);
     }
 
+    // guide-video area for the journal page (kept outside the privacy blur — it's not trade data)
+    if (window.snGuide) { const gw = el("div"); gw.innerHTML = window.snGuide("journal"); if (gw.firstChild) root.appendChild(gw.firstChild); }
+
     // keep open-position prices LIVE — load once, then refresh from the scanner every 30s while the
     // journal is open (previously fetched only once → prices froze at whatever they were on open)
     const anyOpen = (openPositions && openPositions.length) || (manualOpen && manualOpen.length);
