@@ -1190,6 +1190,59 @@
   function mtfActiveCount() { let n = 0; MTF_TFS.forEach(function (k) { const o = scanState.mtf[k]; if ((o.t && o.t.length) || o.c) n++; }); return n; }
   // ---- scanner panel visibility (declutter): hide whole filter areas per trader ----
   const SCAN_PANELS = [{ k: "filters", t: "Strat" }, { k: "mtf", t: "MTF" }, { k: "tech", t: "טכני" }, { k: "ind", t: "אינדיקטורים" }];
+  // ---- share a preset (link/code, no server) + reorder manager ----
+  function _b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function _b64d(c) { let s = c.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return decodeURIComponent(escape(atob(s))); }
+  function presetShareLink(p) { try { return location.origin + "/?p=" + _b64e(JSON.stringify({ n: p.name, c: p.cfg })); } catch (e) { return ""; } }
+  function sharePreset(p) { if (!p) return; const link = presetShareLink(p); if (!link) { snToast("שגיאה ביצירת הקישור"); return; } copyToClipboard(link, () => snToast("🔗 קישור הפריסט הועתק — שלח אותו לסוחר אחר")); }
+  function checkSharedPresetInUrl() {
+    try {
+      const m = location.search.match(/[?&]p=([^&]+)/); if (!m) return;
+      const obj = JSON.parse(_b64d(decodeURIComponent(m[1])));
+      history.replaceState(null, "", location.pathname);   // clean URL so a refresh won't re-prompt
+      if (!obj || !obj.c) return;
+      const name = String(obj.n || "פריסט משותף").slice(0, 60);
+      if (confirm('קיבלת פריסט משותף:\n"' + name + '"\n\nלהוסיף אותו לסריקות השמורות שלך?')) {
+        const rec = window.Prefs.importScanPreset(name, obj.c);
+        if (rec) { _selPreset = rec.id; setPage("scanner"); snToast('הפריסט "' + rec.name + '" נוסף ✓'); }
+      }
+    } catch (e) {}
+  }
+  function _pmIds() { return (window.Prefs.scanPresets() || []).map(p => p.id); }
+  function pmBodyHtml() {
+    const list = window.Prefs.scanPresets() || [];
+    if (!list.length) return '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף.</div>';
+    return '<div class="pm-list">' + list.map((p, i) =>
+      '<div class="pm-row" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
+        '<span class="pm-grip" title="גרור לסידור">⠿</span>' +
+        '<span class="pm-name">' + escHtml(p.name) + "</span>" +
+        '<span class="pm-acts">' +
+          '<button class="btn ghost pm-btn" data-pmup="' + escAttr(p.id) + '"' + (i === 0 ? " disabled" : "") + ' title="הזז למעלה">▲</button>' +
+          '<button class="btn ghost pm-btn" data-pmdn="' + escAttr(p.id) + '"' + (i === list.length - 1 ? " disabled" : "") + ' title="הזז למטה">▼</button>' +
+          '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
+        "</span></div>").join("") + "</div>" +
+      '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · 🔗 להעתקת קישור שיתוף</div>';
+  }
+  function pmRefresh() { const b = document.getElementById("pmBody"); if (b) { b.innerHTML = pmBodyHtml(); pmWire(); } }
+  function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender(); }
+  function pmWire() {
+    document.querySelectorAll("[data-pmup]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmup); if (i > 0) { ids.splice(i - 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
+    document.querySelectorAll("[data-pmdn]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmdn); if (i >= 0 && i < ids.length - 1) { ids.splice(i + 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
+    document.querySelectorAll("[data-pmshare]").forEach(b => b.onclick = () => { const p = (window.Prefs.scanPresets() || []).find(x => x.id === b.dataset.pmshare); sharePreset(p); });
+    let dragId = null;
+    document.querySelectorAll(".pm-row").forEach(row => {
+      row.addEventListener("dragstart", () => { dragId = row.dataset.pmid; row.classList.add("pm-dragging"); });
+      row.addEventListener("dragend", () => row.classList.remove("pm-dragging"));
+      row.addEventListener("dragover", e => { e.preventDefault(); row.classList.add("pm-over"); });
+      row.addEventListener("dragleave", () => row.classList.remove("pm-over"));
+      row.addEventListener("drop", e => {
+        e.preventDefault(); row.classList.remove("pm-over");
+        const tgt = row.dataset.pmid; if (!dragId || dragId === tgt) return;
+        const ids = _pmIds(); ids.splice(ids.indexOf(dragId), 1); ids.splice(ids.indexOf(tgt), 0, dragId); _pmApply(ids);
+      });
+    });
+  }
+  function openPresetManager() { modal("↕️ נהל וסדר סריקות", '<div id="pmBody">' + pmBodyHtml() + "</div>"); pmWire(); }
   function panelVis() {
     const def = { filters: true, mtf: true, tech: true, ind: true };
     const saved = (window.Prefs && window.Prefs.scanPanels) ? window.Prefs.scanPanels() : null;
@@ -2509,6 +2562,8 @@
         '<button class="btn ghost" id="presetSave" title="שמור את הפילטרים הנוכחיים כסריקה חדשה">💾 שמור</button>' +
         (presets.length ? '<button class="btn ghost" id="presetDup" title="שכפל את הסריקה הנבחרת">⧉ שכפל</button>' : "") +
         (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הסריקה הנבחרת">🗑 מחק</button>' : "") +
+        (presets.length ? '<button class="btn ghost" id="presetShare" title="שתף את הסריקה הנבחרת — קישור להעתקה">🔗 שתף</button>' : "") +
+        (presets.length ? '<button class="btn ghost" id="presetOrder" title="נהל וסדר את הסריקות (גרירה)">↕️ סדר</button>' : "") +
         '<button class="btn ghost" id="alertBell" title="מרכז התראות — התראה כשמניה מהמועדפים נכנסת לסריקה">🔔<span class="al-badge" id="alBadge"></span></button>' +
       "</div></div>";
     return (
@@ -2689,6 +2744,8 @@
     { const psave = $("#presetSave"); if (psave) psave.onclick = () => openPresetSaveDialog(); }
     { const pdup = $("#presetDup"); if (pdup) pdup.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשכפל אותה."); return; } const rec = window.Prefs.duplicateScanPreset(_selPreset); if (rec) _selPreset = rec.id; reRender(); }; }
     { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p && !confirm('למחוק את הסריקה "' + p.name + '"?')) return; window.Prefs.deleteScanPreset(_selPreset); _selPreset = ""; reRender(); }; }
+    { const psh = $("#presetShare"); if (psh) psh.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשתף אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); sharePreset(p); }; }
+    { const por = $("#presetOrder"); if (por) por.onclick = () => openPresetManager(); }
     { const bell = $("#alertBell"); if (bell) bell.onclick = () => openAlertsFeed(); updateAlertBell(); }
     MTF_TFS.forEach(tf => wireMultiCombo("mtft_" + tf, scanState.mtf[tf].t, reRender));   // multi-select bar-type per timeframe
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
@@ -4578,6 +4635,7 @@
     let last = "market";
     try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}
     setPage((PAGES[last] || last === "journal") ? last : "market");
+    if (/[?&]p=/.test(location.search)) setTimeout(checkSharedPresetInUrl, 1500);   // shared preset (?p=) — wait for cloud prefs to settle first
     loadLive();
     setInterval(loadLive, 60000);
     loadScanner();                                   // ensure scan data (for alerts) even off the scanner page

@@ -219,6 +219,16 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .seqbt.b2u { background:rgba(22,184,119,.18); color:#4fe0a6; }
 .seqbt.b2d { background:rgba(224,72,63,.18); color:#ff8a80; }
 .seqbt.b3 { background:rgba(124,108,240,.2); color:#cfc7fb; }
+/* ---- preset manager (reorder + share) ---- */
+.pm-list { display:flex; flex-direction:column; gap:7px; }
+.pm-row { display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 12px; }
+.pm-row.pm-dragging { opacity:.45; }
+.pm-row.pm-over { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
+.pm-grip { cursor:grab; color:var(--muted); font-size:16px; user-select:none; letter-spacing:-2px; }
+.pm-name { flex:1; font-weight:700; font-size:14px; }
+.pm-acts { display:flex; gap:5px; }
+.pm-btn { font-size:12px; padding:4px 9px; }
+.pm-btn:disabled { opacity:.35; cursor:default; }
 /* green halo around every control that is actively filtering (non-neutral value) */
 .filter-on { border-color:var(--green) !important;
   box-shadow:0 0 0 1.5px rgba(22,184,119,.5), 0 0 11px 1px rgba(22,184,119,.42) !important;

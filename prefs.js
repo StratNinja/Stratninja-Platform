@@ -56,6 +56,22 @@ window.Prefs = (function () {
       d.scanPresets.push(rec); write(d); return rec;
     },
     togglePresetAlert(id) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (p) { p.alert = !p.alert; write(d); } return p ? p.alert : false; },
+    // reorder presets to the given id order (any id not listed is appended at the end)
+    setScanPresetsOrder(ids) {
+      const d = read(); const arr = d.scanPresets || []; const byId = {};
+      arr.forEach(p => { byId[p.id] = p; });
+      const next = ids.map(id => byId[id]).filter(Boolean);
+      arr.forEach(p => { if (next.indexOf(p) < 0) next.push(p); });
+      d.scanPresets = next; write(d);
+    },
+    // import a shared preset (fresh id + unique name; alert NOT carried over)
+    importScanPreset(name, cfg) {
+      const d = read(); d.scanPresets = d.scanPresets || [];
+      const base = name || "פריסט משותף"; let nm = base, i = 2;
+      while (d.scanPresets.some(p => p.name === nm)) { nm = base + " " + i; i++; }
+      const rec = { id: uid(), name: nm, cfg: JSON.parse(JSON.stringify(cfg)) };
+      d.scanPresets.push(rec); write(d); return rec;
+    },
     // alert feed — fired (preset × favorite) matches
     alertFeed() { return read().alertFeed || []; },
     feedHas(pid, sym, date) { return (read().alertFeed || []).some(e => e.pid === pid && e.sym === sym && e.date === date); },
