@@ -16,6 +16,48 @@
   const SHAPE_HE = { doji: "דוג'י", hammer: "פטיש 🔨", shooter: "כוכב נופל ⭐", marubozu: "מרובוזו", spinning: "סביבון", normal: "נר רגיל", flat: "—" };
   const SHAPE_OPTS = [["all", "הכל"], ["hammer", "🔨 פטיש (Hammer)"], ["shooter", "⭐ כוכב נופל (Shooter)"], ["doji", "דוג'י (Doji)"], ["marubozu", "מרובוזו (Marubozu)"], ["spinning", "סביבון (Spinning)"]];
   const SHAPE_MULTI = SHAPE_OPTS.slice(1).map(o => ({ val: o[0], label: o[1] }));   // multi-select options (drop "all")
+  // ---- Strat sequence builder (C2 ← C1 ← CC): each cell multi-select, matched against the directional seq3d ----
+  const SEQ_TYPES = [{ val: "1", label: "⏸️ 1" }, { val: "2U", label: "🔼 2U" }, { val: "2D", label: "🔽 2D" }, { val: "3", label: "💥 3" }];
+  const SEQ_CELLS = [
+    { k: "c2", code: "C2", he: "2 אחורה", tip: "C2 = הנר הראשון ברצף (2 נרות אחורה)" },
+    { k: "c1", code: "C1", he: "1 אחורה", tip: "C1 = הנר האמצעי (1 נר אחורה)" },
+    { k: "cc", code: "CC", he: "הנר הנוכחי", tip: "CC = Current Candle — הנר הנוכחי (האחרון)" },
+  ];
+  function seqActive() { const q = scanState.seq; return !!(q.c2.length || q.c1.length || q.cc.length); }
+  function _seqNorm(x) { return (x === "2U" || x === "2D") ? "2" : x; }
+  function seqPatternName() {
+    const q = scanState.seq;
+    if (!seqActive()) return "";
+    const single = q.c2.length <= 1 && q.c1.length <= 1 && q.cc.length <= 1;
+    if (single && q.c2.length && q.c1.length && q.cc.length) {
+      const a = q.c2[0], b = q.c1[0], d = q.cc[0];
+      const dir = d === "2U" ? " · שורי" : d === "2D" ? " · דובי" : "";
+      const seq = _seqNorm(a) + "-" + _seqNorm(b) + "-" + _seqNorm(d);
+      let base = "רצף מותאם";
+      if (seq === "1-2-2") base = "RevStrat (1-2-2)";
+      else if (seq === "2-1-2") base = (_seqNorm(a) === "2" && a !== d ? "2-1-2 היפוך" : "2-1-2");
+      else if (seq === "3-1-2") base = "3-1-2";
+      else if (seq === "1-1-2") base = "פריצה מהתכנסות כפולה";
+      else if (seq === "2-2-2" || seq === "3-2-2") base = "שרשרת כיוונית";
+      return base + dir;
+    }
+    const combos = Math.max(1, q.c2.length) * Math.max(1, q.c1.length) * Math.max(1, q.cc.length);
+    return "רצף מרובה · " + combos + " שילובים";
+  }
+  function seqBuilder() {
+    const chip = (cell, t) => '<button class="seq-cc' + (scanState.seq[cell].indexOf(t.val) >= 0 ? " on" : "") + '" data-seqcell="' + cell + '" data-seqval="' + t.val + '">' + t.label + "</button>";
+    const cellHtml = c => '<div class="seq-cell"><div class="seq-lbl" title="' + escAttr(c.tip) + '"><span class="seq-code">' + c.code + '</span><span class="seq-he">· ' + c.he + "</span></div><div class=\"seq-chips\">" + SEQ_TYPES.map(t => chip(c.k, t)).join("") + "</div></div>";
+    const nameLine = seqActive()
+      ? '<div class="seq-name">🧩 <span class="muted">אתה בונה:</span> <b>' + escHtml(seqPatternName()) + '</b> <button class="chip" id="seqClear" style="font-size:11px;padding:2px 9px">✕ נקה</button></div>'
+      : '<div class="seq-name muted" style="font-size:12px">בחר סוגי נר בכל תא (בחירה מרובה) · תא ריק = כל נר · השם יופיע כאן</div>';
+    const quick = '<div class="seq-quick"><span class="muted" style="font-size:11px">מהיר:</span>' +
+      ["1|2D|2U:RevStrat 1-2-2", "2U|1|2D:2-1-2 היפוך", "3|1|2U:3-1-2", "1|1|2U:התכנסות→פריצה"].map(x => {
+        const p = x.split(":"); return '<button class="seq-q" data-seqfill="' + p[0] + '">' + p[1] + "</button>";
+      }).join("") + "</div>";
+    return '<div class="fgrp fgrp-seq"><label>תבנית (רצף Strat) <span class="muted" style="font-size:10px">· C2 ← C1 ← CC · בחירה מרובה</span></label>' +
+      '<div class="seq-build">' + SEQ_CELLS.map((c, i) => cellHtml(c) + (i < SEQ_CELLS.length - 1 ? '<span class="seq-arrow">←</span>' : "")).join("") + "</div>" +
+      nameLine + quick + "</div>";
+  }
   const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
   const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"],
     ["1-1", "🎯 התכנסות כפולה (1 → 1) — קפיץ דחוס לפני פריצה"],
@@ -1077,7 +1119,7 @@
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
   // sector / subsec are MULTI-select: arrays of selected names (empty = "all")
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: [], broad: "off", inforce: "off", sigShape: [], sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: [], broad: "off", seq: { c2: [], c1: [], cc: [] }, inforce: "off", sigShape: [], sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
   // normalize a stored sector/subsec value (old presets held a string "all"/name) to a selection array
   function _toSelArr(v) { return Array.isArray(v) ? v.slice() : (v && v !== "all" ? [v] : []); }
   // parse a market-cap input like "2B" / "60B" / "500M" / "1.5T" → dollars. Bare number = billions.
@@ -1172,7 +1214,7 @@
   function scanConfigSnapshot() {
     const s = scanState;
     return {
-      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape.slice(), broad: s.broad, inforce: s.inforce, sigShape: s.sigShape.slice(),
+      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape.slice(), broad: s.broad, seq: JSON.parse(JSON.stringify(s.seq)), inforce: s.inforce, sigShape: s.sigShape.slice(),
         sector: s.sector.slice(), subsec: s.subsec.slice(), sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
         capMin: s.capMin, capMax: s.capMax, mtf: JSON.parse(JSON.stringify(s.mtf)) },
       t: Object.assign({}, techState),
@@ -1193,6 +1235,7 @@
     if (s.subsec !== undefined) scanState.subsec = _toSelArr(s.subsec);
     if (s.shape !== undefined) scanState.shape = _toSelArr(s.shape);      // shape/sigShape: old scalar ("hammer"/"all") → array
     if (s.sigShape !== undefined) scanState.sigShape = _toSelArr(s.sigShape);
+    scanState.seq = s.seq ? { c2: (s.seq.c2 || []).slice(), c1: (s.seq.c1 || []).slice(), cc: (s.seq.cc || []).slice() } : { c2: [], c1: [], cc: [] };
     if (s.tfs) scanState.tfs = s.tfs.slice();
     scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
     if (s.patterns) scanState.patterns = s.patterns.slice();
@@ -2050,7 +2093,7 @@
     return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
   }
   function resetScan() {
-    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = []; scanState.broad = "off"; scanState.inforce = "off"; scanState.sigShape = [];
+    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = []; scanState.broad = "off"; scanState.seq = { c2: [], c1: [], cc: [] }; scanState.inforce = "off"; scanState.sigShape = [];
     scanState.sector = []; scanState.subsec = []; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.capMin = ""; scanState.capMax = "";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
@@ -2256,7 +2299,7 @@
             ? multiComboHtml("scanSigShape", SHAPE_MULTI, scanState.sigShape, "כל נר איתות")
             : "") +
         "</div></div>" +
-        '<div class="fgrp"><label>תבניות (רצף Strat)</label><div class="chips" style="align-items:center"><select id="scanBroad">' + BROAD_OPTS.map(o => '<option value="' + o[0] + '"' + (scanState.broad === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select></div></div>" +
+        seqBuilder() +
         '<div class="fgrp"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
@@ -2416,7 +2459,7 @@
       "</tr>";
     }).join("");
 
-    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape.length || scanState.broad !== "off" || scanState.sector.length || scanState.subsec.length || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.capMin !== "" || scanState.capMax !== "" || scanState.tfs.length > 1 || cnt || mtfCnt || indCnt;
+    const filterActive = scanState.patterns.length || scanState.dir !== "all" || scanState.shape.length || scanState.broad !== "off" || seqActive() || scanState.sector.length || scanState.subsec.length || scanState.sym || scanState.ftfc || scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.capMin !== "" || scanState.capMax !== "" || scanState.tfs.length > 1 || cnt || mtfCnt || indCnt;
     const facts = filterActive ? scanInsights(rows, all.length) : [];
     const insightsPanel =
       '<div class="panel scan-insights"><h3>🧠 תובנות על התוצאות</h3>' +
@@ -2499,6 +2542,14 @@
       }
       for (let i = 0; i < tfs.length; i++) {
         const c = t[tfs[i]] || t.D;
+        // sequence builder (C2 ← C1 ← CC): match the last-3 DIRECTIONAL bar types (seq3d). Empty cell = wildcard.
+        if (seqActive()) {
+          const sd = (c.seq3d || "").split("-");   // [C2, C1, CC]
+          if (sd.length < 3) return false;
+          if (scanState.seq.c2.length && scanState.seq.c2.indexOf(sd[0]) < 0) return false;
+          if (scanState.seq.c1.length && scanState.seq.c1.indexOf(sd[1]) < 0) return false;
+          if (scanState.seq.cc.length && scanState.seq.cc.indexOf(sd[2]) < 0) return false;
+        }
         if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
         if (scanState.dir !== "all" && c.c !== scanState.dir) return false;
         if (scanState.shape.length && scanState.shape.indexOf(c.sh || "") < 0) return false;
@@ -2636,7 +2687,10 @@
     document.querySelectorAll("[data-scanuni]").forEach(b => b.onclick = () => { scanState.universe = b.dataset.scanuni; reRender(); });
     { const sg = $("#scanSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     wireMultiCombo("scanShape", scanState.shape, reRender);   // multi-select current-candle shape
-    const brd = $("#scanBroad"); if (brd) brd.onchange = () => { scanState.broad = brd.value; if (!_isCombo(scanState.broad)) scanState.inforce = "off"; reRender(); };
+    // sequence builder: toggle a bar-type in a cell (multi-select), clear, or quick-fill a known pattern
+    document.querySelectorAll("[data-seqcell]").forEach(b => b.onclick = () => { const arr = scanState.seq[b.dataset.seqcell], v = b.dataset.seqval, i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); reRender(); });
+    { const sc = $("#seqClear"); if (sc) sc.onclick = () => { scanState.seq = { c2: [], c1: [], cc: [] }; reRender(); }; }
+    document.querySelectorAll("[data-seqfill]").forEach(b => b.onclick = () => { const p = b.dataset.seqfill.split("|"); scanState.seq = { c2: p[0] ? p[0].split(",") : [], c1: p[1] ? p[1].split(",") : [], cc: p[2] ? p[2].split(",") : [] }; reRender(); });
     document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; if (scanState.inforce === "off") scanState.sigShape = []; reRender(); });
     wireMultiCombo("scanSigShape", scanState.sigShape, reRender);   // multi-select signal-bar shape
     wireMultiCombo("scanSector", scanState.sector, () => reRender());
