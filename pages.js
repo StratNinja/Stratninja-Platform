@@ -24,6 +24,7 @@
     { k: "cc", code: "CC", he: "הנר הנוכחי", tip: "CC = Current Candle — הנר הנוכחי (האחרון)" },
   ];
   function seqActive() { const q = scanState.seq; return !!(q.c2.length || q.c1.length || q.cc.length || q.c2col || q.c1col || q.ccol); }
+  try { window.__ssDbg = () => JSON.parse(JSON.stringify(scanState.seq)); } catch (e) {}
   // C2/C1/CC result columns (shown only while the builder is active) — the directional last-3 of the primary TF
   function _seqbt(v) { const cls = v === "2U" ? "b2u" : v === "2D" ? "b2d" : v === "3" ? "b3" : "b1"; return '<td><span class="seqbt ' + cls + '">' + (v || "—") + "</span></td>"; }
   function seqCells(t) {
