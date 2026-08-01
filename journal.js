@@ -194,7 +194,8 @@
     // selector and the rendered data can never desync on load.
     if (accts.length && state.account !== ALL && (!state.account || accts.indexOf(state.account) < 0)) state.account = accts[0];
     renderAccountBar();
-    if (!accts.length) { root.appendChild(emptyState()); return; }
+    const appendGuide = () => { if (window.snGuide) { const gw = el("div"); gw.innerHTML = window.snGuide("journal"); if (gw.firstChild) root.appendChild(gw.firstChild); } };
+    if (!accts.length) { root.appendChild(emptyState()); appendGuide(); return; }
 
     const { trades, openPositions, manualOpen } = tradesForAccount();
 
@@ -236,8 +237,7 @@
       root.appendChild(content);
     }
 
-    // guide-video area for the journal page (kept outside the privacy blur — it's not trade data)
-    if (window.snGuide) { const gw = el("div"); gw.innerHTML = window.snGuide("journal"); if (gw.firstChild) root.appendChild(gw.firstChild); }
+    appendGuide();   // guide-video area (outside the privacy blur — it's not trade data)
 
     // keep open-position prices LIVE — load once, then refresh from the scanner every 30s while the
     // journal is open (previously fetched only once → prices froze at whatever they were on open)
