@@ -214,6 +214,16 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .seq-q { cursor:pointer; border:1px dashed #3a4460; background:transparent; color:#cfd4e2; border-radius:7px;
   padding:4px 10px; font-size:11.5px; font-weight:700; }
 .seq-q:hover { border-color:var(--accent); color:var(--ink); }
+.seq-details { width:100%; }
+.seq-details > summary { cursor:pointer; list-style:none; user-select:none; display:flex; align-items:center; gap:8px;
+  font-size:13px; padding:8px 11px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; }
+.seq-details > summary::-webkit-details-marker { display:none; }
+.seq-details > summary::after { content:"▾"; margin-inline-start:auto; color:var(--muted); font-size:12px; }
+.seq-details[open] > summary::after { content:"▴"; }
+.seq-details[open] > summary { margin-bottom:10px; }
+.seq-sumname { color:var(--green); font-weight:800; }
+/* community admin — email privacy toggle */
+.ca-privacy { display:flex; align-items:center; gap:10px; margin-bottom:10px; padding-bottom:9px; border-bottom:1px solid var(--line); }
 .seqbt { display:inline-block; min-width:30px; border-radius:6px; padding:1px 6px; font-weight:800; font-size:12px; }
 .seqbt.b1 { background:var(--cell); color:var(--muted); }
 .seqbt.b2u { background:rgba(22,184,119,.18); color:#4fe0a6; }

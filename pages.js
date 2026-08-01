@@ -62,9 +62,10 @@
       ["1|2D|2U:RevStrat 1-2-2", "2U|1|2D:2-1-2 היפוך", "3|1|2U:3-1-2", "1|1|2U:התכנסות→פריצה"].map(x => {
         const p = x.split(":"); return '<button class="seq-q" data-seqfill="' + p[0] + '">' + p[1] + "</button>";
       }).join("") + "</div>";
-    return '<div class="fgrp fgrp-seq"><label>תבנית (רצף Strat) <span class="muted" style="font-size:10px">· C2 ← C1 ← CC · בחירה מרובה</span></label>' +
+    return '<div class="fgrp fgrp-seq"><details class="seq-details"' + (seqActive() ? " open" : "") + '>' +
+      '<summary class="seq-summary">🧩 <b>תבנית (רצף Strat)</b>' + (seqActive() ? ' <span class="seq-sumname">' + escHtml(seqPatternName()) + "</span>" : ' <span class="muted" style="font-size:11px">· C2 ← C1 ← CC · בחירה מרובה · לחץ לפתיחה</span>') + "</summary>" +
       '<div class="seq-build">' + SEQ_CELLS.map((c, i) => cellHtml(c) + (i < SEQ_CELLS.length - 1 ? '<span class="seq-arrow">←</span>' : "")).join("") + "</div>" +
-      nameLine + quick + "</div>";
+      nameLine + quick + "</details></div>";
   }
   const BR_HE = { up: "היפוך 2D 🔼 (reclaim מלמטה)", down: "היפוך 2U 🔽 (rejection מלמעלה)" };
   const BROAD_OPTS = [["off", "הכל"], ["any", "⚡ כל היפוך"], ["up", "🔼 היפוך 2D (שורי)"], ["down", "🔽 היפוך 2U (דובי)"],
@@ -1621,6 +1622,8 @@
     modal("⭐ מניות קהילה · ניהול", '<div id="caBody" class="note">טוען…</div>');
     renderCommunityAdmin(client);
   }
+  let _caReveal = false;   // community admin: emails MASKED by default (privacy when shown on a livestream)
+  function _maskEmail(e) { if (!e) return "אנונימי"; const at = e.indexOf("@"); if (at < 1) return "•••"; return e[0] + "•••@•••"; }
   async function renderCommunityAdmin(client) {
     const box = document.getElementById("caBody");
     if (!box) return;
@@ -1636,10 +1639,11 @@
     const rejected = rows.filter(r => r.status === "rejected");
     const chip = (r, acts) => '<div class="ca-row"><span class="ca-tk">$' + (r.ticker || "").toUpperCase() + "</span>" +
       '<span class="ca-sec muted">' + (r.sector || "—") + "</span>" +
-      '<span class="ca-by muted" title="' + escAttr(r.requested_by || "אנונימי") + '">👤 ' + escHtml(r.requested_by || "אנונימי") + "</span>" +
+      '<span class="ca-by muted" title="' + (_caReveal ? escAttr(r.requested_by || "אנונימי") : "מוסתר — 👁️ להצגה") + '">👤 ' + escHtml(_caReveal ? (r.requested_by || "אנונימי") : _maskEmail(r.requested_by)) + "</span>" +
       (r.reason ? '<span class="ca-reason muted" title="' + escAttr(r.reason) + '">· ' + escHtml(r.reason).slice(0, 40) + "</span>" : "") +
       '<span class="ca-acts">' + acts.map(a => '<button class="btn ghost ca-btn" data-ca="' + a.act + '" data-id="' + r.id + '">' + a.lbl + "</button>").join("") + "</span></div>";
     let html = "";
+    html += '<div class="ca-privacy"><button class="btn ghost" id="caReveal">' + (_caReveal ? "🙈 הסתר מיילים" : "👁️ הצג מיילים") + '</button><span class="muted" style="font-size:12px">' + (_caReveal ? "המיילים גלויים כרגע" : "המיילים מוסתרים — בטוח להצגה בלייב") + "</span></div>";
     html += '<div class="ca-sec-h">🟢 ממתין לאישור שלך (' + awaiting.length + ")</div>";
     html += awaiting.length ? awaiting.map(r => chip(r, [{ act: "approve", lbl: "✅ אשר" }, { act: "reject", lbl: "❌ דחה" }])).join("") : '<div class="muted" style="padding:4px 0">אין ממתינות ✨</div>';
     if (checking.length) { html += '<div class="ca-sec-h">⏳ בבדיקת השרת (' + checking.length + ")</div>"; html += checking.map(r => chip(r, [{ act: "del", lbl: "🗑️" }])).join(""); }
@@ -1647,6 +1651,7 @@
     html += approved.length ? approved.map(r => chip(r, [{ act: "del", lbl: "🗑️ הסר" }])).join("") : '<div class="muted" style="padding:4px 0">עדיין אין</div>';
     if (rejected.length) { html += '<div class="ca-sec-h">❌ נדחו (' + rejected.length + ")</div>"; html += rejected.map(r => chip(r, [{ act: "approve", lbl: "↩️ שחזר" }, { act: "del", lbl: "🗑️" }])).join(""); }
     box.innerHTML = html;
+    { const rv = box.querySelector("#caReveal"); if (rv) rv.onclick = () => { _caReveal = !_caReveal; renderCommunityAdmin(client); }; }
     box.querySelectorAll("[data-ca]").forEach(b => b.onclick = async () => {
       const id = b.dataset.id, act = b.dataset.ca;
       b.disabled = true; b.textContent = "…";
