@@ -24,12 +24,19 @@
     { k: "cc", code: "CC", he: "הנר הנוכחי", tip: "CC = Current Candle — הנר הנוכחי (האחרון)" },
   ];
   function seqActive() { const q = scanState.seq; return !!(q.c2.length || q.c1.length || q.cc.length); }
+  // C2/C1/CC result columns (shown only while the builder is active) — the directional last-3 of the primary TF
+  function _seqbt(v) { const cls = v === "2U" ? "b2u" : v === "2D" ? "b2d" : v === "3" ? "b3" : "b1"; return '<td><span class="seqbt ' + cls + '">' + (v || "—") + "</span></td>"; }
+  function seqCells(t) {
+    if (!seqActive()) return "";
+    const tf = scanState.tfs[0] || "D";
+    const sd = ((t[tf] || t.D || {}).seq3d || "").split("-");   // [C2, C1, CC]
+    return _seqbt(sd[0]) + _seqbt(sd[1]) + _seqbt(sd[2]);
+  }
   function _seqNorm(x) { return (x === "2U" || x === "2D") ? "2" : x; }
   function seqPatternName() {
     const q = scanState.seq;
     if (!seqActive()) return "";
-    const single = q.c2.length <= 1 && q.c1.length <= 1 && q.cc.length <= 1;
-    if (single && q.c2.length && q.c1.length && q.cc.length) {
+    if (q.c2.length === 1 && q.c1.length === 1 && q.cc.length === 1) {   // fully specified → try to name it
       const a = q.c2[0], b = q.c1[0], d = q.cc[0];
       const dir = d === "2U" ? " · שורי" : d === "2D" ? " · דובי" : "";
       const seq = _seqNorm(a) + "-" + _seqNorm(b) + "-" + _seqNorm(d);
@@ -41,8 +48,9 @@
       else if (seq === "2-2-2" || seq === "3-2-2") base = "שרשרת כיוונית";
       return base + dir;
     }
-    const combos = Math.max(1, q.c2.length) * Math.max(1, q.c1.length) * Math.max(1, q.cc.length);
-    return "רצף מרובה · " + combos + " שילובים";
+    // partial or multi-select → show the raw sequence with wildcards (empty cell = "כל")
+    const disp = a => a.length ? a.join("/") : "כל";
+    return disp(q.c2) + " ← " + disp(q.c1) + " ← " + disp(q.cc);
   }
   function seqBuilder() {
     const chip = (cell, t) => '<button class="seq-cc' + (scanState.seq[cell].indexOf(t.val) >= 0 ? " on" : "") + '" data-seqcell="' + cell + '" data-seqval="' + t.val + '">' + t.label + "</button>";
@@ -2454,6 +2462,7 @@
         "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + ftfcBadge(t) + "</td>" +
+        seqCells(t) +
         techCells +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
       "</tr>";
@@ -2471,9 +2480,10 @@
     const head =
       '<th class="fav-th"><button class="fav-toptgl' + (scanState.favTop ? " on" : "") + '" id="favTopTgl" title="' + (scanState.favTop ? "בטל — הצג לפי המיון הרגיל" : "הצג את המועדפים (⭐) בראש הרשימה") + '">★</button></th>' + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') + sortableTh("סקטור", "sec", ' title="הסקטור של המניה"') + sortableTh("ת\"ס", "etf", ' title="תעודת הסל (ETF) שמייצגת את הסקטור"') + sortableTh("מחיר", "price", ' title="המחיר הנוכחי"') + sortableTh("שווי", "mc", ' title="שווי שוק (מחיר × מספר מניות)"') + sortableTh("%", "chg", ' title="שינוי במחיר היום באחוזים"') +
       sortableTh("Y", "Y", ' title="נר Strat בטיימפריים השנתי"') + sortableTh("Q", "Q", ' title="נר Strat בטיימפריים הרבעוני"') + sortableTh("M", "M", ' title="נר Strat בטיימפריים החודשי"') + sortableTh("W", "W", ' title="נר Strat בטיימפריים השבועי"') + sortableTh("D", "D", ' title="נר Strat בטיימפריים היומי"') + sortableTh("FTFC", "ftfc", ' title="FTFC — המשכיות טיימפריימים מלאה: כל הטיימפריימים באותו כיוון (ירוק=עולה, אדום=יורד)"') +
+      (seqActive() ? '<th title="C2 — 2 נרות אחורה (הנר הראשון ברצף)">C2</th><th title="C1 — 1 נר אחורה">C1</th><th title="CC — הנר הנוכחי">CC</th>' : "") +
       visCols.map(c => sortableTh(c.th, c.key, c.tip ? ' title="' + escAttr(c.tip) + '"' : "")).join("") +
       "<th></th>";
-    const nCols = 14 + visCols.length;
+    const nCols = 14 + (seqActive() ? 3 : 0) + visCols.length;
     const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
       optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '" title="' + escAttr((c.tip ? c.tip : c.th) + (c.active ? " · פילטר פעיל" : "")) + '">' + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
