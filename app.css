@@ -207,6 +207,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
   padding:5px 9px; font-size:12.5px; font-weight:700; user-select:none; transition:.12s; }
 .seq-cc:hover { border-color:#3a4460; }
 .seq-cc.on { border-color:var(--accent); background:rgba(124,108,240,.22); box-shadow:0 0 0 1px var(--accent) inset; }
+.seq-cols { display:inline-flex; gap:4px; margin-inline-start:6px; padding-inline-start:6px; border-inline-start:1px solid var(--line); }
+.seq-col { cursor:pointer; border:1px solid var(--line); background:var(--bg); border-radius:7px; padding:5px 7px; font-size:12px; opacity:.5; transition:.12s; filter:grayscale(.5); }
+.seq-col:hover { opacity:.85; filter:none; }
+.seq-col.on { opacity:1; filter:none; }
+.seq-col.on.up { border-color:var(--green); box-shadow:0 0 0 1px var(--green) inset; }
+.seq-col.on.down { border-color:var(--red); box-shadow:0 0 0 1px var(--red) inset; }
 .seq-arrow { align-self:center; color:var(--muted); font-size:18px; font-weight:800; }
 .seq-name { margin-top:9px; font-size:14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .seq-name b { color:var(--green); }
