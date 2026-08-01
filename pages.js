@@ -1150,6 +1150,24 @@
     if (window.Prefs && window.Prefs.setScanPanels) window.Prefs.setScanPanels(v);
     reRender();
   }
+  // which of the 4 filter panels currently hold an active filter (used to auto-open on preset select)
+  function panelActiveMap() {
+    return {
+      filters: !!(scanState.patterns.length || scanState.dir !== "all" || scanState.shape.length || scanState.broad !== "off" || scanState.inforce !== "off" ||
+        scanState.sector.length || scanState.subsec.length || scanState.sym || scanState.ftfc ||
+        scanState.priceMin !== "" || scanState.priceMax !== "" || scanState.capMin !== "" || scanState.capMax !== "" || scanState.tfs.length > 1),
+      mtf: mtfActiveCount() > 0,
+      tech: techActiveCount() > 0,
+      ind: indActiveCount() > 0,
+    };
+  }
+  // on preset select: show only the panels this preset actually uses, hide the empty ones
+  function autoOpenPanels() {
+    const pa = panelActiveMap();
+    if (!(pa.filters || pa.mtf || pa.tech || pa.ind)) return;   // safety: never hide every panel
+    if (window.Prefs && window.Prefs.setScanPanels) window.Prefs.setScanPanels(pa);
+  }
+  const ALL_PANELS_ON = { filters: true, mtf: true, tech: true, ind: true };
   // ---- scan presets ("must-have scans"): snapshot + restore the full filter config ----
   function scanConfigSnapshot() {
     const s = scanState;
@@ -2593,7 +2611,7 @@
     { const ft = $("#favTopTgl"); if (ft) ft.onclick = () => { scanState.favTop = !scanState.favTop; reRender(); }; }
     // panel-visibility chips + saved-scan presets
     document.querySelectorAll("[data-panel]").forEach(b => b.onclick = () => togglePanel(b.dataset.panel));
-    { const psel = $("#presetSel"); if (psel) psel.onchange = () => { _selPreset = psel.value; if (!_selPreset) { reRender(); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p) { applyScanConfig(p.cfg); scanSort.col = null; reRender(); } }; }
+    { const psel = $("#presetSel"); if (psel) psel.onchange = () => { _selPreset = psel.value; if (!_selPreset) { reRender(); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p) { applyScanConfig(p.cfg); autoOpenPanels(); scanSort.col = null; reRender(); } }; }
     // scroll the mouse-wheel while hovering the saved-scans dropdown to flip between presets
     { const psel = $("#presetSel"); if (psel) psel.addEventListener("wheel", e => {
         if (psel.options.length < 2) return;   // only the "— טען פריסט —" placeholder → nothing to cycle
@@ -2638,7 +2656,7 @@
     const pmin = $("#scanPmin"); if (pmin) pmin.onchange = () => { scanState.priceMin = pmin.value; reRender(); };
     const pmax = $("#scanPmax"); if (pmax) pmax.onchange = () => { scanState.priceMax = pmax.value; reRender(); };
     const ftfc = $("#scanFtfc"); if (ftfc) ftfc.onclick = () => { scanState.ftfc = !scanState.ftfc; reRender(); };
-    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); _selPreset = ""; scanSort.col = "chg"; scanSort.dir = -1; reRender(); };   // clearing filters also clears the loaded preset
+    const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); _selPreset = ""; scanSort.col = "chg"; scanSort.dir = -1; if (window.Prefs && window.Prefs.setScanPanels) window.Prefs.setScanPanels(ALL_PANELS_ON); reRender(); };   // clearing filters clears the preset + restores all panels
     // live / yesterday view toggle (buttons in the top bar + the yesterday banner)
     document.querySelectorAll("[data-scanview]").forEach(b => b.onclick = () => { const v = b.dataset.scanview; if (v === scanView) return; scanView = v; if (v === "yday") fetchYesterday(); reRender(); });
     // technical controls
