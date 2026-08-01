@@ -984,6 +984,8 @@ html[data-theme="light"] .tf.doji { color:#5a6478; }
 html[data-theme="light"] .ninja-badge.nj-lo { color:#4a5268; }
 html[data-theme="light"] .td-idx b, html[data-theme="light"] .mkt-pulse .mp-idx b { color:#3a4256; }
 html[data-theme="light"] .demo-flag { color:#4a4076; }
+/* favorite alert chips: the light-mint text (#7ee2b8) is illegible on white → dark green */
+html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157,99,.12); border-color:rgba(14,157,99,.42); }
 .cm-click { cursor: pointer; transition: .12s; }
 .cm-click:hover { filter: brightness(1.15); box-shadow: 0 0 0 2px rgba(255,255,255,.3) inset; }
 /* Candle Map auto-verdict card (dominant structure · strongest TF · leading sector) */
