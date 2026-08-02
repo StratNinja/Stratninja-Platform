@@ -86,6 +86,9 @@ window.Prefs = (function () {
       if (!d.pushSubs.some(s => s.endpoint === sub.endpoint)) { d.pushSubs.push(sub); write(d); }
     },
     removePushSub(endpoint) { const d = read(); d.pushSubs = (d.pushSubs || []).filter(s => s.endpoint !== endpoint); write(d); },
+    // scheduled reminder pushes (pre-market 11:30 + market-open 16:30). Default ON; users can opt out.
+    pushSchedule() { const v = read().pushSchedule; return v !== false; },
+    setPushSchedule(on) { const d = read(); d.pushSchedule = !!on; write(d); },
     onChange(f) { listeners.push(f); },
     notify() { listeners.forEach(f => { try { f(); } catch (e) {} }); },  // used by cloudsync after a pull
   };

@@ -3910,8 +3910,12 @@
     const on = !!(window.Prefs && Prefs.pushSubs && Prefs.pushSubs().length);
     const permOk = window.Notification && Notification.permission === "granted";
     if (on && permOk) {
+      const schedOn = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true;
       return '<div class="panel fav-pushbar on"><span>✅ <b>התראות לפלאפון פעילות</b> — תקבל התראה כשמניה מהמועדפים נכנסת לסריקה עם התראה מופעלת, גם כשהאתר סגור.</span>' +
-        '<button class="btn ghost" id="favAlertsCenter" style="font-size:12px;font-weight:600">🔔 מרכז ההתראות</button></div>';
+        '<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
+          '<button class="btn ghost" id="pushSchedTgl" title="תזכורת יומית קבועה: פרה-מרקט 11:30 ופתיחת שוק 16:30 · לחץ להפעלה/כיבוי" style="font-size:12px;font-weight:600">⏰ תזכורות 11:30/16:30: ' + (schedOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + '</button>' +
+          '<button class="btn ghost" id="favAlertsCenter" style="font-size:12px;font-weight:600">🔔 מרכז ההתראות</button>' +
+        '</span></div>';
     }
     return '<div class="panel fav-pushbar"><span>📱 <b>רוצה התראות לפלאפון גם כשהאתר סגור?</b> קבל דחיפה כשמניה מהמועדפים נכנסת לסריקה מסומנת. ' +
       '<span class="muted" style="font-size:11px">🍏 באייפון: הוסף קודם למסך הבית (שיתוף → הוסף למסך הבית), פתח משם, ואז הפעל.</span></span>' +
@@ -3924,6 +3928,7 @@
     document.querySelectorAll("[data-favsort]").forEach(th => th.onclick = () => favSortClick(th.dataset.favsort));
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
     { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
+    { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ תזכורות 11:30/16:30 הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
     // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
