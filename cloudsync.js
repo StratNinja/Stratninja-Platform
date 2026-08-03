@@ -16,7 +16,7 @@
       hasData: d => d && (((d.favorites || []).length) || ((d.alerts || []).length) || ((d.scanPresets || []).length) || (d.scanPanels != null) || ((d.alertFeed || []).length) || ((d.pushSubs || []).length)),
       rerender: () => { if (window.Prefs && window.Prefs.notify) window.Prefs.notify(); } },
   ];
-  const byKey = {}; SYNCS.forEach(s => { byKey[s.key] = s; s._timer = null; });
+  const byKey = {}; SYNCS.forEach(s => { byKey[s.key] = s; s._timer = null; s._pulled = false; });
 
   let client = null, userId = null, currentUserId = "__init__", pulling = false;
   const origSet = localStorage.setItem.bind(localStorage);
@@ -26,7 +26,9 @@
   localStorage.setItem = function (k, v) {
     origSet(k, v);
     const s = byKey[k];
-    if (s && client && userId && !pulling) {
+    // only push AFTER a confirmed successful pull for this user — otherwise a failed/incomplete pull
+    // would leave local empty and this write would overwrite (wipe) the user's cloud data.
+    if (s && client && userId && s._pulled && !pulling) {
       clearTimeout(s._timer);
       s._timer = setTimeout(() => pushOne(s), 900);
     }
@@ -56,6 +58,7 @@
       const cloud = data ? data.data : null;
       // cloud is authoritative — set local to cloud (or empty). NO local→cloud migration.
       origSet(s.key, JSON.stringify(s.hasData(cloud) ? cloud : s.empty));
+      s._pulled = true;                 // pull confirmed → writes may now sync up safely
       s.rerender();
     } catch (e) { console.error("[cloudsync] pull exception " + s.table + ":", e); }
   }
@@ -74,7 +77,7 @@
     // whoever was here before, wipe their local cache immediately so it can never
     // bleed into the next user (guard with `pulling` so no push is triggered).
     pulling = true;
-    SYNCS.forEach(s => clearTimeout(s._timer));
+    SYNCS.forEach(s => { clearTimeout(s._timer); s._pulled = false; });   // block pushes until this user is re-pulled
     clearLocal();
     rerenderAll();
     pulling = false;
