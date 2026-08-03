@@ -2368,6 +2368,8 @@
             : "") +
         "</div></div>" +
         seqBuilder() +
+        '<div class="fgrp"><label>🔄 היפוך <span class="muted" style="font-size:10px">· Reversal</span></label><div class="chips">' +
+          [["any", "⚡ כל היפוך"], ["up", "🔼 היפוך שורי"], ["down", "🔽 היפוך דובי"]].map(o => '<button class="chip' + (scanState.broad === o[0] ? " on" : "") + '" data-broad="' + o[0] + '" title="נר היפוך לפי Strat (2D שנרקלם / 2U שנדחה)">' + o[1] + "</button>").join("") + "</div></div>" +
         '<div class="fgrp"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
@@ -2774,6 +2776,7 @@
     // sequence builder: toggle a bar-type in a cell (multi-select), clear, or quick-fill a known pattern
     document.querySelectorAll("[data-seqcell]").forEach(b => b.onclick = () => { const arr = scanState.seq[b.dataset.seqcell], v = b.dataset.seqval, i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1); else arr.push(v); reRender(); });
     document.querySelectorAll("[data-seqcol]").forEach(b => b.onclick = () => { const key = b.dataset.seqcol + "col", v = b.dataset.seqcolv; scanState.seq[key] = (scanState.seq[key] === v) ? "" : v; reRender(); });
+    document.querySelectorAll("[data-broad]").forEach(b => b.onclick = () => { const v = b.dataset.broad; scanState.broad = (scanState.broad === v) ? "off" : v; reRender(); });   // built-in reversal filter
     { const sc = $("#seqClear"); if (sc) sc.onclick = () => { scanState.seq = { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" }; reRender(); }; }
     document.querySelectorAll("[data-seqfill]").forEach(b => b.onclick = () => { const p = b.dataset.seqfill.split("|"); scanState.seq = { c2: p[0] ? p[0].split(",") : [], c1: p[1] ? p[1].split(",") : [], cc: p[2] ? p[2].split(",") : [], c2col: "", c1col: "", cccol: "" }; reRender(); });
     document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; if (scanState.inforce === "off") scanState.sigShape = []; reRender(); });
