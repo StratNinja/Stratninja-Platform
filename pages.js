@@ -1196,7 +1196,14 @@
   // ---- share a preset (link/code, no server) + reorder manager ----
   function _b64e(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
   function _b64d(c) { let s = c.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; return decodeURIComponent(escape(atob(s))); }
-  function presetShareLink(p) { try { return location.origin + "/?p=" + _b64e(JSON.stringify({ n: p.name, c: p.cfg })); } catch (e) { return ""; } }
+  // strip default/empty values so the shared link stays short — applyScanConfig() re-fills every default on import
+  function _minObj(o) {
+    if (Array.isArray(o)) { const a = o.map(_minObj).filter(x => x !== undefined); return a.length ? a : undefined; }
+    if (o && typeof o === "object") { const r = {}; for (const k in o) { const v = _minObj(o[k]); if (v !== undefined) r[k] = v; } return Object.keys(r).length ? r : undefined; }
+    if (o === "" || o === "all" || o === "off" || o === false || o == null) return undefined;
+    return o;
+  }
+  function presetShareLink(p) { try { return location.origin + "/?p=" + _b64e(JSON.stringify({ n: p.name, c: _minObj(p.cfg) || {} })); } catch (e) { return ""; } }
   function sharePreset(p) { if (!p) return; const link = presetShareLink(p); if (!link) { snToast("שגיאה ביצירת הקישור"); return; } copyToClipboard(link, () => snToast("🔗 קישור הפריסט הועתק — שלח אותו לסוחר אחר")); }
   function checkSharedPresetInUrl() {
     try {
@@ -1225,7 +1232,10 @@
           '<button class="btn ghost pm-btn" data-pmren="' + escAttr(p.id) + '" title="שנה שם">✏️</button>' +
           '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
         "</span></div>").join("") + "</div>" +
-      '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · 🔗 להעתקת קישור שיתוף</div>';
+      '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף</div>' +
+      '<div class="pm-io"><button class="btn ghost" id="pmExport" title="שמור את כל הסריקות לקובץ במחשב">💾 גבה לקובץ</button>' +
+        '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
+        '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
   }
   function pmRefresh() { const b = document.getElementById("pmBody"); if (b) { b.innerHTML = pmBodyHtml(); pmWire(); } }
   function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender(); }
@@ -1251,6 +1261,33 @@
         const ids = _pmIds(); ids.splice(ids.indexOf(dragId), 1); ids.splice(ids.indexOf(tgt), 0, dragId); _pmApply(ids);
       });
     });
+    { const ex = document.getElementById("pmExport"); if (ex) ex.onclick = () => exportPresets(); }
+    { const ib = document.getElementById("pmImportBtn"), inp = document.getElementById("pmImportFile");
+      if (ib && inp) { ib.onclick = () => inp.click(); inp.onchange = () => { if (inp.files && inp.files[0]) importPresetsFromFile(inp.files[0]); inp.value = ""; }; } }
+  }
+  // backup ALL presets to a .json file / restore from one (merges — never wipes existing)
+  function exportPresets() {
+    const presets = window.Prefs.scanPresets() || [];
+    if (!presets.length) { snToast("אין סריקות לגבות"); return; }
+    const payload = { app: "stratninja", type: "presets", version: 1, exported: new Date().toISOString(), presets: presets };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = "stratninja-presets-" + new Date().toISOString().slice(0, 10) + ".json"; a.click();
+    snToast("💾 גובו " + presets.length + " סריקות לקובץ");
+  }
+  function importPresetsFromFile(file) {
+    const r = new FileReader();
+    r.onload = () => {
+      try {
+        const obj = JSON.parse(r.result);
+        const arr = Array.isArray(obj) ? obj : (obj.presets || []);
+        let n = 0;
+        arr.forEach(p => { if (p && p.cfg && p.name) { window.Prefs.importScanPreset(p.name, p.cfg); n++; } });
+        if (!n) { snToast("לא נמצאו סריקות תקינות בקובץ"); return; }
+        snToast("📂 שוחזרו " + n + " סריקות"); pmRefresh(); if (state.page === "scanner") reRender();
+      } catch (e) { snToast("קובץ לא תקין"); }
+    };
+    r.readAsText(file);
   }
   function openPresetManager() { modal("↕️ נהל וסדר סריקות", '<div id="pmBody">' + pmBodyHtml() + "</div>"); pmWire(); }
   function panelVis() {
@@ -2108,10 +2145,11 @@
     const photo = _heroSquare
       ? '<img class="ac-photo" src="' + _heroSquare + '">'
       : '<img class="ac-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
-    const bt = v => v === "2U" ? "b2u" : v === "2D" ? "b2d" : v === "3" ? "b3" : "b1";
     const map = ["Y", "Q", "M", "W", "D"].map(k => {
-      const v = (t[k] && t[k].t) || "1";
-      return '<div class="ac-tf"><span class="ac-k">' + k + '</span><span class="ac-v ' + bt(v) + '">' + v + "</span></div>";
+      const c = t[k] || {}, v = c.t || "1";
+      // colour by the candle's DIRECTION (matches TradingView) — a green 2D = bullish reversal, not red
+      const col = c.c === "up" ? "b2u" : c.c === "down" ? "b2d" : (v === "1" ? "b1" : "b3");
+      return '<div class="ac-tf"><span class="ac-k">' + k + '</span><span class="ac-v ' + col + '">' + v + "</span></div>";
     }).join("");
     const chg = t.chg == null ? 0 : Number(t.chg);
     const chgTxt = (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%";
@@ -2622,7 +2660,6 @@
       '<div class="stb-grp stb-presets"><span class="muted stb-lbl">⭐ סריקות שמורות:</span>' +
         '<select id="presetSel">' + presetOpts + "</select>" +
         '<button class="btn ghost" id="presetSave" title="שמור את הפילטרים הנוכחיים כסריקה חדשה">💾 שמור</button>' +
-        (presets.length ? '<button class="btn ghost" id="presetDup" title="שכפל את הסריקה הנבחרת">⧉ שכפל</button>' : "") +
         (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הסריקה הנבחרת">🗑 מחק</button>' : "") +
         (presets.length ? '<button class="btn ghost" id="presetShare" title="שתף את הסריקה הנבחרת — קישור להעתקה">🔗 שתף</button>' : "") +
         (presets.length ? '<button class="btn ghost" id="presetOrder" title="נהל וסדר את הסריקות (גרירה)">↕️ סדר</button>' : "") +
@@ -2814,7 +2851,6 @@
         psel.dispatchEvent(new Event("change"));
       }, { passive: false }); }
     { const psave = $("#presetSave"); if (psave) psave.onclick = () => openPresetSaveDialog(); }
-    { const pdup = $("#presetDup"); if (pdup) pdup.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשכפל אותה."); return; } const rec = window.Prefs.duplicateScanPreset(_selPreset); if (rec) _selPreset = rec.id; reRender(); }; }
     { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p && !confirm('למחוק את הסריקה "' + p.name + '"?')) return; window.Prefs.deleteScanPreset(_selPreset); _selPreset = ""; reRender(); }; }
     { const psh = $("#presetShare"); if (psh) psh.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשתף אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); sharePreset(p); }; }
     { const por = $("#presetOrder"); if (por) por.onclick = () => openPresetManager(); }
