@@ -1114,7 +1114,9 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
 .ac-dot { width:9px; height:9px; border-radius:50%; background:#18c07a; }
 .ac-head { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; }
 .ac-sym { font-size:56px; font-weight:900; letter-spacing:-1px; line-height:1; }
-.ac-sec { color:#8b94a8; font-size:15px; margin-top:8px; }
+.ac-sec { color:#8b94a8; font-size:15px; margin-top:8px; min-height:1px; }
+.ac-etf { display:inline-block; margin-inline-start:6px; padding:2px 9px; border-radius:7px; font-weight:800; font-size:13px;
+  color:#cfd6e6; background:rgba(124,108,240,.16); border:1px solid rgba(124,108,240,.34); letter-spacing:.3px; }
 .ac-px { text-align:end; }
 .ac-price { font-size:34px; font-weight:800; }
 .ac-chg { font-size:20px; font-weight:800; }

@@ -2226,6 +2226,12 @@
     if (tk) return { sym: sym, sector: tk.sector, price: tk.price, chg: tk.chg, Y: tk.Y, Q: tk.Q, M: tk.M, W: tk.W, D: tk.D, ftfc: false };
     return { sym: sym, sector: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji"), ftfc: false };
   }
+  // sector sub-line on the alert card: "<Hebrew sector> · <ETF ticker>". Blank for "אחר"/unknown.
+  function _acSectorLine(sec) {
+    if (!sec || sec === "אחר") return '<div class="ac-sec"></div>';
+    const etf = etfFor(sec);
+    return '<div class="ac-sec">' + escHtml(secHe(sec)) + (etf ? ' <span class="ac-etf">' + escHtml(etf) + "</span>" : "") + "</div>";
+  }
   function buildAlertCardEl(t, names) {
     names = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3);
     if (!names.length) names = ["התראה"];
@@ -2247,7 +2253,7 @@
       '<div class="ac-accent"></div>' +
       '<div class="ac-top"><div class="ac-brand">' + photo + '<div><div class="ac-bname">StratNinja</div><div class="ac-bsub">Scanner · The Strat</div></div></div>' +
         '<div class="ac-badge"><span class="ac-dot"></span> התראה חדשה</div></div>' +
-      '<div class="ac-head"><div><div class="ac-sym">' + escHtml(t.sym) + '</div><div class="ac-sec">' + escHtml(secHe(t.sector) || "מניה") + '</div></div>' +
+      '<div class="ac-head"><div><div class="ac-sym">' + escHtml(t.sym) + '</div>' + _acSectorLine(t.sector) + "</div>" +
         '<div class="ac-px"><div class="ac-price">' + money(t.price) + '</div><div class="ac-chg ' + (chg >= 0 ? "pos" : "neg") + '">' + chgTxt + "</div></div></div>" +
       '<div class="ac-setups' + (names.length > 1 ? " multi" : "") + '">' + names.map(n => '<span class="ac-setup">🔔 ' + escHtml(n) + "</span>").join("") + "</div>" +
       '<div class="ac-map">' + map + (t.ftfc ? '<span class="ac-ftfc">🟢 FTFC</span>' : "") + "</div>" +
