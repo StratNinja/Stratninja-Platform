@@ -399,6 +399,11 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .share-card .sc-mv-row .sc-strip { flex:1; margin-bottom:0; }
 .share-card .sc-idx-src { display:block; font-size:12px; font-weight:600; font-style:normal; color:#7f8aa3; margin-top:3px; }
 .share-card .sc-two { display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:20px; }
+/* candle-map share: "did you know?" insight box */
+.share-card .sc-did { margin-top:18px; background:rgba(124,108,240,.10); border:1px solid rgba(124,108,240,.32);
+  border-radius:14px; padding:16px 18px; font-size:17px; line-height:1.6; color:#d6ddec; }
+.share-card .sc-did .sc-did-lbl { font-weight:800; color:#b9aefc; margin-inline-end:6px; }
+.share-card .sc-did b { color:#fff; }
 .share-card .sc-two .sc-picks-lbl { margin-bottom:12px; }
 .share-card .sc-two .sc-picks-lbl.pos { color:#4fe39b; } .share-card .sc-two .sc-picks-lbl.neg { color:#ff7a86; }
 .share-card .sc-two .sc-picks { gap:12px; }

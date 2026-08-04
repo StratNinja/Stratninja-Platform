@@ -549,6 +549,8 @@
   let _cmFacts = [], _cmTimer = null;
   // global universe toggle for the market-overview page: "sp500" (default) | "all" (StratNinja world)
   let marketUniverse = "sp500", _mktFlip = false;
+  // which section of the market-overview page the user chose to share (set by the share-section picker)
+  let _mktShareSection = "state";   // "state" | "candlemap" | "leaders" | "movers"
   function mktU() {
     const u = LIVE && LIVE.universes;
     return (u && u[marketUniverse]) ? u[marketUniverse] : (LIVE || {});
@@ -1749,6 +1751,64 @@
   function _shIdx(label, val, cls) { return '<span class="sc-idx' + (cls ? " " + cls : "") + '"><b>' + label + "</b> " + val + "</span>"; }
   // like _shIdx but with a small source tag (which site panel the card came from)
   function _shIdxSrc(label, val, cls, src) { return '<span class="sc-idx' + (cls ? " " + cls : "") + '"><b>' + label + "</b> " + val + (src ? '<i class="sc-idx-src">' + src + "</i>" : "") + "</span>"; }
+  // ── market-overview share cards — one per user-chosen section ──
+  const _cmBull = b => b === "2U" || b === "3G" || b === "F2D";
+  const _cmBear = b => b === "2D" || b === "3R" || b === "F2U";
+  function _shareMktCandleMap() {
+    const cols = ["D", "W", "M", "Q", "Y"];
+    const rows = cmapRows();
+    const uniLbl = marketUniverse === "sp500" ? "S&P 500" : "StratNinja";
+    if (!rows.length) return { headline: "🗺️ Candle Map · " + uniLbl, cls: "zero", bodyHtml: '<div class="sc-strip"><span class="sc-idx muted">טוען נתוני סורק…</span></div>' };
+    const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
+    rows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
+    let domB = null, domN = -1;
+    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    let bestTf = null, bestScore = -Infinity;
+    cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; } });
+    const lead = (mktU().sectorLeaders || [])[0];
+    const verdict = _shIdx("מבנה דומיננטי", domB || "—", _cmBull(domB) ? "pos" : _cmBear(domB) ? "neg" : "") +
+      _shIdx("טיימפריים חזק", bestTf ? (TF_HE[bestTf] || bestTf) : "—", "") +
+      (lead ? _shIdx("סקטור מוביל", secHe(lead.name), "pos") : "");
+    const perTf = cols.map(tf => {
+      let bk = null, bn = -1; CMAP_ROWS.forEach(([k]) => { if ((counts[k][tf] || 0) > bn) { bn = counts[k][tf]; bk = k; } });
+      return _shIdx(TF_HE[tf], (bk || "—") + " · " + bn, _cmBull(bk) ? "pos" : _cmBear(bk) ? "neg" : "");
+    }).join("");
+    const facts = candleMapFacts();
+    const fact = facts.length ? facts[0] : "";
+    const bodyHtml =
+      '<div class="sc-sec-lbl">🧭 המצב הכללי</div><div class="sc-strip">' + verdict + "</div>" +
+      '<div class="sc-sec-lbl" style="margin-top:12px">📊 הנר השולט בכל טיימפריים</div><div class="sc-strip">' + perTf + "</div>" +
+      (fact ? '<div class="sc-did"><span class="sc-did-lbl">🧠 הידעת?</span> ' + fact + "</div>" : "");
+    return { headline: "🗺️ Candle Map · " + uniLbl + " · " + rows.length + " מניות", cls: _cmBull(domB) ? "pos" : _cmBear(domB) ? "neg" : "zero", bodyHtml: bodyHtml };
+  }
+  function _shareMktLeaders() {
+    const U = mktU();
+    const secUp = (U.sectorLeaders || []).slice(0, 4), secDn = (U.sectorLaggards || []).slice(0, 4);
+    const stkUp = (U.leaders || []).slice(0, 4), stkDn = (U.laggards || []).slice(0, 4);
+    const secChip = (x, cls) => _shIdx(secHe(x.name), _shNum(x.chg), cls);
+    const stkChip = (x, cls) => _shIdx(x.s, _shNum(x.c), cls);
+    const strip = (arr, fn, cls) => arr.length ? arr.map(x => fn(x, cls)).join("") : '<span class="sc-idx muted">—</span>';
+    const bodyHtml =
+      '<div class="sc-sec-lbl pos">🟢 סקטורים מובילים</div><div class="sc-strip">' + strip(secUp, secChip, "pos") + "</div>" +
+      '<div class="sc-sec-lbl neg" style="margin-top:10px">🔴 סקטורים בפיגור</div><div class="sc-strip">' + strip(secDn, secChip, "neg") + "</div>" +
+      '<div class="sc-sec-lbl pos" style="margin-top:10px">🚀 מניות מובילות</div><div class="sc-strip">' + strip(stkUp, stkChip, "pos") + "</div>" +
+      '<div class="sc-sec-lbl neg" style="margin-top:10px">📉 מניות בפיגור</div><div class="sc-strip">' + strip(stkDn, stkChip, "neg") + "</div>";
+    return { headline: "🏆 מובילים ומפגרים היום", cls: "zero", bodyHtml: bodyHtml };
+  }
+  function _shareMktMovers() {
+    const mins = _ilMinutes();
+    const U = (LIVE && LIVE.universes && LIVE.universes.all) || {};
+    let head, data, upLbl, dnLbl;
+    if (mins >= 16 * 60 + 30 && mins < 23 * 60) { head = "⚡ גאפרים · פתיחת יום"; data = U.gappers || (LIVE && LIVE.gappers) || { up: [], down: [] }; upLbl = "🟢 TOP גאפ אפ"; dnLbl = "🔴 TOP גאפ דאון"; }
+    else if (mins >= 11 * 60 && mins < 16 * 60 + 30) { head = "🌅 Pre-Market · תנועות לפני הפתיחה"; data = U.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] }; upLbl = "🟢 עולות לפני הפתיחה"; dnLbl = "🔴 יורדות לפני הפתיחה"; }
+    else { head = "🌙 After-Market · תנועות אחרי הסגירה"; data = U.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] }; upLbl = "🟢 עולות אחרי הסגירה"; dnLbl = "🔴 יורדות אחרי הסגירה"; }
+    const chip = (x, cls) => _shIdx(x.s, _shNum(x.gp), cls);
+    const strip = (arr, cls) => arr.length ? arr.slice(0, 5).map(x => chip(x, cls)).join("") : '<span class="sc-idx muted">אין כרגע</span>';
+    const bodyHtml =
+      '<div class="sc-sec-lbl pos">' + upLbl + '</div><div class="sc-strip">' + strip(data.up, "pos") + "</div>" +
+      '<div class="sc-sec-lbl neg" style="margin-top:10px">' + dnLbl + '</div><div class="sc-strip">' + strip(data.down, "neg") + "</div>";
+    return { headline: head, cls: "zero", bodyHtml: bodyHtml };
+  }
   // page-aware summary content for the share card
   function shareSummaryFor(page) {
     const ms = todayMarketState();
@@ -1853,8 +1913,12 @@
         (unTxt != null ? _shIdx("Unrealized", unTxt, j.unrealized >= 0 ? "pos" : "neg") : "");
       return { headline: "📅 יומן מסחר · הביצועים שלי", cls: j.net >= 0 ? "pos" : "neg", strip: strip, picksLabel: "", picks: "" };
     }
-    // default = market: show the strongest FULL-TIMEFRAME-CONTINUITY plays — top-2 bullish
-    // (FTFC green) + top-2 bearish (FTFC red) by Ninja Score.
+    // default = market page — the user picks which section to share (state / candle-map / leaders / movers)
+    if (_mktShareSection === "candlemap") return _shareMktCandleMap();
+    if (_mktShareSection === "leaders") return _shareMktLeaders();
+    if (_mktShareSection === "movers") return _shareMktMovers();
+    // "state": market mode + index strip + the strongest FULL-TIMEFRAME-CONTINUITY plays
+    // (top-2 FTFC green + top-2 FTFC red).
     const idx = ms ? ms.idx.map(i => _shIdx(i.sym, _shNum(i.chg))).join("") + (ms.vix ? _shIdx("VIX", ms.vix.level.toFixed(1)) : "") : "";
     const ftfcUp = src.filter(t => t.ftfc && (t.D || {}).c === "up").sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 2);
     const ftfcDn = src.filter(t => t.ftfc && (t.D || {}).c === "down").sort((a, b) => (a.chg || 0) - (b.chg || 0)).slice(0, 2);
@@ -1921,7 +1985,26 @@
   // Capture resolution: supersample by the screen's pixel density (≥2×, capped 4×) so the exported
   // PNG is as crisp as the live site — a fixed scale:2 looked soft on Hi-DPI displays.
   function _shotScale() { return Math.min(4, Math.max(2, Math.round((window.devicePixelRatio || 1) * 2))); }
+  // on the market-overview page, first let the user pick WHICH section to share
+  const _MKT_SHARE_OPTS = [
+    ["state", "📡 מצב השוק", "Risk-On/Off · מדדים · VIX · רוחב שוק"],
+    ["candlemap", "🗺️ Candle Map", "התפלגות הנרות · המבנה הדומיננטי + הידעת?"],
+    ["leaders", "🏆 מובילים ומפגרים", "סקטורים ומניות מובילות / בפיגור"],
+    ["movers", "🌙 After / Pre-Market", "תנועות אחרי הסגירה / לפני הפתיחה"],
+  ];
   function captureSummaryCard() {
+    if (state.page === "market") {
+      const body = '<div class="ac-choose">' + _MKT_SHARE_OPTS.map(o =>
+        '<button class="btn ghost mkt-share-opt" data-mss="' + o[0] + '" style="text-align:start;padding:12px 13px">' +
+          '<div style="font-weight:700;font-size:14px">' + o[1] + "</div>" +
+          '<div style="font-size:11px;font-weight:400;opacity:.72;margin-top:3px">' + o[2] + "</div></button>").join("") + "</div>";
+      modal("🗂️ איזה חלק לשתף?", body);
+      document.querySelectorAll("[data-mss]").forEach(b => b.onclick = () => { _mktShareSection = b.dataset.mss; closeModal(); _doCaptureSummaryCard(); });
+      return;
+    }
+    _doCaptureSummaryCard();
+  }
+  function _doCaptureSummaryCard() {
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
