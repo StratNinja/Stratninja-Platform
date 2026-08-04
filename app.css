@@ -1390,7 +1390,8 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
 .ath-celeb .ath-timer { height: 4px; margin: 0 -16px; background: rgba(255,255,255,.06); }
 .ath-celeb .ath-timerbar { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #26b06b, #4fe39b); }
 /* collapsed pill */
-.ath-celeb.ath-mini { width: auto; padding: 0; background: none; border: none; box-shadow: none; overflow: visible; }
+/* mini pill sits ABOVE the back-to-top arrow (which spans 78–124px) so it never covers it */
+.ath-celeb.ath-mini { width: auto; padding: 0; background: none; border: none; box-shadow: none; overflow: visible; bottom: 134px; }
 .ath-celeb.ath-mini:hover { transform: translateY(-2px); }
 .ath-celeb .ath-mini-btn { display: flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; cursor: pointer;
   background: linear-gradient(160deg, #163524, #0f1420); color: #4fe39b; border: 1px solid rgba(38,176,107,.45);
