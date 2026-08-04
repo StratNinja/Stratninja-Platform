@@ -2085,6 +2085,52 @@
     }, "image/png");
   }
   window._snCapture = captureShare;
+
+  // ---- shareable ALERT CARD (branded image per alert → native share / download) ----
+  function _alertRowFor(sym) {
+    const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+    if (r) return { sym: sym, sector: r.sec, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0), Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc };
+    const tk = TICKERS.find(x => x.sym === sym);
+    if (tk) return { sym: sym, sector: tk.sector, price: tk.price, chg: tk.chg, Y: tk.Y, Q: tk.Q, M: tk.M, W: tk.W, D: tk.D, ftfc: false };
+    return { sym: sym, sector: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji"), ftfc: false };
+  }
+  function buildAlertCardEl(t, presetName) {
+    const el = document.createElement("div");
+    el.className = "ac-card";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    const photo = _heroSquare
+      ? '<img class="ac-photo" src="' + _heroSquare + '">'
+      : '<img class="ac-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const bt = v => v === "2U" ? "b2u" : v === "2D" ? "b2d" : v === "3" ? "b3" : "b1";
+    const map = ["Y", "Q", "M", "W", "D"].map(k => {
+      const v = (t[k] && t[k].t) || "1";
+      return '<div class="ac-tf"><span class="ac-k">' + k + '</span><span class="ac-v ' + bt(v) + '">' + v + "</span></div>";
+    }).join("");
+    const chg = t.chg == null ? 0 : Number(t.chg);
+    const chgTxt = (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%";
+    el.innerHTML =
+      '<div class="ac-accent"></div>' +
+      '<div class="ac-top"><div class="ac-brand">' + photo + '<div><div class="ac-bname">StratNinja</div><div class="ac-bsub">Scanner · The Strat</div></div></div>' +
+        '<div class="ac-badge"><span class="ac-dot"></span> התראה חדשה</div></div>' +
+      '<div class="ac-head"><div><div class="ac-sym">' + escHtml(t.sym) + '</div><div class="ac-sec">' + escHtml(secHe(t.sector) || "מניה") + '</div></div>' +
+        '<div class="ac-px"><div class="ac-price">' + money(t.price) + '</div><div class="ac-chg ' + (chg >= 0 ? "pos" : "neg") + '">' + chgTxt + "</div></div></div>" +
+      '<div><span class="ac-setup">🔔 ' + escHtml(presetName || "התראה") + "</span></div>" +
+      '<div class="ac-map">' + map + (t.ftfc ? '<span class="ac-ftfc">🟢 FTFC</span>' : "") + "</div>" +
+      '<div class="ac-foot"><span>נסחר עכשיו · <b>stratninja.win</b></span><span>Adi Koriat · @KoriatTrade</span></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+  function shareAlertCard(sym, presetName) {
+    if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
+    snToast("מכין כרטיס…");
+    const el = buildAlertCardEl(_alertRowFor(sym), presetName);
+    setTimeout(() => {
+      html2canvas(el, { backgroundColor: "#0a0f1c", scale: _shotScale(), useCORS: true, logging: false })
+        .then(cv => { el.remove(); showShareModal(cv); })
+        .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
+    }, 150);
+  }
+  window._snShareAlert = shareAlertCard;
   const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
   const CAP_RANGES = { mega: [2e11, Infinity], large: [1e10, 2e11], mid: [2e9, 1e10], small: [3e8, 2e9], micro: [0, 3e8] };
   function fmtCap(n) {
@@ -3872,7 +3918,7 @@
         const hasTrade = jsyms.has(String(t.sym).toUpperCase());
         // alert info as a real COLUMN (the scan names the stock matched) instead of a red dot + hover
         const alertCell = pm.length
-          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escAttr(n) + "</span>").join("") +
+          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escHtml(n) + ' <button class="fac-share" data-shalert="' + escAttr(t.sym) + '" data-shpreset="' + escAttr(n) + '" title="שתף כרטיס התראה מעוצב">📤</button></span>').join("") +
             ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את סימון ההתראה">✕</span></td>'
           : '<td class="muted" style="text-align:start">—</td>';
         const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
@@ -3934,6 +3980,7 @@
     { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ תזכורות 11:30/16:30 הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
+    document.querySelectorAll("[data-shalert]").forEach(b => b.onclick = e => { e.stopPropagation(); shareAlertCard(b.dataset.shalert, b.dataset.shpreset); });
     // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
     { const rf = $("#favRefresh"); if (rf) rf.onclick = async () => { rf.disabled = true; rf.textContent = "🔄 מרענן…"; _clearFavDismissed(); try { await fetchScanner(); } catch (e) {} if (state.page === "favorites") reRender(); snToast("ההתראות עודכנו ✓"); }; }
     { const fc = $("#favCopy"); if (fc) fc.onclick = () => { const favs = window.Prefs ? window.Prefs.favorites() : []; if (!favs.length) { snToast("אין מניות ברשימה"); return; } const o = fc.textContent; copyToClipboard(favs.join(", "), () => { fc.textContent = "✓ הועתקו " + favs.length; setTimeout(() => fc.textContent = o, 1600); }); }; }
