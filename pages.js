@@ -1221,8 +1221,12 @@
   function _pmIds() { return (window.Prefs.scanPresets() || []).map(p => p.id); }
   function pmBodyHtml() {
     const list = window.Prefs.scanPresets() || [];
-    if (!list.length) return '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף.</div>';
-    return '<div class="pm-list">' + list.map((p, i) =>
+    const ioBar = '<div class="pm-io">' +
+        (list.length ? '<button class="btn ghost" id="pmExport" title="שמור את כל הסריקות לקובץ במחשב">💾 גבה לקובץ</button>' : "") +
+        '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
+        '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
+    if (!list.length) return ioBar + '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף — או שחזר מקובץ גיבוי למעלה.</div>';
+    return ioBar + '<div class="pm-list">' + list.map((p, i) =>
       '<div class="pm-row" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
         '<span class="pm-grip" title="גרור לסידור">⠿</span>' +
         '<span class="pm-name">' + escHtml(p.name) + "</span>" +
@@ -1232,10 +1236,7 @@
           '<button class="btn ghost pm-btn" data-pmren="' + escAttr(p.id) + '" title="שנה שם">✏️</button>' +
           '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
         "</span></div>").join("") + "</div>" +
-      '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף</div>' +
-      '<div class="pm-io"><button class="btn ghost" id="pmExport" title="שמור את כל הסריקות לקובץ במחשב">💾 גבה לקובץ</button>' +
-        '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
-        '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
+      '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף</div>';
   }
   function pmRefresh() { const b = document.getElementById("pmBody"); if (b) { b.innerHTML = pmBodyHtml(); pmWire(); } }
   function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender(); }
@@ -1784,9 +1785,11 @@
     if (page === "sectors") {
       // count full-continuity (FTFC) stocks per sector & sub-sector, split by direction (🟢 up / 🔴 down)
       const secC = {}, indC = {};
+      // use the SAME timeframe set the user is viewing on the sectors page (default M·Q·Y), not Daily-only,
+      // so the shared card matches the screen — and we label which FTFC combo it is.
+      const _secTfs = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.DWM;
       src.forEach(t => {
-        if (!t.ftfc) return;
-        const dir = (t.D || {}).c;
+        const dir = secFtfcDir(t, _secTfs);        // full continuity across the selected timeframe set
         if (dir !== "up" && dir !== "down") return;
         const up = dir === "up";
         if (t.sector) { const o = secC[t.sector] = secC[t.sector] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; }
@@ -1799,7 +1802,7 @@
           line(top2(secC, "g", secHe), "pos") + line(top2(indC, "g"), "pos") + "</div>" +
         '<div class="sc-sec-lbl neg" style="margin-top:12px">🔴 הכי הרבה FTFC אדום (המשכיות יורדת)</div><div class="sc-strip">' +
           line(top2(secC, "r", secHe), "neg") + line(top2(indC, "r"), "neg") + "</div>";
-      return { headline: "🗂️ סקטורים · המשכיות טיימפריימים (FTFC)", cls: "zero", bodyHtml: bodyHtml };
+      return { headline: "🗂️ סקטורים · FTFC " + (SEC_FTFC_LBL[sectorFtfcKey] || ""), cls: "zero", bodyHtml: bodyHtml };
     }
     if (page === "sp500") {
       const b = mktU().breadth || {}; const pct = b.total ? Math.round(b.above / b.total * 100) : 0;
@@ -1874,7 +1877,7 @@
         const w = img.width * scale, h = img.height * scale;
         // focus point: 0=left .. 0.5=center .. 1=right. FOCUS_X<0.5 reveals more of the
         // LEFT of the photo → the subject appears shifted RIGHT in the circle.
-        const FOCUS_X = 0.3, FOCUS_Y = 0.5;
+        const FOCUS_X = 0.05, FOCUS_Y = 0.5;   // face sits ~28% from left → ~0.05 centers it in the circle
         ctx.drawImage(img, -(w - S) * FOCUS_X, -(h - S) * FOCUS_Y, w, h);
         _heroSquare = c.toDataURL("image/png");
       } catch (e) { _heroSquare = null; }
@@ -2678,7 +2681,7 @@
         '<button class="btn ghost" id="presetSave" title="שמור את הפילטרים הנוכחיים כסריקה חדשה">💾 שמור</button>' +
         (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הסריקה הנבחרת">🗑 מחק</button>' : "") +
         (presets.length ? '<button class="btn ghost" id="presetShare" title="שתף את הסריקה הנבחרת — קישור להעתקה">🔗 שתף</button>' : "") +
-        (presets.length ? '<button class="btn ghost" id="presetOrder" title="נהל וסדר את הסריקות (גרירה)">↕️ סדר</button>' : "") +
+        '<button class="btn ghost" id="presetOrder" title="נהל, סדר, שתף וגבה את הסריקות לקובץ (או שחזר מגיבוי)">🗂️ נהל / גבה</button>' +
         '<button class="btn ghost" id="alertBell" title="מרכז התראות — התראה כשמניה מהמועדפים נכנסת לסריקה">🔔<span class="al-badge" id="alBadge"></span></button>' +
       "</div></div>";
     return (
