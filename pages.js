@@ -1521,9 +1521,11 @@
     const plist = presets.length ? presets.map(p =>
       '<div class="al-prow"><span>' + escAttr(p.name) + '</span><label class="ios-switch"><input type="checkbox" data-alp="' + escAttr(p.id) + '"' + (p.alert ? " checked" : "") + '><span class="ios-slider"></span></label></div>').join("")
       : '<div class="muted">אין עדיין סריקות שמורות. שמור פריסט בסורק העסקאות כדי להפעיל עליו התראה.</div>';
-    const flist = feed.length ? feed.slice(0, 50).map(e =>
-      '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted">נכנסה ל־"' + escAttr(e.preset) + '"</span><span class="muted al-time">' + new Date(e.ts).toLocaleString("he-IL") + "</span></div>").join("")
-      : '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>';
+    const feedById = {}; presets.forEach(p => { feedById[p.id] = p; });
+    const flistRows = feed.map(e => { const p = feedById[e.pid]; if (!p) return ""; /* preset gone → hide stale alert */
+      return '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted">נכנסה ל־"' + escHtml(p.name) + '"</span><span class="muted al-time">' + new Date(e.ts).toLocaleString("he-IL") + "</span></div>";
+    }).filter(Boolean).slice(0, 50).join("");
+    const flist = flistRows || '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>';
     const pushOn = !!(window.Prefs && Prefs.pushSubs().length);
     const pushBtn = pushOn ? '<span class="pos" style="font-weight:600">✓ התראות פלאפון פעילות</span>'
       : '<button class="btn primary" id="alPushSub" style="font-size:12px">📱 הפעל התראות לפלאפון</button>';
@@ -2138,7 +2140,9 @@
     if (tk) return { sym: sym, sector: tk.sector, price: tk.price, chg: tk.chg, Y: tk.Y, Q: tk.Q, M: tk.M, W: tk.W, D: tk.D, ftfc: false };
     return { sym: sym, sector: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji"), ftfc: false };
   }
-  function buildAlertCardEl(t, presetName) {
+  function buildAlertCardEl(t, names) {
+    names = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3);
+    if (!names.length) names = ["התראה"];
     const el = document.createElement("div");
     el.className = "ac-card";
     el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
@@ -2159,21 +2163,33 @@
         '<div class="ac-badge"><span class="ac-dot"></span> התראה חדשה</div></div>' +
       '<div class="ac-head"><div><div class="ac-sym">' + escHtml(t.sym) + '</div><div class="ac-sec">' + escHtml(secHe(t.sector) || "מניה") + '</div></div>' +
         '<div class="ac-px"><div class="ac-price">' + money(t.price) + '</div><div class="ac-chg ' + (chg >= 0 ? "pos" : "neg") + '">' + chgTxt + "</div></div></div>" +
-      '<div><span class="ac-setup">🔔 ' + escHtml(presetName || "התראה") + "</span></div>" +
+      '<div class="ac-setups' + (names.length > 1 ? " multi" : "") + '">' + names.map(n => '<span class="ac-setup">🔔 ' + escHtml(n) + "</span>").join("") + "</div>" +
       '<div class="ac-map">' + map + (t.ftfc ? '<span class="ac-ftfc">🟢 FTFC</span>' : "") + "</div>" +
       '<div class="ac-foot"><span>נסחר עכשיו · <b>stratninja.win</b></span><span>Adi Koriat · @KoriatTrade</span></div>';
     document.body.appendChild(el);
     return el;
   }
-  function shareAlertCard(sym, presetName) {
+  function shareAlertCard(sym, names) {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     snToast("מכין כרטיס…");
-    const el = buildAlertCardEl(_alertRowFor(sym), presetName);
+    const el = buildAlertCardEl(_alertRowFor(sym), names);
     setTimeout(() => {
       html2canvas(el, { backgroundColor: "#0a0f1c", scale: _shotScale(), useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
     }, 150);
+  }
+  // >3 matched presets → let the trader pick up to 3 for the card
+  function chooseAlertPresets(sym, allNames) {
+    const body = '<div class="note" style="margin-bottom:10px">בחר עד <b>3</b> סריקות שיופיעו בכרטיס של <b>' + escHtml(sym) + "</b>:</div>" +
+      '<div class="ac-choose">' + allNames.map((n, i) => '<label class="ac-choose-row"><input type="checkbox" data-acn="' + escAttr(n) + '"' + (i < 3 ? " checked" : "") + "><span>" + escHtml(n) + "</span></label>").join("") + "</div>" +
+      '<button class="btn primary" id="acChooseGo" style="margin-top:14px;font-size:14px">📤 שתף כרטיס</button>';
+    modal("📤 שתף כרטיס התראה", body);
+    document.querySelectorAll("[data-acn]").forEach(c => c.onchange = () => {
+      const on = Array.prototype.slice.call(document.querySelectorAll("[data-acn]:checked"));
+      if (on.length > 3) { c.checked = false; snToast("אפשר עד 3 סריקות בכרטיס"); }
+    });
+    { const go = document.getElementById("acChooseGo"); if (go) go.onclick = () => { const picked = Array.prototype.slice.call(document.querySelectorAll("[data-acn]:checked")).map(c => c.dataset.acn).slice(0, 3); if (!picked.length) { snToast("בחר לפחות סריקה אחת"); return; } closeModal(); shareAlertCard(sym, picked); }; }
   }
   window._snShareAlert = shareAlertCard;
   const CAP_OPTS = [["all", "הכל"], ["mega", "Mega (>$200B)"], ["large", "Large ($10B–200B)"], ["mid", "Mid ($2B–10B)"], ["small", "Small ($300M–2B)"], ["micro", "Micro (<$300M)"]];
@@ -3890,7 +3906,9 @@
     if (SCAN && SCAN.rows && SCAN.rows.length && presets.length) presets.forEach(p => { let m = []; try { m = evalPreset(p) || []; } catch (e) {} m.forEach(s => add(s, p.name)); });
     const feed = (window.Prefs && window.Prefs.alertFeed) ? window.Prefs.alertFeed() : [];
     const today = new Date().toISOString().slice(0, 10);
-    feed.forEach(e => { if (e && e.date === today && favs.indexOf(e.sym) >= 0) add(e.sym, e.preset); });
+    const byId = {}; presets.forEach(p => { byId[p.id] = p; });
+    // resolve each fired alert by its preset id → CURRENT name (drops renamed-away / deleted presets)
+    feed.forEach(e => { if (e && e.date === today && favs.indexOf(e.sym) >= 0) { const p = byId[e.pid]; if (p) add(e.sym, p.name); } });
     _favDismissed().forEach(s => delete pmatch[s]);
     return pmatch;
   }
@@ -3961,7 +3979,8 @@
         const hasTrade = jsyms.has(String(t.sym).toUpperCase());
         // alert info as a real COLUMN (the scan names the stock matched) instead of a red dot + hover
         const alertCell = pm.length
-          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escHtml(n) + ' <button class="fac-share" data-shalert="' + escAttr(t.sym) + '" data-shpreset="' + escAttr(n) + '" title="שתף כרטיס התראה מעוצב">📤</button></span>').join("") +
+          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escHtml(n) + "</span>").join("") +
+            ' <button class="fac-share" data-shalert="' + escAttr(t.sym) + '" title="שתף כרטיס התראה מעוצב (עד 3 סריקות)">📤 שתף</button>' +
             ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את סימון ההתראה">✕</span></td>'
           : '<td class="muted" style="text-align:start">—</td>';
         const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
@@ -4023,7 +4042,7 @@
     { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ תזכורות 11:30/16:30 הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
-    document.querySelectorAll("[data-shalert]").forEach(b => b.onclick = e => { e.stopPropagation(); shareAlertCard(b.dataset.shalert, b.dataset.shpreset); });
+    document.querySelectorAll("[data-shalert]").forEach(b => b.onclick = e => { e.stopPropagation(); const sym = b.dataset.shalert, names = (favAlertMatches()[sym] || []); if (names.length <= 3) shareAlertCard(sym, names); else chooseAlertPresets(sym, names); });
     // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
     { const rf = $("#favRefresh"); if (rf) rf.onclick = async () => { rf.disabled = true; rf.textContent = "🔄 מרענן…"; _clearFavDismissed(); try { await fetchScanner(); } catch (e) {} if (state.page === "favorites") reRender(); snToast("ההתראות עודכנו ✓"); }; }
     { const fc = $("#favCopy"); if (fc) fc.onclick = () => { const favs = window.Prefs ? window.Prefs.favorites() : []; if (!favs.length) { snToast("אין מניות ברשימה"); return; } const o = fc.textContent; copyToClipboard(favs.join(", "), () => { fc.textContent = "✓ הועתקו " + favs.length; setTimeout(() => fc.textContent = o, 1600); }); }; }

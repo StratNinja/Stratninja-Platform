@@ -1129,6 +1129,13 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
 .ac-foot { display:flex; align-items:center; justify-content:space-between; margin-top:28px; padding-top:16px;
   border-top:1px solid #ffffff14; font-size:15px; color:#8b94a8; }
 .ac-foot b { color:#eaeefb; }
+.ac-setups { display:flex; flex-direction:column; align-items:flex-start; gap:8px; margin:24px 0 8px; }
+.ac-setups .ac-setup { margin:0; }
+.ac-setups.multi .ac-setup { font-size:18px; padding:7px 16px; }
+.ac-choose { display:flex; flex-direction:column; gap:8px; }
+.ac-choose-row { display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line);
+  border-radius:9px; padding:9px 12px; cursor:pointer; font-size:14px; }
+.ac-choose-row input { width:17px; height:17px; accent-color:var(--accent); flex:none; }
 /* ===== guide video embeds (YouTube facade → iframe on click) ===== */
 .guide-sec { margin:14px 0 4px; border:1px solid var(--line); border-radius:12px; background:var(--panel); overflow:hidden; }
 .guide-sec > summary { cursor:pointer; padding:11px 16px; font-size:14px; list-style:none; user-select:none; display:flex; align-items:center; gap:8px; }
