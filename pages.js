@@ -1222,6 +1222,7 @@
         '<span class="pm-acts">' +
           '<button class="btn ghost pm-btn" data-pmup="' + escAttr(p.id) + '"' + (i === 0 ? " disabled" : "") + ' title="הזז למעלה">▲</button>' +
           '<button class="btn ghost pm-btn" data-pmdn="' + escAttr(p.id) + '"' + (i === list.length - 1 ? " disabled" : "") + ' title="הזז למטה">▼</button>' +
+          '<button class="btn ghost pm-btn" data-pmren="' + escAttr(p.id) + '" title="שנה שם">✏️</button>' +
           '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
         "</span></div>").join("") + "</div>" +
       '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · 🔗 להעתקת קישור שיתוף</div>';
@@ -1232,6 +1233,12 @@
     document.querySelectorAll("[data-pmup]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmup); if (i > 0) { ids.splice(i - 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
     document.querySelectorAll("[data-pmdn]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmdn); if (i >= 0 && i < ids.length - 1) { ids.splice(i + 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
     document.querySelectorAll("[data-pmshare]").forEach(b => b.onclick = () => { const p = (window.Prefs.scanPresets() || []).find(x => x.id === b.dataset.pmshare); sharePreset(p); });
+    document.querySelectorAll("[data-pmren]").forEach(b => b.onclick = () => {
+      const p = (window.Prefs.scanPresets() || []).find(x => x.id === b.dataset.pmren); if (!p) return;
+      const nn = prompt("שם חדש לסריקה:", p.name); if (nn == null) return;
+      const t = nn.trim(); if (!t || t === p.name) return;
+      window.Prefs.renameScanPreset(p.id, t); pmRefresh(); if (state.page === "scanner") reRender();
+    });
     let dragId = null;
     document.querySelectorAll(".pm-row").forEach(row => {
       row.addEventListener("dragstart", () => { dragId = row.dataset.pmid; row.classList.add("pm-dragging"); });

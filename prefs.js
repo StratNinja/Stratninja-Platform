@@ -64,6 +64,15 @@ window.Prefs = (function () {
       arr.forEach(p => { if (next.indexOf(p) < 0) next.push(p); });
       d.scanPresets = next; write(d);
     },
+    // rename a preset by id (keeps the name unique)
+    renameScanPreset(id, name) {
+      const d = read(); const arr = d.scanPresets || [];
+      const p = arr.find(x => x.id === id); if (!p) return null;
+      let nm = String(name || "").trim(); if (!nm) return p;
+      const base = nm; let i = 2;
+      while (arr.some(x => x.id !== id && x.name === nm)) { nm = base + " " + i; i++; }
+      p.name = nm; write(d); return p;
+    },
     // import a shared preset (fresh id + unique name; alert NOT carried over)
     importScanPreset(name, cfg) {
       const d = read(); d.scanPresets = d.scanPresets || [];
