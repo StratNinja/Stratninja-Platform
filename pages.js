@@ -1950,6 +1950,59 @@
     img.onerror = () => cb(null);
     img.src = "hero.jpg";
   }
+  // ===== Redesigned money-flow share card (v2 design system, 1080×1080) =====
+  function _mfRangeLbl(tf) { return tf === "5d" ? "5D" : tf === "20d" ? "20D" : "1D"; }
+  function _mfIlTime() { try { return new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jerusalem", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date()); } catch (e) { return ""; } }
+  function buildMoneyFlowCardEl() {
+    const src = (typeof scanSource === "function") ? scanSource() : [];
+    const ms = todayMarketState();
+    const tf = flowTf;
+    const vOf = s => tf === "5d" ? s.chg5d : tf === "20d" ? s.chg20d : s.chg;
+    const secs = (typeof todaySectors === "function" ? todaySectors(src) : []).filter(s => vOf(s) != null);
+    const subs = (typeof todaySubsectors === "function" ? todaySubsectors(src) : []).filter(s => vOf(s) != null);
+    const sS = secs.slice().sort((a, b) => vOf(b) - vOf(a)), subS = subs.slice().sort((a, b) => vOf(b) - vOf(a));
+    const secUp = sS.filter(s => vOf(s) > 0).slice(0, 3), secDn = sS.filter(s => vOf(s) < 0).slice(-3).reverse();
+    const subUp = subS.filter(s => vOf(s) > 0).slice(0, 3), subDn = subS.filter(s => vOf(s) < 0).slice(-3).reverse();
+    // ONE global scale across all four cards, so 6.2% is always longer than 4.8% even as data changes
+    let gmax = 0.01; [secUp, secDn, subUp, subDn].forEach(a => a.forEach(s => { gmax = Math.max(gmax, Math.abs(vOf(s) || 0)); }));
+    const w = v => Math.max(6, Math.round(Math.abs(v || 0) / gmax * 100));
+    const rows = (arr, cls, isSub) => arr.length ? arr.map((s, i) => {
+      const v = vOf(s), nm = isSub ? s.name : secHe(s.name);
+      const etf = (!isSub && etfFor(s.name)) ? '<span class="mf-etf">' + escHtml(etfFor(s.name)) + "</span>" : "";
+      return '<div class="mf-rk ' + cls + '"><span class="mf-rank">' + (i + 1) + '</span><span class="mf-name">' + escHtml(nm) + "</span>" + etf +
+        '<span class="mf-bar"><span style="width:' + w(v) + '%"></span></span><span class="mf-pct">' + _shNum(v) + "</span></div>";
+    }).join("") : '<div class="mf-rk"><span class="mf-rank"></span><span class="mf-name" style="color:#9AA7BD">—</span></div>';
+    const upName = secUp[0] ? secHe(secUp[0].name) : (subUp[0] ? subUp[0].name : "—");
+    const dnName = secDn[0] ? secHe(secDn[0].name) : (subDn[0] ? subDn[0].name : "—");
+    const rtag = ms ? ('<span class="mf-tag ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>") : "";
+    const insTxt = "רוטציה מ<b>" + escHtml(dnName) + "</b> אל <b>" + escHtml(upName) + "</b> — " +
+      (ms && ms.cls === "pos" ? "מחזקת את תרחיש ה-Risk-On" : ms && ms.cls === "neg" ? "בשוק זהיר (Risk-Off)" : "בשוק מעורב");
+    const photo = _heroSquare ? '<img class="mf-photo" src="' + _heroSquare + '">'
+      : '<img class="mf-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div");
+    el.className = "mf-card";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="mf-hd">' + photo + '<div class="mf-brand"><div class="mf-t">StratNinja <span>Scanner</span></div>' +
+        '<div class="mf-s">The Strat · סריקת שוק בזמן אמת</div></div>' +
+        (upd ? '<div class="mf-upd"><span class="mf-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="mf-ct">' +
+        '<div class="mf-hero"><div class="mf-tags">' + rtag + '<span class="mf-tag range">טווח נבדק: <b>' + _mfRangeLbl(tf) + "</b></span></div>" +
+          '<h1 class="mf-h1"><span class="mf-l1">הכסף נכנס ל<span class="up">' + escHtml(upName) + '</span></span><span class="mf-l2">ויוצא מ<span class="dn">' + escHtml(dnName) + "</span></span></h1></div>" +
+        '<div class="mf-cols">' +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · סקטורים</div>' + rows(secUp, "pos", false) + "</div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · סקטורים</div>' + rows(secDn, "neg", false) + "</div></div>" +
+        '<div class="mf-cols">' +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · תתי-סקטורים</div>' + rows(subUp, "pos", true) + "</div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · תתי-סקטורים</div>' + rows(subDn, "neg", true) + "</div></div>" +
+        '<div class="mf-insight"><span class="mf-bulb">i</span><div><span class="mf-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+      "</div>" +
+      '<div class="mf-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span>' +
+        '<span>Adi Koriat · @KoriatTrade · <span class="mf-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2005,6 +2058,7 @@
     _doCaptureSummaryCard();
   }
   function _doCaptureSummaryCard() {
+    if (state.page === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
@@ -2013,6 +2067,18 @@
           .then(cv => { el.remove(); showShareModal(cv); })
           .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
       }, 300);
+    });
+  }
+  function _captureMoneyFlowCard() {
+    if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
+    snToast("מכין כרטיס…");
+    _prepHeroSquare(() => {
+      const el = buildMoneyFlowCardEl();
+      const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
+        .then(cv => { el.remove(); showShareModal(cv); })
+        .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
+      // wait for the embedded Heebo/Inter to be ready so the PNG isn't rendered with a fallback font
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 80)); else setTimeout(run, 250);
     });
   }
   function captureFullScreen() {
