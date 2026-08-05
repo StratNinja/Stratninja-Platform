@@ -2017,6 +2017,56 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== S&P 500 breadth-map share card =====
+  function _spSqColor(c) { c = c || 0; if (Math.abs(c) < 0.1) return "#182236"; if (c >= 3) return "rgba(50,214,154,1)"; if (c > 0) return "rgba(50,214,154,.5)"; if (c <= -3) return "rgba(255,100,116,1)"; return "rgba(255,100,116,.5)"; }
+  function buildSpMapCardEl() {
+    const rows = ((SCAN && SCAN.rows) || []).filter(r => r.sp && r.c != null);
+    const total = rows.length || 1;
+    let up = 0, down = 0, flat = 0;
+    rows.forEach(r => { const c = r.c || 0; if (c > 0.05) up++; else if (c < -0.05) down++; else flat++; });
+    const pct = Math.round(up / total * 100), barG = Math.round(up / total * 100), barR = Math.round(down / total * 100);
+    const bySec = {}; rows.forEach(r => { const s = r.sec || "אחר"; (bySec[s] = bySec[s] || []).push(r); });
+    const secStat = Object.keys(bySec).filter(s => s !== "אחר" && bySec[s].length >= 4)
+      .map(s => { const arr = bySec[s]; const g = arr.filter(r => (r.c || 0) > 0.05).length; return { sec: s, n: arr.length, pct: Math.round(g / arr.length * 100) }; });
+    let lead = rows[0] || null; rows.forEach(r => { if (lead && (r.c || 0) > (lead.c || 0)) lead = r; });
+    const leadSec = lead ? lead.sec : null;
+    const strong = secStat.slice().sort((a, b) => b.pct - a.pct)[0];
+    const weak = secStat.slice().sort((a, b) => a.pct - b.pct)[0];
+    const bySize = secStat.slice().sort((a, b) => b.n - a.n);
+    const topSet = {}; bySize.slice(0, 5).forEach(x => topSet[x.sec] = 1);
+    const blk = so => {
+      const arr = bySec[so.sec].slice().sort((a, b) => (b.c || 0) - (a.c || 0));
+      const cols = Math.max(4, Math.round(Math.sqrt(arr.length)));
+      const sq = arr.map(r => '<span class="sq' + (so.sec === leadSec && lead && r.s === lead.s ? " lead" : "") + '" style="background:' + _spSqColor(r.c) + '"></span>').join("");
+      return '<div class="blk"><div class="blbl"><span>' + escHtml(secHe(so.sec)) + '</span><span class="sep">·</span><span class="p">' + so.pct + '%</span></div>' +
+        '<div class="grid" style="grid-template-columns:repeat(' + cols + ',1fr)">' + sq + "</div></div>";
+    };
+    const rowTop = '<div class="map-row">' + bySize.filter(x => topSet[x.sec]).map(blk).join("") + "</div>";
+    const rowBot = '<div class="map-row">' + bySize.filter(x => !topSet[x.sec]).map(blk).join("") + "</div>";
+    const photo = _heroSquare ? '<img class="photo" src="' + _heroSquare + '">' : '<img class="photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime(), strongHe = strong ? secHe(strong.sec) : "—", weakHe = weak ? secHe(weak.sec) : "—";
+    const el = document.createElement("div"); el.className = "spm-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="hd">' + photo + '<div class="brand"><div class="t">StratNinja <span>Scanner</span></div><div class="s">The Strat · רוחב שוק S&P 500</div></div>' +
+        (upd ? '<div class="upd"><span class="d"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="ct">' +
+        '<div class="hero"><div class="htext"><div class="l1">רוחב השוק ' + (pct >= 55 ? "תומך בראלי" : pct <= 45 ? "חלש" : "מעורב") + "</div>" +
+          '<div class="l2"><b>' + pct + '%</b> ממניות ה-S&P 500 בירוק — ה' + escHtml(strongHe) + " מובילה</div></div>" +
+          '<div class="big"><div class="pct">' + pct + '%</div><div class="cap">מעל מחיר הפתיחה</div></div></div>' +
+        '<div class="breadth"><div class="bar"><span class="g" style="width:' + barG + '%"></span><span class="r" style="width:' + barR + '%"></span></div>' +
+          '<div class="blabels"><span class="up">▲ <span class="num">' + up + '</span> עולות</span><span class="sepd">·</span><span class="dn"><span class="num">' + down + '</span> יורדות ▼</span><span class="sepd">·</span><span class="flat"><span class="num">' + flat + '</span> ללא שינוי</span></div></div>' +
+        '<div><div class="maplbl"><span class="t">🗺️ ' + total + ' מניות · מקובצות לפי סקטור</span>' +
+          '<span class="leg"><span><i style="background:rgba(255,100,116,1)"></i> ≤−3%</span><span><i style="background:rgba(255,100,116,.5)"></i> −3%–0%</span><span><i style="background:#182236"></i> ללא שינוי</span><span><i style="background:rgba(50,214,154,.5)"></i> 0%–3%</span><span><i style="background:rgba(50,214,154,1)"></i> ≥3%</span></span></div>' +
+          '<div class="map">' + rowTop + rowBot + "</div></div>" +
+        '<div class="sum">' +
+          '<div class="scard g"><span class="lead">הסקטור החזק:</span> ' + escHtml(strongHe) + " · <b>" + (strong ? strong.pct : 0) + '% ירוקות</b></div>' +
+          '<div class="scard r"><span class="lead">הסקטור החלש:</span> ' + escHtml(weakHe) + " · <b>" + (weak ? weak.pct : 0) + '% ירוקות</b></div>' +
+          '<div class="scard b"><span class="lead">המניה המובילה:</span> ' + escHtml(lead ? lead.s : "—") + " · <b>" + (lead ? (lead.c >= 0 ? "+" : "") + Number(lead.c).toFixed(2) + "%" : "—") + "</b></div></div>" +
+        '<div class="insight"><span class="mi">i</span><div><span class="lbl">Ninja Insight:</span> רוחב השוק ' + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + ', ההובלה מרוכזת ב<b>' + escHtml(strongHe) + "</b> בעוד ה<b>" + escHtml(weakHe) + "</b> מפגרת.</div></div>" +
+      "</div>" +
+      '<div class="ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span><span>Adi Koriat · @KoriatTrade · <span class="num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el); return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2073,6 +2123,7 @@
   }
   function _doCaptureSummaryCard() {
     if (state.page === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
+    if (state.page === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
@@ -2083,11 +2134,12 @@
       }, 300);
     });
   }
-  function _captureMoneyFlowCard() {
+  // shared capture for the redesigned 1080×1080 cards (embedded fonts, dark bg)
+  function _captureRedesignCard(builder) {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     snToast("מכין כרטיס…");
     _prepHeroSquare(() => {
-      const el = buildMoneyFlowCardEl();
+      const el = builder();
       const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
@@ -2095,6 +2147,7 @@
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 80)); else setTimeout(run, 250);
     });
   }
+  function _captureMoneyFlowCard() { _captureRedesignCard(buildMoneyFlowCardEl); }
   function captureFullScreen() {
     const target = state.page === "journal" ? document.getElementById("journalContainer") : document.getElementById("page");
     if (!target) { snToast("אין מה לצלם"); return; }
