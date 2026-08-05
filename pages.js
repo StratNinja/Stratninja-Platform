@@ -1958,8 +1958,9 @@
     const ms = todayMarketState();
     const tf = flowTf;
     const vOf = s => tf === "5d" ? s.chg5d : tf === "20d" ? s.chg20d : s.chg;
-    const secs = (typeof todaySectors === "function" ? todaySectors(src) : []).filter(s => vOf(s) != null);
-    const subs = (typeof todaySubsectors === "function" ? todaySubsectors(src) : []).filter(s => vOf(s) != null);
+    const _named = s => s && s.name && s.name !== "אחר" && s.name !== "—" && s.name !== "";
+    const secs = (typeof todaySectors === "function" ? todaySectors(src) : []).filter(s => vOf(s) != null && _named(s));
+    const subs = (typeof todaySubsectors === "function" ? todaySubsectors(src) : []).filter(s => vOf(s) != null && _named(s));
     const sS = secs.slice().sort((a, b) => vOf(b) - vOf(a)), subS = subs.slice().sort((a, b) => vOf(b) - vOf(a));
     const secUp = sS.filter(s => vOf(s) > 0).slice(0, 3), secDn = sS.filter(s => vOf(s) < 0).slice(-3).reverse();
     const subUp = subS.filter(s => vOf(s) > 0).slice(0, 3), subDn = subS.filter(s => vOf(s) < 0).slice(-3).reverse();
