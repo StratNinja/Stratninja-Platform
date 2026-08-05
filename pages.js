@@ -1975,7 +1975,7 @@
       const etf = (!isSub && etfFor(s.name)) ? '<span class="mf-etf">' + escHtml(etfFor(s.name)) + "</span>" : "";
       return '<div class="mf-rk ' + cls + '"><span class="mf-rank">' + (i + 1) + '</span><span class="mf-name">' + escHtml(nm) + "</span>" + etf +
         '<span class="mf-bar"><span style="width:' + w(v) + '%"></span></span><span class="mf-pct">' + pct(v) + "</span></div>";
-    }).join("") : '<div class="mf-rk"><span class="mf-rank"></span><span class="mf-name" style="color:#9AA7BD">—</span></div>';
+    }).join("") : '<div class="mf-rk"><span class="mf-name" style="color:#9AA7BD">' + (cls === "neg" ? "אין יציאת כסף משמעותית" : "אין כניסת כסף משמעותית") + "</span></div>";
     // symmetric top/bottom padding so a card with fewer rows keeps its rows vertically centered
     // (deterministic — html2canvas doesn't reliably honor flex centering)
     const maxSecN = Math.max(secUp.length || 1, secDn.length || 1), maxSubN = Math.max(subUp.length || 1, subDn.length || 1);
@@ -1996,7 +1996,7 @@
     const upd = _mfIlTime();
     const el = document.createElement("div");
     el.className = "mf-card";
-    el.style.cssText = "position:fixed;left:0;top:0;z-index:-1;";   // on-screen behind the page — html2canvas mis-composites the landing hero when the target sits at left:-9999px
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";   // off-screen (no flash); safe now that every card uses a unique class prefix (no collision with the landing .hero)   // on-screen behind the page — html2canvas mis-composites the landing hero when the target sits at left:-9999px
     el.innerHTML =
       '<div class="mf-hd">' + photo + '<div class="mf-brand"><div class="mf-t">StratNinja <span>Scanner</span></div>' +
         '<div class="mf-s">The Strat · סריקת שוק בזמן אמת</div></div>' +
@@ -2045,7 +2045,7 @@
     const rowBot = '<div class="spm-maprow">' + bySize.filter(x => !topSet[x.sec]).map(blk).join("") + "</div>";
     const photo = _heroSquare ? '<img class="spm-photo" src="' + _heroSquare + '">' : '<img class="spm-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     const upd = _mfIlTime(), strongHe = strong ? secHe(strong.sec) : "—", weakHe = weak ? secHe(weak.sec) : "—";
-    const el = document.createElement("div"); el.className = "spm-card"; el.style.cssText = "position:fixed;left:0;top:0;z-index:-1;";
+    const el = document.createElement("div"); el.className = "spm-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
       '<div class="spm-hd">' + photo + '<div><div class="spm-t">StratNinja <span>Scanner</span></div><div class="spm-s">The Strat · רוחב שוק S&P 500</div></div>' +
         (upd ? '<div class="spm-upd"><span class="spm-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
@@ -2370,7 +2370,7 @@
     if (!names.length) names = ["התראה"];
     const el = document.createElement("div");
     el.className = "ac-card";
-    el.style.cssText = "position:fixed;left:0;top:0;z-index:-1;";   // on-screen behind the page — html2canvas mis-composites the landing hero when the target sits at left:-9999px
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";   // off-screen (no flash); safe now that every card uses a unique class prefix (no collision with the landing .hero)   // on-screen behind the page — html2canvas mis-composites the landing hero when the target sits at left:-9999px
     const photo = _heroSquare
       ? '<img class="ac-photo" src="' + _heroSquare + '">'
       : '<img class="ac-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
