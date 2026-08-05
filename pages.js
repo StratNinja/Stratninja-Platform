@@ -1969,8 +1969,9 @@
     const w = v => Math.max(6, Math.round(Math.abs(v || 0) / gmax * 100));
     // clean LTR percentage: typographic minus, no stray spaces (isolated so RTL can't reorder it)
     const pct = v => (v < 0 ? "−" : "+") + Math.abs(Number(v) || 0).toFixed(2) + "%";
+    const _mfClean = s => String(s || "").replace(/ - /g, "־");   // "אנרגיה - נפט וגז" → "אנרגיה־נפט וגז"
     const rows = (arr, cls, isSub) => arr.length ? arr.map((s, i) => {
-      const v = vOf(s), nm = isSub ? s.name : secHe(s.name);
+      const v = vOf(s), nm = isSub ? _mfClean(s.name) : secHe(s.name);
       const etf = (!isSub && etfFor(s.name)) ? '<span class="mf-etf">' + escHtml(etfFor(s.name)) + "</span>" : "";
       return '<div class="mf-rk ' + cls + '"><span class="mf-rank">' + (i + 1) + '</span><span class="mf-name">' + escHtml(nm) + "</span>" + etf +
         '<span class="mf-bar"><span style="width:' + w(v) + '%"></span></span><span class="mf-pct">' + pct(v) + "</span></div>";
@@ -1978,17 +1979,18 @@
     // symmetric top/bottom padding so a card with fewer rows keeps its rows vertically centered
     // (deterministic — html2canvas doesn't reliably honor flex centering)
     const maxSecN = Math.max(secUp.length || 1, secDn.length || 1), maxSubN = Math.max(subUp.length || 1, subDn.length || 1);
-    const colRows = (arr, cls, isSub, maxN) => { const pad = Math.max(0, maxN - (arr.length || 1)) * 21;
+    const colRows = (arr, cls, isSub, maxN) => { const pad = Math.max(0, maxN - (arr.length || 1)) * 24;
       return '<div class="mf-rows" style="padding-top:' + pad + 'px;padding-bottom:' + pad + 'px">' + rows(arr, cls, isSub) + "</div>"; };
     const upName = secUp[0] ? secHe(secUp[0].name) : (subUp[0] ? subUp[0].name : "—");
     const dnName = secDn[0] ? secHe(secDn[0].name) : (subDn[0] ? subDn[0].name : "—");
     const rtag = ms ? ('<span class="mf-tag ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>") : "";
-    // insight mirrors the data exactly: "כסף יוצא מ-[weak sector] ומ-[weak sub-sector] ונכנס ל-[lead sector]"
-    const outSub = subDn[0] ? subDn[0].name : "";
-    const sent = ms && ms.cls === "neg" ? "תמיכה בתרחיש Risk-Off" : ms && ms.cls === "zero" ? "שוק מעורב" : "תמיכה בתרחיש Risk-On";
-    let insTxt = "כסף יוצא מ<b>" + escHtml(dnName) + "</b>";
+    // insight mirrors the data exactly, in flowing Hebrew:
+    // "יציאת כסף מ-[weak sector] ומ-[weak sub-sector], לצד כניסה ל-[lead sector], תומכת בתרחיש Risk-On."
+    const outSub = subDn[0] ? _mfClean(subDn[0].name) : "";
+    const verb = ms && ms.cls === "neg" ? "תומכת בתרחיש Risk-Off" : ms && ms.cls === "zero" ? "על רקע שוק מעורב" : "תומכת בתרחיש Risk-On";
+    let insTxt = "יציאת כסף מ<b>" + escHtml(dnName) + "</b>";
     if (outSub && outSub !== dnName) insTxt += " ומ<b>" + escHtml(outSub) + "</b>";
-    insTxt += " ונכנס ל<b>" + escHtml(upName) + "</b> — " + sent;
+    insTxt += ", לצד כניסה ל<b>" + escHtml(upName) + "</b>, " + verb + ".";
     const photo = _heroSquare ? '<img class="mf-photo" src="' + _heroSquare + '">'
       : '<img class="mf-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     const upd = _mfIlTime();
