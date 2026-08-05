@@ -2374,6 +2374,17 @@
     if (/breakout|פריצה|darvas|rectangle/.test(n)) return "🚀";
     return "🔔";
   }
+  // tidy a raw company name for the card: drop "Common Stock" / "Class A" suffixes, cap length
+  function _acCleanName(nm) {
+    let s = String(nm || "").trim();
+    if (!s) return "";
+    s = s.replace(/\s+(Class\s+[A-C]\s+)?Common\s+(Stock|Shares)$/i, "")
+         .replace(/\s+Class\s+[A-C]$/i, "")
+         .replace(/\s+(Common\s+)?(Stock|Shares)$/i, "")
+         .replace(/\s+/g, " ").trim();
+    if (s.length > 34) s = s.slice(0, 33).trim() + "…";
+    return s;
+  }
   // fire time + price for this symbol from today's alert feed (stored when the alert fired)
   function _acMeta(sym) {
     try {
@@ -2396,7 +2407,8 @@
     const photo = _heroSquare ? '<img class="ac2-photo" src="' + _heroSquare + '">' : '<img class="ac2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     let secLine = "";
     if (t.sector && t.sector !== "אחר") { const etf = etfFor(t.sector); secLine = escHtml(secHe(t.sector)) + (etf ? ' <span class="ac2-etf">' + escHtml(etf) + "</span>" : ""); }
-    const nameLine = t.name ? '<div class="ac2-name"><span dir="ltr" style="unicode-bidi:isolate">' + escHtml(t.name) + "</span></div>" : "";
+    const coName = _acCleanName(t.name);
+    const nameLine = coName ? '<div class="ac2-name"><span dir="ltr" style="unicode-bidi:isolate">' + escHtml(coName) + "</span></div>" : "";
     const meta = _acMeta(sym);
     const metaLine = meta ? '<div class="ac2-alertmeta">התקבלה התראה ב-<b>' + escHtml(meta.tm || "") + "</b>" + (meta.px != null ? " · במחיר <b>" + money(meta.px) + "</b>" : "") + "</div>" : "";
     const sigRows = names.map((nm, i) => i === 0
