@@ -163,11 +163,23 @@
   }
   // options have no live price feed (it covers stocks only) → the trader types the current premium.
   // stored per-position id in localStorage (transient current price, not part of the trade record).
-  function _optPrices() { try { return JSON.parse(localStorage.getItem("sn_opt_cur_prices") || "{}"); } catch (e) { return {}; } }
+  // typed option "current price" marks. Stored INSIDE the synced journal blob (data.optCur) so a price
+  // typed on the desktop shows up on the phone too (was a device-local key that never synced).
+  function _optPrices() {
+    const d = Store._read();
+    let m = (d && d.optCur) || {};
+    // legacy fallback: still SHOW prices from the old device-local key until they're migrated on next edit
+    if (!Object.keys(m).length) { try { const old = JSON.parse(localStorage.getItem("sn_opt_cur_prices") || "{}"); if (Object.keys(old).length) m = old; } catch (e) {} }
+    return m;
+  }
   function _setOptPrice(id, px) {
-    const m = _optPrices();
+    const d = Store._read();
+    const m = d.optCur || {};
+    // one-time fold-in of any legacy device-local prices, then retire the old key
+    try { const old = JSON.parse(localStorage.getItem("sn_opt_cur_prices") || "{}"); Object.keys(old).forEach(k => { if (m[k] == null) m[k] = old[k]; }); if (Object.keys(old).length) localStorage.removeItem("sn_opt_cur_prices"); } catch (e) {}
     if (px === "" || px == null || isNaN(+px)) delete m[id]; else m[id] = +px;
-    try { localStorage.setItem("sn_opt_cur_prices", JSON.stringify(m)); } catch (e) {}
+    d.optCur = m;
+    Store._write(d);   // synced blob → cloudsync pushes to user_journal → appears on other devices
   }
 
   // ---- Rendering ---------------------------------------------------------
