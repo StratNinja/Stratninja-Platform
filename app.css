@@ -444,7 +444,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mf-h1 .up{color:var(--mfpos);} .mf-h1 .dn{color:var(--mfneg);}
 
 .mf-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
-.mf-col{background:var(--mfsurf);border:1px solid var(--mfline);border-radius:16px;padding:18px 20px 10px;box-shadow:0 8px 24px rgba(0,0,0,.28);}
+.mf-col{background:var(--mfsurf);border:1px solid var(--mfline);border-radius:16px;padding:18px 20px 12px;box-shadow:0 8px 24px rgba(0,0,0,.28);display:flex;flex-direction:column;}
+/* center the ranked rows so a card with fewer rows (e.g. only 2 sub-sectors) has no empty bottom gap */
+.mf-rows{flex:1;display:flex;flex-direction:column;justify-content:center;}
 .mf-col .mf-ch{display:flex;align-items:center;gap:9px;font-size:19px;font-weight:800;margin-bottom:12px;}
 .mf-col .mf-ch .mf-ic{width:11px;height:11px;border-radius:3px;}
 .mf-col.pos .mf-ch .mf-ic{background:var(--mfpos);} .mf-col.neg .mf-ch .mf-ic{background:var(--mfneg);}

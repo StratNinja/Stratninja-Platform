@@ -1976,8 +1976,12 @@
     const upName = secUp[0] ? secHe(secUp[0].name) : (subUp[0] ? subUp[0].name : "—");
     const dnName = secDn[0] ? secHe(secDn[0].name) : (subDn[0] ? subDn[0].name : "—");
     const rtag = ms ? ('<span class="mf-tag ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>") : "";
-    const insTxt = "רוטציה מ<b>" + escHtml(dnName) + "</b> אל <b>" + escHtml(upName) + "</b> — " +
-      (ms && ms.cls === "pos" ? "מחזקת את תרחיש ה-Risk-On" : ms && ms.cls === "neg" ? "בשוק זהיר (Risk-Off)" : "בשוק מעורב");
+    // insight mirrors the data exactly: top OUT sector (+ top OUT sub-sector when it differs) → top IN sector
+    const outSub = subDn[0] ? subDn[0].name : "";
+    let from = "מ<b>" + escHtml(dnName) + "</b>";
+    if (outSub && outSub !== dnName) from += " ומתת־הסקטור <b>" + escHtml(outSub) + "</b>";
+    const sent = ms && ms.cls === "pos" ? "מחזקת את תרחיש ה-Risk-On" : ms && ms.cls === "neg" ? "על רקע שוק זהיר (Risk-Off)" : "בשוק מעורב";
+    const insTxt = "רוטציה " + from + " אל <b>" + escHtml(upName) + "</b> — " + sent;
     const photo = _heroSquare ? '<img class="mf-photo" src="' + _heroSquare + '">'
       : '<img class="mf-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     const upd = _mfIlTime();
@@ -1992,11 +1996,11 @@
         '<div class="mf-hero"><div class="mf-tags">' + rtag + '<span class="mf-tag range">טווח נבדק: <b>' + _mfRangeLbl(tf) + "</b></span></div>" +
           '<h1 class="mf-h1"><span class="mf-l1">הכסף נכנס ל<span class="up">' + escHtml(upName) + '</span></span><span class="mf-l2">ויוצא מ<span class="dn">' + escHtml(dnName) + "</span></span></h1></div>" +
         '<div class="mf-cols">' +
-          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · סקטורים</div>' + rows(secUp, "pos", false) + "</div>" +
-          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · סקטורים</div>' + rows(secDn, "neg", false) + "</div></div>" +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · סקטורים</div><div class="mf-rows">' + rows(secUp, "pos", false) + "</div></div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · סקטורים</div><div class="mf-rows">' + rows(secDn, "neg", false) + "</div></div></div>" +
         '<div class="mf-cols">' +
-          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · תתי-סקטורים</div>' + rows(subUp, "pos", true) + "</div>" +
-          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · תתי-סקטורים</div>' + rows(subDn, "neg", true) + "</div></div>" +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · תתי-סקטורים</div><div class="mf-rows">' + rows(subUp, "pos", true) + "</div></div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · תתי-סקטורים</div><div class="mf-rows">' + rows(subDn, "neg", true) + "</div></div></div>" +
         '<div class="mf-insight"><span class="mf-bulb">i</span><div><span class="mf-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
       "</div>" +
       '<div class="mf-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span>' +
