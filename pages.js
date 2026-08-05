@@ -2037,34 +2037,34 @@
     const blk = so => {
       const arr = bySec[so.sec].slice().sort((a, b) => (b.c || 0) - (a.c || 0));
       const cols = Math.max(4, Math.round(Math.sqrt(arr.length)));
-      const sq = arr.map(r => '<span class="sq' + (so.sec === leadSec && lead && r.s === lead.s ? " lead" : "") + '" style="background:' + _spSqColor(r.c) + '"></span>').join("");
-      return '<div class="blk"><div class="blbl"><span>' + escHtml(secHe(so.sec)) + '</span><span class="sep">·</span><span class="p">' + so.pct + '%</span></div>' +
-        '<div class="grid" style="grid-template-columns:repeat(' + cols + ',1fr)">' + sq + "</div></div>";
+      const sq = arr.map(r => '<span class="spm-sq' + (so.sec === leadSec && lead && r.s === lead.s ? " spm-lead" : "") + '" style="background:' + _spSqColor(r.c) + '"></span>').join("");
+      return '<div class="spm-blk"><div class="spm-blbl"><span>' + escHtml(secHe(so.sec)) + '</span><span class="spm-sep">·</span><span class="spm-p">' + so.pct + '%</span></div>' +
+        '<div class="spm-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">' + sq + "</div></div>";
     };
-    const rowTop = '<div class="map-row">' + bySize.filter(x => topSet[x.sec]).map(blk).join("") + "</div>";
-    const rowBot = '<div class="map-row">' + bySize.filter(x => !topSet[x.sec]).map(blk).join("") + "</div>";
-    const photo = _heroSquare ? '<img class="photo" src="' + _heroSquare + '">' : '<img class="photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const rowTop = '<div class="spm-maprow">' + bySize.filter(x => topSet[x.sec]).map(blk).join("") + "</div>";
+    const rowBot = '<div class="spm-maprow">' + bySize.filter(x => !topSet[x.sec]).map(blk).join("") + "</div>";
+    const photo = _heroSquare ? '<img class="spm-photo" src="' + _heroSquare + '">' : '<img class="spm-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     const upd = _mfIlTime(), strongHe = strong ? secHe(strong.sec) : "—", weakHe = weak ? secHe(weak.sec) : "—";
-    const el = document.createElement("div"); el.className = "spm-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    const el = document.createElement("div"); el.className = "spm-card"; el.style.cssText = "position:fixed;left:0;top:0;z-index:-1;";
     el.innerHTML =
-      '<div class="hd">' + photo + '<div class="brand"><div class="t">StratNinja <span>Scanner</span></div><div class="s">The Strat · רוחב שוק S&P 500</div></div>' +
-        (upd ? '<div class="upd"><span class="d"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
-      '<div class="ct">' +
-        '<div class="hero"><div class="htext"><div class="l1">רוחב השוק ' + (pct >= 55 ? "תומך בראלי" : pct <= 45 ? "חלש" : "מעורב") + "</div>" +
-          '<div class="l2"><b>' + pct + '%</b> ממניות ה-S&P 500 בירוק — ה' + escHtml(strongHe) + " מובילה</div></div>" +
-          '<div class="big"><div class="pct">' + pct + '%</div><div class="cap">מעל מחיר הפתיחה</div></div></div>' +
-        '<div class="breadth"><div class="bar"><span class="g" style="width:' + barG + '%"></span><span class="r" style="width:' + barR + '%"></span></div>' +
-          '<div class="blabels"><span class="up">▲ <span class="num">' + up + '</span> עולות</span><span class="sepd">·</span><span class="dn"><span class="num">' + down + '</span> יורדות ▼</span><span class="sepd">·</span><span class="flat"><span class="num">' + flat + '</span> ללא שינוי</span></div></div>' +
-        '<div><div class="maplbl"><span class="t">🗺️ ' + total + ' מניות · מקובצות לפי סקטור</span>' +
-          '<span class="leg"><span><i style="background:rgba(255,100,116,1)"></i> ≤−3%</span><span><i style="background:rgba(255,100,116,.5)"></i> −3%–0%</span><span><i style="background:#182236"></i> ללא שינוי</span><span><i style="background:rgba(50,214,154,.5)"></i> 0%–3%</span><span><i style="background:rgba(50,214,154,1)"></i> ≥3%</span></span></div>' +
-          '<div class="map">' + rowTop + rowBot + "</div></div>" +
-        '<div class="sum">' +
-          '<div class="scard g"><span class="lead">הסקטור החזק:</span> ' + escHtml(strongHe) + " · <b>" + (strong ? strong.pct : 0) + '% ירוקות</b></div>' +
-          '<div class="scard r"><span class="lead">הסקטור החלש:</span> ' + escHtml(weakHe) + " · <b>" + (weak ? weak.pct : 0) + '% ירוקות</b></div>' +
-          '<div class="scard b"><span class="lead">המניה המובילה:</span> ' + escHtml(lead ? lead.s : "—") + " · <b>" + (lead ? (lead.c >= 0 ? "+" : "") + Number(lead.c).toFixed(2) + "%" : "—") + "</b></div></div>" +
-        '<div class="insight"><span class="mi">i</span><div><span class="lbl">Ninja Insight:</span> רוחב השוק ' + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + ', ההובלה מרוכזת ב<b>' + escHtml(strongHe) + "</b> בעוד ה<b>" + escHtml(weakHe) + "</b> מפגרת.</div></div>" +
+      '<div class="spm-hd">' + photo + '<div><div class="spm-t">StratNinja <span>Scanner</span></div><div class="spm-s">The Strat · רוחב שוק S&P 500</div></div>' +
+        (upd ? '<div class="spm-upd"><span class="spm-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="spm-ct">' +
+        '<div class="spm-hero"><div><div class="spm-l1">רוחב השוק ' + (pct >= 55 ? "תומך בראלי" : pct <= 45 ? "חלש" : "מעורב") + "</div>" +
+          '<div class="spm-l2"><b>' + pct + '%</b> ממניות ה-S&P 500 בירוק — ה' + escHtml(strongHe) + " מובילה</div></div>" +
+          '<div class="spm-big"><div class="spm-pct">' + pct + '%</div><div class="spm-cap">מעל מחיר הפתיחה</div></div></div>' +
+        '<div class="spm-breadth"><div class="spm-bar"><span class="spm-g" style="width:' + barG + '%"></span><span class="spm-r" style="width:' + barR + '%"></span></div>' +
+          '<div class="spm-blabels"><span class="spm-up">▲ <span class="spm-num">' + up + '</span> עולות</span><span class="spm-sepd">·</span><span class="spm-dn"><span class="spm-num">' + down + '</span> יורדות ▼</span><span class="spm-sepd">·</span><span class="spm-flat"><span class="spm-num">' + flat + '</span> ללא שינוי</span></div></div>' +
+        '<div><div class="spm-maplbl"><span class="spm-mapt">🗺️ ' + total + ' מניות · מקובצות לפי סקטור</span>' +
+          '<span class="spm-leg"><span><i style="background:rgba(255,100,116,1)"></i> ≤−3%</span><span><i style="background:rgba(255,100,116,.5)"></i> −3%–0%</span><span><i style="background:#182236"></i> ללא שינוי</span><span><i style="background:rgba(50,214,154,.5)"></i> 0%–3%</span><span><i style="background:rgba(50,214,154,1)"></i> ≥3%</span></span></div>' +
+          '<div class="spm-map">' + rowTop + rowBot + "</div></div>" +
+        '<div class="spm-sum">' +
+          '<div class="spm-scard spm-g"><span class="spm-slead">הסקטור החזק:</span> ' + escHtml(strongHe) + " · <b>" + (strong ? strong.pct : 0) + '% ירוקות</b></div>' +
+          '<div class="spm-scard spm-r"><span class="spm-slead">הסקטור החלש:</span> ' + escHtml(weakHe) + " · <b>" + (weak ? weak.pct : 0) + '% ירוקות</b></div>' +
+          '<div class="spm-scard spm-b"><span class="spm-slead">המניה המובילה:</span> ' + escHtml(lead ? lead.s : "—") + " · <b>" + (lead ? (lead.c >= 0 ? "+" : "") + Number(lead.c).toFixed(2) + "%" : "—") + "</b></div></div>" +
+        '<div class="spm-insight"><span class="spm-mi">i</span><div><span class="spm-lbl">Ninja Insight:</span> רוחב השוק ' + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + ', ההובלה מרוכזת ב<b>' + escHtml(strongHe) + "</b> בעוד ה<b>" + escHtml(weakHe) + "</b> מפגרת.</div></div>" +
       "</div>" +
-      '<div class="ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span><span>Adi Koriat · @KoriatTrade · <span class="num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+      '<div class="spm-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span><span>Adi Koriat · @KoriatTrade · <span class="spm-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
     document.body.appendChild(el); return el;
   }
   function buildShareCardEl() {
