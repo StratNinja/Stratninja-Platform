@@ -1501,7 +1501,9 @@
       const matched = evalPreset(p);
       matched.filter(s => favs.indexOf(s) >= 0).forEach(sym => {
         if (Prefs.feedHas(p.id, sym, today)) return;
-        const entry = { pid: p.id, preset: p.name, sym: sym, ts: Date.now(), date: today, read: false };
+        const row = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+        const px = row ? (row.p != null ? row.p : (row.tech ? row.tech.px : null)) : null;
+        const entry = { pid: p.id, preset: p.name, sym: sym, ts: Date.now(), tm: _mfIlTime(), px: px, date: today, read: false };
         Prefs.feedAdd(entry); fresh.push(entry);
       });
     });
@@ -2354,55 +2356,68 @@
   // ---- shareable ALERT CARD (branded image per alert → native share / download) ----
   function _alertRowFor(sym) {
     const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
-    if (r) return { sym: sym, sector: r.sec, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0), Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc };
+    if (r) return { sym: sym, name: r.name || r.nm || "", sector: r.sec, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0), Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc };
     const tk = TICKERS.find(x => x.sym === sym);
-    if (tk) return { sym: sym, sector: tk.sector, price: tk.price, chg: tk.chg, Y: tk.Y, Q: tk.Q, M: tk.M, W: tk.W, D: tk.D, ftfc: false };
-    return { sym: sym, sector: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji"), ftfc: false };
+    if (tk) return { sym: sym, name: tk.name || "", sector: tk.sector, price: tk.price, chg: tk.chg, Y: tk.Y, Q: tk.Q, M: tk.M, W: tk.W, D: tk.D, ftfc: false };
+    return { sym: sym, name: "", sector: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji"), ftfc: false };
   }
-  // sector sub-line on the alert card: "<Hebrew sector> · <ETF ticker>". Blank for "אחר"/unknown.
-  function _acSectorLine(sec) {
-    if (!sec || sec === "אחר") return '<div class="ac-sec"></div>';
-    const etf = etfFor(sec);
-    return '<div class="ac-sec">' + escHtml(secHe(sec)) + (etf ? ' <span class="ac-etf">' + escHtml(etf) + "</span>" : "") + "</div>";
+  // strip emojis/symbols from a preset name so the card's own icons carry the visual
+  function _acStrip(s) { return String(s || "").replace(/[←-⇿⌀-➿⬀-⯿️\u{1F000}-\u{1FAFF}]/gu, "").replace(/\s+/g, " ").trim(); }
+  // fire time + price for this symbol from today's alert feed (stored when the alert fired)
+  function _acMeta(sym) {
+    try {
+      const feed = (window.Prefs && window.Prefs.alertFeed) ? window.Prefs.alertFeed() : [];
+      const today = new Date().toISOString().slice(0, 10);
+      const e = feed.find(x => x && x.sym === sym && x.date === today && (x.tm || x.px != null));
+      return e ? { tm: e.tm, px: e.px } : null;
+    } catch (e) { return null; }
   }
   function buildAlertCardEl(t, names) {
-    names = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3);
+    names = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3).map(_acStrip).filter(Boolean);
     if (!names.length) names = ["התראה"];
-    const el = document.createElement("div");
-    el.className = "ac-card";
-    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";   // off-screen (no flash); safe now that every card uses a unique class prefix (no collision with the landing .hero)   // on-screen behind the page — html2canvas mis-composites the landing hero when the target sits at left:-9999px
-    const photo = _heroSquare
-      ? '<img class="ac-photo" src="' + _heroSquare + '">'
-      : '<img class="ac-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
-    const map = ["Y", "Q", "M", "W", "D"].map(k => {
-      const c = t[k] || {}, v = c.t || "1";
-      // colour by the candle's DIRECTION (matches TradingView) — a green 2D = bullish reversal, not red
-      const col = c.c === "up" ? "b2u" : c.c === "down" ? "b2d" : (v === "1" ? "b1" : "b3");
-      return '<div class="ac-tf"><span class="ac-k">' + k + '</span><span class="ac-v ' + col + '">' + v + "</span></div>";
-    }).join("");
+    const primary = names[0];
+    const sym = String(t.sym || "");
+    const tsz = sym.length <= 1 ? 60 : sym.length === 2 ? 68 : sym.length >= 5 ? 66 : 78;   // dynamic ticker size
     const chg = t.chg == null ? 0 : Number(t.chg);
-    const chgTxt = (chg >= 0 ? "+" : "") + chg.toFixed(2) + "%";
+    const chgTxt = (chg >= 0 ? "+" : "−") + Math.abs(chg).toFixed(2) + "%";
+    const photo = _heroSquare ? '<img class="ac2-photo" src="' + _heroSquare + '">' : '<img class="ac2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    let secLine = "";
+    if (t.sector && t.sector !== "אחר") { const etf = etfFor(t.sector); secLine = escHtml(secHe(t.sector)) + (etf ? ' <span class="ac2-etf">' + escHtml(etf) + "</span>" : ""); }
+    const nameLine = t.name ? '<div class="ac2-name"><span dir="ltr" style="unicode-bidi:isolate">' + escHtml(t.name) + "</span></div>" : "";
+    const meta = _acMeta(sym);
+    const metaLine = meta ? '<div class="ac2-alertmeta">התקבלה התראה ב-<b>' + escHtml(meta.tm || "") + "</b>" + (meta.px != null ? " · במחיר <b>" + money(meta.px) + "</b>" : "") + "</div>" : "";
+    const sigRows = names.map((nm, i) => i === 0
+      ? '<div class="ac2-sig ac2-topsig"><span class="ac2-ic">👑</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-tbadge">איתות מוביל</span></div>'
+      : '<div class="ac2-sig"><span class="ac2-ic">🎯</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-chk">✓ פעיל</span></div>').join("");
+    const map = ["D", "W", "M", "Q", "Y"].map(k => { const c = t[k] || {}, v = c.t || "1"; const cls = c.c === "up" ? "ac2-up" : c.c === "down" ? "ac2-down" : "ac2-n"; return '<div class="ac2-tf"><span class="ac2-k">' + k + '</span><span class="ac2-v ' + cls + '">' + v + "</span></div>"; }).join("");
+    const ftfcBadge = t.ftfc ? '<span class="ac2-ftfcbadge">🟢 FTFC מלא</span>' : '<span class="ac2-ftfcbadge ac2-partial">FTFC חלקי</span>';
+    const microTxt = "התראה עם " + (t.ftfc ? "<b>FTFC מלא</b>" : "מבנה Strat") + " ובתמיכת <b>" + escHtml(primary) + "</b>";
+    const el = document.createElement("div"); el.className = "ac2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
-      '<div class="ac-accent"></div>' +
-      '<div class="ac-top"><div class="ac-brand">' + photo + '<div><div class="ac-bname">StratNinja</div><div class="ac-bsub">Scanner · The Strat</div></div></div>' +
-        '<div class="ac-badge"><span class="ac-dot"></span> התראה חדשה</div></div>' +
-      '<div class="ac-head"><div><div class="ac-sym">' + escHtml(t.sym) + '</div>' + _acSectorLine(t.sector) + "</div>" +
-        '<div class="ac-px"><div class="ac-price">' + money(t.price) + '</div><div class="ac-chg ' + (chg >= 0 ? "pos" : "neg") + '">' + chgTxt + "</div></div></div>" +
-      '<div class="ac-setups' + (names.length > 1 ? " multi" : "") + '">' + names.map(n => '<span class="ac-setup">🔔 ' + escHtml(n) + "</span>").join("") + "</div>" +
-      '<div class="ac-map">' + map + (t.ftfc ? '<span class="ac-ftfc">🟢 FTFC</span>' : "") + "</div>" +
-      '<div class="ac-foot"><span>נסחר עכשיו · <b>stratninja.win</b></span><span>Adi Koriat · @KoriatTrade</span></div>';
+      '<div class="ac2-hd">' + photo + '<div><div class="ac2-bt">StratNinja <span>Scanner</span></div><div class="ac2-bs">The Strat · התראת סורק</div></div>' +
+        '<div class="ac2-badge"><span class="ac2-d"></span> התראה חדשה</div></div>' +
+      '<div class="ac2-ct">' +
+        '<div class="ac2-top"><div><div class="ac2-sym" style="font-size:' + tsz + 'px">' + escHtml(sym) + "</div>" + nameLine +
+          (secLine ? '<div class="ac2-sec">' + secLine + "</div>" : "") + "</div>" +
+          '<div class="ac2-px"><div class="ac2-price">' + money(t.price) + '</div><div class="ac2-chg ' + (chg >= 0 ? "ac2-pos" : "ac2-neg") + '">' + chgTxt + "</div>" + metaLine + "</div></div>" +
+        '<div class="ac2-block"><div class="ac2-lbl">האיתותים הפעילים</div><div class="ac2-stack">' + sigRows + "</div></div>" +
+        '<div class="ac2-block"><div class="ac2-lblrow"><span class="ac2-lbl">FTFC לפי טווחי זמן</span>' + ftfcBadge + '</div><div class="ac2-map">' + map + "</div></div>" +
+        '<div class="ac2-bottom"><div class="ac2-micro"><span class="ac2-mi">i</span><div>' + microTxt + '</div></div><div class="ac2-cta">לסריקה המלאה →</div></div>' +
+      "</div>" +
+      '<div class="ac2-ft"><span><b>stratninja.win</b> · התראה בזמן אמת</span><span>Adi Koriat · @KoriatTrade</span></div>';
     document.body.appendChild(el);
     return el;
   }
   function shareAlertCard(sym, names) {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     snToast("מכין כרטיס…");
-    const el = buildAlertCardEl(_alertRowFor(sym), names);
-    setTimeout(() => {
-      html2canvas(el, { backgroundColor: "#0a0f1c", scale: _shotScale(), useCORS: true, logging: false })
+    _prepHeroSquare(() => {
+      const el = buildAlertCardEl(_alertRowFor(sym), names);
+      const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
-    }, 150);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 80)); else setTimeout(run, 250);
+    });
   }
   // >3 matched presets → let the trader pick up to 3 for the card
   function chooseAlertPresets(sym, allNames) {
