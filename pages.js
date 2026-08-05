@@ -2362,7 +2362,7 @@
     return { sym: sym, name: "", sector: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji"), ftfc: false };
   }
   // strip emojis/symbols from a preset name so the card's own icons carry the visual
-  function _acStrip(s) { return String(s || "").replace(/[←-⇿⌀-➿⬀-⯿️\u{1F000}-\u{1FAFF}]/gu, "").replace(/\s+/g, " ").trim(); }
+  function _acStrip(s) { return String(s || "").replace(/[☀-➿⬀-⯿️\u{1F000}-\u{1FAFF}]/gu, "").replace(/\s+/g, " ").trim(); }   // strip pictographic emoji but keep arrows (D→Y) & symbols
   // fire time + price for this symbol from today's alert feed (stored when the alert fired)
   function _acMeta(sym) {
     try {
