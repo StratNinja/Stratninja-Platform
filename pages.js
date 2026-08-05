@@ -1967,21 +1967,28 @@
     // ONE global scale across all four cards, so 6.2% is always longer than 4.8% even as data changes
     let gmax = 0.01; [secUp, secDn, subUp, subDn].forEach(a => a.forEach(s => { gmax = Math.max(gmax, Math.abs(vOf(s) || 0)); }));
     const w = v => Math.max(6, Math.round(Math.abs(v || 0) / gmax * 100));
+    // clean LTR percentage: typographic minus, no stray spaces (isolated so RTL can't reorder it)
+    const pct = v => (v < 0 ? "−" : "+") + Math.abs(Number(v) || 0).toFixed(2) + "%";
     const rows = (arr, cls, isSub) => arr.length ? arr.map((s, i) => {
       const v = vOf(s), nm = isSub ? s.name : secHe(s.name);
       const etf = (!isSub && etfFor(s.name)) ? '<span class="mf-etf">' + escHtml(etfFor(s.name)) + "</span>" : "";
       return '<div class="mf-rk ' + cls + '"><span class="mf-rank">' + (i + 1) + '</span><span class="mf-name">' + escHtml(nm) + "</span>" + etf +
-        '<span class="mf-bar"><span style="width:' + w(v) + '%"></span></span><span class="mf-pct">' + _shNum(v) + "</span></div>";
+        '<span class="mf-bar"><span style="width:' + w(v) + '%"></span></span><span class="mf-pct">' + pct(v) + "</span></div>";
     }).join("") : '<div class="mf-rk"><span class="mf-rank"></span><span class="mf-name" style="color:#9AA7BD">—</span></div>';
+    // symmetric top/bottom padding so a card with fewer rows keeps its rows vertically centered
+    // (deterministic — html2canvas doesn't reliably honor flex centering)
+    const maxSecN = Math.max(secUp.length || 1, secDn.length || 1), maxSubN = Math.max(subUp.length || 1, subDn.length || 1);
+    const colRows = (arr, cls, isSub, maxN) => { const pad = Math.max(0, maxN - (arr.length || 1)) * 21;
+      return '<div class="mf-rows" style="padding-top:' + pad + 'px;padding-bottom:' + pad + 'px">' + rows(arr, cls, isSub) + "</div>"; };
     const upName = secUp[0] ? secHe(secUp[0].name) : (subUp[0] ? subUp[0].name : "—");
     const dnName = secDn[0] ? secHe(secDn[0].name) : (subDn[0] ? subDn[0].name : "—");
     const rtag = ms ? ('<span class="mf-tag ' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>") : "";
-    // insight mirrors the data exactly: top OUT sector (+ top OUT sub-sector when it differs) → top IN sector
+    // insight mirrors the data exactly: "כסף יוצא מ-[weak sector] ומ-[weak sub-sector] ונכנס ל-[lead sector]"
     const outSub = subDn[0] ? subDn[0].name : "";
-    let from = "מ<b>" + escHtml(dnName) + "</b>";
-    if (outSub && outSub !== dnName) from += " ומתת־הסקטור <b>" + escHtml(outSub) + "</b>";
-    const sent = ms && ms.cls === "pos" ? "מחזקת את תרחיש ה-Risk-On" : ms && ms.cls === "neg" ? "על רקע שוק זהיר (Risk-Off)" : "בשוק מעורב";
-    const insTxt = "רוטציה " + from + " אל <b>" + escHtml(upName) + "</b> — " + sent;
+    const sent = ms && ms.cls === "neg" ? "תמיכה בתרחיש Risk-Off" : ms && ms.cls === "zero" ? "שוק מעורב" : "תמיכה בתרחיש Risk-On";
+    let insTxt = "כסף יוצא מ<b>" + escHtml(dnName) + "</b>";
+    if (outSub && outSub !== dnName) insTxt += " ומ<b>" + escHtml(outSub) + "</b>";
+    insTxt += " ונכנס ל<b>" + escHtml(upName) + "</b> — " + sent;
     const photo = _heroSquare ? '<img class="mf-photo" src="' + _heroSquare + '">'
       : '<img class="mf-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     const upd = _mfIlTime();
@@ -1996,11 +2003,11 @@
         '<div class="mf-hero"><div class="mf-tags">' + rtag + '<span class="mf-tag range">טווח נבדק: <b>' + _mfRangeLbl(tf) + "</b></span></div>" +
           '<h1 class="mf-h1"><span class="mf-l1">הכסף נכנס ל<span class="up">' + escHtml(upName) + '</span></span><span class="mf-l2">ויוצא מ<span class="dn">' + escHtml(dnName) + "</span></span></h1></div>" +
         '<div class="mf-cols">' +
-          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · סקטורים</div><div class="mf-rows">' + rows(secUp, "pos", false) + "</div></div>" +
-          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · סקטורים</div><div class="mf-rows">' + rows(secDn, "neg", false) + "</div></div></div>" +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · סקטורים</div>' + colRows(secUp, "pos", false, maxSecN) + "</div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · סקטורים</div>' + colRows(secDn, "neg", false, maxSecN) + "</div></div>" +
         '<div class="mf-cols">' +
-          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · תתי-סקטורים</div><div class="mf-rows">' + rows(subUp, "pos", true) + "</div></div>" +
-          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · תתי-סקטורים</div><div class="mf-rows">' + rows(subDn, "neg", true) + "</div></div></div>" +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · תתי-סקטורים</div>' + colRows(subUp, "pos", true, maxSubN) + "</div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · תתי-סקטורים</div>' + colRows(subDn, "neg", true, maxSubN) + "</div></div>" +
         '<div class="mf-insight"><span class="mf-bulb">i</span><div><span class="mf-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
       "</div>" +
       '<div class="mf-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span>' +
