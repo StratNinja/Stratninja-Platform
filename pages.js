@@ -2363,6 +2363,17 @@
   }
   // strip emojis/symbols from a preset name so the card's own icons carry the visual
   function _acStrip(s) { return String(s || "").replace(/[☀-➿⬀-⯿️\u{1F000}-\u{1FAFF}]/gu, "").replace(/\s+/g, " ").trim(); }   // strip pictographic emoji but keep arrows (D→Y) & symbols
+  // a type-appropriate icon per signal (from keywords in the original preset name)
+  function _acIcon(name) {
+    const n = (name || "").toLowerCase();
+    if (/reversal|היפוך/.test(n)) return "👑";
+    if (/hammer|פטיש|inforce/.test(n)) return "🔨";
+    if (/mfi/.test(n)) return "💰";
+    if (/ftfc/.test(n)) return "📊";
+    if (/shooter|pro|ninja/.test(n)) return "🎯";
+    if (/breakout|פריצה|darvas|rectangle/.test(n)) return "🚀";
+    return "🔔";
+  }
   // fire time + price for this symbol from today's alert feed (stored when the alert fired)
   function _acMeta(sym) {
     try {
@@ -2373,11 +2384,13 @@
     } catch (e) { return null; }
   }
   function buildAlertCardEl(t, names) {
-    names = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3).map(_acStrip).filter(Boolean);
-    if (!names.length) names = ["התראה"];
-    const primary = names[0];
+    let rawNames = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3);
+    names = rawNames.map(_acStrip).filter(Boolean);
+    if (!names.length) { names = ["התראה"]; rawNames = ["התראה"]; }
+    const primary = names[0], single = names.length === 1;
     const sym = String(t.sym || "");
-    const tsz = sym.length <= 1 ? 60 : sym.length === 2 ? 68 : sym.length >= 5 ? 66 : 78;   // dynamic ticker size
+    // dynamic ticker size — short tickers smaller so they don't feel empty; long ones a touch smaller to fit
+    const tsz = sym.length <= 1 ? 56 : sym.length === 2 ? 66 : sym.length <= 4 ? 78 : sym.length === 5 ? 68 : 58;
     const chg = t.chg == null ? 0 : Number(t.chg);
     const chgTxt = (chg >= 0 ? "+" : "−") + Math.abs(chg).toFixed(2) + "%";
     const photo = _heroSquare ? '<img class="ac2-photo" src="' + _heroSquare + '">' : '<img class="ac2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
@@ -2387,11 +2400,15 @@
     const meta = _acMeta(sym);
     const metaLine = meta ? '<div class="ac2-alertmeta">התקבלה התראה ב-<b>' + escHtml(meta.tm || "") + "</b>" + (meta.px != null ? " · במחיר <b>" + money(meta.px) + "</b>" : "") + "</div>" : "";
     const sigRows = names.map((nm, i) => i === 0
-      ? '<div class="ac2-sig ac2-topsig"><span class="ac2-ic">👑</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-tbadge">איתות מוביל</span></div>'
-      : '<div class="ac2-sig"><span class="ac2-ic">🎯</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-chk">✓ פעיל</span></div>').join("");
+      ? '<div class="ac2-sig ac2-topsig"><span class="ac2-ic">' + _acIcon(rawNames[i]) + '</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-tbadge">איתות מוביל</span></div>'
+      : '<div class="ac2-sig"><span class="ac2-ic">' + _acIcon(rawNames[i]) + '</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-chk">✓ פעיל</span></div>').join("")
+      + (single ? '<div class="ac2-sig ac2-empty"><span class="ac2-nm">אין כרגע איתותים משניים פעילים</span></div>' : "");
     const map = ["D", "W", "M", "Q", "Y"].map(k => { const c = t[k] || {}, v = c.t || "1"; const cls = c.c === "up" ? "ac2-up" : c.c === "down" ? "ac2-down" : "ac2-n"; return '<div class="ac2-tf"><span class="ac2-k">' + k + '</span><span class="ac2-v ' + cls + '">' + v + "</span></div>"; }).join("");
     const ftfcBadge = t.ftfc ? '<span class="ac2-ftfcbadge">🟢 FTFC מלא</span>' : '<span class="ac2-ftfcbadge ac2-partial">FTFC חלקי</span>';
-    const microTxt = "התראה עם " + (t.ftfc ? "<b>FTFC מלא</b>" : "מבנה Strat") + " ובתמיכת <b>" + escHtml(primary) + "</b>";
+    const ftfcTxt = t.ftfc ? "FTFC מלא" : "FTFC חלקי";
+    const microTxt = single
+      ? "ההתראה מופעלת על בסיס <b>" + escHtml(primary) + "</b>, עם <b>" + ftfcTxt + "</b>."
+      : "ההתראה נתמכת ב-<b>" + names.map(escHtml).join("</b> וב-<b>") + "</b>, עם <b>" + ftfcTxt + "</b>.";
     const el = document.createElement("div"); el.className = "ac2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
       '<div class="ac2-hd">' + photo + '<div><div class="ac2-bt">StratNinja <span>Scanner</span></div><div class="ac2-bs">The Strat · התראת סורק</div></div>' +

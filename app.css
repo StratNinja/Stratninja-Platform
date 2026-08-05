@@ -589,6 +589,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ac2-card .ac2-sig.ac2-topsig .ac2-nm{color:var(--lime-ink);}
 .ac2-card .ac2-sig .ac2-tbadge{margin-inline-start:auto;display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--lime);background:rgba(13,26,6,.80);padding:5px 13px;border-radius:999px;letter-spacing:.2px;}
 .ac2-card .ac2-sig .ac2-tbadge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime);}
+.ac2-card .ac2-sig.ac2-empty{background:none;border:1px dashed var(--mfline);border-inline-start:1px dashed var(--mfline);justify-content:center;padding:13px;}
+.ac2-card .ac2-sig.ac2-empty .ac2-nm{color:var(--mftxt2);font-weight:600;font-size:16px;}
 
 .ac2-card .ac2-map{display:flex;align-items:flex-end;gap:12px;}
 .ac2-card .ac2-tf{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;}
