@@ -1996,7 +1996,7 @@
     const upd = _mfIlTime();
     const el = document.createElement("div");
     el.className = "mf-card";
-    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.style.cssText = "position:fixed;left:0;top:0;z-index:-1;";   // on-screen behind the page — html2canvas mis-composites the landing hero when the target sits at left:-9999px
     el.innerHTML =
       '<div class="mf-hd">' + photo + '<div class="mf-brand"><div class="mf-t">StratNinja <span>Scanner</span></div>' +
         '<div class="mf-s">The Strat · סריקת שוק בזמן אמת</div></div>' +
@@ -2370,7 +2370,7 @@
     if (!names.length) names = ["התראה"];
     const el = document.createElement("div");
     el.className = "ac-card";
-    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.style.cssText = "position:fixed;left:0;top:0;z-index:-1;";   // on-screen behind the page — html2canvas mis-composites the landing hero when the target sits at left:-9999px
     const photo = _heroSquare
       ? '<img class="ac-photo" src="' + _heroSquare + '">'
       : '<img class="ac-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
