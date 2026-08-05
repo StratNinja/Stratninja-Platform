@@ -126,7 +126,15 @@
   function tradesForAccount() {
     if (state.account === ALL) {
       const out = { trades: [], openPositions: [], manualOpen: [] };
-      Store.accounts().forEach(a => {
+      // include EVERY bucket that holds data — the named accounts AND the blank ("") bucket when it
+      // has any. accounts() hides "" from the selector once named accounts exist, but blank-account
+      // trades must still surface in the combined view; otherwise an orphaned blank-account position
+      // is invisible here yet still counted elsewhere (e.g. the favorites "open position" badge).
+      const buckets = Store.accounts().slice();
+      const hasBlank = (Store.getFills() || []).some(f => !(f.account || "").trim()) ||
+                       (Store.getManual() || []).some(m => !(m.account || "").trim());
+      if (hasBlank && buckets.indexOf("") < 0) buckets.push("");
+      buckets.forEach(a => {
         const r = _tradesForOne(a);
         out.trades = out.trades.concat(r.trades);
         out.openPositions = out.openPositions.concat(r.openPositions);
