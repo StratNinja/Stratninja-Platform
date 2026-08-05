@@ -2069,6 +2069,60 @@
       '<div class="spm-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span><span>Adi Koriat · @KoriatTrade · <span class="spm-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
     document.body.appendChild(el); return el;
   }
+  // ===== Sectors overview share card (leaders / weakest / breadth) =====
+  function buildSectorsCardEl() {
+    const src = (typeof scanSource === "function") ? scanSource() : [];
+    const ms = todayMarketState();
+    const tf = flowTf;
+    const vOf = s => tf === "5d" ? s.chg5d : tf === "20d" ? s.chg20d : s.chg;
+    const rangeLbl = tf === "5d" ? "5D" : tf === "20d" ? "20D" : "1D";
+    let secs = (typeof todaySectors === "function" ? todaySectors(src) : [])
+      .filter(s => s && s.name && s.name !== "אחר" && s.name !== "—" && vOf(s) != null)
+      .map(s => ({ name: s.name, v: vOf(s) }));
+    secs.sort((a, b) => b.v - a.v);
+    const total = secs.length || 1;
+    const green = secs.filter(s => s.v > 0.05).length, red = secs.filter(s => s.v < -0.05).length, neutral = total - green - red;
+    const leaders = secs.slice(0, 5);
+    const weakest = secs.slice(-5).slice().reverse();   // 5 weakest, weakest first — colored by their own sign
+    let gmax = 0.01; leaders.concat(weakest).forEach(s => { gmax = Math.max(gmax, Math.abs(s.v)); });
+    const w = v => Math.max(6, Math.round(Math.abs(v) / gmax * 100));
+    const pct = v => (v < 0 ? "−" : "+") + Math.abs(v).toFixed(2) + "%";
+    const rc = v => v > 0.05 ? "sec2-up" : v < -0.05 ? "sec2-down" : "sec2-flat";
+    const rows = arr => arr.map((s, i) => { const etf = etfFor(s.name);
+      return '<div class="sec2-rk ' + rc(s.v) + '"><span class="sec2-rank">' + (i + 1) + '</span><span class="sec2-name">' + escHtml(secHe(s.name)) + "</span>" +
+        (etf ? '<span class="sec2-etf">' + escHtml(etf) + "</span>" : "") + '<span class="sec2-bar"><span style="width:' + w(s.v) + '%"></span></span><span class="sec2-pct">' + pct(s.v) + "</span></div>"; }).join("");
+    const seg = (n, cls) => { let o = ""; for (let i = 0; i < n; i++) o += '<span class="' + cls + '"></span>'; return o; };
+    const segbar = seg(green, "sec2-sg") + seg(neutral, "sec2-sn") + seg(red, "sec2-sr");
+    const t1 = leaders[0] ? secHe(leaders[0].name) : "—", t2 = leaders[1] ? secHe(leaders[1].name) : "", wk = weakest[0] ? secHe(weakest[0].name) : "";
+    const subT = green > red ? "רוחב סקטוריאלי חיובי" : red > green ? "רוחב סקטוריאלי שלילי" : "רוחב סקטוריאלי מעורב";
+    const sentiment = green > red ? "Risk-On מתון" : red > green ? "Risk-Off" : "סנטימנט מעורב";
+    const insTxt = "הובלת <b>" + escHtml(t1) + (t2 ? "</b> ו<b>" + escHtml(t2) : "") + "</b> מצביעה על " + sentiment + (wk ? ", לצד חולשה ב<b>" + escHtml(wk) + "</b>" : "") + ".";
+    const rtag = ms ? '<span class="sec2-tag sec2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
+    const photo = _heroSquare ? '<img class="sec2-photo" src="' + _heroSquare + '">' : '<img class="sec2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "sec2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="sec2-hd">' + photo + '<div><div class="sec2-bt">StratNinja <span>Scanner</span></div><div class="sec2-bs">The Strat · סקירת סקטורים</div></div>' +
+        (upd ? '<div class="sec2-upd"><span class="sec2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="sec2-ct">' +
+        '<div class="sec2-topwrap">' +
+          '<div class="sec2-hero"><div class="sec2-htext"><div class="sec2-tags">' + rtag + '<span class="sec2-tag sec2-range">טווח נבדק: <b>' + rangeLbl + "</b></span></div>" +
+            '<h1>ה<b>' + escHtml(t1) + '</b> מובילה את השוק</h1><div class="sec2-sub">' + subT + "</div></div>" +
+            '<div class="sec2-big"><div class="sec2-kpi">' + green + "/" + total + '</div><div class="sec2-cap">סקטורים חיוביים</div></div></div>' +
+          '<div class="sec2-cols">' +
+            '<div class="sec2-col sec2-pos"><div class="sec2-ch"><span class="sec2-ic"></span> 5 הסקטורים המובילים</div>' + rows(leaders) + "</div>" +
+            '<div class="sec2-col sec2-neg"><div class="sec2-ch"><span class="sec2-ic"></span> 5 הסקטורים החלשים ביותר</div>' + rows(weakest) + "</div></div>" +
+        "</div>" +
+        '<div class="sec2-br"><div class="sec2-brlbl"><span class="sec2-ttl">מצב ' + total + ' הסקטורים</span>' +
+          '<span class="sec2-sep">·</span><span class="sec2-c sec2-g"><i></i>' + green + ' חיוביים</span><span class="sec2-sep">·</span><span class="sec2-c sec2-nn"><i></i>' + neutral + ' ניטרלי</span><span class="sec2-sep">·</span><span class="sec2-c sec2-rr"><i></i>' + red + ' שליליים</span></div>' +
+          '<div class="sec2-segbar">' + segbar + "</div></div>" +
+        '<div class="sec2-bottom"><div class="sec2-insight"><span class="sec2-mi">i</span><div><span class="sec2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+          '<div class="sec2-cta">למפת הסקטורים →</div></div>' +
+      "</div>" +
+      '<div class="sec2-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span><span>Adi Koriat · @KoriatTrade · <span class="sec2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2126,6 +2180,7 @@
   function _doCaptureSummaryCard() {
     if (state.page === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (state.page === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
+    if (state.page === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
