@@ -2672,8 +2672,11 @@
       tags = topSec.concat(topInd);
     } else if (page === "scanner") {
       cap = "🔍 הסטאפים החזקים היום ב-StratNinja";
-      let rows = []; try { rows = filterRows(src); } catch (e) { rows = src; }
-      tags = rows.slice().sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
+      // match the 5 tickers the SHARE CARD actually shows: current filter + the user's current sort (not by-chg)
+      const scSrc = (typeof scanRowsView === "function") ? scanRowsView() : src;
+      let rows = []; try { rows = filterRows(scSrc); } catch (e) { rows = scSrc; }
+      try { rows = (typeof sortRows === "function") ? sortRows(rows) : rows; } catch (e) {}
+      tags = rows.slice(0, 5).map(t => t.sym);
     } else if (page === "today") {
       cap = "🎯 מה לבדוק היום · StratNinja";
       tags = src.filter(t => (t.D || {}).c === "up").sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 4).map(t => t.sym);
@@ -2684,6 +2687,20 @@
     } else if (page === "favorites") {
       cap = "⭐ רשימת המעקב שלי · StratNinja";
       tags = (window.Prefs ? Prefs.favorites() : []).slice(0, 6);
+    } else if (page === "market" && _mktShareSection === "candlemap") {
+      cap = "🗺️ Candle Map · S&P 500 · StratNinja";   // structure map — not ticker-specific
+      tags = [];
+    } else if (page === "market" && _mktShareSection === "leaders") {
+      cap = "🏆 מובילים ומפגרים היום · StratNinja";
+      const U = mktU();
+      tags = (U.leaders || []).slice(0, 3).map(x => x.s).concat((U.laggards || []).slice(0, 2).map(x => x.s));
+    } else if (page === "market" && _mktShareSection === "movers") {
+      const m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0, U = mktU();
+      let data;
+      if (m >= 16 * 60 + 30 && m < 23 * 60) { cap = "⚡ הגאפרים של היום · StratNinja"; data = U.gappers || (LIVE && LIVE.gappers) || { up: [], down: [] }; }
+      else if (m >= 11 * 60 && m < 16 * 60 + 30) { cap = "🌅 תנועות לפני הפתיחה · StratNinja"; data = U.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] }; }
+      else { cap = "🌙 תנועות אחרי הסגירה · StratNinja"; data = U.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] }; }
+      tags = (data.up || []).slice(0, 3).map(x => x.s).concat((data.down || []).slice(0, 2).map(x => x.s));
     } else {
       cap = "📊 סקירת השוק היום ב-StratNinja";
       tags = src.filter(t => t.ftfc).sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
@@ -2691,12 +2708,14 @@
     const tagStr = cash(tags);
     return cap + (tagStr ? "\n\n" + tagStr : "") + "\n\nstratninja.win";
   }
-  function showShareModal(canvas) {
+  function showShareModal(canvas, capOverride) {
     canvas.toBlob(blob => {
       if (!blob) { snToast("שגיאה ביצירת התמונה"); return; }
       const url = URL.createObjectURL(blob);
       const file = new File([blob], "stratninja.png", { type: "image/png" });
-      const tweetTxt = shareTweetText();
+      // capOverride lets a specific share (e.g. one alert) supply a caption with ONLY its own tickers,
+      // instead of the page-wide list. Falls back to the page-aware caption when not provided.
+      const tweetTxt = (typeof capOverride === "string" && capOverride) ? capOverride : shareTweetText();
       const tweet = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(tweetTxt);
       const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [file] }));
       const capPreview = tweetTxt.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>");
@@ -2825,8 +2844,10 @@
     snToast("מכין כרטיס…");
     _prepHeroSquare(() => {
       const el = buildAlertCardEl(_alertRowFor(sym), names);
+      // caption for an alert share = ONLY the alerted ticker (not the whole watchlist)
+      const acCap = "🔔 התראה: $" + sym + " · StratNinja\n\n$" + sym + "\n\nstratninja.win";
       const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
-        .then(cv => { el.remove(); showShareModal(cv); })
+        .then(cv => { el.remove(); showShareModal(cv, acCap); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 80)); else setTimeout(run, 250);
     });
