@@ -728,8 +728,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt2-card .mkt2-kpi span{font-size:34px;color:var(--mftxt2);}
 .mkt2-card .mkt2-cap{font-size:15px;color:var(--mftxt2);font-weight:700;margin-top:4px;}
 
-.mkt2-card .mkt2-idx{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;}
-.mkt2-card .mkt2-idxt{background:var(--mfsurf);border:1px solid var(--mfline);border-radius:12px;padding:13px 10px;text-align:center;}
+.mkt2-card .mkt2-idx{display:flex;gap:12px;}
+.mkt2-card .mkt2-idxt{flex:1;background:var(--mfsurf);border:1px solid var(--mfline);border-radius:12px;padding:13px 10px;text-align:center;}
 .mkt2-card .mkt2-idxt .mkt2-sym{font-family:'Inter';font-size:15px;font-weight:800;color:#cfd6e6;letter-spacing:.3px;}
 .mkt2-card .mkt2-idxt .mkt2-px{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:20px;font-weight:800;margin-top:5px;direction:ltr;}
 .mkt2-card .mkt2-idxt .mkt2-ich{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;margin-top:3px;direction:ltr;unicode-bidi:isolate;}

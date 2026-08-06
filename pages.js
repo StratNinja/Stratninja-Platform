@@ -2149,7 +2149,8 @@
     let domB = null, domN = -1; BK.forEach(k => { const n = counts[k].D || 0; if (n > domN) { domN = n; domB = k; } });
     const domLbl = { "2U": "2U המשך עולה", "2D": "2D המשך יורד", "1": "Inside דשדוש", "3G": "3 ירוק התרחבות", "3R": "3 אדום התרחבות", "F2D": "היפוך 2D", "F2U": "היפוך 2U" }[domB] || domB || "—";
     let tfUp = 0; cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull > bear) tfUp++; });
-    const lead = (U.leaders || []).slice(0, 2), lag = (U.laggards || []).slice(0, 2);
+    const lead = (U.leaders || []).slice().sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 2);   // highest gain first
+    const lag = (U.laggards || []).slice().sort((a, b) => (a.c || 0) - (b.c || 0)).slice(0, 2);    // sharpest drop first
     const chip = x => '<span class="mkt2-chip"><span class="mkt2-s">' + escHtml(x.s) + '</span> <span class="mkt2-p">' + ((x.c >= 0 ? "+" : "") + Number(x.c).toFixed(2) + "%") + "</span></span>";
     const secs = (typeof todaySectors === "function" ? todaySectors(src) : []).filter(s => s && s.name && s.name !== "אחר" && s.chg != null).sort((a, b) => b.chg - a.chg);
     const topSec = secs[0] ? secHe(secs[0].name) : "—";
