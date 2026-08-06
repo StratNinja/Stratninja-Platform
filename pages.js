@@ -1937,14 +1937,18 @@
     img.crossOrigin = "anonymous";
     img.onload = () => {
       try {
-        const S = 200, c = document.createElement("canvas"); c.width = S; c.height = S;
+        const S = 240, c = document.createElement("canvas"); c.width = S; c.height = S;
         const ctx = c.getContext("2d");
-        const scale = Math.max(S / img.width, S / img.height);   // cover
-        const w = img.width * scale, h = img.height * scale;
-        // focus point: 0=left .. 0.5=center .. 1=right. FOCUS_X<0.5 reveals more of the
-        // LEFT of the photo → the subject appears shifted RIGHT in the circle.
-        const FOCUS_X = 0.05, FOCUS_Y = 0.5;   // face sits ~28% from left → ~0.05 centers it in the circle
-        ctx.drawImage(img, -(w - S) * FOCUS_X, -(h - S) * FOCUS_Y, w, h);
+        // Frame the FACE: copy a SQUARE source region (→ square dest, so never warped) tightly around
+        // Adi's head+shoulders. In the 1280×720 hero he sits on the left, face ~27% x / ~24% y.
+        const W = img.width, Hh = img.height;
+        let side = Math.round(0.315 * W);                 // ~403px on 1280 → head + shoulders
+        if (side > Hh) side = Hh;                          // never exceed the photo height
+        let x0 = Math.round(0.095 * W);                    // left column where he stands
+        let y0 = Math.round(0.02 * Hh);                    // start just above the top of his head
+        x0 = Math.max(0, Math.min(x0, W - side));
+        y0 = Math.max(0, Math.min(y0, Hh - side));
+        ctx.drawImage(img, x0, y0, side, side, 0, 0, S, S);
         _heroSquare = c.toDataURL("image/png");
       } catch (e) { _heroSquare = null; }
       cb(_heroSquare);
