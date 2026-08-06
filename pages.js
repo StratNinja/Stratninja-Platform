@@ -2394,8 +2394,8 @@
     // headline / state
     let l1, kpiCls, brCls, brLbl;
     if (total === 0) { l1 = "אין גאפרים פעילים כרגע"; kpiCls = "gap2-z"; brCls = "gap2-z"; brLbl = "ריק"; }
-    else if (ratio >= 0.6) { l1 = "הגאפים העולים <b>שולטים בפתיחה</b>"; kpiCls = "gap2-pos"; brCls = ""; brLbl = "נוטה לעלייה"; }
-    else if (ratio <= 0.4) { l1 = "הגאפים היורדים <b>לוחצים בפתיחה</b>"; kpiCls = "gap2-neg"; brCls = "gap2-neg"; brLbl = "נוטה לירידה"; }
+    else if (ratio >= 0.6) { l1 = "<b>הגאפים העולים</b> שולטים בפתיחה"; kpiCls = "gap2-pos"; brCls = ""; brLbl = "נוטה לעלייה"; }
+    else if (ratio <= 0.4) { l1 = "<b>הגאפים היורדים</b> לוחצים בפתיחה"; kpiCls = "gap2-neg"; brCls = "gap2-neg"; brLbl = "נוטה לירידה"; }
     else { l1 = "בוקר <b>מעורב</b> בגאפרים"; kpiCls = "gap2-z"; brCls = "gap2-z"; brLbl = "מעורב"; }
     const rtag = ms ? '<span class="gap2-tag gap2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
     const sub = total === 0 ? "כשהשוק ייפתח בגאפ הרשימה תתמלא אוטומטית" : (nUp + " גאפים עולים מול " + nDown + " יורדים · דירוג לפי %Gap");
@@ -2424,7 +2424,7 @@
       '<div class="gap2-ct">' +
         '<div class="gap2-hero"><div class="gap2-htext"><div class="gap2-tags">' + rtag + '<span class="gap2-tag gap2-range">פרה-מרקט · פתיחת יום</span></div>' +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="gap2-sub">' + sub + "</div></div>" +
-          '<div class="gap2-big"><div class="gap2-kpi ' + kpiCls + '">' + nUp + '<span>/' + total + '</span></div><div class="gap2-cap">גאפים עולים</div></div></div>' +
+          '<div class="gap2-big"><div class="gap2-kpi">' + nUp + '<span>/' + total + '</span></div><div class="gap2-cap">גאפים עולים</div></div></div>' +
         '<div class="gap2-cols">' +
           '<div class="gap2-col gap2-up"><div class="gap2-ch"><span class="gap2-cdot"></span> המובילים בגאפ-אפ</div>' + panelRows(up) + "</div>" +
           '<div class="gap2-col gap2-dn"><div class="gap2-ch"><span class="gap2-cdot"></span> המובילים בגאפ-דאון</div>' + panelRows(down) + "</div></div>" +

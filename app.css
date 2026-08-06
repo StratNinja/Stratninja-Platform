@@ -771,7 +771,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt2-card .mkt2-ft b{color:var(--mftxt);font-weight:800;}
 
 /* ===== Favorites share card (fav2-) ===== */
-.fav2-card{position:fixed;width:1080px;height:1080px;overflow:hidden;color:var(--mftxt);display:flex;flex-direction:column;font-family:'Heebo',system-ui,sans-serif;
+.fav2-card{ --mfbg:#0B1020; --mfsurf:#111827; --mfelev:#182236; --mftxt:#F1F5FF; --mftxt2:#9AA7BD; --mfpos:#32D69A; --mfneg:#FF6474; --mfbrand:#8878FF; --mfgold:#F2C94C; --mfline:rgba(148,163,184,0.16);
+  position:fixed;width:1080px;height:1080px;overflow:hidden;color:var(--mftxt);display:flex;flex-direction:column;font-family:'Heebo',system-ui,sans-serif;
   background:radial-gradient(1200px 520px at 85% -12%,rgba(136,120,255,.13),transparent 60%),linear-gradient(160deg,#0B1020,#0d1426 60%,#0B1020);}
 .fav2-card *{box-sizing:border-box;margin:0;padding:0;}
 .fav2-card .fav2-hd{height:128px;flex:none;display:flex;align-items:center;gap:19px;padding:0 50px;border-bottom:1px solid var(--mfline);}
@@ -845,7 +846,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .fav2-card .fav2-num{font-family:'Inter';font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;display:inline-block;}
 
 /* ===== Journal share card (jrn2-) ===== */
-.jrn2-card{position:fixed;width:1080px;height:1080px;overflow:hidden;color:var(--mftxt);display:flex;flex-direction:column;font-family:'Heebo',system-ui,sans-serif;
+.jrn2-card{ --mfbg:#0B1020; --mfsurf:#111827; --mfelev:#182236; --mftxt:#F1F5FF; --mftxt2:#9AA7BD; --mfpos:#32D69A; --mfneg:#FF6474; --mfbrand:#8878FF; --mfgold:#F2C94C; --mfline:rgba(148,163,184,0.16);
+  position:fixed;width:1080px;height:1080px;overflow:hidden;color:var(--mftxt);display:flex;flex-direction:column;font-family:'Heebo',system-ui,sans-serif;
   background:radial-gradient(1200px 520px at 85% -12%,rgba(136,120,255,.13),transparent 60%),linear-gradient(160deg,#0B1020,#0d1426 60%,#0B1020);}
 .jrn2-card *{box-sizing:border-box;margin:0;padding:0;}
 .jrn2-card .jrn2-hd{height:128px;flex:none;display:flex;align-items:center;gap:19px;padding:0 50px;border-bottom:1px solid var(--mfline);}
@@ -936,7 +938,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .jrn2-card .jrn2-num{font-family:'Inter';font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate;display:inline-block;}
 
 /* ===== Gappers share card (gap2-) ===== */
-.gap2-card{position:fixed;width:1080px;height:1080px;overflow:hidden;color:var(--mftxt);display:flex;flex-direction:column;font-family:'Heebo',system-ui,sans-serif;
+.gap2-card{ --mfbg:#0B1020; --mfsurf:#111827; --mfelev:#182236; --mftxt:#F1F5FF; --mftxt2:#9AA7BD; --mfpos:#32D69A; --mfneg:#FF6474; --mfbrand:#8878FF; --mfgold:#F2C94C; --mfline:rgba(148,163,184,0.16);
+  position:fixed;width:1080px;height:1080px;overflow:hidden;color:var(--mftxt);display:flex;flex-direction:column;font-family:'Heebo',system-ui,sans-serif;
   background:radial-gradient(1200px 520px at 85% -12%,rgba(136,120,255,.13),transparent 60%),linear-gradient(160deg,#0B1020,#0d1426 60%,#0B1020);}
 .gap2-card *{box-sizing:border-box;margin:0;padding:0;}
 .gap2-card .gap2-hd{height:128px;flex:none;display:flex;align-items:center;gap:19px;padding:0 50px;border-bottom:1px solid var(--mfline);}
@@ -959,8 +962,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .gap2-card h1.gap2-pos b{color:var(--mfpos);} .gap2-card h1.gap2-neg b{color:var(--mfneg);} .gap2-card h1.gap2-z b{color:var(--mfgold);}
 .gap2-card .gap2-sub{font-size:20px;font-weight:700;color:#B7C1D4;}
 .gap2-card .gap2-big{text-align:center;flex:none;padding-inline-start:26px;border-inline-start:1px solid var(--mfline);}
-.gap2-card .gap2-kpi{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:60px;font-weight:800;line-height:1;direction:ltr;}
-.gap2-card .gap2-kpi.gap2-pos{color:var(--mfpos);} .gap2-card .gap2-kpi.gap2-neg{color:var(--mfneg);} .gap2-card .gap2-kpi.gap2-z{color:var(--mfgold);}
+.gap2-card .gap2-kpi{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:60px;font-weight:800;line-height:1;direction:ltr;color:var(--mfpos);}
 .gap2-card .gap2-kpi span{font-size:34px;color:var(--mftxt2);}
 .gap2-card .gap2-cap{font-size:15px;color:var(--mftxt2);font-weight:700;margin-top:5px;}
 .gap2-card .gap2-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
@@ -973,8 +975,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .gap2-card .gap2-rk{flex:none;width:26px;height:26px;border-radius:8px;background:var(--mfelev);border:1px solid var(--mfline);color:#c3ccdd;font-family:'Inter';font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;}
 .gap2-card .gap2-tk{font-family:'Inter';font-size:20px;font-weight:800;color:#fff;letter-spacing:.2px;}
 .gap2-card .gap2-gsub{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;color:#aab6cc;direction:ltr;unicode-bidi:isolate;}
-.gap2-card .gap2-rvol{display:inline-flex;align-items:center;gap:4px;font-family:'Inter';font-variant-numeric:tabular-nums;font-size:13px;font-weight:800;color:#c9beff;background:rgba(136,120,255,.16);border:1px solid rgba(136,120,255,.4);padding:3px 9px;border-radius:7px;direction:ltr;unicode-bidi:isolate;}
-.gap2-card .gap2-rvol::before{content:"RVOL";font-size:9px;font-weight:800;color:#9a8cf0;letter-spacing:.3px;}
+.gap2-card .gap2-rvol{display:inline-flex;align-items:center;gap:4px;font-family:'Inter';font-variant-numeric:tabular-nums;font-size:13px;font-weight:800;color:#d6ccff;background:rgba(136,120,255,.20);border:1px solid rgba(136,120,255,.5);padding:3px 9px;border-radius:7px;direction:ltr;unicode-bidi:isolate;}
+.gap2-card .gap2-rvol::before{content:"RVOL";font-size:9px;font-weight:800;color:#a99cf5;letter-spacing:.3px;}
 .gap2-card .gap2-spacer{flex:1;}
 .gap2-card .gap2-pc{flex:none;white-space:nowrap;text-align:end;font-family:'Inter';font-variant-numeric:tabular-nums;font-size:19px;font-weight:800;direction:ltr;unicode-bidi:isolate;letter-spacing:-.3px;}
 .gap2-card .gap2-col.gap2-up .gap2-pc{color:var(--mfpos);} .gap2-card .gap2-col.gap2-dn .gap2-pc{color:var(--mfneg);}
