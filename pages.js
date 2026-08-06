@@ -2135,7 +2135,7 @@
     const idxArr = (LIVE && LIVE.indices) ? LIVE.indices : [];
     const byS = {}; idxArr.forEach(r => byS[r.sym] = r);
     const vix = (LIVE && LIVE.vix && LIVE.vix.level != null) ? LIVE.vix.level : (byS.VIX ? byS.VIX.price : null);
-    const idxTiles = ["SPY", "QQQ", "IWM", "DIA"].map(s => { const r = byS[s], c = r ? r.chg : null;
+    const idxTiles = ["DIA", "IWM", "QQQ", "SPY"].map(s => { const r = byS[s], c = r ? r.chg : null;   // reversed: with .mkt2-idx direction:ltr, SPY lands on the right
       const cls = c == null ? "mkt2-z" : c > 0.05 ? "mkt2-pos" : c < -0.05 ? "mkt2-neg" : "mkt2-z";
       return '<div class="mkt2-idxt"><div class="mkt2-sym">' + s + '</div><div class="mkt2-px">' + (r && r.price != null ? Number(r.price).toFixed(2) : "—") +
         '</div><div class="mkt2-ich ' + cls + '">' + (c == null ? "—" : (c >= 0 ? "+" : "") + c.toFixed(2) + "%") + "</div></div>"; }).join("");
@@ -2170,7 +2170,7 @@
         '<div class="mkt2-hero"><div class="mkt2-htext"><div class="mkt2-tags">' + rtag + '<span class="mkt2-tag mkt2-range">S&P 500</span></div>' +
           '<h1><span class="mkt2-l1">' + l1 + '</span><span class="mkt2-l2">ה<b>' + escHtml(topSec) + '</b> מובילה</span></h1><div class="mkt2-sub">' + subT + "</div></div>" +
           '<div class="mkt2-big"><div class="mkt2-kpi">' + up + '<span>/' + total + '</span></div><div class="mkt2-cap">מניות מעל הפתיחה</div></div></div>' +
-        '<div class="mkt2-idx">' + idxTiles + vixTile + "</div>" +
+        '<div class="mkt2-idx">' + vixTile + idxTiles + "</div>" +
         '<div class="mkt2-breadth"><div class="mkt2-bar"><span class="mkt2-g" style="width:' + barG + '%"></span><span class="mkt2-r" style="width:' + barR + '%"></span></div>' +
           '<div class="mkt2-blabels"><span class="mkt2-up">▲ <span class="mkt2-num">' + up + '</span> עולות</span><span class="mkt2-sepd">·</span><span class="mkt2-dn"><span class="mkt2-num">' + down + '</span> יורדות ▼</span><span class="mkt2-sepd">·</span><span class="mkt2-flat"><span class="mkt2-num">' + flat + '</span> ללא שינוי</span></div></div>' +
         '<div class="mkt2-cols">' +
@@ -2179,8 +2179,8 @@
             '<div class="mkt2-row"><span class="mkt2-rk2">מבנה דומיננטי</span><span class="mkt2-sep">·</span><span class="mkt2-rv">' + domLbl + '</span></div>' +
             '<div class="mkt2-row"><span class="mkt2-rk2">טווחי זמן עולים</span><span class="mkt2-sep">·</span><span class="mkt2-rv"><span class="mkt2-num">' + tfUp + '/5</span></span></div></div>' +
           '<div class="mkt2-col"><div class="mkt2-ch"><span class="mkt2-ic"></span> מוקדי השוק</div>' +
-            '<div class="mkt2-mv mkt2-up"><span class="mkt2-lbl">🟢 מובילות</span><span class="mkt2-list">' + (lead.length ? lead.map(chip).join("") : '<span class="mkt2-chip">—</span>') + "</span></div>" +
-            '<div class="mkt2-mv mkt2-dn"><span class="mkt2-lbl">🔴 מפגרות</span><span class="mkt2-list">' + (lag.length ? lag.map(chip).join("") : '<span class="mkt2-chip">—</span>') + "</span></div></div></div>" +
+            '<div class="mkt2-mv mkt2-up"><span class="mkt2-lbl">🟢 מובילות</span><span class="mkt2-list">' + (lead.length ? lead.slice().reverse().map(chip).join("") : '<span class="mkt2-chip">—</span>') + "</span></div>" +
+            '<div class="mkt2-mv mkt2-dn"><span class="mkt2-lbl">🔴 מפגרות</span><span class="mkt2-list">' + (lag.length ? lag.slice().reverse().map(chip).join("") : '<span class="mkt2-chip">—</span>') + "</span></div></div></div>" +
         '<div class="mkt2-bottom"><div class="mkt2-insight"><span class="mkt2-mi">i</span><div><span class="mkt2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
           '<div class="mkt2-cta">לסקירת השוק המלאה →</div></div>' +
       "</div>" +

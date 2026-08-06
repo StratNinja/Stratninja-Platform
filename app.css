@@ -728,7 +728,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt2-card .mkt2-kpi span{font-size:34px;color:var(--mftxt2);}
 .mkt2-card .mkt2-cap{font-size:15px;color:var(--mftxt2);font-weight:700;margin-top:4px;}
 
-.mkt2-card .mkt2-idx{display:flex;gap:12px;}
+.mkt2-card .mkt2-idx{display:flex;gap:12px;direction:ltr;}   /* LTR + reversed DOM → SPY sits on the right, reliably in html2canvas */
 .mkt2-card .mkt2-idxt{flex:1;background:var(--mfsurf);border:1px solid var(--mfline);border-radius:12px;padding:13px 10px;text-align:center;}
 .mkt2-card .mkt2-idxt .mkt2-sym{font-family:'Inter';font-size:15px;font-weight:800;color:#cfd6e6;letter-spacing:.3px;}
 .mkt2-card .mkt2-idxt .mkt2-px{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:20px;font-weight:800;margin-top:5px;direction:ltr;}
@@ -755,7 +755,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt2-card .mkt2-mv{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--mfline);}
 .mkt2-card .mkt2-mv:first-of-type{border-top:none;}
 .mkt2-card .mkt2-mv .mkt2-lbl{font-size:15px;font-weight:800;} .mkt2-card .mkt2-mv.mkt2-up .mkt2-lbl{color:var(--mfpos);} .mkt2-card .mkt2-mv.mkt2-dn .mkt2-lbl{color:var(--mfneg);}
-.mkt2-card .mkt2-mv .mkt2-list{display:flex;gap:8px;}
+.mkt2-card .mkt2-mv .mkt2-list{display:flex;gap:8px;direction:ltr;}   /* LTR + reversed order → #1 mover on the right, reliably in html2canvas */
 .mkt2-card .mkt2-chip{font-size:15px;font-weight:800;padding:5px 11px;border-radius:8px;background:var(--mfelev);border:1px solid var(--mfline);display:flex;align-items:center;gap:7px;}
 .mkt2-card .mkt2-chip .mkt2-s{font-family:'Inter';color:#fff;} .mkt2-card .mkt2-chip .mkt2-p{font-family:'Inter';direction:ltr;unicode-bidi:isolate;}
 .mkt2-card .mkt2-mv.mkt2-up .mkt2-chip .mkt2-p{color:var(--mfpos);} .mkt2-card .mkt2-mv.mkt2-dn .mkt2-chip .mkt2-p{color:var(--mfneg);}
