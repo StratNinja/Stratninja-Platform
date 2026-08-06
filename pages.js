@@ -2377,6 +2377,74 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== Gappers share card (pre-market gap-up / gap-down, ranked by %Gap; RVOL joined from the universe) =====
+  function buildGappersCardEl() {
+    const g = (typeof LIVE !== "undefined" && LIVE && LIVE.gappers) ? LIVE.gappers : { up: [], down: [] };
+    const up = (g.up || []).slice().sort((a, b) => (b.gp || 0) - (a.gp || 0));
+    const down = (g.down || []).slice().sort((a, b) => (a.gp || 0) - (b.gp || 0));
+    const nUp = up.length, nDown = down.length, total = nUp + nDown, denom = total || 1;
+    const ratio = nUp / denom;
+    const all = up.concat(down);
+    const over5 = all.filter(x => Math.abs(x.gp || 0) >= 5).length;
+    const over10 = all.filter(x => Math.abs(x.gp || 0) >= 10).length;
+    const rvolOf = sym => { if (!SCAN || !SCAN.rows) return null; const r = SCAN.rows.find(x => x.s === sym); return (r && r.tech && r.tech.rvol != null) ? r.tech.rvol : null; };
+    const usd = v => (v < 0 ? "−$" : "+$") + Math.abs(v || 0).toFixed(2);
+    const pctS = v => (v < 0 ? "−" : "+") + Math.abs(v || 0).toFixed(1) + "%";
+    const ms = todayMarketState();
+    // headline / state
+    let l1, kpiCls, brCls, brLbl;
+    if (total === 0) { l1 = "אין גאפרים פעילים כרגע"; kpiCls = "gap2-z"; brCls = "gap2-z"; brLbl = "ריק"; }
+    else if (ratio >= 0.6) { l1 = "הגאפים העולים <b>שולטים בפתיחה</b>"; kpiCls = "gap2-pos"; brCls = ""; brLbl = "נוטה לעלייה"; }
+    else if (ratio <= 0.4) { l1 = "הגאפים היורדים <b>לוחצים בפתיחה</b>"; kpiCls = "gap2-neg"; brCls = "gap2-neg"; brLbl = "נוטה לירידה"; }
+    else { l1 = "בוקר <b>מעורב</b> בגאפרים"; kpiCls = "gap2-z"; brCls = "gap2-z"; brLbl = "מעורב"; }
+    const rtag = ms ? '<span class="gap2-tag gap2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
+    const sub = total === 0 ? "כשהשוק ייפתח בגאפ הרשימה תתמלא אוטומטית" : (nUp + " גאפים עולים מול " + nDown + " יורדים · דירוג לפי %Gap");
+    // rows
+    const rvolBadge = sym => { const rv = rvolOf(sym); return rv != null ? '<span class="gap2-rvol">' + rv.toFixed(1) + "×</span>" : ""; };
+    const row = (x, i) => '<div class="gap2-rrow"><span class="gap2-rk">' + (i + 1) + '</span><span class="gap2-tk">' + escHtml(x.s) + "</span>" +
+      '<span class="gap2-gsub">' + usd(x.gd) + "</span>" + rvolBadge(x.s) +
+      '<span class="gap2-spacer"></span><span class="gap2-pc">' + pctS(x.gp) + "</span></div>";
+    const panelRows = arr => arr.length ? arr.slice(0, 5).map(row).join("") : '<div class="gap2-rrow"><span class="gap2-tk" style="color:var(--mftxt2)">—</span></div>';
+    // tiles
+    const bigUp = up[0], bigDn = down[0];
+    // insight
+    const t2 = up.slice(0, 2).map(x => x.s);
+    let insTxt;
+    if (total === 0) insTxt = "אין כרגע מניות בגאפ מעל 3% — חזור עם פתיחת המסחר והרשימה תתמלא.";
+    else if (ratio >= 0.6) insTxt = "פתיחה עם נטייה ברורה ל<b>גאפים עולים</b>" + (t2.length ? ", בהובלת <b>" + escHtml(t2[0]) + "</b>" + (t2[1] ? " ו<b>" + escHtml(t2[1]) + "</b>" : "") : "") + ".";
+    else if (ratio <= 0.4) insTxt = "ריכוז <b>גאפים יורדים</b> מרמז על פתיחה לחוצה ויותר סלקטיבית" + (bigDn ? ", עם <b>" + escHtml(bigDn.s) + "</b> בראש הירידות" : "") + ".";
+    else insTxt = "בוקר מעורב בגאפרים — אין כיוון ברור בפתיחה.";
+    const bg = Math.round(nUp / denom * 100), br = Math.max(0, 100 - bg);
+    const photo = _heroSquare ? '<img class="gap2-photo" src="' + _heroSquare + '">' : '<img class="gap2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "gap2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="gap2-hd">' + photo + '<div><div class="gap2-bt">StratNinja <span>Scanner</span></div><div class="gap2-bs">The Strat · גאפרים · פרה-מרקט</div></div>' +
+        (upd ? '<div class="gap2-upd"><span class="gap2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="gap2-ct">' +
+        '<div class="gap2-hero"><div class="gap2-htext"><div class="gap2-tags">' + rtag + '<span class="gap2-tag gap2-range">פרה-מרקט · פתיחת יום</span></div>' +
+          '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="gap2-sub">' + sub + "</div></div>" +
+          '<div class="gap2-big"><div class="gap2-kpi ' + kpiCls + '">' + nUp + '<span>/' + total + '</span></div><div class="gap2-cap">גאפים עולים</div></div></div>' +
+        '<div class="gap2-cols">' +
+          '<div class="gap2-col gap2-up"><div class="gap2-ch"><span class="gap2-cdot"></span> המובילים בגאפ-אפ</div>' + panelRows(up) + "</div>" +
+          '<div class="gap2-col gap2-dn"><div class="gap2-ch"><span class="gap2-cdot"></span> המובילים בגאפ-דאון</div>' + panelRows(down) + "</div></div>" +
+        '<div class="gap2-breadth"><div class="gap2-btop ' + brCls + '">מצב הגאפרים · <b>' + brLbl + "</b></div>" +
+          '<div class="gap2-bar"><span class="gap2-g" style="width:' + bg + '%"></span><span class="gap2-r" style="width:' + br + '%"></span></div>' +
+          '<div class="gap2-blabels"><span class="gap2-lup">▲ <span class="gap2-num">' + nUp + '</span> עולים</span><span class="gap2-sepd">·</span><span class="gap2-ldn"><span class="gap2-num">' + nDown + '</span> יורדים ▼</span></div></div>' +
+        '<div class="gap2-opp"><div class="gap2-oph"><span class="gap2-oic"></span> תמונת הגאפרים</div>' +
+          '<div class="gap2-otiles">' +
+            '<div class="gap2-ot"><div class="gap2-ov gap2-pos">' + (bigUp ? pctS(bigUp.gp) : "—") + '</div><div class="gap2-ok2">הגאף הגדול' + (bigUp ? " · " + escHtml(bigUp.s) : "") + '</div></div>' +
+            '<div class="gap2-ot"><div class="gap2-ov gap2-neg">' + (bigDn ? pctS(bigDn.gp) : "—") + '</div><div class="gap2-ok2">הגדול שלילי' + (bigDn ? " · " + escHtml(bigDn.s) : "") + '</div></div>' +
+            '<div class="gap2-ot"><div class="gap2-ov">' + over5 + '</div><div class="gap2-ok2">גאפים מעל 5%</div></div>' +
+            '<div class="gap2-ot gap2-ready"><span class="gap2-rdy">חזק</span><div class="gap2-ov">' + over10 + '</div><div class="gap2-ok2">גאפים ≥10%</div></div>' +
+          "</div></div>" +
+        '<div class="gap2-bottom"><div class="gap2-insight"><span class="gap2-mi">i</span><div><span class="gap2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+          '<div class="gap2-cta">למפת הגאפרים המלאה →</div></div>' +
+      "</div>" +
+      '<div class="gap2-ft"><span><b>stratninja.win</b> · נתוני פרה-מרקט</span><span>Adi Koriat · @KoriatTrade · <span class="gap2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2438,6 +2506,7 @@
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
     if (state.page === "journal") { _captureRedesignCard(buildJournalCardEl); return; }   // redesigned journal day-summary card
+    if (state.page === "gappers") { _captureRedesignCard(buildGappersCardEl); return; }   // redesigned gappers pre-market card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
