@@ -1627,6 +1627,11 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
 .fav-alert-x:hover { color: #ef4444; }
 /* fired earlier today but no longer meets the criteria — historical, not a live signal */
 .fav-alert-chip.fav-alert-stale { background: rgba(148,163,184,.10); color: var(--muted); border: 1px dashed rgba(148,163,184,.35); font-weight: 500; }
+/* live price diverged from the (last-close) scanner — pre/post-market move warning */
+.fav-pm-warn { display: inline-block; background: rgba(242,158,76,.14); color: #f2b06a; border: 1px solid rgba(242,158,76,.42);
+  border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 700; margin: 1px 0 1px 4px; white-space: nowrap; }
+.fav-pm-warn span[dir="ltr"] { font-variant-numeric: tabular-nums; }
+html[data-theme="light"] .fav-pm-warn { color:#b45309; background:rgba(217,119,6,.12); border-color:rgba(217,119,6,.4); }
 .scan-table tr.fav-stale td:first-child { box-shadow: inset 3px 0 0 rgba(148,163,184,.4); }
 html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; background:rgba(100,116,139,.10); border-color:rgba(100,116,139,.4); }
 .fac-share { background:transparent; border:0; cursor:pointer; font-size:12px; padding:0 1px; margin-inline-start:2px; opacity:.8; }

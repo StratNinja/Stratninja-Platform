@@ -4513,6 +4513,26 @@
     });
     return out;
   }
+  // Pre/post-market move guard. Alerts are computed on the last completed session; outside US RTH a
+  // stock can move sharply in pre-market before the scanner reflects it (and the scanner catches up with
+  // some lag, inconsistently per ticker). LIVE.gappers carries the live gap-from-prior-close, i.e. exactly
+  // "how much it moved since the alert baseline". So OUTSIDE RTH, if a favorite is gapping beyond the
+  // threshold, return the signed live move so the row can warn "⚠ x% בזמן אמת". null = nothing to warn.
+  const PM_WARN_MIN = 5;   // |live move %| before we warn
+  function _inUsRth() {   // RTH mirror in IL local time ≈ 16:30–23:00 (same convention as the gappers windows)
+    const d = new Date(); const m = d.getHours() * 60 + d.getMinutes();
+    return m >= 16 * 60 + 30 && m < 23 * 60;
+  }
+  function _pmMove(sym) {
+    try {
+      if (_inUsRth()) return null;   // during RTH the scanner is authoritative — no divergence to warn about
+      const g = (typeof LIVE !== "undefined" && LIVE && LIVE.gappers) ? LIVE.gappers : null;
+      if (!g) return null;
+      const row = (g.up || []).concat(g.down || []).find(x => x && x.s === sym);
+      if (!row || row.gp == null || Math.abs(row.gp) < PM_WARN_MIN) return null;
+      return row.gp;   // signed live move from prior close (the alert's baseline)
+    } catch (e) { return null; }
+  }
   // symbols with an ACTIVE (open) position in the local trade journal — not merely any past trade:
   // leftover FIFO open lots from CSV fills + manual trades with no exit price.
   function _openPositionSymbols() {
@@ -4580,14 +4600,20 @@
         const pm = pmatch[t.sym] || [];
         const stale = staleMatch[t.sym];
         const hasTrade = jsyms.has(String(t.sym).toUpperCase());
+        // pre/post-market divergence: the scanner is frozen on last close outside RTH, so warn when the
+        // live move (LIVE.gappers) diverges from it — "⚠ x% בזמן אמת מאז ההתראה" (only when there IS an alert).
+        const pmw = (pm.length || stale) ? _pmMove(t.sym) : null;
+        const pmChip = pmw != null
+          ? ' <span class="fav-pm-warn" title="המחיר בזמן אמת זז משמעותית מאז ההתראה (הסורק מציג את סגירת הסשן הקודם) — בדוק לפני פעולה">⚠ <span dir="ltr">' + (pmw >= 0 ? "+" : "") + pmw.toFixed(1) + "%</span> בזמן אמת</span>"
+          : "";
         // alert info as a real COLUMN. LIVE match → active chips + share. Fired-earlier-but-out-of-range →
         // a faded "נורתה HH:MM · לא בטווח כעת" note (honest history, not a live signal). Dismissible either way.
         const alertCell = pm.length
-          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escHtml(n) + "</span>").join("") +
+          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escHtml(n) + "</span>").join("") + pmChip +
             ' <button class="fac-share" data-shalert="' + escAttr(t.sym) + '" title="שתף כרטיס התראה מעוצב (עד 3 סריקות)">📤 שתף</button>' +
             ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את סימון ההתראה">✕</span></td>'
           : stale
-          ? '<td class="fav-alert-cell" style="text-align:start"><span class="fav-alert-chip fav-alert-stale" title="' + escAttr(stale.names.join(" · ")) + '">🔕 נורתה' + (stale.tm ? " " + escHtml(stale.tm) : "") + ' · לא בטווח כעת</span>' +
+          ? '<td class="fav-alert-cell" style="text-align:start"><span class="fav-alert-chip fav-alert-stale" title="' + escAttr(stale.names.join(" · ")) + '">🔕 נורתה' + (stale.tm ? " " + escHtml(stale.tm) : "") + ' · לא בטווח כעת</span>' + pmChip +
             ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את הסימון">✕</span></td>'
           : '<td class="muted" style="text-align:start">—</td>';
         const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
