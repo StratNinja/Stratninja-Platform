@@ -2188,6 +2188,94 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== Favorites share card (personal watchlist snapshot) =====
+  function buildFavoritesCardEl() {
+    const favs = (window.Prefs ? window.Prefs.favorites() : []) || [];
+    const rows = favs.map(sym => {
+      const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+      if (r) return { s: sym, c: (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0)), ftfc: !!r.ftfc, D: r.D };
+      const t = (typeof TICKERS !== "undefined") ? TICKERS.find(x => x.sym === sym) : null;
+      return { s: sym, c: (t && t.chg != null ? t.chg : 0), ftfc: false, D: t ? t.D : null };
+    });
+    const total = rows.length;
+    const denom = total || 1;
+    const up = rows.filter(t => (t.c || 0) > 0.05).length;
+    const down = rows.filter(t => (t.c || 0) < -0.05).length;
+    const flat = Math.max(0, total - up - down);
+    const ratio = up / denom;
+    // leaders / laggards — non-overlapping split, up to 5 each
+    const sorted = rows.slice().sort((a, b) => (b.c || 0) - (a.c || 0));
+    const n = sorted.length, kL = Math.min(5, Math.ceil(n / 2)), kG = Math.min(5, n - kL);
+    const leaders = sorted.slice(0, kL);
+    const laggards = sorted.slice(n - kG).reverse();   // most negative first
+    // opportunity metrics
+    const ftfcN = rows.filter(t => t.ftfc).length;
+    let alertsN = 0; try { alertsN = Object.keys(favAlertMatches()).length; } catch (e) {}
+    const BK = ["3G", "F2D", "2U", "1", "2D", "F2U", "3R"], dc = {}; BK.forEach(k => dc[k] = 0);
+    rows.forEach(t => { const bk = (typeof candleBucket === "function") ? candleBucket(t.D) : null; if (dc[bk] != null) dc[bk]++; });
+    let domB = null, domN = -1; BK.forEach(k => { if (dc[k] > domN) { domN = dc[k]; domB = k; } });
+    const domShort = domN > 0 ? (domB || "—") : "—";
+    const DIR = { "2U": 1, "2D": 1, "F2U": 1, "F2D": 1, "3G": 1, "3R": 1 };
+    const readyN = rows.filter(t => t.ftfc && DIR[(typeof candleBucket === "function") ? candleBucket(t.D) : ""]).length;
+    // headline / state
+    let l1, subState, kpiCls, brCls, brLbl;
+    if (total === 0) { l1 = "עדיין אין מועדפים"; subState = "סמן ★ על מניות כדי לעקוב"; kpiCls = "fav2-z"; brCls = "fav2-z"; brLbl = "ריק"; }
+    else if (ratio >= 0.6) { l1 = "המועדפים מראים <b>חוזק</b>"; subState = "רוחב פנימי חיובי"; kpiCls = "fav2-pos"; brCls = ""; brLbl = "נוטה לחיוב"; }
+    else if (ratio <= 0.4) { l1 = "המועדפים <b>תחת לחץ</b>"; subState = "רוחב פנימי שלילי"; kpiCls = "fav2-neg"; brCls = "fav2-neg"; brLbl = "נוטה לשלילה"; }
+    else { l1 = "המועדפים במצב <b>מעורב</b>"; subState = "אין הובלה ברורה"; kpiCls = "fav2-z"; brCls = "fav2-z"; brLbl = "מעורב"; }
+    const sub = total === 0 ? subState : (up + " מתוך " + total + " מועדפים בירוק · " + subState);
+    const ms = todayMarketState();
+    const rtag = ms ? '<span class="fav2-tag fav2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
+    // rows
+    const pcCls = c => c > 0.05 ? "fav2-p-pos" : c < -0.05 ? "fav2-p-neg" : "fav2-p-flat";
+    const pctS = c => (c < 0 ? "−" : "+") + Math.abs(c).toFixed(2) + "%";
+    const tagFor = t => ({ "2U": "2U המשך", "2D": "2D המשך", "F2U": "היפוך", "F2D": "היפוך", "3G": "התרחבות", "3R": "התרחבות" }[(typeof candleBucket === "function") ? candleBucket(t.D) : ""] || "");
+    const rrow = (t, i) => {
+      const tag = i < 3 ? tagFor(t) : "";   // low-dosage setup tags: only the top 3 rows
+      return '<div class="fav2-rrow"><span class="fav2-rk">' + (i + 1) + '</span><span class="fav2-tk">' + escHtml(t.s) + "</span>" +
+        (tag ? '<span class="fav2-stag">' + tag + "</span>" : "") +
+        '<span class="fav2-spacer"></span><span class="fav2-pc ' + pcCls(t.c || 0) + '">' + pctS(t.c || 0) + "</span></div>";
+    };
+    const panelRows = arr => arr.length ? arr.map(rrow).join("") : '<div class="fav2-rrow"><span class="fav2-tk" style="color:var(--mftxt2);font-family:Heebo">אין נתונים</span></div>';
+    // insight
+    const t2 = leaders.slice(0, 2).map(t => t.s);
+    let insTxt;
+    if (total === 0) insTxt = "רשימת המועדפים ריקה — סמן ★ על מניות בסורק כדי לבנות מעקב אישי.";
+    else if (ratio >= 0.6) insTxt = "רוחב פנימי חיובי במועדפים" + (t2.length ? ", בהובלת <b>" + escHtml(t2[0]) + "</b>" + (t2[1] ? " ו<b>" + escHtml(t2[1]) + "</b>" : "") : "") + ".";
+    else if (ratio <= 0.4) insTxt = "רשימת המועדפים חלשה היום, עם לחץ רוחבי וחוסר הובלה ברור.";
+    else insTxt = "המועדפים מעורבים — יש כיסי חוזק נקודתיים, אך התמונה עדיין לא אחידה.";
+    // breadth bar widths
+    const bg = Math.round(up / denom * 100), bn = Math.round(flat / denom * 100), br = Math.max(0, 100 - bg - bn);
+    const photo = _heroSquare ? '<img class="fav2-photo" src="' + _heroSquare + '">' : '<img class="fav2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "fav2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="fav2-hd">' + photo + '<div><div class="fav2-bt">StratNinja <span>Scanner</span></div><div class="fav2-bs">The Strat · המועדפים שלי</div></div>' +
+        (upd ? '<div class="fav2-upd"><span class="fav2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="fav2-ct">' +
+        '<div class="fav2-hero"><div class="fav2-htext"><div class="fav2-tags">' + rtag + '<span class="fav2-tag fav2-range">טווח יומי · 1D</span></div>' +
+          '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="fav2-sub">' + sub + "</div></div>" +
+          '<div class="fav2-big"><div class="fav2-kpi ' + kpiCls + '">' + up + '<span>/' + total + '</span></div><div class="fav2-cap">מעל מחיר הפתיחה</div></div></div>' +
+        '<div class="fav2-cols">' +
+          '<div class="fav2-col fav2-up"><div class="fav2-ch"><span class="fav2-cdot"></span> המובילים ברשימה</div>' + panelRows(leaders) + "</div>" +
+          '<div class="fav2-col fav2-dn"><div class="fav2-ch"><span class="fav2-cdot"></span> החלשים ברשימה</div>' + panelRows(laggards) + "</div></div>" +
+        '<div class="fav2-breadth"><div class="fav2-btop ' + brCls + '">מצב המועדפים · <b>' + brLbl + "</b></div>" +
+          '<div class="fav2-bar"><span class="fav2-g" style="width:' + bg + '%"></span><span class="fav2-n" style="width:' + bn + '%"></span><span class="fav2-r" style="width:' + br + '%"></span></div>' +
+          '<div class="fav2-blabels"><span class="fav2-lup">▲ <span class="fav2-num">' + up + '</span> חיוביים</span><span class="fav2-sepd">·</span><span class="fav2-lflat"><span class="fav2-num">' + flat + '</span> ניטרליים</span><span class="fav2-sepd">·</span><span class="fav2-ldn"><span class="fav2-num">' + down + '</span> שליליים ▼</span></div></div>' +
+        '<div class="fav2-opp"><div class="fav2-oph"><span class="fav2-oic"></span> הזדמנויות במועדפים</div>' +
+          '<div class="fav2-otiles">' +
+            '<div class="fav2-ot"><div class="fav2-ov">' + ftfcN + '</div><div class="fav2-ok">FTFC מלא</div></div>' +
+            '<div class="fav2-ot"><div class="fav2-ov">' + alertsN + '</div><div class="fav2-ok">התראות פעילות</div></div>' +
+            '<div class="fav2-ot"><div class="fav2-ov">' + domShort + '</div><div class="fav2-ok">מבנה דומיננטי</div></div>' +
+            '<div class="fav2-ot fav2-ready"><span class="fav2-rdy">מוכן</span><div class="fav2-ov">' + readyN + "/" + total + '</div><div class="fav2-ok">סטאפים מוכנים</div></div>' +
+          "</div></div>" +
+        '<div class="fav2-bottom"><div class="fav2-insight"><span class="fav2-mi">i</span><div><span class="fav2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+          '<div class="fav2-cta">למפת המועדפים המלאה →</div></div>' +
+      "</div>" +
+      '<div class="fav2-ft"><span><b>stratninja.win</b> · נתוני מועדפים אישיים</span><span>Adi Koriat · @KoriatTrade · <span class="fav2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2247,6 +2335,7 @@
     if (state.page === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
     if (state.page === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
+    if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
