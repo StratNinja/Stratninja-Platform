@@ -1625,6 +1625,10 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
   border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; margin: 1px 0 1px 4px; white-space: nowrap; }
 .fav-alert-x { cursor: pointer; color: var(--muted); font-size: 11px; padding: 0 4px; }
 .fav-alert-x:hover { color: #ef4444; }
+/* fired earlier today but no longer meets the criteria — historical, not a live signal */
+.fav-alert-chip.fav-alert-stale { background: rgba(148,163,184,.10); color: var(--muted); border: 1px dashed rgba(148,163,184,.35); font-weight: 500; }
+.scan-table tr.fav-stale td:first-child { box-shadow: inset 3px 0 0 rgba(148,163,184,.4); }
+html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; background:rgba(100,116,139,.10); border-color:rgba(100,116,139,.4); }
 .fac-share { background:transparent; border:0; cursor:pointer; font-size:12px; padding:0 1px; margin-inline-start:2px; opacity:.8; }
 .fac-share:hover { opacity:1; transform:scale(1.15); }
 /* ===== shareable ALERT CARD (rendered off-screen → html2canvas → share image) ===== */

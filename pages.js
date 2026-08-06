@@ -4478,20 +4478,40 @@
     try { const today = new Date().toISOString().slice(0, 10); const arr = _favDismissed(); arr.add(sym); const nd = {}; nd[today] = Array.from(arr); localStorage.setItem("sn_fav_alert_dismissed", JSON.stringify(nd)); } catch (e) {}
   }
   function _clearFavDismissed() { try { localStorage.removeItem("sn_fav_alert_dismissed"); } catch (e) {} }
-  // {sym: [scan/alert names]} for favorites matching a saved scan OR today's fired alerts, minus dismissed
+  // {sym: [scan names]} for favorites that CURRENTLY match a saved scan — re-evaluated live against the
+  // latest scan on every render/refresh. A stock that fired earlier today but has since fallen out of the
+  // criteria is NOT counted here (it is "stale" — see favStaleAlerts); this is what makes 🔄 רענן drop it.
   function favAlertMatches() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
     const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
     const pmatch = {};
     const add = (sym, name) => { if (favs.indexOf(sym) < 0) return; const a = pmatch[sym] = pmatch[sym] || []; if (a.indexOf(name) < 0) a.push(name); };
     if (SCAN && SCAN.rows && SCAN.rows.length && presets.length) presets.forEach(p => { let m = []; try { m = evalPreset(p) || []; } catch (e) {} m.forEach(s => add(s, p.name)); });
-    const feed = (window.Prefs && window.Prefs.alertFeed) ? window.Prefs.alertFeed() : [];
-    const today = new Date().toISOString().slice(0, 10);
-    const byId = {}; presets.forEach(p => { byId[p.id] = p; });
-    // resolve each fired alert by its preset id → CURRENT name (drops renamed-away / deleted presets)
-    feed.forEach(e => { if (e && e.date === today && favs.indexOf(e.sym) >= 0) { const p = byId[e.pid]; if (p) add(e.sym, p.name); } });
     _favDismissed().forEach(s => delete pmatch[s]);
     return pmatch;
+  }
+  // favorites that FIRED an alert earlier today but NO LONGER match live → historical/stale.
+  // returns {sym: {names:[…], tm}} so the row can show a faded "נורתה HH:MM · לא בטווח כעת" note
+  // instead of a misleading active signal. Pass the live match map to avoid recomputing evalPreset.
+  function favStaleAlerts(live) {
+    const favs = window.Prefs ? window.Prefs.favorites() : [];
+    const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
+    const feed = (window.Prefs && window.Prefs.alertFeed) ? window.Prefs.alertFeed() : [];
+    if (!feed.length) return {};
+    const today = new Date().toISOString().slice(0, 10);
+    const byId = {}; presets.forEach(p => { byId[p.id] = p; });
+    const liveM = live || favAlertMatches();
+    const dismissed = _favDismissed();
+    const out = {};
+    feed.forEach(e => {
+      if (!e || e.date !== today || favs.indexOf(e.sym) < 0) return;
+      if (liveM[e.sym] || dismissed.has(e.sym)) return;   // still matching, or user cleared it
+      const p = byId[e.pid]; if (!p) return;              // preset renamed away / deleted
+      const o = out[e.sym] = out[e.sym] || { names: [], tm: e.tm || "" };
+      if (o.names.indexOf(p.name) < 0) o.names.push(p.name);
+      if (!o.tm && e.tm) o.tm = e.tm;
+    });
+    return out;
   }
   // symbols with an ACTIVE (open) position in the local trade journal — not merely any past trade:
   // leftover FIFO open lots from CSV fills + manual trades with no exit price.
@@ -4552,21 +4572,28 @@
     if (!favs.length) {
       body = '<div class="panel"><div class="stub"><div class="big">⭐</div><h2>אין עדיין מועדפים</h2><p>לחץ על הכוכב ⭐ ליד מניות בסורק, בסקטורים או בגאפרים כדי להוסיף אותן לכאן.</p><button class="btn primary" id="goScanner">לסורק העסקאות</button></div></div>';
     } else {
-      // which favorites match a saved scan / fired an alert today (for the highlight + dismissible badge)
+      // which favorites CURRENTLY match a saved scan (live), and which merely fired earlier today (stale)
       const pmatch = favAlertMatches();
+      const staleMatch = favStaleAlerts(pmatch);
       const jsyms = _openPositionSymbols();   // favorites with an ACTIVE (open) position in the journal → violet glow
       const rowHtml = t => {
         const pm = pmatch[t.sym] || [];
+        const stale = staleMatch[t.sym];
         const hasTrade = jsyms.has(String(t.sym).toUpperCase());
-        // alert info as a real COLUMN (the scan names the stock matched) instead of a red dot + hover
+        // alert info as a real COLUMN. LIVE match → active chips + share. Fired-earlier-but-out-of-range →
+        // a faded "נורתה HH:MM · לא בטווח כעת" note (honest history, not a live signal). Dismissible either way.
         const alertCell = pm.length
           ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escHtml(n) + "</span>").join("") +
             ' <button class="fac-share" data-shalert="' + escAttr(t.sym) + '" title="שתף כרטיס התראה מעוצב (עד 3 סריקות)">📤 שתף</button>' +
             ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את סימון ההתראה">✕</span></td>'
+          : stale
+          ? '<td class="fav-alert-cell" style="text-align:start"><span class="fav-alert-chip fav-alert-stale" title="' + escAttr(stale.names.join(" · ")) + '">🔕 נורתה' + (stale.tm ? " " + escHtml(stale.tm) : "") + ' · לא בטווח כעת</span>' +
+            ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את הסימון">✕</span></td>'
           : '<td class="muted" style="text-align:start">—</td>';
         const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
         const cls = [];
         if (pm.length) cls.push("fav-inpreset");
+        else if (stale) cls.push("fav-stale");
         if (hasTrade) cls.push("fav-journal");
         return "<tr" + (cls.length ? ' class="' + cls.join(" ") + '"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + "</span></td>" +
           '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span>" + jtag + "</td>" +
