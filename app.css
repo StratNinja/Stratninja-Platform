@@ -734,6 +734,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .mkt2-card .mkt2-idxt .mkt2-px{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:20px;font-weight:800;margin-top:5px;direction:ltr;}
 .mkt2-card .mkt2-idxt .mkt2-ich{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;margin-top:3px;direction:ltr;unicode-bidi:isolate;}
 .mkt2-card .mkt2-idxt .mkt2-ich.mkt2-pos{color:var(--mfpos);} .mkt2-card .mkt2-idxt .mkt2-ich.mkt2-neg{color:var(--mfneg);} .mkt2-card .mkt2-idxt .mkt2-ich.mkt2-z{color:var(--mftxt2);font-size:14px;font-weight:700;}
+.mkt2-card .mkt2-idx .mkt2-idxt:first-child .mkt2-ich.mkt2-z{font-size:16px;}   /* VIX label a touch bigger */
 
 .mkt2-card .mkt2-breadth{display:flex;flex-direction:column;gap:8px;}
 .mkt2-card .mkt2-bar{height:18px;border-radius:999px;overflow:hidden;display:flex;border:1px solid var(--mfline);background:var(--mfelev);}
