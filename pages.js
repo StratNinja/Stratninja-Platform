@@ -2892,6 +2892,7 @@
     if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
     if (col === "comp") return _compSpread(k);
     if (col === "bbsq") return k.bbsq;
+    if (col === "bbp") return k.bbp;
     if (col === "swd") return techState.swSide === "low" ? k.swlo_d : k.swhi_d;
     if (col === "trend") return _trendVal(k);
     if (col === "fib") return k.fibr;
@@ -3215,6 +3216,9 @@
         : '<div class="frow tech-row">' +
             '<div class="fgrp"><label>📉 דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(SMA 20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.compMax + '"></div>' +
             '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
+            '<div class="fgrp"><label>🎈 בולינגר · מיקום ברצועות <span class="muted" style="font-size:10px">(%B · חזרה לממוצע)</span></label><select id="tBbPos">' +
+              opt("off", techState.bbPos, "— הכל") + opt("below", techState.bbPos, "מתחת לרצועה · LONG") + opt("above", techState.bbPos, "מעל הרצועה · SHORT") + opt("rev", techState.bbPos, "שני הקצוות · חזרה לממוצע") +
+              "</select></div>" +
             '<div class="fgrp"><label>〽️ סווינג</label><div class="chips" style="align-items:center"><select id="tSwSide">' +
               opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
               "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
@@ -3230,7 +3234,8 @@
               opt("gp", techState.fibLevel, "⭐ Golden Pocket") + "</select>" +
               (_fibActive() ? '<select id="tFibDir">' + opt("any", techState.fibDir, "כל כיוון") + opt("up", techState.fibDir, "פולבק בטרנד עולה ↗") + opt("down", techState.fibDir, "תיקון בטרנד יורד ↘") + opt("touchAbove", techState.fibDir, "🎯 נגיעה מלמעלה (צל תחתון · תמיכה)") + opt("touchBelow", techState.fibDir, "🎯 נגיעה מלמטה (צל עליון · התנגדות)") + '</select><span class="muted">±</span><input id="tFibTol" type="number" step="0.5" min="0" style="width:50px" value="' + techState.fibTol + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>" +
-          '<div class="note" style="margin-top:8px;font-size:11px">💡 <b>דחיסת ממוצעים</b> = טווח ה-SMA כאחוז מהמחיר (נמוך=צפוף). <b>בולינגר דחיסה</b> = אחוזון רוחב הרצועות מול 6 חודשים (נמוך=לפני פריצה). <b>סווינג</b> = קרוב לרמת שיא/תחתית אחרונה. <b>קווי מגמה</b> = קו אלכסוני שנמתח דרך שיאים/תחתיות: <u>נגיעה</u>=בטווח ±% מהקו · <u>פריצה/שבירה</u>=חצה את הקו. <b>פיבונאצי</b> = כמה המחיר תיקן מה-swing האחרון (ZigZag לפי סטיית ATR); בחר רמה (או Golden Pocket 0.618–0.65) + כיוון + ±% קרבה. כל פילטר מוסיף עמודה וממוין בלחיצה על הכותרת — ומצטרף (AND) לכל שאר הסינונים.</div>';
+          '<div class="note" style="margin-top:8px;font-size:11px">💡 <b>דחיסת ממוצעים</b> = טווח ה-SMA כאחוז מהמחיר (נמוך=צפוף). <b>בולינגר דחיסה</b> = אחוזון רוחב הרצועות מול 6 חודשים (נמוך=לפני פריצה). <b>סווינג</b> = קרוב לרמת שיא/תחתית אחרונה. <b>קווי מגמה</b> = קו אלכסוני שנמתח דרך שיאים/תחתיות: <u>נגיעה</u>=בטווח ±% מהקו · <u>פריצה/שבירה</u>=חצה את הקו. <b>פיבונאצי</b> = כמה המחיר תיקן מה-swing האחרון (ZigZag לפי סטיית ATR); בחר רמה (או Golden Pocket 0.618–0.65) + כיוון + ±% קרבה. כל פילטר מוסיף עמודה וממוין בלחיצה על הכותרת — ומצטרף (AND) לכל שאר הסינונים.</div>' +
+          (_bbPosActive() ? '<div class="note" style="margin-top:6px;border-inline-start:3px solid #F2C94C;background:rgba(242,201,76,.07);font-size:11px">🎯 <b>חזרה לממוצע:</b> מתחת לרצועה = <b class="pos">LONG</b> (oversold) · מעל הרצועה = <b class="neg">SHORT</b> (overbought). ⚠ <b>מתחת/מעל הרצועה לבד זה לרוב "סכין נופל"</b> — בשוק טרנד המחיר יכול להמשיך לאורך הרצועה. <b>מומלץ להמתין ל-reclaim</b> (המחיר חוזר לתוך הרצועה) לפני כניסה. סינון reclaim אוטומטי ייווסף אחרי בדיקות backtest.</div>' : "");
     }
     const indBadge = indCnt ? ' <span class="badge-ftfc">' + indCnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">דחיסה · בולינגר · סווינג · קווי מגמה · פיבונאצי</span>';
     const indPanel = '<div class="panel filters"><h3 id="indToggle" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;margin:0"><span>🎯 סורקי אינדיקטורים' + indBadge + '</span><span style="font-size:14px">' + (scanState.indOpen ? "▲" : "▼") + "</span></h3>" + indInner + "</div>";
@@ -3264,6 +3269,7 @@
       { key: "dhi52", th: "Δ שיא52", tip: "מרחק המחיר משיא 52 השבועות (0% = בשיא)", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
       { key: "comp", th: "דחיסת MA", tip: "דחיסת ממוצעים: כמה הממוצעים הנעים צפופים זה לזה — נמוך = קפיץ דחוס לפני פריצה", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
       { key: "bbsq", th: "BB דחיסה", tip: "דחיסת בולינגר: אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = דחוס/קפיץ", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
+      { key: "bbp", th: "%B", tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => "<td>" + (k.bbp == null ? "—" : k.bbp <= 0 ? '<b class="pos">' + k.bbp.toFixed(0) + " ▲</b>" : k.bbp >= 100 ? '<b class="neg">' + k.bbp.toFixed(0) + " ▼</b>" : k.bbp.toFixed(0)) + "</td>", active: _bbPosActive() },
       { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct(techState.swSide === "low" ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
       { key: "fib", th: "פיבו %", tip: "אחוז הריטרייסמנט של המחיר מה-swing האחרון (0% = בשיא/שפל האחרון · 100% = חזרה לנקודת ההתחלה). ↗ = פולבק בטרנד עולה · ↘ = תיקון בטרנד יורד", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
@@ -3481,11 +3487,15 @@
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
       }
       // indicator scanners (compression / Bollinger / swing / trend-lines / Fibonacci) — own collapsible panel, stack AND independently
-      if (_compActive() || _bbActive() || _swActive() || _trendActive() || _fibActive()) {
+      if (_compActive() || _bbActive() || _bbPosActive() || _swActive() || _trendActive() || _fibActive()) {
         const k = t.tech;
         if (!k) return false;
         if (_compActive()) { const sp = _compSpread(k); if (sp == null || sp > parseFloat(techState.compMax)) return false; }
         if (_bbActive() && (k.bbsq == null || k.bbsq > parseFloat(techState.bbSqMax))) return false;
+        if (_bbPosActive()) { const b = k.bbp; if (b == null) return false;
+          if (techState.bbPos === "above" && b < 100) return false;
+          if (techState.bbPos === "below" && b > 0) return false;
+          if (techState.bbPos === "rev" && !(b <= 0 || b >= 100)) return false; }
         if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
         if (techState.swSide === "low" && (k.swlo_d == null || Math.abs(k.swlo_d) > techState.swPct)) return false;
         if (_trendActive() && !_trendPass(k)) return false;
@@ -3591,6 +3601,7 @@
     bind("tGapPct", "onchange", e => { techState.gapPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tCompMax", "onchange", e => { techState.compMax = e.target.value; reRender(); });
     bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
+    bind("tBbPos", "onchange", e => { techState.bbPos = e.target.value; reRender(); });
     bind("tSwSide", "onchange", e => { techState.swSide = e.target.value; reRender(); });
     bind("tSwPct", "onchange", e => { techState.swPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tTrendMode", "onchange", e => { techState.trendMode = e.target.value; reRender(); });
@@ -3689,6 +3700,7 @@
     gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
     compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
     bbSqMax: "",                 // Bollinger squeeze percentile ≤
+    bbPos: "off",                // Bollinger %B position: off / below (≤0, LONG rev) / above (≥100, SHORT rev) / rev (both extremes)
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
     fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
@@ -3716,6 +3728,7 @@
   }
   function _compActive() { return techState.compMax !== "" && !isNaN(parseFloat(techState.compMax)); }
   function _bbActive() { return techState.bbSqMax !== "" && !isNaN(parseFloat(techState.bbSqMax)); }
+  function _bbPosActive() { return techState.bbPos && techState.bbPos !== "off"; }
   function _swActive() { return techState.swSide === "high" || techState.swSide === "low"; }
   function _trendActive() { return ["touchsup", "touchres", "breakup", "breakdn"].indexOf(techState.trendMode) >= 0; }
   function _trendThr() { const v = parseFloat(techState.trendPct); return isNaN(v) ? 1.5 : v; }
@@ -3761,7 +3774,7 @@
       default:     return inBand(k.fibr);   // "any" — close near the level, either direction
     }
   }
-  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
+  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_bbPosActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
@@ -3839,7 +3852,7 @@
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = "";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
-    techState.compMax = ""; techState.bbSqMax = ""; techState.swSide = "off"; techState.swPct = 2;
+    techState.compMax = ""; techState.bbSqMax = ""; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.techTf = "D";
@@ -5107,7 +5120,6 @@
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
-    bollinger: { render: renderBollinger, wire: wireBollinger },   // re-enabled 2026-08-06 (dedicated Bollinger scanner + mean-reversion mode)
     favorites: { render: renderFavorites, wire: wireFavorites },
     learn: { render: renderLearn, wire: wireLearn },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
