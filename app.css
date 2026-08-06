@@ -1033,7 +1033,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .cm2-card .cm2-tag.cm2-range{color:var(--mftxt2);background:var(--mfsurf);border:1px solid var(--mfline);font-weight:700;}
 .cm2-card .cm2-htext h1{font-weight:900;letter-spacing:-.5px;line-height:1.1;font-size:46px;}
 .cm2-card h1.cm2-pos b{color:var(--mfpos);} .cm2-card h1.cm2-neg b{color:var(--mfneg);} .cm2-card h1.cm2-z b{color:var(--mfgold);}
-.cm2-card .cm2-sub{font-size:21px;font-weight:700;color:#B7C1D4;}
+.cm2-card .cm2-sub{font-size:21px;font-weight:700;color:#c6cfe0;}
 .cm2-card .cm2-big{text-align:center;flex:none;padding-inline-start:28px;border-inline-start:1px solid var(--mfline);}
 .cm2-card .cm2-kpi{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:66px;font-weight:800;color:var(--mfpos);line-height:1;direction:ltr;}
 .cm2-card .cm2-kpi span{font-size:38px;color:var(--mftxt2);}
@@ -1059,7 +1059,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .cm2-card .cm2-tfn{font-size:18px;color:#c3ccdd;font-weight:800;}
 .cm2-card .cm2-tfb{font-family:'Inter';font-size:48px;font-weight:800;line-height:1;letter-spacing:-1px;}
 .cm2-card .cm2-tft.cm2-up .cm2-tfb{color:var(--mfpos);} .cm2-card .cm2-tft.cm2-dn .cm2-tfb{color:var(--mfneg);} .cm2-card .cm2-tft.cm2-nt .cm2-tfb{color:#e6ecf7;}
-.cm2-card .cm2-tfc{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:14px;color:var(--mftxt2);font-weight:700;direction:ltr;}
+.cm2-card .cm2-tfc{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:14px;color:#aeb9cf;font-weight:800;direction:ltr;}
 .cm2-card .cm2-bottom{display:flex;align-items:center;gap:16px;}
 .cm2-card .cm2-insight{flex:1;display:flex;align-items:center;gap:12px;background:rgba(136,120,255,.09);border:1px solid rgba(136,120,255,.26);border-radius:13px;padding:15px 18px;font-size:17px;line-height:1.45;}
 .cm2-card .cm2-mi{flex:none;width:26px;height:26px;border-radius:7px;background:var(--mfbrand);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Inter';font-size:13px;font-weight:800;}
