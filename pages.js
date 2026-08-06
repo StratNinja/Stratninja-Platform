@@ -4224,6 +4224,7 @@
     { k: "sq", t: "התכווצות (Squeeze)" },
     { k: "up", t: "פריצת רצועה עליונה" },
     { k: "low", t: "נגיעה ברצועה תחתונה" },
+    { k: "rev", t: "חזרה לממוצע · סכינים נופלות" },
     { k: "all", t: "הכל" },
   ];
   function bbNum(v, suf) { return v == null ? "—" : v.toFixed(v >= 100 || v <= -10 ? 0 : 1) + (suf || ""); }
@@ -4237,6 +4238,7 @@
     const m = bollingerState.mode;
     if (m === "up") { rows = rows.filter(t => t.tech.bbp != null && t.tech.bbp >= 100); rows.sort((a, b) => b.tech.bbp - a.tech.bbp); }
     else if (m === "low") { rows = rows.filter(t => t.tech.bbp != null && t.tech.bbp <= 0); rows.sort((a, b) => a.tech.bbp - b.tech.bbp); }
+    else if (m === "rev") { rows = rows.filter(t => t.tech.bbp != null && (t.tech.bbp <= 0 || t.tech.bbp >= 100)); rows.sort((a, b) => Math.abs(b.tech.bbp - 50) - Math.abs(a.tech.bbp - 50)); }   // both extremes, most-extreme first
     else {
       rows = rows.filter(t => t.tech.bbsq != null);
       const mx = parseFloat(bollingerState.maxSq);
@@ -4250,6 +4252,9 @@
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const hasTech = scanSource().some(t => t.tech && t.tech.bbw != null);
     const showSq = bollingerState.mode === "sq" || bollingerState.mode === "all";
+    const isRev = bollingerState.mode === "rev";
+    // trader guidance for the mean-reversion / falling-knives mode (reclaim is a manual check for now — auto-detect pending server %B history + backtest)
+    const revNote = isRev ? '<div class="note" style="margin-top:8px;border-inline-start:3px solid #F2C94C;background:rgba(242,201,76,.07)">🎯 <b>חזרה לממוצע:</b> מתחת לרצועה התחתונה = מועמד <b class="pos">▲ LONG</b> (oversold) · מעל העליונה = <b class="neg">▼ SHORT</b> (overbought), בציפייה לחזרה לאמצע.<br>⚠ <b>שים לב — מתחת/מעל הרצועה לבד זה לרוב "סכין נופל"</b>: בשוק טרנד המחיר יכול להמשיך לאורך הרצועה. <b>מומלץ להמתין ל-reclaim</b> (המחיר חוזר לתוך הרצועה) לפני כניסה — סינון reclaim אוטומטי ייווסף אחרי בדיקות backtest.</div>' : "";
     const controls = '<div class="panel filters"><h3>מצב סינון</h3><div class="frow"><div class="fgrp"><label>מצב</label><select id="bbMode">' +
       BB_MODES.map(o => '<option value="' + o.k + '"' + (bollingerState.mode === o.k ? " selected" : "") + ">" + o.t + "</option>").join("") + "</select></div>" +
       (showSq ? '<div class="fgrp"><label>דחיסה עד (%)</label><input id="bbMaxSq" type="number" step="5" min="0" max="100" placeholder="הכל" style="width:80px" value="' + bollingerState.maxSq + '"></div>' : "") + "</div>" +
@@ -4257,10 +4262,12 @@
     if (!hasTech) return head0 + controls + '<div class="panel"><div class="note" style="margin:6px 0">⏳ נתוני בולינגר ייטענו מהסורק. רגע ומתעדכן.</div></div>';
     const rows = bbRows();
     const CAP = 300, shown = rows.slice(0, CAP);
+    const dirTd = t => isRev ? (t.tech.bbp <= 0 ? '<td><b class="pos">▲ LONG</b></td>' : '<td><b class="neg">▼ SHORT</b></td>') : "";
     const body = shown.map(t => {
       const k = t.tech;
       return "<tr><td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
+        dirTd(t) +
         '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td>" +
         "<td>" + bbPct(k.bbp) + "</td>" +
         "<td>" + bbNum(k.bbw, "%") + "</td>" +
@@ -4268,11 +4275,12 @@
         "<td>" + ftfcBadge(t) + "</td>" +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
     }).join("");
-    const sortHint = bollingerState.mode === "up" ? "%B ▼" : bollingerState.mode === "low" ? "%B ▲" : "דחיסה ▲";
-    const head = "<th></th><th style='text-align:start'>סימבול</th><th style='text-align:start'>סקטור</th><th>מחיר</th><th title='מיקום ברצועות 0-100'>%B</th><th title='רוחב הרצועות כאחוז מהמחיר'>רוחב</th><th title='אחוז ימים עם רצועות צרות יותר — נמוך=דחוס'>דחיסה</th><th>FTFC</th><th></th>";
+    const sortHint = bollingerState.mode === "up" ? "%B ▼" : bollingerState.mode === "low" ? "%B ▲" : isRev ? "קיצוניות ▼" : "דחיסה ▲";
+    const head = "<th></th><th style='text-align:start'>סימבול</th>" + (isRev ? "<th title='כיוון חזרה לממוצע'>כיוון</th>" : "") + "<th style='text-align:start'>סקטור</th><th>מחיר</th><th title='מיקום ברצועות 0-100'>%B</th><th title='רוחב הרצועות כאחוז מהמחיר'>רוחב</th><th title='אחוז ימים עם רצועות צרות יותר — נמוך=דחוס'>דחיסה</th><th>FTFC</th><th></th>";
+    const nCols = isRev ? 10 : 9;
     const results = '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " · " + sortHint + "</span></span>" + (rows.length ? '<button class="btn ghost" id="bbCopy" style="font-size:12px;font-weight:600">📋 העתק ' + Math.min(rows.length, CAP) + " טיקרים</button>" : "") + "</h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + (shown.length ? body : '<tr><td colspan="9" class="muted" style="text-align:center;padding:30px">אין תוצאות במצב הזה</td></tr>') + "</tbody></table></div></div>";
-    return head0 + (isLive ? liveBanner() : DEMO) + controls + results;
+      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות במצב הזה</td></tr>') + "</tbody></table></div></div>";
+    return head0 + (isLive ? liveBanner() : DEMO) + controls + revNote + results;
   }
   function wireBollinger() {
     const md = $("#bbMode"); if (md) md.onchange = () => { bollingerState.mode = md.value; reRender(); };
@@ -5099,6 +5107,7 @@
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
     gappers: { render: renderGappers, wire: wireGappers },
+    bollinger: { render: renderBollinger, wire: wireBollinger },   // re-enabled 2026-08-06 (dedicated Bollinger scanner + mean-reversion mode)
     favorites: { render: renderFavorites, wire: wireFavorites },
     learn: { render: renderLearn, wire: wireLearn },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
