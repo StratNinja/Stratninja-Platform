@@ -2123,6 +2123,70 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== Market-overview super-card (state + breadth + indices + FTFC + movers) =====
+  function buildMarketOverviewCardEl() {
+    const src = (typeof scanSource === "function") ? scanSource() : [];
+    const ms = todayMarketState();
+    const U = mktU();
+    const b = U.breadth || (ms && ms.br) || {};
+    const total = b.total || ((b.above || 0) + (b.below || 0)) || 1;
+    const up = b.above || 0, down = b.below || 0, flat = Math.max(0, total - up - down);
+    const pct = Math.round(up / total * 100), barG = Math.round(up / total * 100), barR = Math.round(down / total * 100);
+    const idxArr = (LIVE && LIVE.indices) ? LIVE.indices : [];
+    const byS = {}; idxArr.forEach(r => byS[r.sym] = r);
+    const vix = (LIVE && LIVE.vix && LIVE.vix.level != null) ? LIVE.vix.level : (byS.VIX ? byS.VIX.price : null);
+    const idxTiles = ["SPY", "QQQ", "IWM", "DIA"].map(s => { const r = byS[s], c = r ? r.chg : null;
+      const cls = c == null ? "mkt2-z" : c > 0.05 ? "mkt2-pos" : c < -0.05 ? "mkt2-neg" : "mkt2-z";
+      return '<div class="mkt2-idxt"><div class="mkt2-sym">' + s + '</div><div class="mkt2-px">' + (r && r.price != null ? Number(r.price).toFixed(2) : "—") +
+        '</div><div class="mkt2-ich ' + cls + '">' + (c == null ? "—" : (c >= 0 ? "+" : "") + c.toFixed(2) + "%") + "</div></div>"; }).join("");
+    const vixLbl = vix != null ? (vix < 18 ? "תנודתיות נמוכה" : vix > 28 ? "תנודתיות גבוהה" : "תנודתיות בינונית") : "תנודתיות";
+    const vixTile = '<div class="mkt2-idxt"><div class="mkt2-sym">VIX</div><div class="mkt2-px">' + (vix != null ? Number(vix).toFixed(2) : "—") + '</div><div class="mkt2-ich mkt2-z">' + vixLbl + "</div></div>";
+    const ftfcN = src.filter(t => t.ftfc).length;
+    const cmR = (typeof cmapRows === "function") ? cmapRows() : src.filter(r => r.sp);
+    const cols = ["D", "W", "M", "Q", "Y"], BK = ["3G", "F2D", "2U", "1", "2D", "F2U", "3R"], counts = {};
+    BK.forEach(k => counts[k] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
+    cmR.forEach(row => cols.forEach(tf => { const bk = candleBucket(row[tf]); if (counts[bk]) counts[bk][tf]++; }));
+    let domB = null, domN = -1; BK.forEach(k => { const n = counts[k].D || 0; if (n > domN) { domN = n; domB = k; } });
+    const domLbl = { "2U": "2U המשך עולה", "2D": "2D המשך יורד", "1": "Inside דשדוש", "3G": "3 ירוק התרחבות", "3R": "3 אדום התרחבות", "F2D": "היפוך 2D", "F2U": "היפוך 2U" }[domB] || domB || "—";
+    let tfUp = 0; cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull > bear) tfUp++; });
+    const lead = (U.leaders || []).slice(0, 2), lag = (U.laggards || []).slice(0, 2);
+    const chip = x => '<span class="mkt2-chip"><span class="mkt2-s">' + escHtml(x.s) + '</span> <span class="mkt2-p">' + ((x.c >= 0 ? "+" : "") + Number(x.c).toFixed(2) + "%") + "</span></span>";
+    const secs = (typeof todaySectors === "function" ? todaySectors(src) : []).filter(s => s && s.name && s.name !== "אחר" && s.chg != null).sort((a, b) => b.chg - a.chg);
+    const topSec = secs[0] ? secHe(secs[0].name) : "—";
+    const l1 = pct >= 55 ? "רוחב השוק תומך בעליות" : pct <= 45 ? "רוחב השוק חלש" : "רוחב שוק מעורב";
+    const rtag = ms ? '<span class="mkt2-tag mkt2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
+    const subT = (ms && ms.cls === "pos") ? "סנטימנט חיובי ויציב" : (ms && ms.cls === "neg") ? "סנטימנט שלילי, זהירות" : "סנטימנט מעורב";
+    const riskTxt = (ms && ms.cls === "pos") ? "Risk-On" : (ms && ms.cls === "neg") ? "Risk-Off" : "מצב מעורב";
+    const vixCalm = vix != null && vix < 18;
+    const insTxt = "רוחב שוק " + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + (vixCalm ? " ו־<b>VIX רגוע</b>" : "") + " תומכים ב-" + riskTxt + ", ההובלה מרוכזת ב<b>" + escHtml(topSec) + "</b>.";
+    const photo = _heroSquare ? '<img class="mkt2-photo" src="' + _heroSquare + '">' : '<img class="mkt2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "mkt2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="mkt2-hd">' + photo + '<div><div class="mkt2-bt">StratNinja <span>Scanner</span></div><div class="mkt2-bs">The Strat · סקירת שוק</div></div>' +
+        (upd ? '<div class="mkt2-upd"><span class="mkt2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="mkt2-ct">' +
+        '<div class="mkt2-hero"><div class="mkt2-htext"><div class="mkt2-tags">' + rtag + '<span class="mkt2-tag mkt2-range">S&P 500</span></div>' +
+          '<h1><span class="mkt2-l1">' + l1 + '</span><span class="mkt2-l2">ה<b>' + escHtml(topSec) + '</b> מובילה</span></h1><div class="mkt2-sub">' + subT + "</div></div>" +
+          '<div class="mkt2-big"><div class="mkt2-kpi">' + up + '<span>/' + total + '</span></div><div class="mkt2-cap">מניות מעל הפתיחה</div></div></div>' +
+        '<div class="mkt2-idx">' + idxTiles + vixTile + "</div>" +
+        '<div class="mkt2-breadth"><div class="mkt2-bar"><span class="mkt2-g" style="width:' + barG + '%"></span><span class="mkt2-r" style="width:' + barR + '%"></span></div>' +
+          '<div class="mkt2-blabels"><span class="mkt2-up">▲ <span class="mkt2-num">' + up + '</span> עולות</span><span class="mkt2-sepd">·</span><span class="mkt2-dn"><span class="mkt2-num">' + down + '</span> יורדות ▼</span><span class="mkt2-sepd">·</span><span class="mkt2-flat"><span class="mkt2-num">' + flat + '</span> ללא שינוי</span></div></div>' +
+        '<div class="mkt2-cols">' +
+          '<div class="mkt2-col"><div class="mkt2-ch"><span class="mkt2-ic"></span> חוזקה פנימית</div>' +
+            '<div class="mkt2-row"><span class="mkt2-rk2">FTFC מלא</span><span class="mkt2-sep">·</span><span class="mkt2-rv"><span class="mkt2-num">' + ftfcN + '</span> מניות</span></div>' +
+            '<div class="mkt2-row"><span class="mkt2-rk2">מבנה דומיננטי</span><span class="mkt2-sep">·</span><span class="mkt2-rv">' + domLbl + '</span></div>' +
+            '<div class="mkt2-row"><span class="mkt2-rk2">טווחי זמן עולים</span><span class="mkt2-sep">·</span><span class="mkt2-rv"><span class="mkt2-num">' + tfUp + '/5</span></span></div></div>' +
+          '<div class="mkt2-col"><div class="mkt2-ch"><span class="mkt2-ic"></span> מוקדי השוק</div>' +
+            '<div class="mkt2-mv mkt2-up"><span class="mkt2-lbl">🟢 מובילות</span><span class="mkt2-list">' + (lead.length ? lead.map(chip).join("") : '<span class="mkt2-chip">—</span>') + "</span></div>" +
+            '<div class="mkt2-mv mkt2-dn"><span class="mkt2-lbl">🔴 מפגרות</span><span class="mkt2-list">' + (lag.length ? lag.map(chip).join("") : '<span class="mkt2-chip">—</span>') + "</span></div></div></div>" +
+        '<div class="mkt2-bottom"><div class="mkt2-insight"><span class="mkt2-mi">i</span><div><span class="mkt2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+          '<div class="mkt2-cta">לסקירת השוק המלאה →</div></div>' +
+      "</div>" +
+      '<div class="mkt2-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span><span>Adi Koriat · @KoriatTrade · <span class="mkt2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2181,6 +2245,7 @@
     if (state.page === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (state.page === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
     if (state.page === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
+    if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
       const el = buildShareCardEl();
