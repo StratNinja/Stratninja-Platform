@@ -2449,6 +2449,65 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== Candle Map share card (higher-TF Strat structure distribution across D/W/M/Q/Y) =====
+  function buildCandleMapCardEl() {
+    const cols = ["D", "W", "M", "Q", "Y"];
+    const rows = (typeof cmapRows === "function") ? cmapRows() : [];
+    const total = rows.length;
+    const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
+    rows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
+    // overall dominant structure (summed across timeframes)
+    let domB = null, domN = -1; CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    // strongest timeframe (max bull-bear) + how many timeframes lean bullish
+    let bestTf = null, bestScore = -Infinity, tfBull = 0;
+    cols.forEach(tf => {
+      const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0);
+      const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0);
+      if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; }
+      if (bull > bear) tfBull++;
+    });
+    const lead = (mktU().sectorLeaders || [])[0];
+    const DLBL = { "2U": "המשך עולה", "2D": "המשך יורד", "1": "דשדוש", "3G": "התרחבות", "3R": "התרחבות", "F2D": "היפוך 2D", "F2U": "היפוך 2U" };
+    const domLbl = DLBL[domB] || domB || "—";
+    const domCls = _cmBull(domB) ? "cm2-pos" : _cmBear(domB) ? "cm2-neg" : "cm2-z";
+    const pct = Math.round(tfBull / 5 * 100);
+    const ms = todayMarketState();
+    const rtag = ms ? '<span class="cm2-tag cm2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
+    const l1 = total === 0 ? "אין עדיין נתוני מבנה" : "השוק במבנה <b>" + domLbl + "</b>";
+    const sub = total === 0 ? "נתוני הסורק ייטענו בקרוב" : ("המבנה הדומיננטי: " + (domB || "—") + " · " + total + " מניות נסרקו");
+    // per-timeframe dominant structure + count (D..Y → renders RTL with D on the right)
+    const tfTiles = cols.map(tf => {
+      let bk = null, bn = -1; CMAP_ROWS.forEach(([k]) => { if ((counts[k][tf] || 0) > bn) { bn = counts[k][tf]; bk = k; } });
+      const cls = _cmBull(bk) ? "cm2-up" : _cmBear(bk) ? "cm2-dn" : "cm2-nt";
+      return '<div class="cm2-tft ' + cls + '"><div class="cm2-tfn">' + (TF_HE[tf] || tf) + '</div><div class="cm2-tfb">' + (bk || "—") + '</div><div class="cm2-tfc">' + bn + ' מניות</div></div>';
+    }).join("");
+    const secHeLead = lead ? secHe(lead.name) : "—";
+    let insTxt;
+    if (total === 0) insTxt = "נתוני מפת הנרות ייטענו בהרצת הסורק הבאה.";
+    else insTxt = "השוק במבנה <b>" + (domB || "—") + "</b> (" + domLbl + ") עם <b>" + tfBull + "</b> מתוך 5 טווחים חיוביים" + (lead ? ", בהובלת סקטור ה<b>" + escHtml(secHeLead) + "</b>" : "") + ".";
+    const photo = _heroSquare ? '<img class="cm2-photo" src="' + _heroSquare + '">' : '<img class="cm2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "cm2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="cm2-hd">' + photo + '<div><div class="cm2-bt">StratNinja <span>Scanner</span></div><div class="cm2-bs">The Strat · Candle Map</div></div>' +
+        (upd ? '<div class="cm2-upd"><span class="cm2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="cm2-ct">' +
+        '<div class="cm2-hero"><div class="cm2-htext"><div class="cm2-tags">' + rtag + '<span class="cm2-tag cm2-range">Candle Map · S&P 500</span></div>' +
+          '<h1 class="' + domCls + '">' + l1 + '</h1><div class="cm2-sub">' + sub + "</div></div>" +
+          '<div class="cm2-big"><div class="cm2-kpi">' + tfBull + '<span>/5</span></div><div class="cm2-kpct">' + pct + '%</div><div class="cm2-cap">טווחי זמן חיוביים</div></div></div>' +
+        '<div class="cm2-pills">' +
+          '<div class="cm2-pill cm2-pteal"><span class="cm2-pl"><span class="cm2-ico">🕯️</span> מבנה דומיננטי</span><span class="cm2-pv cm2-teal">' + (domB || "—") + ' · ' + domLbl + '</span></div>' +
+          '<div class="cm2-pill cm2-pgold"><span class="cm2-pl"><span class="cm2-ico">⏳</span> טווח הזמן החזק</span><span class="cm2-pv cm2-gold">' + (bestTf ? (TF_HE[bestTf] || bestTf) : "—") + '</span></div>' +
+          '<div class="cm2-pill cm2-pgreen"><span class="cm2-pl"><span class="cm2-ico">🏆</span> סקטור מוביל</span><span class="cm2-pv cm2-pos">' + escHtml(secHeLead) + '</span></div>' +
+        "</div>" +
+        '<div class="cm2-tfsec"><div class="cm2-tflbl"><span class="cm2-ic"></span> המבנה השולט בכל טווח זמן</div><div class="cm2-tfrow">' + tfTiles + "</div></div>" +
+        '<div class="cm2-bottom"><div class="cm2-insight"><span class="cm2-mi">i</span><div><span class="cm2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+          '<div class="cm2-cta">למפת המבנים המלאה →</div></div>' +
+      "</div>" +
+      '<div class="cm2-ft"><span><b>stratninja.win</b> · Candle Map</span><span>Adi Koriat · @KoriatTrade · <span class="cm2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2508,6 +2567,7 @@
     if (state.page === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
     if (state.page === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
+    if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
     // market-page "After/Pre-Market" share during the gappers window → the new square gappers card (not the legacy landscape one)
     if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } }
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
