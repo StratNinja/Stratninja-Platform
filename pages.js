@@ -2356,7 +2356,7 @@
       '<div class="jrn2-ct">' +
         '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span></div>" +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
-          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? usd(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + usdBare(st.bestTrade) + ' שיא · ' + usdBare(Math.abs(st.worstTrade)) + ' שפל</div>' : "") + '<div class="jrn2-cap">תוצאה יומית</div></div></div>' +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? usd(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">העסקה הטובה <b>' + iso(usd(st.bestTrade)) + '</b> · הגרועה <b>' + iso(usd(st.worstTrade)) + "</b></div>" : "") + '<div class="jrn2-cap">תוצאה יומית</div></div></div>' +
         '<div class="jrn2-cols">' +
           '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות</div>' + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
