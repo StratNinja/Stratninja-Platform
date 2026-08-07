@@ -3242,7 +3242,30 @@
     return facts;
   }
   // MA-relation modes that use the ± percentage input
-  function _maPctShown() { return ["near", "far", "farAbove", "farBelow", "touchAbove", "touchBelow"].indexOf(techState.maRel) >= 0; }
+  function _maPctShownFor(rel) { return ["near", "far", "farAbove", "farBelow", "touchAbove", "touchBelow"].indexOf(rel) >= 0; }
+  function _maPctShown() { return _maPctShownFor(techState.maRel); }
+  // does a stock's tech bag pass ONE MA condition (position/distance/touch vs an SMA/EMA period)?
+  // shared by the primary MA filter + every stacked (+) extra condition. rel "off" = no constraint.
+  function _maCondPass(k, type, period, rel, pct) {
+    if (!rel || rel === "off") return true;
+    const isE = type === "EMA";
+    const dmap = isE ? k.dema : k.dsma;
+    const d = dmap ? dmap[period] : null;                 // signed % distance of CLOSE from the MA
+    if (d == null) return false;
+    if (rel === "near" && Math.abs(d) > pct) return false;
+    if (rel === "far" && Math.abs(d) < pct) return false;
+    if (rel === "farAbove" && d < pct) return false;      // stretched ABOVE (long)
+    if (rel === "farBelow" && d > -pct) return false;     // stretched BELOW (short)
+    if (rel === "above" && d <= 0) return false;
+    if (rel === "below" && d >= 0) return false;
+    if (rel === "touchAbove" || rel === "touchBelow") {   // wick "touch" — mirrors the SMA150 Sniper
+      const loMap = isE ? k.dema_lo : k.dsma_lo, hiMap = isE ? k.dema_hi : k.dsma_hi;
+      const dLo = loMap ? loMap[period] : null, dHi = hiMap ? hiMap[period] : null;
+      if (rel === "touchAbove") { if (d <= 0 || dLo == null || Math.abs(dLo) > pct) return false; }
+      else { if (d >= 0 || dHi == null || Math.abs(dHi) > pct) return false; }
+    }
+    return true;
+  }
   // plain-language explanation of exactly what the "מיקום מול ממוצע" filter does right now
   function maRelHint() {
     const ma = techState.maType + techState.maPeriod, p = techState.maPct;
@@ -3393,7 +3416,19 @@
               '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
               '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע (2 הכיוונים)") + opt("farAbove", techState.maRel, "יותר מ-% מעל הממוצע ↑ לונג") + opt("farBelow", techState.maRel, "יותר מ-% מתחת לממוצע ↓ שורט") + opt("touchAbove", techState.maRel, "🎯 נגיעה מלמעלה (צל תחתון)") + opt("touchBelow", techState.maRel, "🎯 נגיעה מלמטה (צל עליון)") + '</select>' +
               (_maPctShown() ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
-            "</div>" + (techState.maRel !== "off" ? '<div class="ma-hint">' + maRelHint() + "</div>" : "") + "</div>" +
+            "</div>" + (techState.maRel !== "off" ? '<div class="ma-hint">' + maRelHint() + "</div>" : "") +
+            '<div id="maExtraWrap">' + (techState.maExtra || []).map((c, i) =>
+              '<div class="chips ma-ex" style="align-items:center;margin-top:6px">' +
+                '<span class="ma-and">＋ וגם</span>' +
+                '<select data-maex="type" data-idx="' + i + '">' + opt("SMA", c.type) + opt("EMA", c.type) + '</select>' +
+                '<select data-maex="period" data-idx="' + i + '">' + MA_PERIODS.map(p => opt(p, c.period)).join("") + '</select>' +
+                '<select data-maex="rel" data-idx="' + i + '">' + [["above", "מעל הממוצע"], ["below", "מתחת לממוצע"], ["near", "עד ±% מהממוצע"], ["far", "יותר מ-±% מהממוצע"], ["farAbove", "יותר מ-% מעל ↑ לונג"], ["farBelow", "יותר מ-% מתחת ↓ שורט"], ["touchAbove", "🎯 נגיעה מלמעלה (צל תחתון)"], ["touchBelow", "🎯 נגיעה מלמטה (צל עליון)"]].map(o => opt(o[0], c.rel, o[1])).join("") + '</select>' +
+                (_maPctShownFor(c.rel) ? '<input type="number" step="0.5" min="0" style="width:54px" data-maex="pct" data-idx="' + i + '" value="' + c.pct + '"><span class="muted">%</span>' : "") +
+                '<button class="ma-del" data-maexdel="' + i + '" title="הסר תנאי" type="button">✕</button>' +
+              "</div>"
+            ).join("") + "</div>" +
+            '<button id="maExtraAdd" class="ma-add" type="button">＋ הוסף תנאי ממוצע</button>' +
+            "</div>" +
             '<div class="fgrp"><label>RSI</label><div class="chips" style="align-items:center"><input id="tRsiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMin + '"><span class="muted">–</span><input id="tRsiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.rsiMax + '"></div></div>' +
             '<div class="fgrp"><label>MFI · כסף חכם</label><div class="chips" style="align-items:center"><input id="tMfiMin" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMin + '"><span class="muted">–</span><input id="tMfiMax" type="number" min="0" max="100" style="width:54px" value="' + techState.mfiMax + '"></div></div>' +
             '<div class="fgrp"><label>RVOL ≥</label><input id="tRvolMin" type="number" step="0.1" min="0" placeholder="—" style="width:62px" value="' + techState.rvolMin + '"></div>' +
@@ -3682,25 +3717,12 @@
       if (techOn) {
         const k = t.tech;
         if (!k) return false;
-        if (techState.maRel !== "off") {
-          const isE = techState.maType === "EMA";
-          const dmap = isE ? k.dema : k.dsma;
-          const d = dmap ? dmap[techState.maPeriod] : null;   // close distance from MA (signed %)
-          if (d == null) return false;
-          if (techState.maRel === "near" && Math.abs(d) > techState.maPct) return false;
-          if (techState.maRel === "far" && Math.abs(d) < techState.maPct) return false;
-          if (techState.maRel === "farAbove" && d < techState.maPct) return false;   // stretched ABOVE (long)
-          if (techState.maRel === "farBelow" && d > -techState.maPct) return false;  // stretched BELOW (short)
-          if (techState.maRel === "above" && d <= 0) return false;
-          if (techState.maRel === "below" && d >= 0) return false;
-          // wick "touch" of the MA — mirrors the community SMA150 Sniper:
-          //   touchAbove = closed ABOVE the MA and the LOW dipped within ±% of it
-          //   touchBelow = closed BELOW the MA and the HIGH poked within ±% of it
-          if (techState.maRel === "touchAbove" || techState.maRel === "touchBelow") {
-            const loMap = isE ? k.dema_lo : k.dsma_lo, hiMap = isE ? k.dema_hi : k.dsma_hi;
-            const dLo = loMap ? loMap[techState.maPeriod] : null, dHi = hiMap ? hiMap[techState.maPeriod] : null;
-            if (techState.maRel === "touchAbove") { if (d <= 0 || dLo == null || Math.abs(dLo) > techState.maPct) return false; }
-            else { if (d >= 0 || dHi == null || Math.abs(dHi) > techState.maPct) return false; }
+        // primary MA condition + every stacked (+) extra — ALL must hold (AND)
+        if (!_maCondPass(k, techState.maType, techState.maPeriod, techState.maRel, techState.maPct)) return false;
+        if (techState.maExtra && techState.maExtra.length) {
+          for (let mi = 0; mi < techState.maExtra.length; mi++) {
+            const c = techState.maExtra[mi];
+            if (c && c.rel !== "off" && !_maCondPass(k, c.type, c.period, c.rel, c.pct)) return false;
           }
         }
         if (techState.rsiMin > 0 || techState.rsiMax < 100) { const rv = _techVal(k, "rsi"); if (rv == null || rv < techState.rsiMin || rv > techState.rsiMax) return false; }
@@ -3813,6 +3835,10 @@
     bind("tMaPer", "onchange", e => { techState.maPeriod = e.target.value; reRender(); });
     bind("tMaRel", "onchange", e => { techState.maRel = e.target.value; reRender(); });
     bind("tMaPct", "onchange", e => { techState.maPct = parseFloat(e.target.value) || 0; reRender(); });
+    // stacked (+) MA conditions: add / edit / remove
+    bind("maExtraAdd", "onclick", () => { (techState.maExtra = techState.maExtra || []).push({ type: techState.maType || "SMA", period: techState.maPeriod || "50", rel: "above", pct: techState.maPct || 2 }); reRender(); });
+    (document.querySelectorAll ? document.querySelectorAll("#maExtraWrap [data-maex]") : []).forEach(el => { el.onchange = () => { const i = +el.dataset.idx, f = el.dataset.maex; if (!techState.maExtra[i]) return; techState.maExtra[i][f] = (f === "pct") ? (parseFloat(el.value) || 0) : el.value; reRender(); }; });
+    (document.querySelectorAll ? document.querySelectorAll("#maExtraWrap [data-maexdel]") : []).forEach(b => { b.onclick = () => { techState.maExtra.splice(+b.dataset.maexdel, 1); reRender(); }; });
     bind("tRsiMin", "onchange", e => { techState.rsiMin = parseFloat(e.target.value) || 0; reRender(); });
     bind("tRsiMax", "onchange", e => { techState.rsiMax = e.target.value === "" ? 100 : (parseFloat(e.target.value) || 0); reRender(); });
     bind("tMfiMin", "onchange", e => { techState.mfiMin = parseFloat(e.target.value) || 0; reRender(); });
@@ -3918,6 +3944,7 @@
     techOpen: false,
     techTf: "D",                 // timeframe for RSI/MFI/RVOL/ATR indicators (D/W/M/Q/Y)
     maType: "SMA", maPeriod: "50", maRel: "off", maPct: 2,
+    maExtra: [],                 // extra MA conditions stacked with AND: [{type,period,rel,pct}]
     rsiMin: 0, rsiMax: 100,
     mfiMin: 0, mfiMax: 100,
     rvolMin: "",
@@ -4056,8 +4083,9 @@
     if (techState.mfiTurn === "any") return !!v;
     return v === techState.mfiTurn;
   }
+  function _maExtraActive() { return (techState.maExtra || []).filter(c => c && c.rel !== "off").length; }
   function techActive() {
-    return techState.maRel !== "off" || techState.rsiMin > 0 || techState.rsiMax < 100 ||
+    return techState.maRel !== "off" || _maExtraActive() > 0 || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || _volTrendActive() || _volAvgActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMin !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
       _atrp() > 0 || _chgActive() || _gapActive();
@@ -4065,6 +4093,7 @@
   function techActiveCount() {
     let n = 0;
     if (techState.maRel !== "off") n++;
+    n += _maExtraActive();                     // each stacked (+) MA condition counts as one active filter
     if (techState.rsiMin > 0 || techState.rsiMax < 100) n++;
     if (techState.mfiMin > 0 || techState.mfiMax < 100) n++;
     if (_rv() > 0) n++;
@@ -4082,7 +4111,7 @@
     return n;
   }
   function resetTech() {
-    techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "off"; techState.maPct = 2;
+    techState.maType = "SMA"; techState.maPeriod = "50"; techState.maRel = "off"; techState.maPct = 2; techState.maExtra = [];
     techState.rsiMin = 0; techState.rsiMax = 100; techState.mfiMin = 0; techState.mfiMax = 100;
     techState.rvolMin = ""; techState.volMin = 0; techState.volTrendDir = "off"; techState.volTrendDays = 3; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
     techState.volAvgDir = "off"; techState.volAvgDays = 3;

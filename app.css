@@ -2072,6 +2072,15 @@ html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; backgr
 /* ===== MA filter plain-language hint ===== */
 .ma-hint { margin-top: 6px; font-size: 11.5px; line-height: 1.5; color: var(--muted); max-width: 340px; }
 .ma-hint b { color: var(--ink); }
+/* stacked (+) MA conditions */
+.ma-and { font-size: 11px; font-weight: 800; color: var(--green); white-space: nowrap; }
+.ma-add { margin-top: 8px; font-size: 12px; font-weight: 700; color: var(--ink);
+  background: rgba(57,255,154,.10); border: 1px dashed rgba(57,255,154,.55); border-radius: 8px;
+  padding: 6px 12px; cursor: pointer; transition: background .12s; }
+.ma-add:hover { background: rgba(57,255,154,.2); }
+.ma-del { border: none; background: rgba(255,114,111,.16); color: var(--red); width: 26px; height: 26px;
+  border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 800; line-height: 1; }
+.ma-del:hover { background: rgba(255,114,111,.3); }
 
 /* reset-filters button in the scanner top bar */
 .scan-topbar .stb-reset { font-size: 12px; font-weight: 600; height: 30px; padding: 0 12px; border-radius: 8px; margin-inline-start: 4px; }
