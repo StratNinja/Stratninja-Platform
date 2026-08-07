@@ -2508,6 +2508,74 @@
     document.body.appendChild(el);
     return el;
   }
+  function buildLeadersCardEl() {
+    const U = mktU();
+    // only real SPDR-sector rows (drop non-ETF buckets like "אחר"/Crypto so the headline + panels stay clean)
+    const _secReal = x => !!etfFor(x.name);
+    const secUp = (U.sectorLeaders || []).filter(_secReal).slice(0, 4), secDn = (U.sectorLaggards || []).filter(_secReal).slice(0, 4);
+    const stkUp = (U.leaders || []).slice(0, 4), stkDn = (U.laggards || []).slice(0, 4);
+    const fmt = v => (v >= 0 ? "+" : "−") + Math.abs(+v || 0).toFixed(1) + "%";
+    // per-panel bar width scaled to that panel's strongest mover
+    const barW = (arr, v) => { const mx = Math.max.apply(null, arr.map(a => Math.abs(+a.chg || 0)).concat([0.0001])); return Math.max(20, Math.round(Math.abs(+v || 0) / mx * 100)); };
+    const srow = (arr, x, i) => '<div class="ld2-srow"><span class="ld2-rk">' + (i + 1) + '</span><span class="ld2-snm">' + escHtml(secHe(x.name)) + '</span>' +
+      (etfFor(x.name) ? '<span class="ld2-etf">' + etfFor(x.name) + '</span>' : '') +
+      '<span class="ld2-bar"><span style="width:' + barW(arr, x.chg) + '%"></span></span><span class="ld2-pc">' + fmt(x.chg) + '</span></div>';
+    const trow = (x, i) => '<div class="ld2-trow"><span class="ld2-rk">' + (i + 1) + '</span><span class="ld2-tk">' + escHtml(x.s) + '</span>' +
+      (etfFor(x.sec) ? '<span class="ld2-etf">' + etfFor(x.sec) + '</span>' : '') +
+      '<span class="ld2-spacer"></span><span class="ld2-pc">' + fmt(x.c) + '</span></div>';
+    const emptyS = '<div class="ld2-srow" style="color:var(--mftxt2)">אין נתונים</div>';
+    const emptyT = '<div class="ld2-trow" style="color:var(--mftxt2)">אין נתונים</div>';
+    const secUpH = secUp.length ? secUp.map((x, i) => srow(secUp, x, i)).join("") : emptyS;
+    const secDnH = secDn.length ? secDn.map((x, i) => srow(secDn, x, i)).join("") : emptyS;
+    const stkUpH = stkUp.length ? stkUp.map((x, i) => trow(x, i)).join("") : emptyT;
+    const stkDnH = stkDn.length ? stkDn.map((x, i) => trow(x, i)).join("") : emptyT;
+    // hero headline (color the SUBJECT sector), KPI = gap between the extremes
+    const L0 = secUp[0], D0 = secDn[0];
+    const gap = ((L0 ? +L0.chg : 0) - (D0 ? +D0.chg : 0));
+    const h1 = (L0 && D0)
+      ? 'ה<b class="g">' + escHtml(secHe(L0.name)) + '</b> מובילה — ה<b class="r">' + escHtml(secHe(D0.name)) + '</b> מאחור'
+      : 'מובילים ומפגרים של היום';
+    const hint = (L0 && D0 && etfFor(L0.name) && etfFor(D0.name))
+      ? '<span class="n">' + etfFor(L0.name) + '</span> מול <span class="n">' + etfFor(D0.name) + '</span> · מוביל מול חלש' : 'מוביל מול חלש';
+    const ms = todayMarketState();
+    const rtag = ms ? '<span class="ld2-tag ld2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
+    // dynamic Ninja Insight from top-2 each side (real data only)
+    let insTxt;
+    if (!secUp.length && !secDn.length) insTxt = "נתוני המובילים והמפגרים ייטענו בהרצת הסורק הבאה.";
+    else {
+      const nm = x => escHtml(secHe(x.name));
+      const lead = secUp.slice(0, 2).map(nm), lag = secDn.slice(0, 2).map(nm);
+      const leadTxt = lead.map(n => "<b>" + n + "</b>").join(" ו");
+      const lagTxt = lag.map(n => "<b>" + n + "</b>").join(" ו");
+      insTxt = (leadTxt ? "ההובלה מרוכזת ב" + leadTxt : "") + (leadTxt && lagTxt ? ", בעוד ה" + lagTxt + " מפגרות." : (lagTxt ? "ה" + lagTxt + " מפגרות." : "."));
+    }
+    const photo = _heroSquare ? '<img class="ld2-photo" src="' + _heroSquare + '">' : '<img class="ld2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "ld2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="ld2-hd">' + photo + '<div><div class="ld2-bt">StratNinja <span>Scanner</span></div><div class="ld2-bs">The Strat · מובילים ומפגרים</div></div>' +
+        (upd ? '<div class="ld2-upd"><span class="ld2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="ld2-ct">' +
+        '<div class="ld2-hero"><div class="ld2-htext"><div class="ld2-tags">' + rtag + '<span class="ld2-tag ld2-range">טווח נבדק · 1D</span></div>' +
+          '<h1>' + h1 + '</h1><div class="ld2-sub">המובילים והמפגרים של היום לפי ביצוע יחסי</div></div>' +
+          '<div class="ld2-big"><div class="ld2-kpi">' + fmt(gap).replace("+", "") + '</div><div class="ld2-cap">פער בין הקצוות</div><div class="ld2-hint">' + hint + '</div></div></div>' +
+        '<div class="ld2-zone"><div class="ld2-zlbl"><span class="ld2-ic"></span> סקטורים<span class="ld2-zt">· מובילים מול מפגרים</span></div>' +
+          '<div class="ld2-cols">' +
+            '<div class="ld2-col ld2-up"><div class="ld2-ch"><span class="ld2-cd"></span> הסקטורים המובילים</div>' + secUpH + '</div>' +
+            '<div class="ld2-col ld2-dn"><div class="ld2-ch"><span class="ld2-cd"></span> הסקטורים המפגרים</div>' + secDnH + '</div>' +
+          '</div></div>' +
+        '<div class="ld2-zone"><div class="ld2-zlbl"><span class="ld2-ic" style="background:var(--mfpos);box-shadow:0 0 0 4px rgba(50,214,154,.14)"></span> מניות<span class="ld2-zt">· מובילות מול מפגרות</span></div>' +
+          '<div class="ld2-cols">' +
+            '<div class="ld2-col ld2-up"><div class="ld2-ch"><span class="ld2-cd"></span> המניות המובילות</div>' + stkUpH + '</div>' +
+            '<div class="ld2-col ld2-dn"><div class="ld2-ch"><span class="ld2-cd"></span> המניות המפגרות</div>' + stkDnH + '</div>' +
+          '</div></div>' +
+        '<div class="ld2-bottom"><div class="ld2-insight"><span class="ld2-mi">i</span><div><span class="ld2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+          '<div class="ld2-cta">למפת המובילים והמפגרים →</div></div>' +
+      "</div>" +
+      '<div class="ld2-ft"><span><b>stratninja.win</b> · מובילים ומפגרים</span><span>Adi Koriat · @KoriatTrade · <span class="ld2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   function buildShareCardEl() {
     const s = shareSummaryFor(state.page);
     const el = document.createElement("div");
@@ -2568,6 +2636,7 @@
     if (state.page === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
+    if (state.page === "market" && _mktShareSection === "leaders") { _captureRedesignCard(buildLeadersCardEl); return; }   // redesigned Leaders/Laggards card
     // market-page "After/Pre-Market" share during the gappers window → the new square gappers card (not the legacy landscape one)
     if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } }
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
