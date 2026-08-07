@@ -2453,6 +2453,77 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== After / Pre-Market movers share card (reuses the approved gap2- design, movers data) =====
+  function buildMoversCardEl() {
+    const mins = (typeof _ilMinutes === "function") ? _ilMinutes() : 0;
+    const pre = (mins >= 11 * 60 && mins < 16 * 60 + 30);          // pre-market window; else after-market
+    const U = (LIVE && LIVE.universes && LIVE.universes.all) || LIVE || {};   // widest universe (big movers never hidden)
+    const data = (pre ? (U.premovers || (LIVE && LIVE.premovers)) : (U.aftermovers || (LIVE && LIVE.aftermovers))) || { up: [], down: [] };
+    const up = (data.up || []).slice().sort((a, b) => (b.gp || 0) - (a.gp || 0));
+    const down = (data.down || []).slice().sort((a, b) => (a.gp || 0) - (b.gp || 0));
+    const nUp = up.length, nDown = down.length, total = nUp + nDown, denom = total || 1;
+    const ratio = nUp / denom;
+    const all = up.concat(down);
+    const over10 = all.filter(x => Math.abs(x.gp || 0) >= 10).length;
+    const over20 = all.filter(x => Math.abs(x.gp || 0) >= 20).length;
+    const etfOf = sym => { if (!SCAN || !SCAN.rows) return ""; const r = SCAN.rows.find(x => x.s === sym); return r ? etfFor(r.sec) : ""; };
+    const pctS = v => (v < 0 ? "−" : "+") + Math.abs(v || 0).toFixed(1) + "%";
+    const priceS = v => "$" + (+v || 0).toFixed(2);
+    const ms = todayMarketState();
+    const winLbl = pre ? "פרה-מרקט" : "אפטר-מרקט";
+    const rangeLbl = pre ? "פרה-מרקט · לפני הפתיחה" : "אפטר-מרקט · אחרי הסגירה";
+    const upLbl = pre ? "עולות לפני הפתיחה" : "עולות אחרי הסגירה";
+    const dnLbl = pre ? "יורדות לפני הפתיחה" : "יורדות אחרי הסגירה";
+    const whenTxt = pre ? "לפני הפתיחה" : "אחרי הסגירה";
+    let l1, kpiCls, brCls, brLbl;
+    if (total === 0) { l1 = "אין כרגע תנועות משמעותיות"; kpiCls = "gap2-z"; brCls = "gap2-z"; brLbl = "ריק"; }
+    else if (ratio >= 0.6) { l1 = "<b>העולות</b> שולטות " + whenTxt; kpiCls = "gap2-pos"; brCls = ""; brLbl = "נוטה לעלייה"; }
+    else if (ratio <= 0.4) { l1 = "<b>היורדות</b> לוחצות " + whenTxt; kpiCls = "gap2-neg"; brCls = "gap2-neg"; brLbl = "נוטה לירידה"; }
+    else { l1 = "מסחר <b>מעורב</b> " + whenTxt; kpiCls = "gap2-z"; brCls = "gap2-z"; brLbl = "מעורב"; }
+    const rtag = ms ? '<span class="gap2-tag gap2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
+    const sub = total === 0 ? "כשיתחיל מסחר מחוץ לשעות, הרשימה תתמלא אוטומטית" : (nUp + " עולות מול " + nDown + " יורדות · דירוג לפי % תנועה");
+    const row = (x, i) => '<div class="gap2-rrow"><span class="gap2-rk">' + (i + 1) + '</span><span class="gap2-tk">' + escHtml(x.s) + "</span>" +
+      '<span class="gap2-gsub">' + priceS(x.price) + "</span>" + (etfOf(x.s) ? '<span class="gap2-etf">' + etfOf(x.s) + "</span>" : "") +
+      '<span class="gap2-spacer"></span><span class="gap2-pc">' + pctS(x.gp) + "</span></div>";
+    const panelRows = arr => arr.length ? arr.slice(0, 5).map(row).join("") : '<div class="gap2-rrow"><span class="gap2-tk" style="color:var(--mftxt2)">—</span></div>';
+    const bigUp = up[0], bigDn = down[0];
+    const t2 = up.slice(0, 2).map(x => x.s);
+    let insTxt;
+    if (total === 0) insTxt = "אין כרגע מניות בתנועה משמעותית " + whenTxt + " — חזור מאוחר יותר והרשימה תתמלא.";
+    else if (ratio >= 0.6) insTxt = "התנועה " + whenTxt + " נוטה כלפי מעלה" + (t2.length ? ", בהובלת <b>" + escHtml(t2[0]) + "</b>" + (t2[1] ? " ו<b>" + escHtml(t2[1]) + "</b>" : "") : "") + ".";
+    else if (ratio <= 0.4) insTxt = "ריכוז <b>ירידות</b> " + whenTxt + (bigDn ? ", עם <b>" + escHtml(bigDn.s) + "</b> בראש היורדות" : "") + ".";
+    else insTxt = "מסחר מעורב " + whenTxt + " — אין כיוון ברור.";
+    const bg = Math.round(nUp / denom * 100), br = Math.max(0, 100 - bg);
+    const photo = _heroSquare ? '<img class="gap2-photo" src="' + _heroSquare + '">' : '<img class="gap2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "gap2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="gap2-hd">' + photo + '<div><div class="gap2-bt">StratNinja <span>Scanner</span></div><div class="gap2-bs">The Strat · ' + winLbl + '</div></div>' +
+        (upd ? '<div class="gap2-upd"><span class="gap2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="gap2-ct">' +
+        '<div class="gap2-hero"><div class="gap2-htext"><div class="gap2-tags">' + rtag + '<span class="gap2-tag gap2-range">' + rangeLbl + '</span></div>' +
+          '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="gap2-sub">' + sub + "</div></div>" +
+          '<div class="gap2-big"><div class="gap2-kpi">' + nUp + '<span>/' + total + '</span></div><div class="gap2-cap">עולות</div></div></div>' +
+        '<div class="gap2-cols">' +
+          '<div class="gap2-col gap2-up"><div class="gap2-ch"><span class="gap2-cdot"></span> ' + upLbl + '</div>' + panelRows(up) + "</div>" +
+          '<div class="gap2-col gap2-dn"><div class="gap2-ch"><span class="gap2-cdot"></span> ' + dnLbl + '</div>' + panelRows(down) + "</div></div>" +
+        '<div class="gap2-breadth"><div class="gap2-btop ' + brCls + '">מצב התנועות · <b>' + brLbl + "</b></div>" +
+          '<div class="gap2-bar"><span class="gap2-g" style="width:' + bg + '%"></span><span class="gap2-r" style="width:' + br + '%"></span></div>' +
+          '<div class="gap2-blabels"><span class="gap2-lup">▲ <span class="gap2-num">' + nUp + '</span> עולות</span><span class="gap2-sepd">·</span><span class="gap2-ldn"><span class="gap2-num">' + nDown + '</span> יורדות ▼</span></div></div>' +
+        '<div class="gap2-opp"><div class="gap2-oph"><span class="gap2-oic"></span> תמונת התנועות</div>' +
+          '<div class="gap2-otiles">' +
+            '<div class="gap2-ot"><div class="gap2-ov gap2-pos">' + (bigUp ? pctS(bigUp.gp) : "—") + '</div><div class="gap2-ok2">התנועה הגדולה' + (bigUp ? " · " + escHtml(bigUp.s) : "") + '</div></div>' +
+            '<div class="gap2-ot"><div class="gap2-ov gap2-neg">' + (bigDn ? pctS(bigDn.gp) : "—") + '</div><div class="gap2-ok2">הגדולה שלילית' + (bigDn ? " · " + escHtml(bigDn.s) : "") + '</div></div>' +
+            '<div class="gap2-ot"><div class="gap2-ov">' + over10 + '</div><div class="gap2-ok2">תנועות ≥10%</div></div>' +
+            '<div class="gap2-ot gap2-ready"><span class="gap2-rdy">חזק</span><div class="gap2-ov">' + over20 + '</div><div class="gap2-ok2">תנועות ≥20%</div></div>' +
+          "</div></div>" +
+        '<div class="gap2-bottom"><div class="gap2-insight"><span class="gap2-mi">i</span><div><span class="gap2-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
+          '<div class="gap2-cta">לכל התנועות →</div></div>' +
+      "</div>" +
+      '<div class="gap2-ft"><span><b>stratninja.win</b> · נתוני ' + winLbl + '</span><span>Adi Koriat · @KoriatTrade · <span class="gap2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
   // ===== Candle Map share card (higher-TF Strat structure distribution across D/W/M/Q/Y) =====
   function buildCandleMapCardEl() {
     const cols = ["D", "W", "M", "Q", "Y"];
@@ -2644,7 +2715,7 @@
     if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
     if (state.page === "market" && _mktShareSection === "leaders") { _captureRedesignCard(buildLeadersCardEl); return; }   // redesigned Leaders/Laggards card
     // market-page "After/Pre-Market" share during the gappers window → the new square gappers card (not the legacy landscape one)
-    if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } }
+    if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } _captureRedesignCard(buildMoversCardEl); return; }
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
     if (state.page === "journal") { _captureRedesignCard(buildJournalCardEl); return; }   // redesigned journal day-summary card
     if (state.page === "gappers") { _captureRedesignCard(buildGappersCardEl); return; }   // redesigned gappers pre-market card

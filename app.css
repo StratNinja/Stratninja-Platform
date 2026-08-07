@@ -977,6 +977,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .gap2-card .gap2-gsub{font-family:'Inter';font-variant-numeric:tabular-nums;font-size:14px;font-weight:800;color:#aab6cc;direction:ltr;unicode-bidi:isolate;}
 .gap2-card .gap2-rvol{display:inline-flex;align-items:center;gap:4px;font-family:'Inter';font-variant-numeric:tabular-nums;font-size:13px;font-weight:800;color:#d6ccff;background:rgba(136,120,255,.20);border:1px solid rgba(136,120,255,.5);padding:3px 9px;border-radius:7px;direction:ltr;unicode-bidi:isolate;}
 .gap2-card .gap2-rvol::before{content:"RVOL";font-size:9px;font-weight:800;color:#a99cf5;letter-spacing:.3px;}
+.gap2-card .gap2-etf{display:inline-flex;align-items:center;font-family:'Inter';font-size:12px;font-weight:800;color:#d6ccff;background:rgba(136,120,255,.16);border:1px solid rgba(136,120,255,.42);padding:2px 8px;border-radius:7px;direction:ltr;unicode-bidi:isolate;}
 .gap2-card .gap2-spacer{flex:1;}
 .gap2-card .gap2-pc{flex:none;white-space:nowrap;text-align:end;font-family:'Inter';font-variant-numeric:tabular-nums;font-size:19px;font-weight:800;direction:ltr;unicode-bidi:isolate;letter-spacing:-.3px;}
 .gap2-card .gap2-col.gap2-up .gap2-pc{color:var(--mfpos);} .gap2-card .gap2-col.gap2-dn .gap2-pc{color:var(--mfneg);}
