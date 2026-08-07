@@ -1109,13 +1109,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ld2-card .ld2-rk{flex:none;width:19px;height:19px;border-radius:6px;background:var(--mfelev);border:1px solid var(--mfline);color:var(--mftxt2);font-family:'Inter';font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
 .ld2-card .ld2-etf{font-family:'Inter';font-size:11px;font-weight:800;color:#cfd6e6;background:rgba(136,120,255,.14);border:1px solid rgba(136,120,255,.3);padding:1px 7px;border-radius:6px;direction:ltr;}
 .ld2-card .ld2-pc{flex:none;font-family:'Inter';font-variant-numeric:tabular-nums;font-size:17px;font-weight:800;direction:ltr;letter-spacing:-.3px;text-align:end;min-width:66px;}
-.ld2-card .ld2-col.ld2-up .ld2-pc{color:var(--mfpos);} .ld2-card .ld2-col.ld2-dn .ld2-pc{color:var(--mfneg);}
+/* number + bar colored by the row's OWN return sign (not the panel) */
+.ld2-card .ld2-p .ld2-pc{color:var(--mfpos);} .ld2-card .ld2-n .ld2-pc{color:var(--mfneg);} .ld2-card .ld2-z .ld2-pc{color:var(--mftxt2);}
 .ld2-card .ld2-srow{display:flex;align-items:center;gap:9px;padding:8px 0;border-top:1px solid var(--mfline);}
 .ld2-card .ld2-srow:first-of-type{border-top:none;}
 .ld2-card .ld2-snm{font-size:16px;font-weight:700;color:#eef2fb;white-space:nowrap;}
 .ld2-card .ld2-bar{flex:1;height:7px;background:var(--mfelev);border-radius:99px;overflow:hidden;}
-.ld2-card .ld2-bar>span{display:block;height:100%;border-radius:99px;}
-.ld2-card .ld2-col.ld2-up .ld2-bar>span{background:linear-gradient(90deg,#1f9e73,var(--mfpos));} .ld2-card .ld2-col.ld2-dn .ld2-bar>span{background:linear-gradient(90deg,var(--mfneg),#c14654);}
+.ld2-card .ld2-bar>span{display:block;height:100%;border-radius:99px;background:var(--mftxt2);}
+.ld2-card .ld2-p .ld2-bar>span{background:linear-gradient(90deg,#1f9e73,var(--mfpos));} .ld2-card .ld2-n .ld2-bar>span{background:linear-gradient(90deg,var(--mfneg),#c14654);} .ld2-card .ld2-z .ld2-bar>span{background:linear-gradient(90deg,#5a6884,var(--mftxt2));}
 .ld2-card .ld2-trow{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--mfline);}
 .ld2-card .ld2-trow:first-of-type{border-top:none;}
 .ld2-card .ld2-tk{font-family:'Inter';font-size:18px;font-weight:800;color:#fff;letter-spacing:.2px;}

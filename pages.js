@@ -79,7 +79,11 @@
   const SECTOR_ETF = { "Technology": "XLK", "Financials": "XLF", "Health Care": "XLV", "Energy": "XLE", "Consumer Disc.": "XLY", "Communication": "XLC", "Industrials": "XLI", "Consumer Staples": "XLP", "Materials": "XLB", "Real Estate": "XLRE", "Utilities": "XLU" };
   function etfFor(sec) { return SECTOR_ETF[sec] || ""; }
   const SECTOR_HE = { "Technology": "טכנולוגיה", "Financials": "פיננסים", "Health Care": "בריאות", "Energy": "אנרגיה", "Consumer Disc.": "צריכה מחזורית", "Communication": "תקשורת", "Industrials": "תעשייה", "Consumer Staples": "צריכה בסיסית", "Materials": "חומרי גלם", "Real Estate": 'נדל"ן', "Utilities": "תשתיות", "Crypto": "קריפטו", "אחר": "אחר" };
+  // definite forms for use INSIDE a sentence (the ה goes in the right place, not just prefixed):
+  // "חומרי גלם"→"חומרי הגלם", "צריכה בסיסית"→"הצריכה הבסיסית", single words just take a leading ה.
+  const SECTOR_HE_DEF = { "Technology": "הטכנולוגיה", "Financials": "הפיננסים", "Health Care": "הבריאות", "Energy": "האנרגיה", "Consumer Disc.": "הצריכה המחזורית", "Communication": "התקשורת", "Industrials": "התעשייה", "Consumer Staples": "הצריכה הבסיסית", "Materials": "חומרי הגלם", "Real Estate": 'הנדל"ן', "Utilities": "התשתיות", "Crypto": "הקריפטו", "אחר": "האחרים" };
   function secHe(name) { return SECTOR_HE[name] || name; }
+  function secHeDef(name) { return SECTOR_HE_DEF[name] || ("ה" + (SECTOR_HE[name] || name)); }
   function escAttr(s) { return String(s).replace(/&/g, "&amp;").replace(/"/g, "&quot;"); }
   function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // sub-sector (industry) → closest tradeable ETF, matched by keyword (ordered specific→general).
@@ -2515,12 +2519,14 @@
     const secUp = (U.sectorLeaders || []).filter(_secReal).slice(0, 4), secDn = (U.sectorLaggards || []).filter(_secReal).slice(0, 4);
     const stkUp = (U.leaders || []).slice(0, 4), stkDn = (U.laggards || []).slice(0, 4);
     const fmt = v => (v >= 0 ? "+" : "−") + Math.abs(+v || 0).toFixed(1) + "%";
+    // color each row by its OWN return sign (not the panel): + green · − red · ~0 gray
+    const signCls = v => (+v >= 0.05 ? "ld2-p" : +v <= -0.05 ? "ld2-n" : "ld2-z");
     // per-panel bar width scaled to that panel's strongest mover
     const barW = (arr, v) => { const mx = Math.max.apply(null, arr.map(a => Math.abs(+a.chg || 0)).concat([0.0001])); return Math.max(20, Math.round(Math.abs(+v || 0) / mx * 100)); };
-    const srow = (arr, x, i) => '<div class="ld2-srow"><span class="ld2-rk">' + (i + 1) + '</span><span class="ld2-snm">' + escHtml(secHe(x.name)) + '</span>' +
+    const srow = (arr, x, i) => '<div class="ld2-srow ' + signCls(x.chg) + '"><span class="ld2-rk">' + (i + 1) + '</span><span class="ld2-snm">' + escHtml(secHe(x.name)) + '</span>' +
       (etfFor(x.name) ? '<span class="ld2-etf">' + etfFor(x.name) + '</span>' : '') +
       '<span class="ld2-bar"><span style="width:' + barW(arr, x.chg) + '%"></span></span><span class="ld2-pc">' + fmt(x.chg) + '</span></div>';
-    const trow = (x, i) => '<div class="ld2-trow"><span class="ld2-rk">' + (i + 1) + '</span><span class="ld2-tk">' + escHtml(x.s) + '</span>' +
+    const trow = (x, i) => '<div class="ld2-trow ' + signCls(x.c) + '"><span class="ld2-rk">' + (i + 1) + '</span><span class="ld2-tk">' + escHtml(x.s) + '</span>' +
       (etfFor(x.sec) ? '<span class="ld2-etf">' + etfFor(x.sec) + '</span>' : '') +
       '<span class="ld2-spacer"></span><span class="ld2-pc">' + fmt(x.c) + '</span></div>';
     const emptyS = '<div class="ld2-srow" style="color:var(--mftxt2)">אין נתונים</div>';
@@ -2533,7 +2539,7 @@
     const L0 = secUp[0], D0 = secDn[0];
     const gap = ((L0 ? +L0.chg : 0) - (D0 ? +D0.chg : 0));
     const h1 = (L0 && D0)
-      ? 'ה<b class="g">' + escHtml(secHe(L0.name)) + '</b> מובילה — ה<b class="r">' + escHtml(secHe(D0.name)) + '</b> מאחור'
+      ? '<b class="g">' + escHtml(secHeDef(L0.name)) + '</b> מובילה — <b class="r">' + escHtml(secHeDef(D0.name)) + '</b> מאחור'
       : 'מובילים ומפגרים של היום';
     const hint = (L0 && D0 && etfFor(L0.name) && etfFor(D0.name))
       ? '<span class="n">' + etfFor(L0.name) + '</span> מול <span class="n">' + etfFor(D0.name) + '</span> · מוביל מול חלש' : 'מוביל מול חלש';
@@ -2543,11 +2549,11 @@
     let insTxt;
     if (!secUp.length && !secDn.length) insTxt = "נתוני המובילים והמפגרים ייטענו בהרצת הסורק הבאה.";
     else {
-      const nm = x => escHtml(secHe(x.name));
-      const lead = secUp.slice(0, 2).map(nm), lag = secDn.slice(0, 2).map(nm);
-      const leadTxt = lead.map(n => "<b>" + n + "</b>").join(" ו");
-      const lagTxt = lag.map(n => "<b>" + n + "</b>").join(" ו");
-      insTxt = (leadTxt ? "ההובלה מרוכזת ב" + leadTxt : "") + (leadTxt && lagTxt ? ", בעוד ה" + lagTxt + " מפגרות." : (lagTxt ? "ה" + lagTxt + " מפגרות." : "."));
+      // leaders keep the indefinite name (prefixed by ב → "מרוכזת באנרגיה"); laggards use the
+      // definite form (חומרי הגלם / הנדל"ן) so the sentence reads correctly.
+      const leadTxt = secUp.slice(0, 2).map(x => "<b>" + escHtml(secHe(x.name)) + "</b>").join(" ו");
+      const lagTxt = secDn.slice(0, 2).map(x => "<b>" + escHtml(secHeDef(x.name)) + "</b>").join(" ו");
+      insTxt = (leadTxt ? "ההובלה מרוכזת ב" + leadTxt : "") + (leadTxt && lagTxt ? ", בעוד " + lagTxt + " מפגרות." : (lagTxt ? lagTxt + " מפגרות." : "."));
     }
     const photo = _heroSquare ? '<img class="ld2-photo" src="' + _heroSquare + '">' : '<img class="ld2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     const upd = _mfIlTime();
