@@ -2905,12 +2905,18 @@
       const U = mktU();
       tags = (U.leaders || []).slice(0, 3).map(x => x.s).concat((U.laggards || []).slice(0, 2).map(x => x.s));
     } else if (page === "market" && _mktShareSection === "movers") {
-      const m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0, U = mktU();
+      // MUST match the card's source: the movers cards use the WIDEST universe (.all), not the
+      // S&P-500 toggle — else the caption listed sp500 tickers (TPL/COHR/GLW) absent from the card.
+      const m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0;
+      const U = (LIVE && LIVE.universes && LIVE.universes.all) || LIVE || {};
       let data;
       if (m >= 16 * 60 + 30 && m < 23 * 60) { cap = "⚡ הגאפרים של היום · StratNinja"; data = U.gappers || (LIVE && LIVE.gappers) || { up: [], down: [] }; }
       else if (m >= 11 * 60 && m < 16 * 60 + 30) { cap = "🌅 תנועות לפני הפתיחה · StratNinja"; data = U.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] }; }
       else { cap = "🌙 תנועות אחרי הסגירה · StratNinja"; data = U.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] }; }
-      tags = (data.up || []).slice(0, 3).map(x => x.s).concat((data.down || []).slice(0, 2).map(x => x.s));
+      // rank the same way the card does (by |%|) so the caption's tickers are the ones shown
+      const upS = (data.up || []).slice().sort((a, b) => (b.gp || 0) - (a.gp || 0));
+      const dnS = (data.down || []).slice().sort((a, b) => (a.gp || 0) - (b.gp || 0));
+      tags = upS.slice(0, 3).map(x => x.s).concat(dnS.slice(0, 2).map(x => x.s));
     } else {
       cap = "📊 סקירת השוק היום ב-StratNinja";
       tags = src.filter(t => t.ftfc).sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
