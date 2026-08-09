@@ -5394,7 +5394,7 @@
 
   function reRender() {
     const p = PAGES[state.page]; if (!p) return;
-    $("#page").innerHTML = p.render() + guideSection(state.page);   // append the page's guide-video area
+    $("#page").innerHTML = guideSection(state.page) + p.render();   // guide-video area at the TOP (most viewers don't scroll down)
     if (p.wire) p.wire();
     wireStars($("#page"));
     wireCharts($("#page"));

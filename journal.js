@@ -214,7 +214,8 @@
     // selector and the rendered data can never desync on load.
     if (accts.length && state.account !== ALL && (!state.account || accts.indexOf(state.account) < 0)) state.account = accts[0];
     renderAccountBar();
-    const appendGuide = () => { if (window.snGuide) { const gw = el("div"); gw.innerHTML = window.snGuide("journal"); if (gw.firstChild) root.appendChild(gw.firstChild); } };
+    // guide-video area at the TOP of the page (most viewers don't scroll down)
+    const appendGuide = () => { if (window.snGuide) { const gw = el("div"); gw.innerHTML = window.snGuide("journal"); if (gw.firstChild) root.insertBefore(gw.firstChild, root.firstChild); } };
     if (!accts.length) { root.appendChild(emptyState()); appendGuide(); return; }
 
     const { trades, openPositions, manualOpen } = tradesForAccount();
