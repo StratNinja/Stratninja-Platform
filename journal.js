@@ -350,7 +350,7 @@
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + chartSym(t.symbol) +
-        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
+        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span></td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
           "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
@@ -948,7 +948,7 @@
   // aggregated row keeps its constituents in `_trades` for the "split" view.
   function aggregateTrades(trades) {
     const groups = {};
-    trades.forEach(t => { const k = (t.symbol || "") + "|" + (t.account || "") + "|" + (t.direction || ""); (groups[k] = groups[k] || []).push(t); });
+    trades.forEach(t => { const k = (t.symbol || "") + "|" + (t.account || "") + "|" + (t.direction || "") + "|" + (t.optType || ""); (groups[k] = groups[k] || []).push(t); });
     return Object.keys(groups).map(k => {
       const g = groups[k];
       if (g.length === 1) return Object.assign({}, g[0], { _n: 1 });
@@ -957,7 +957,7 @@
       const src = g.every(t => t.source === "manual") ? "manual" : g.every(t => t.source !== "manual") ? "csv" : "mixed";
       const f = g[0];
       return {
-        id: "agg|" + k, symbol: f.symbol, account: f.account, direction: f.direction, assetType: f.assetType, mult: f.mult,
+        id: "agg|" + k, symbol: f.symbol, account: f.account, direction: f.direction, assetType: f.assetType, optType: f.optType, mult: f.mult,
         qty: qty, entryPrice: wavg("entryPrice"), exitPrice: wavg("exitPrice"),
         fees: g.reduce((s, t) => s + (+t.fees || 0), 0), pnl: g.reduce((s, t) => s + (+t.pnl || 0), 0),
         exitDate: g.map(t => t.exitDate).filter(Boolean).sort().slice(-1)[0] || "",
@@ -997,7 +997,7 @@
         (showAcct ? '<td class="muted" style="white-space:nowrap">' + (t.account || "—") + "</td>" : "") +
         "<td>" + t.exitDate + "</td>" +
         "<td>" + chartSym(t.symbol) + nBadge + "</td>" +
-        '<td><span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '">' + (t.assetType === "option" ? "אופ׳" : "מניה") + "</span></td>" +
+        '<td><span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span></td>" +
         '<td><span class="pill ' + t.direction + '">' + (t.direction === "long" ? "לונג" : "שורט") + "</span></td>" +
         "<td>" + (Math.round((t.qty || 0) * 1e4) / 1e4) + "</td>" +
         "<td>" + money(t.entryPrice, 2) + "</td>" +
@@ -1174,6 +1174,7 @@
       account: existing ? existing.account : (state.account === ALL ? "" : (state.account || "")),
       symbol: existing ? existing.symbol : "",
       assetType: existing ? existing.assetType : "stock",
+      optType: existing && existing.optType ? existing.optType : "call",   // call/put — only meaningful for options
       direction: existing ? existing.direction : "long",
       qty: existing && existing.qty != null ? existing.qty : "",
       entryPrice: existing && existing.entryPrice != null ? existing.entryPrice : "",
@@ -1197,7 +1198,7 @@
     const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
     const set = (k, id) => { const v = g(id); if (v !== undefined) _mData[k] = v; };
     set("entryDate", "m_ed"); set("account", "m_acct"); set("symbol", "m_sym"); set("assetType", "m_asset");
-    set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("notes", "m_notes");
+    set("optType", "m_optt"); set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("notes", "m_notes");
     set("exitDate", "m_xd"); set("exitPrice", "m_xp"); set("fees", "m_fee");
     set("closeType", "m_closetype"); set("closeQty", "m_closeqty");
     set("exitReason", "m_exitreason"); set("managedWell", "m_managed"); set("feeling", "m_feeling");
@@ -1220,7 +1221,8 @@
         field("חשבון", acctField, true) +
         field("סימבול", '<input id="m_sym" placeholder="AAPL" style="text-transform:uppercase" value="' + (d.symbol || "") + '">') +
         field("סוג נכס", '<select id="m_asset">' + opt("stock", d.assetType, "מניה") + opt("option", d.assetType, "אופציה (×100)") + "</select>") +
-        field("כיוון", '<select id="m_dir">' + opt("long", d.direction, "לונג") + opt("short", d.direction, "שורט") + "</select>") +
+        '<div id="m_optt_row" class="field" style="' + (d.assetType === "option" ? "" : "display:none") + '"><label>סוג אופציה</label><select id="m_optt">' + opt("call", d.optType, "📈 CALL (קול)") + opt("put", d.optType, "📉 PUT (פוט)") + "</select></div>" +
+        field("כיוון", '<select id="m_dir">' + opt("long", d.direction, "קנייה (לונג)") + opt("short", d.direction, "מכירה (שורט)") + "</select>") +
         field("כמות", '<input id="m_qty" type="number" step="any" placeholder="100" value="' + (d.qty === "" ? "" : d.qty) + '">') +
         field("מחיר כניסה", '<input id="m_ep" type="number" step="any" value="' + (d.entryPrice === "" ? "" : d.entryPrice) + '">') +
         field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?">' + (d.notes || "") + "</textarea>", true) +
@@ -1267,9 +1269,12 @@
     }
     modal(title, body, actions);
     // wire common preview + validation
-    ["m_asset", "m_dir", "m_qty", "m_ep", "m_xp", "m_fee", "m_closetype", "m_closeqty"].forEach(id => {
+    ["m_asset", "m_optt", "m_dir", "m_qty", "m_ep", "m_xp", "m_fee", "m_closetype", "m_closeqty"].forEach(id => {
       const e = document.getElementById(id); if (e) { e.oninput = updatePreview; e.onchange = updatePreview; }
     });
+    // show the CALL/PUT selector only when the asset is an option
+    { const a = document.getElementById("m_asset"), row = document.getElementById("m_optt_row");
+      if (a && row) a.addEventListener("change", () => { row.style.display = a.value === "option" ? "" : "none"; }); }
     ["m_sym", "m_ed", "m_ep", "m_xd", "m_xp"].forEach(id => {
       const e = document.getElementById(id);
       if (e) { e.addEventListener("change", scheduleValidatePrices); e.addEventListener("blur", scheduleValidatePrices); }

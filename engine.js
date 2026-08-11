@@ -334,6 +334,7 @@ window.Engine = (function () {
       account: m.account,
       symbol: (m.symbol || "").toUpperCase().trim(),
       assetType: m.assetType || "stock",
+      optType: m.assetType === "option" ? (m.optType || "call") : null,   // call/put label (P&L is identical for a long option either way)
       direction: m.direction || "long",
       qty: qty,
       mult: mult,
