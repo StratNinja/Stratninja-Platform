@@ -2105,6 +2105,13 @@ html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; backgr
 .tf-addpop-grid { display: flex; flex-wrap: wrap; gap: 6px; }
 .tf-addpop-grid .chip { min-width: 42px; text-align: center; }
 .tf-addpop-note { font-size: 10.5px; color: var(--muted); margin-top: 10px; line-height: 1.45; }
+/* ETF-ticker choice menu (money-flow panels) */
+.sec-menu { width: auto; min-width: 210px; padding: 8px; }
+.sec-menu-item { display: block; width: 100%; text-align: start; background: transparent; border: none; color: var(--ink);
+  font-size: 13px; font-weight: 600; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+.sec-menu-item:hover { background: rgba(124,108,240,.18); }
+.flow-etf { cursor: pointer; }
+.flow-etf:hover { text-decoration: underline; }
 
 /* ===== onboarding guide (guided tour) ===== */
 .guide-wrap { position: fixed; inset: 0; z-index: 9999; pointer-events: none;

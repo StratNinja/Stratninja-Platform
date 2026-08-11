@@ -3186,6 +3186,31 @@
     });
     setTimeout(() => document.addEventListener("click", _tfMenuOutside), 0);
   }
+  // ETF-ticker menu (money-flow panels): analyze the sector ETF, or open charts of all its stocks
+  function closeSecMenu() { const p = document.getElementById("secEtfPop"); if (p) p.remove(); document.removeEventListener("click", _secMenuOutside); }
+  function _secMenuOutside(e) { const p = document.getElementById("secEtfPop"); if (p && !p.contains(e.target) && !(e.target.classList && e.target.classList.contains("flow-etf"))) closeSecMenu(); }
+  function openSecMenu(el) {
+    closeSecMenu();
+    const etf = el.dataset.secetf, name = el.dataset.secname, isSub = el.dataset.secsub === "1";
+    const label = isSub ? name : secHe(name);
+    const pop = document.createElement("div"); pop.className = "tf-addpop sec-menu"; pop.id = "secEtfPop";
+    pop.innerHTML = '<div class="tf-addpop-lbl">' + escHtml(label) + " · " + escHtml(etf) + "</div>" +
+      '<button class="sec-menu-item" data-secact="etf">📊 ניתוח תעודת הסל (' + escHtml(etf) + ")</button>" +
+      '<button class="sec-menu-item" data-secact="grid">🗂️ גרפים של כל הסקטור</button>';
+    document.body.appendChild(pop);
+    const r = el.getBoundingClientRect();
+    pop.style.top = (r.bottom + window.scrollY + 6) + "px";
+    pop.style.insetInlineStart = Math.max(8, r.left + window.scrollX - 40) + "px";
+    pop.querySelector('[data-secact="etf"]').onclick = () => { closeSecMenu(); openChart(etf, "D"); };
+    pop.querySelector('[data-secact="grid"]').onclick = () => {
+      closeSecMenu();
+      const key = isSub ? "ind" : "sector";
+      const stocks = scanSource().filter(t => t[key] === name);
+      if (stocks.length) openChartGrid(stocks, { title: label + " · כל המניות (" + stocks.length + ")" });
+      else snToast("אין מניות זמינות לסקטור הזה כרגע");
+    };
+    setTimeout(() => document.addEventListener("click", _secMenuOutside), 0);
+  }
   function _mapScanRows(rows) {
     return rows.map(r => {
       const o = { sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
@@ -4649,6 +4674,7 @@
   }
   let flowTf = "1d";        // sector money-flow panel timeframe: 1d / 5d / 20d
   let flowTfSub = "1d";     // sub-sector money-flow panel timeframe (independent)
+  let flowSecMode = "etf";  // sector metric: etf (real sector-ETF move, cap-weighted) | avg (equal-weight stock average = breadth)
   let flowSubMode = "etf";  // sub-sector metric: etf (real ETF move, cap-weighted) | avg (equal-weight stock average = breadth)
   const FLOW_TF_LBL = { "1d": "היום", "5d": "5 ימים", "20d": "20 ימים" };
   function todaySectors(rows) {
@@ -4657,20 +4683,29 @@
     const m = {};
     rows.forEach(t => {
       const s = t.sector || "—";
-      if (!m[s]) m[s] = { n: 0, green: 0, top: null, chgSum: 0, chgN: 0 };
+      if (!m[s]) m[s] = { n: 0, green: 0, top: null, s1: 0, n1: 0, s5: 0, n5: 0, s20: 0, n20: 0 };
       m[s].n++;
       if ((t.D || {}).c === "up") m[s].green++;
-      if (t.chg != null) { m[s].chgSum += t.chg; m[s].chgN++; }
-      if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg, chg5d: (t.tech || {}).c5, chg20d: (t.tech || {}).c20 };   // largest holding (+ its 5D/20D)
+      const k = t.tech || {};
+      if (t.chg != null) { m[s].s1 += t.chg; m[s].n1++; }
+      if (k.c5 != null) { m[s].s5 += k.c5; m[s].n5++; }
+      if (k.c20 != null) { m[s].s20 += k.c20; m[s].n20++; }
+      if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg, chg5d: k.c5, chg20d: k.c20 };   // largest holding (+ its 5D/20D)
     });
-    // chg = the sector's official daily move (from LIVE.sectors) — the real "money flow";
-    // falls back to the average move of its stocks when live data isn't loaded.
-    return Object.keys(m).filter(s => m[s].n >= 3).map(s => ({
-      name: s, n: m[s].n, greenPct: m[s].green / m[s].n * 100, top: m[s].top,
-      chg: liveChg[s] != null ? liveChg[s] : (m[s].chgN ? m[s].chgSum / m[s].chgN : 0),
-      chg5d: live5d[s] != null ? live5d[s] : null,
-      chg20d: live20d[s] != null ? live20d[s] : null,
-    }));
+    const avg = (sum, n) => n ? sum / n : null;
+    // two lenses (toggle): "etf" = the sector's official ETF move (LIVE.sectors, cap-weighted; falls back to
+    // the stock average when live data isn't loaded) · "avg" = equal-weight average of its stocks (breadth).
+    return Object.keys(m).filter(s => m[s].n >= 3).map(s => {
+      const d = m[s], base = { name: s, n: d.n, greenPct: d.green / d.n * 100, top: d.top };
+      if (flowSecMode === "avg") {
+        return Object.assign(base, { chg: avg(d.s1, d.n1), chg5d: avg(d.s5, d.n5), chg20d: avg(d.s20, d.n20) });
+      }
+      return Object.assign(base, {
+        chg: liveChg[s] != null ? liveChg[s] : avg(d.s1, d.n1),
+        chg5d: live5d[s] != null ? live5d[s] : null,
+        chg20d: live20d[s] != null ? live20d[s] : null,
+      });
+    });
   }
   // sub-sector money flow. Two lenses (toggle):
   //  • "etf" (default) — each sub-sector's REAL ETF move (server LIVE.subsectors, cap-weighted) → matches the click.
@@ -4718,19 +4753,22 @@
       const v = valOf(s);
       const topV = s.top ? (o.tf === "5d" ? s.top.chg5d : o.tf === "20d" ? s.top.chg20d : s.top.chg) : null;
       const top = s.top ? '<span class="tdf-top" title="האחזקה הגדולה · תנועה ב' + FLOW_TF_LBL[o.tf] + '"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(topV == null ? 0 : topV) + "</span>" : '<span class="tdf-top"></span>';
-      const nameHtml = '<span class="tdf-name">' + nameOf(s) + (etfOf(s) ? " " + etfChip(etfOf(s)) : "") + "</span>";
+      // ETF ticker → opens a small menu (analyze the ETF · or open charts of every stock in the sector)
+      const etfEl = etfOf(s) ? ' <span class="tsym etf-chip flow-etf" data-secetf="' + escAttr(etfOf(s)) + '" data-secname="' + escAttr(s.name) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="לחץ לאפשרויות: ניתוח התעודה · או גרפים של כל הסקטור">' + etfOf(s) + " ▾</span>" : "";
+      const nameHtml = '<span class="tdf-name">' + nameOf(s) + etfEl + "</span>";
       if (v == null) return '<div class="tdf-row">' + nameHtml + '<span class="tdf-bar"><span class="tdf-center"></span></span><span class="tdf-pct muted">—</span>' + top + "</div>";
       const pos = v >= 0, w = Math.min(50, Math.abs(v) / maxAbs * 50);
       return '<div class="tdf-row">' + nameHtml + '<span class="tdf-bar"><span class="tdf-center"></span><span class="tdf-fill ' + (pos ? "pos" : "neg") + '" style="width:' + w.toFixed(1) + '%"></span></span><span class="tdf-pct ' + (pos ? "pos" : "neg") + '">' + (pos ? "+" : "") + v.toFixed(2) + "%</span>" + top + "</div>";
     };
     const tfSwitch = '<span class="flow-tf">' + ["1d", "5d", "20d"].map(k =>
       '<button class="flow-tf-btn' + (k === o.tf ? " on" : "") + '" data-' + o.tfAttr + '="' + k + '">' + k.toUpperCase() + "</button>").join("") + "</span>";
-    // sub-sector metric toggle: cap-weighted ETF move vs equal-weight breadth (stock average)
-    const modeSwitch = o.isSub ? '<span class="flow-tf flow-mode">' +
-      [["etf", "תעודת סל", "תנועת תעודת הסל של הענף (משוקלל שווי-שוק) — תואם לגרף שנפתח בלחיצה"],
-       ["avg", "ממוצע ענף", "ממוצע תנועת המניות בענף (משקל שווה = רוחב) — כמה מהמניות באמת השתתפו"]].map(x =>
-        '<button class="flow-tf-btn' + (x[0] === flowSubMode ? " on" : "") + '" data-flowsubmode="' + x[0] + '" title="' + escAttr(x[2]) + '">' + x[1] + "</button>").join("") + "</span>" : "";
-    const subLbl = o.isSub ? "תתי-סקטורים (" + (flowSubMode === "avg" ? "ממוצע ענף" : "תעודת סל") + ")" : "כל הסקטורים";
+    // metric toggle (both panels now): cap-weighted ETF move vs equal-weight breadth (stock average)
+    const modeSwitch = o.modeAttr ? '<span class="flow-tf flow-mode">' +
+      [["etf", "תעודת סל", "תנועת תעודת הסל (משוקלל שווי-שוק) — תואם לגרף שנפתח בלחיצה"],
+       ["avg", "ממוצע ענף", "ממוצע תנועת המניות (משקל שווה = רוחב) — כמה מהמניות באמת השתתפו"]].map(x =>
+        '<button class="flow-tf-btn' + (x[0] === o.mode ? " on" : "") + '" data-' + o.modeAttr + '="' + x[0] + '" title="' + escAttr(x[2]) + '">' + x[1] + "</button>").join("") + "</span>" : "";
+    const modeLbl = o.mode ? (o.mode === "avg" ? "ממוצע ענף" : "תעודת סל") : "";
+    const subLbl = (o.isSub ? "תתי-סקטורים" : "כל הסקטורים") + (modeLbl ? " (" + modeLbl + ")" : "");
     return '<div class="panel td-flow"><h3 class="tdf-head"><span>' + o.title + '</span><span class="tdf-switches">' + modeSwitch + tfSwitch + "</span></h3>" +
       '<div class="muted tdf-sub">' + subLbl + " לפי התנועה ב" + FLOW_TF_LBL[o.tf] + ' · 🟢 כסף נכנס · 🔴 כסף יוצא · + האחזקה הגדולה</div>' +
       '<div class="tdf-list">' + (flow.length ? flow.map(row).join("") : '<div class="muted" style="padding:10px">—</div>') + "</div></div>";
@@ -4772,8 +4810,8 @@
 
     // "where the money flows" — two diverging-bar panels (money IN → right, OUT → left):
     // sectors (official ETF moves) and sub-sectors/industries (avg of their stocks), each with its own 1D/5D/20D.
-    const sectorsPanel = _flowPanelHtml({ title: "🗂️ לאן הכסף זורם — סקטורים", tf: flowTf, tfAttr: "flowtf", data: todaySectors(rows), isSub: false });
-    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTfSub, tfAttr: "flowtfsub", data: todaySubsectors(rows), isSub: true, limit: 14 });
+    const sectorsPanel = _flowPanelHtml({ title: "🗂️ לאן הכסף זורם — סקטורים", tf: flowTf, tfAttr: "flowtf", data: todaySectors(rows), isSub: false, mode: flowSecMode, modeAttr: "flowsecmode" });
+    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTfSub, tfAttr: "flowtfsub", data: todaySubsectors(rows), isSub: true, mode: flowSubMode, modeAttr: "flowsubmode", limit: 14 });
 
     return head + (isLive ? liveBanner() : DEMO) +
       marketPanel +
@@ -4801,6 +4839,8 @@
   }
   function wireToday() {
     wireCharts($("#page")); wireStars($("#page"));
+    // ETF ticker → choice menu (analyze the ETF · or open all sector charts)
+    document.querySelectorAll(".flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
     document.querySelectorAll("[data-flowtf]").forEach(b => b.onclick = () => {
       if (flowTf === b.dataset.flowtf) return;
       flowTf = b.dataset.flowtf; reRender();
@@ -4812,6 +4852,10 @@
     document.querySelectorAll("[data-flowsubmode]").forEach(b => b.onclick = () => {
       if (flowSubMode === b.dataset.flowsubmode) return;
       flowSubMode = b.dataset.flowsubmode; reRender();
+    });
+    document.querySelectorAll("[data-flowsecmode]").forEach(b => b.onclick = () => {
+      if (flowSecMode === b.dataset.flowsecmode) return;
+      flowSecMode = b.dataset.flowsecmode; reRender();
     });
     document.querySelectorAll(".td-copy").forEach(b => b.onclick = () => {
       const syms = decodeURIComponent(b.dataset.syms), o = b.textContent;
