@@ -1812,6 +1812,14 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
   padding:12px 16px; margin-bottom:14px; font-size:13px;
   background:linear-gradient(90deg, rgba(124,108,240,.14), rgba(88,101,242,.08)); border:1px solid rgba(124,108,240,.35); }
 .fav-pushbar.on { background:rgba(22,184,119,.1); border-color:rgba(22,184,119,.4); }
+/* preset-filter bar (favorites) */
+.fav-pfilter { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px; margin-bottom:12px; }
+.fav-pfilter-lbl { font-size:12px; font-weight:800; color:var(--muted); }
+.fav-pfilter-chip { font-size:12px; font-weight:700; color:var(--ink); background:var(--bg); border:1px solid var(--line);
+  border-radius:999px; padding:5px 12px; cursor:pointer; transition:background .12s, border-color .12s; }
+.fav-pfilter-chip:hover { border-color:rgba(124,108,240,.6); }
+.fav-pfilter-chip.on { background:rgba(124,108,240,.22); border-color:rgba(124,108,240,.7); color:#fff; }
+.fav-other { margin-top:14px; border:1px dashed rgba(124,108,240,.4); }
 .scan-table tr.fav-grouphdr td { background: var(--panel2); color: var(--muted); font-size: 11px; font-weight: 800;
   letter-spacing: .04em; text-align: start; padding: 6px 12px; border-top: 1px solid var(--line); }
 .scan-table tr.fav-grouphdr:hover td { background: var(--panel2); }

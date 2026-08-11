@@ -4905,6 +4905,7 @@
   }
   // ---- favorites table sorting (self-contained; null col = default alert-grouped order) ----
   const favSort = { col: null, dir: -1 };
+  let favPresetFilter = null;   // active preset NAME filtering the favorites page (null = show all)
   function favSortVal(t, col) {
     if (col === "sym") return t.sym;
     if (col === "alert") return t._alertN || 0;
@@ -4939,6 +4940,35 @@
     else { favSort.col = null; }                            // 3rd click → back to grouped default
     reRender();
   }
+  // preset-filter bar for the favorites page: one chip per preset that ≥1 favorite matches.
+  function favPresetBar(names) {
+    if (!names.length) return "";
+    const chip = (n, on, txt) => '<button class="fav-pfilter-chip' + (on ? " on" : "") + '" data-favpreset="' + escAttr(n) + '">' + txt + "</button>";
+    return '<div class="panel fav-pfilter"><span class="fav-pfilter-lbl">🔎 סנן לפי סריקה:</span>' +
+      chip("", !favPresetFilter, "הכל") +
+      names.map(n => chip(n, favPresetFilter === n, "🔔 " + escHtml(n))).join("") + "</div>";
+  }
+  // when a preset filter is active — the OTHER stocks in that scan that aren't in the user's favorites
+  // (the "which else is related to MONTHLY REVERSAL" discovery, without opening the scanner).
+  const FAV_OTHER_CAP = 60;   // discovery list stays scannable even when a broad preset matches hundreds
+  function favOtherMatchesPanel(name, syms) {
+    // enrich + sort by biggest daily move (most actionable first)
+    const enriched = syms.map(sym => {
+      const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+      return { sym: sym, r: r, price: r ? (r.p || (r.tech ? r.tech.px : 0)) : 0, chg: r ? (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0)) : 0, sec: r ? r.sec : "" };
+    }).sort((a, b) => Math.abs(b.chg || 0) - Math.abs(a.chg || 0));
+    const total = enriched.length, shown = enriched.slice(0, FAV_OTHER_CAP);
+    const capNote = total > FAV_OTHER_CAP ? ' <span class="muted" style="font-size:11px">· מציג ' + FAV_OTHER_CAP + " מתוך " + total + " (צמצם את הסריקה לתוצאות ממוקדות)</span>" : "";
+    const head = '<h3 style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>🔍 עוד מניות בסריקה "<b>' + escHtml(name) + '</b>" <span class="muted" style="font-size:12px">(' + total + " — לא במועדפים)</span>" + capNote + "</span><span class=\"muted\" style=\"font-size:11px\">⭐ הוסף למעקב · לחץ סימבול לגרף</span></h3>";
+    if (!total) return '<div class="panel fav-other">' + head + '<div class="muted" style="padding:6px">אין מניות נוספות מעבר למועדפים שלך שתואמות לסריקה זו כרגע.</div></div>';
+    const rows = shown.map(o => {
+      return '<tr><td><span class="fav-starcell">' + star(o.sym) + "</span></td>" +
+        '<td class="sym"><span class="tsym clickable" data-chart="' + o.sym + '" data-tf="D">' + o.sym + "</span></td>" +
+        '<td class="tname" style="text-align:start">' + (o.sec ? secHe(o.sec) : "—") + "</td><td>" + money(o.price) + "</td><td>" + pct(o.chg) + "</td>" +
+        '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + o.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
+    }).join("");
+    return '<div class="panel fav-other">' + head + '<div class="tablewrap"><table class="scan-table"><thead><tr><th></th><th>סימבול</th><th>סקטור</th><th>מחיר</th><th>%</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+  }
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
     const list = favs.map(sym => {
@@ -4954,6 +4984,11 @@
       const pmatch = favAlertMatches();
       const staleMatch = favStaleAlerts(pmatch);
       const jsyms = _openPositionSymbols();   // favorites with an ACTIVE (open) position in the journal → violet glow
+      // preset-filter chips: every preset name that ≥1 favorite currently matches
+      const presetNames = [];
+      Object.keys(pmatch).forEach(sym => (pmatch[sym] || []).forEach(n => { if (presetNames.indexOf(n) < 0) presetNames.push(n); }));
+      presetNames.sort((a, b) => a.localeCompare(b, "he"));
+      if (favPresetFilter && presetNames.indexOf(favPresetFilter) < 0) favPresetFilter = null;  // stale filter → clear
       const rowHtml = t => {
         const pm = pmatch[t.sym] || [];
         const stale = staleMatch[t.sym];
@@ -4988,14 +5023,16 @@
       };
       // annotate each row for sorting (alert count / open-position) + the default grouping
       list.forEach(t => { t._alertN = (pmatch[t.sym] || []).length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); });
+      // when a preset filter is active, show only favorites matching that preset
+      const viewList = favPresetFilter ? list.filter(t => (pmatch[t.sym] || []).indexOf(favPresetFilter) >= 0) : list;
       let rows = "";
       if (favSort.col) {
         // an active column sort → one flat sorted list (per-row alert/position highlights are kept)
-        rows = favSortRows(list).map(rowHtml).join("");
+        rows = favSortRows(viewList).map(rowHtml).join("");
       } else {
         // default order: 🔔 עם התראה → 📓 פוזיציה פעילה → שאר המניות (stable within each group)
         const groups = [[], [], []];
-        list.forEach(t => groups[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
+        viewList.forEach(t => groups[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
         const GHDR = ["🔔 עם התראה", "📓 פוזיציה פעילה", "⭐ שאר המניות"];
         const nonEmpty = groups.filter(g => g.length).length;
         groups.forEach((g, i) => {
@@ -5004,7 +5041,16 @@
           rows += g.map(rowHtml).join("");
         });
       }
-      body = '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+      // when focused on a preset, discover the OTHER stocks in that scan (not already favorites)
+      let otherPanel = "";
+      if (favPresetFilter) {
+        const allPresets = (window.Prefs && Prefs.scanPresets) ? Prefs.scanPresets() : [];
+        const p = allPresets.find(x => x.name === favPresetFilter);
+        const favsSet = {}; favs.forEach(s => favsSet[s] = 1);
+        let matchSyms = []; try { if (p) matchSyms = evalPreset(p) || []; } catch (e) {}
+        otherPanel = favOtherMatchesPanel(favPresetFilter, matchSyms.filter(s => !favsSet[s]));
+      }
+      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
@@ -5029,6 +5075,8 @@
     const g = $("#goScanner"); if (g) g.onclick = () => setPage("scanner");
     // sortable column headers (click to sort · again to reverse · third time back to grouped default)
     document.querySelectorAll("[data-favsort]").forEach(th => th.onclick = () => favSortClick(th.dataset.favsort));
+    // preset-filter chips: focus the favorites list on one saved scan (+ surface other stocks in it)
+    document.querySelectorAll("[data-favpreset]").forEach(b => b.onclick = () => { favPresetFilter = b.dataset.favpreset || null; reRender(); });
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
     { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
     { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ תזכורות 11:30/16:30 הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
