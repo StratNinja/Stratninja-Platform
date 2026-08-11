@@ -1747,6 +1747,24 @@
     } catch (e) { snToast("שגיאה בהפעלת התראות פלאפון"); }
   }
   window._snSubPush = subscribeToPush;
+  // force a FRESH subscription — unsubscribe the current (often dead/zombie) one first, then re-subscribe.
+  // fixes the common "server sends but phone shows nothing" case where getSubscription() keeps returning a stale sub.
+  async function renewPush() {
+    try {
+      const cfg = window.SN_CONFIG;
+      if (!("serviceWorker" in navigator) || !("PushManager" in window) || !cfg || !cfg.VAPID_PUBLIC) { snToast("הדפדפן לא תומך בהתראות Push"); return; }
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { snToast("צריך לאשר התראות בדפדפן"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const old = await reg.pushManager.getSubscription();
+      if (old) { const ep = old.endpoint; try { await old.unsubscribe(); } catch (e) {} if (window.Prefs) Prefs.removePushSub(ep); }
+      const fresh = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
+      if (window.Prefs && fresh) Prefs.addPushSub(fresh.toJSON());
+      snToast("✓ המנוי חודש! עכשיו אפשר לשלוח בדיקה");
+      if (state.page === "favorites") reRender();
+    } catch (e) { snToast("שגיאה בחידוש המנוי"); }
+  }
+  window._snRenewPush = renewPush;
 
   // ---- screenshot & share ----
   const _shNum = v => (v >= 0 ? "+" : "") + (v == null ? 0 : v).toFixed(2) + "%";
@@ -5104,9 +5122,10 @@
     const permOk = window.Notification && Notification.permission === "granted";
     if (on && permOk) {
       const schedOn = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true;
-      return '<div class="panel fav-pushbar on"><span>✅ <b>התראות לפלאפון פעילות</b> — תקבל התראה כשמניה מהמועדפים נכנסת לסריקה עם התראה מופעלת, גם כשהאתר סגור.</span>' +
+      return '<div class="panel fav-pushbar on"><span>✅ <b>התראות לפלאפון פעילות</b> — תקבל התראה כשמניה מהמועדפים נכנסת לסריקה עם התראה מופעלת, גם כשהאתר סגור. <span class="muted" style="font-size:11px">לא מגיעות התראות? לחץ «חדש מנוי».</span></span>' +
         '<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
-          '<button class="btn ghost" id="pushSchedTgl" title="תזכורת יומית קבועה: פרה-מרקט 11:30 ופתיחת שוק 16:30 · לחץ להפעלה/כיבוי" style="font-size:12px;font-weight:600">⏰ תזכורות 11:30/16:30: ' + (schedOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + '</button>' +
+          '<button class="btn ghost" id="pushRenew" title="לא מקבל התראות בפלאפון? זה מוחק את המנוי הישן ורושם מנוי חדש ובריא — הפתרון ל״השרת שולח אבל הטלפון לא מציג״" style="font-size:12px;font-weight:700">🔄 חדש מנוי</button>' +
+          '<button class="btn ghost" id="pushSchedTgl" title="תזכורות יומיות קבועות: 11:30 פרה-מרקט · 16:30 פתיחה · 17:30 + 22:00 מניות מהמועדפים · 22:50 לפני סגירה · 23:00 סגירה · לחץ להפעלה/כיבוי" style="font-size:12px;font-weight:600">⏰ תזכורות יומיות: ' + (schedOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + '</button>' +
           '<button class="btn ghost" id="favAlertsCenter" style="font-size:12px;font-weight:600">🔔 מרכז ההתראות</button>' +
         '</span></div>';
     }
@@ -5122,8 +5141,9 @@
     // preset-filter chips: focus the favorites list on one saved scan (+ surface other stocks in it)
     document.querySelectorAll("[data-favpreset]").forEach(b => b.onclick = () => { favPresetFilter = b.dataset.favpreset || null; reRender(); });
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
+    { const rn = $("#pushRenew"); if (rn) rn.onclick = async () => { rn.disabled = true; rn.textContent = "🔄 מחדש…"; await renewPush(); }; }
     { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
-    { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ תזכורות 11:30/16:30 הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
+    { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ התזכורות היומיות הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
     document.querySelectorAll("[data-shalert]").forEach(b => b.onclick = e => { e.stopPropagation(); const sym = b.dataset.shalert, names = (favAlertMatches()[sym] || []); if (names.length <= 3) shareAlertCard(sym, names); else chooseAlertPresets(sym, names); });
