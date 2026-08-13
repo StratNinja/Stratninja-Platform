@@ -4967,7 +4967,7 @@
   }
   // ---- favorites table sorting (self-contained; null col = default alert-grouped order) ----
   const favSort = { col: null, dir: -1 };
-  let favPresetFilter = null;   // active preset NAME filtering the favorites page (null = show all)
+  let favPresetFilter = [];   // active preset NAMES filtering favorites — a stock must match ALL of them (AND); [] = show all
   function favSortVal(t, col) {
     if (col === "sym") return t.sym;
     if (col === "alert") return t._alertN || 0;
@@ -5007,8 +5007,9 @@
     if (!names.length) return "";
     const chip = (n, on, txt) => '<button class="fav-pfilter-chip' + (on ? " on" : "") + '" data-favpreset="' + escAttr(n) + '">' + txt + "</button>";
     return '<div class="panel fav-pfilter"><span class="fav-pfilter-lbl">🔎 סנן לפי סריקה:</span>' +
-      chip("", !favPresetFilter, "הכל") +
-      names.map(n => chip(n, favPresetFilter === n, "🔔 " + escHtml(n))).join("") + "</div>";
+      chip("", !favPresetFilter.length, "הכל") +
+      names.map(n => { const on = favPresetFilter.indexOf(n) >= 0; return chip(n, on, (on ? "✓ " : "🔔 ") + escHtml(n)); }).join("") +
+      (favPresetFilter.length > 1 ? '<span class="fav-pfilter-and">· ' + favPresetFilter.length + " יחד (AND)</span>" : "") + "</div>";
   }
   // when a preset filter is active — the OTHER stocks in that scan that aren't in the user's favorites
   // (the "which else is related to MONTHLY REVERSAL" discovery, without opening the scanner).
@@ -5050,7 +5051,7 @@
       const presetNames = [];
       Object.keys(pmatch).forEach(sym => (pmatch[sym] || []).forEach(n => { if (presetNames.indexOf(n) < 0) presetNames.push(n); }));
       presetNames.sort((a, b) => a.localeCompare(b, "he"));
-      if (favPresetFilter && presetNames.indexOf(favPresetFilter) < 0) favPresetFilter = null;  // stale filter → clear
+      favPresetFilter = favPresetFilter.filter(pn => presetNames.indexOf(pn) >= 0);  // drop any selected preset no favorite matches anymore
       const rowHtml = t => {
         const pm = pmatch[t.sym] || [];
         const stale = staleMatch[t.sym];
@@ -5086,7 +5087,7 @@
       // annotate each row for sorting (alert count / open-position) + the default grouping
       list.forEach(t => { t._alertN = (pmatch[t.sym] || []).length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); });
       // when a preset filter is active, show only favorites matching that preset
-      const viewList = favPresetFilter ? list.filter(t => (pmatch[t.sym] || []).indexOf(favPresetFilter) >= 0) : list;
+      const viewList = favPresetFilter.length ? list.filter(t => favPresetFilter.every(pn => (pmatch[t.sym] || []).indexOf(pn) >= 0)) : list;
       let rows = "";
       if (favSort.col) {
         // an active column sort → one flat sorted list (per-row alert/position highlights are kept)
@@ -5103,14 +5104,20 @@
           rows += g.map(rowHtml).join("");
         });
       }
-      // when focused on a preset, discover the OTHER stocks in that scan (not already favorites)
+      // when filtering by preset(s), discover the OTHER stocks matching ALL selected scans (not already favorites)
       let otherPanel = "";
-      if (favPresetFilter) {
+      if (favPresetFilter.length) {
         const allPresets = (window.Prefs && Prefs.scanPresets) ? Prefs.scanPresets() : [];
-        const p = allPresets.find(x => x.name === favPresetFilter);
         const favsSet = {}; favs.forEach(s => favsSet[s] = 1);
-        let matchSyms = []; try { if (p) matchSyms = evalPreset(p) || []; } catch (e) {}
-        otherPanel = favOtherMatchesPanel(favPresetFilter, matchSyms.filter(s => !favsSet[s]));
+        let inter = null;   // intersection of matches across every selected preset (AND)
+        favPresetFilter.forEach(pn => {
+          const p = allPresets.find(x => x.name === pn);
+          let m = []; try { if (p) m = evalPreset(p) || []; } catch (e) {}
+          const set = new Set(m);
+          inter = inter === null ? set : new Set([...inter].filter(s => set.has(s)));
+        });
+        const others = [...(inter || new Set())].filter(s => !favsSet[s]);
+        otherPanel = favOtherMatchesPanel(favPresetFilter.join(" + "), others);
       }
       body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
     }
@@ -5139,7 +5146,12 @@
     // sortable column headers (click to sort · again to reverse · third time back to grouped default)
     document.querySelectorAll("[data-favsort]").forEach(th => th.onclick = () => favSortClick(th.dataset.favsort));
     // preset-filter chips: focus the favorites list on one saved scan (+ surface other stocks in it)
-    document.querySelectorAll("[data-favpreset]").forEach(b => b.onclick = () => { favPresetFilter = b.dataset.favpreset || null; reRender(); });
+    document.querySelectorAll("[data-favpreset]").forEach(b => b.onclick = () => {
+      const v = b.dataset.favpreset;
+      if (!v) favPresetFilter = [];                 // "הכל" clears the combination
+      else { const i = favPresetFilter.indexOf(v); if (i >= 0) favPresetFilter.splice(i, 1); else favPresetFilter.push(v); }   // click toggles (add/remove)
+      reRender();
+    });
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
     { const rn = $("#pushRenew"); if (rn) rn.onclick = async () => { rn.disabled = true; rn.textContent = "🔄 מחדש…"; await renewPush(); }; }
     { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
