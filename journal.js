@@ -45,6 +45,8 @@
       this._write(d);
     },
     clearAll() { this._write({ fills: [], manual: [] }); },
+    /* remove ONLY the imported CSV fills (and their derived open positions), keeping manual trades */
+    clearFills() { const d = this._read(); d.fills = []; this._write(d); },
     /* rename an account across all its fills + manual trades */
     renameAccount(oldName, newName) {
       const on = (oldName || "").trim(), nn = (newName || "").trim();
@@ -1479,6 +1481,7 @@
           if (Store.accounts().indexOf(nn) >= 0) { alert("כבר קיים חשבון בשם הזה — בחר שם אחר."); return; }
           Store.renameAccount(state.account, nn); state.account = nn; closeModal(); render(); toast("שם החשבון עודכן ל-" + nn);
         } },
+      { label: "🗑️ מחק ביצועי CSV מיובאים (השאר עסקאות ידניות)", cls: "", fn: () => { const n = (Store.exportData().fills || []).length; if (!n) { alert("אין ביצועי CSV מאוחסנים — כל העסקאות שלך ידניות."); return; } if (confirm("למחוק את " + n + " ביצועי ה-CSV המיובאים?\n\nהעסקאות שהזנת ידנית יישארו. הפוזיציות ה\"פתוחות\" שמגיעות מהייבוא (ומנפחות את ה-P&L הלא-ממומש) ייעלמו.")) { Store.clearFills(); closeModal(); render(); toast("ביצועי CSV נמחקו — נשארו רק העסקאות הידניות"); } } },
       { label: "מחק חשבון נוכחי", cls: "", fn: () => { if (state.account && state.account !== ALL && confirm("למחוק את כל הנתונים של " + state.account + "?")) { Store.clearAccount(state.account); state.account = null; closeModal(); render(); toast("נמחק"); } } },
       { label: "מחק הכול", cls: "", fn: () => { if (confirm("למחוק את כל הנתונים מכל החשבונות?")) { Store.clearAll(); state.account = null; closeModal(); render(); toast("הכול נמחק"); } } },
     ]);
