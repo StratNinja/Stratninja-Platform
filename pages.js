@@ -3214,11 +3214,17 @@
     const pop = document.createElement("div"); pop.className = "tf-addpop sec-menu"; pop.id = "secEtfPop";
     pop.innerHTML = '<div class="tf-addpop-lbl">' + escHtml(label) + " · " + escHtml(etf) + "</div>" +
       '<button class="sec-menu-item" data-secact="etf">📊 ניתוח תעודת הסל (' + escHtml(etf) + ")</button>" +
-      '<button class="sec-menu-item" data-secact="grid">🗂️ גרפים של כל הסקטור</button>';
+      '<button class="sec-menu-item" data-secact="grid">🗂️ גרפים של כל הסקטור</button>' +
+      '<button class="sec-menu-item" data-secact="scan">🎯 הצב בסורק (סנן לפי ' + (isSub ? "הענף" : "הסקטור") + ")</button>";
     document.body.appendChild(pop);
-    const r = el.getBoundingClientRect();
+    // position directly under the clicked chip. Use absolute `left` (RTL-safe — insetInlineStart maps to
+    // the RIGHT edge in an RTL page, which is what made the menu jump to a detached spot), clamped to viewport.
+    const r = el.getBoundingClientRect(), pw = pop.offsetWidth || 220, vw = document.documentElement.clientWidth;
+    let left = Math.min(r.left + window.scrollX, window.scrollX + vw - pw - 8);
+    left = Math.max(window.scrollX + 8, left);
+    pop.style.insetInlineStart = "auto";
+    pop.style.left = left + "px";
     pop.style.top = (r.bottom + window.scrollY + 6) + "px";
-    pop.style.insetInlineStart = Math.max(8, r.left + window.scrollX - 40) + "px";
     pop.querySelector('[data-secact="etf"]').onclick = () => { closeSecMenu(); openChart(etf, "D"); };
     pop.querySelector('[data-secact="grid"]').onclick = () => {
       closeSecMenu();
@@ -3226,6 +3232,14 @@
       const stocks = scanSource().filter(t => t[key] === name);
       if (stocks.length) openChartGrid(stocks, { title: label + " · כל המניות (" + stocks.length + ")" });
       else snToast("אין מניות זמינות לסקטור הזה כרגע");
+    };
+    pop.querySelector('[data-secact="scan"]').onclick = () => {
+      closeSecMenu();
+      // set the scanner's sector/sub-sector filter to this one, then jump to the scanner
+      if (isSub) { scanState.sector = []; scanState.subsec = [name]; }
+      else { scanState.sector = [name]; scanState.subsec = []; }
+      setPage("scanner");
+      snToast("🎯 הסורק סונן לפי " + label);
     };
     setTimeout(() => document.addEventListener("click", _secMenuOutside), 0);
   }
