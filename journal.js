@@ -79,6 +79,8 @@
       // otherwise the imported trades would have no account to show under and vanish silently
       return set.size ? [""] : [];
     },
+    /* is there data under a blank/unnamed account? (e.g. a broker CSV with no account column) */
+    hasBlank() { const d = this._read(); return d.fills.some(f => !(f.account || "").trim()) || d.manual.some(m => !(m.account || "").trim()); },
   };
   window.Store = Store;
 
@@ -214,7 +216,9 @@
     const accts = Store.accounts();
     // normalize the active account BEFORE syncing the dropdown, so the
     // selector and the rendered data can never desync on load.
-    if (accts.length && state.account !== ALL && (!state.account || accts.indexOf(state.account) < 0)) state.account = accts[0];
+    // NOTE: "" is a VALID selection (the blank/unnamed bucket) when it holds data — don't reset it away.
+    const blankOk = state.account === "" && Store.hasBlank();
+    if (accts.length && state.account !== ALL && !blankOk && (!state.account || accts.indexOf(state.account) < 0)) state.account = accts[0];
     renderAccountBar();
     // guide-video area at the TOP of the page (most viewers don't scroll down)
     const appendGuide = () => { if (window.snGuide) { const gw = el("div"); gw.innerHTML = window.snGuide("journal"); if (gw.firstChild) root.insertBefore(gw.firstChild, root.firstChild); } };
@@ -457,10 +461,14 @@
     const sel = $("#acctSel");
     sel.innerHTML = "";
     accts.forEach(a => { const o = el("option"); o.value = a; o.textContent = a; sel.appendChild(o); });
-    // combined view — only worth offering when there are 2+ accounts
-    if (accts.length >= 2) { const o = el("option"); o.value = ALL; o.textContent = "📊 כל החשבונות (משולב)"; sel.appendChild(o); }
-    if (state.account) sel.value = state.account;
-    sel.parentElement.style.display = accts.length ? "" : "none";
+    // blank/unnamed bucket (e.g. imported CSV with no account column): keep it SELECTABLE when it holds
+    // data, so those positions are visible & manageable — not silently counted only in the combined view.
+    const hasBlank = Store.hasBlank();
+    if (hasBlank && accts.indexOf("") < 0) { const o = el("option"); o.value = ""; o.textContent = "🗂️ ללא שם חשבון (מיובא)"; sel.appendChild(o); }
+    // combined view — worth offering when there are 2+ selectable buckets
+    if (accts.length + (hasBlank && accts.indexOf("") < 0 ? 1 : 0) >= 2) { const o = el("option"); o.value = ALL; o.textContent = "📊 כל החשבונות (משולב)"; sel.appendChild(o); }
+    if (state.account != null) sel.value = state.account;
+    sel.parentElement.style.display = (accts.length || hasBlank) ? "" : "none";
     document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === state.tab));
   }
 
