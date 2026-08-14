@@ -1065,11 +1065,20 @@
     if (col === "mc") return x.mc || 0;
     return 0;
   }
-  function renderSp500Drill(secName) {
-    const s = ((LIVE && LIVE.sectors) || []).find(x => x.name === secName);
-    if (!s) return;
+  function renderSp500Drill(secName, isSub) {
+    // works for a SECTOR (LIVE.sectors[].stocks) or a SUB-SECTOR (all stocks whose .ind matches)
+    let s0, above, total, title;
+    if (isSub) {
+      s0 = []; ((LIVE && LIVE.sectors) || []).forEach(sec => (sec.stocks || []).forEach(x => { if ((x.ind || "") === secName) s0.push(x); }));
+      if (!s0.length) return;
+      above = s0.filter(x => x.ao).length; total = s0.length; title = secName;
+    } else {
+      const sec = ((LIVE && LIVE.sectors) || []).find(x => x.name === secName);
+      if (!sec) return;
+      s0 = sec.stocks; above = sec.above; total = sec.total; title = secHe(sec.name);
+    }
     const col = spDrillSort.col, dir = spDrillSort.dir;
-    const st = s.stocks.slice().sort((a, b) => {
+    const st = s0.slice().sort((a, b) => {
       const va = spDrillVal(a, col), vb = spDrillVal(b, col);
       if (typeof va === "string") return dir * va.localeCompare(vb);
       return dir * (va - vb);
@@ -1079,16 +1088,16 @@
       const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(2) + "%";
       return "<tr><td class='sym'><span class='tsym clickable' data-chart='" + x.s + "' data-tf='D'>" + x.s + "</span>" + (x.ind ? ' <span class="tname">' + x.ind + "</span>" : "") + "</td><td>" + (x.ao ? "🟢" : "🔴") + "</td><td class='" + (x.c > 0 ? "pos" : x.c < 0 ? "neg" : "") + "'>" + cs + "</td><td>" + fmtCap(x.mc) + "</td></tr>";
     }).join("");
-    const ap = s.above / (s.total || 1) * 100;
+    const ap = above / (total || 1) * 100;
     const syms = st.map(x => x.s).join(", ");
-    modal(secHe(s.name) + " · " + s.above + "/" + s.total + " מעל פתיחה (" + ap.toFixed(0) + "%)",
+    modal(title + " · " + above + "/" + total + " מעל פתיחה (" + ap.toFixed(0) + "%)",
       '<div class="drill-bar"><button class="btn ghost" id="spGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
       '<button class="btn ghost" id="spCopy" style="font-size:12px;font-weight:600">📋 העתק ' + st.length + " טיקרים</button><span class=\"muted\" style=\"font-size:12px\">לחץ על כותרת למיון</span></div>" +
       "<div class='tablewrap'><table class='scan-table'><thead><tr>" + th("סימבול", "sym", true) + th("מעל פתיחה", "ao") + th("תנועה", "c") + th("שווי", "mc") + "</tr></thead><tbody>" + rows + "</tbody></table></div>");
     document.querySelectorAll("[data-spsort]").forEach(h => h.onclick = () => {
       const c = h.dataset.spsort;
       if (spDrillSort.col === c) spDrillSort.dir *= -1; else { spDrillSort.col = c; spDrillSort.dir = c === "sym" ? 1 : -1; }
-      renderSp500Drill(secName);
+      renderSp500Drill(secName, isSub);
     });
     const cp = $("#spCopy");
     if (cp) cp.onclick = () => copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + st.length; setTimeout(() => cp.textContent = "📋 העתק " + st.length + " טיקרים", 1600); });
@@ -3238,7 +3247,10 @@
       '<button class="sec-menu-item" data-secact="etf">📊 ניתוח תעודת הסל (' + escHtml(etf) + ")</button>" +
       '<button class="sec-menu-item" data-secact="grid">🗂️ גרפים של כל הסקטור</button>' +
       '<button class="sec-menu-item" data-secact="scan">🎯 הצב בסורק (סנן לפי ' + (isSub ? "הענף" : "הסקטור") + ")</button>" +
-      (!isSub && ((LIVE && LIVE.sectors) || []).some(x => x.name === name) ? '<button class="sec-menu-item" data-secact="table">📋 טבלת הסקטור (מעל פתיחה)</button>' : "");
+      ((isSub
+        ? ((LIVE && LIVE.sectors) || []).some(sec => (sec.stocks || []).some(x => (x.ind || "") === name))
+        : ((LIVE && LIVE.sectors) || []).some(x => x.name === name))
+        ? '<button class="sec-menu-item" data-secact="table">📋 טבלת ' + (isSub ? "הענף" : "הסקטור") + ' (מעל פתיחה)</button>' : "");
     document.body.appendChild(pop);
     // position directly under the clicked chip. Use absolute `left` (RTL-safe — insetInlineStart maps to
     // the RIGHT edge in an RTL page, which is what made the menu jump to a detached spot), clamped to viewport.
@@ -3264,7 +3276,7 @@
       setPage("scanner");
       snToast("🎯 הסורק סונן לפי " + label);
     };
-    { const tb = pop.querySelector('[data-secact="table"]'); if (tb) tb.onclick = () => { closeSecMenu(); if (typeof renderSp500Drill === "function") renderSp500Drill(name); }; }
+    { const tb = pop.querySelector('[data-secact="table"]'); if (tb) tb.onclick = () => { closeSecMenu(); if (typeof renderSp500Drill === "function") renderSp500Drill(name, isSub); }; }
     setTimeout(() => document.addEventListener("click", _secMenuOutside), 0);
   }
   function _mapScanRows(rows) {
