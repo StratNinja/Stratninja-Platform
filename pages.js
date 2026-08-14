@@ -3237,7 +3237,8 @@
     pop.innerHTML = '<div class="tf-addpop-lbl">' + escHtml(label) + " · " + escHtml(etf) + "</div>" +
       '<button class="sec-menu-item" data-secact="etf">📊 ניתוח תעודת הסל (' + escHtml(etf) + ")</button>" +
       '<button class="sec-menu-item" data-secact="grid">🗂️ גרפים של כל הסקטור</button>' +
-      '<button class="sec-menu-item" data-secact="scan">🎯 הצב בסורק (סנן לפי ' + (isSub ? "הענף" : "הסקטור") + ")</button>";
+      '<button class="sec-menu-item" data-secact="scan">🎯 הצב בסורק (סנן לפי ' + (isSub ? "הענף" : "הסקטור") + ")</button>" +
+      (!isSub && ((LIVE && LIVE.sectors) || []).some(x => x.name === name) ? '<button class="sec-menu-item" data-secact="table">📋 טבלת הסקטור (מעל פתיחה)</button>' : "");
     document.body.appendChild(pop);
     // position directly under the clicked chip. Use absolute `left` (RTL-safe — insetInlineStart maps to
     // the RIGHT edge in an RTL page, which is what made the menu jump to a detached spot), clamped to viewport.
@@ -3263,6 +3264,7 @@
       setPage("scanner");
       snToast("🎯 הסורק סונן לפי " + label);
     };
+    { const tb = pop.querySelector('[data-secact="table"]'); if (tb) tb.onclick = () => { closeSecMenu(); if (typeof renderSp500Drill === "function") renderSp500Drill(name); }; }
     setTimeout(() => document.addEventListener("click", _secMenuOutside), 0);
   }
   function _mapScanRows(rows) {
