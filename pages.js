@@ -3242,15 +3242,20 @@
     closeSecMenu();
     const etf = el.dataset.secetf, name = el.dataset.secname, isSub = el.dataset.secsub === "1";
     const label = isSub ? name : secHe(name);
+    // "table" option: prefer the S&P above-open table (renderSp500Drill) when we have breadth data for
+    // this group; otherwise (Crypto, אחר, non-S&P groups) fall back to the scanner-based table (renderSecDrill).
+    const hasAoTable = isSub
+      ? ((LIVE && LIVE.sectors) || []).some(sec => (sec.stocks || []).some(x => (x.ind || "") === name))
+      : ((LIVE && LIVE.sectors) || []).some(x => x.name === name);
+    const hasRowsTable = (typeof scanSource === "function") && scanSource().some(t => t[isSub ? "ind" : "sector"] === name);
+    const showTable = hasAoTable || hasRowsTable;
+    const tableLbl = "📋 טבלת " + (isSub ? "הענף" : "הסקטור") + (hasAoTable ? " (מעל פתיחה)" : "");
     const pop = document.createElement("div"); pop.className = "tf-addpop sec-menu"; pop.id = "secEtfPop";
     pop.innerHTML = '<div class="tf-addpop-lbl">' + escHtml(label) + (etf ? " · " + escHtml(etf) : "") + "</div>" +
       (etf ? '<button class="sec-menu-item" data-secact="etf">📊 ניתוח תעודת הסל (' + escHtml(etf) + ")</button>" : "") +
       '<button class="sec-menu-item" data-secact="grid">🗂️ גרפים של כל הסקטור</button>' +
       '<button class="sec-menu-item" data-secact="scan">🎯 הצב בסורק (סנן לפי ' + (isSub ? "הענף" : "הסקטור") + ")</button>" +
-      ((isSub
-        ? ((LIVE && LIVE.sectors) || []).some(sec => (sec.stocks || []).some(x => (x.ind || "") === name))
-        : ((LIVE && LIVE.sectors) || []).some(x => x.name === name))
-        ? '<button class="sec-menu-item" data-secact="table">📋 טבלת ' + (isSub ? "הענף" : "הסקטור") + ' (מעל פתיחה)</button>' : "");
+      (showTable ? '<button class="sec-menu-item" data-secact="table">' + tableLbl + "</button>" : "");
     document.body.appendChild(pop);
     // position directly under the clicked chip. Use absolute `left` (RTL-safe — insetInlineStart maps to
     // the RIGHT edge in an RTL page, which is what made the menu jump to a detached spot), clamped to viewport.
@@ -3276,7 +3281,11 @@
       setPage("scanner");
       snToast("🎯 הסורק סונן לפי " + label);
     };
-    { const tb = pop.querySelector('[data-secact="table"]'); if (tb) tb.onclick = () => { closeSecMenu(); if (typeof renderSp500Drill === "function") renderSp500Drill(name, isSub); }; }
+    { const tb = pop.querySelector('[data-secact="table"]'); if (tb) tb.onclick = () => {
+      closeSecMenu();
+      if (hasAoTable && typeof renderSp500Drill === "function") renderSp500Drill(name, isSub);
+      else if (typeof renderSecDrill === "function") renderSecDrill(isSub ? null : name, isSub ? name : null);   // scanner-based table (no above-open data for this group)
+    }; }
     setTimeout(() => document.addEventListener("click", _secMenuOutside), 0);
   }
   function _mapScanRows(rows) {
