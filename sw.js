@@ -4,7 +4,7 @@
 
 // Precache the notification icons so they're available from local cache when a push arrives while the
 // device is dozing (no network fetch needed) — otherwise Chrome falls back to a letter avatar + bell.
-const ICON_CACHE = "sn-icons-v3";
+const ICON_CACHE = "sn-icons-v4";
 const ICON_URLS = ["/icon-192.png", "/badge-96.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(ICON_CACHE).then((c) => c.addAll(ICON_URLS)).catch(() => {}).then(() => self.skipWaiting()));
@@ -30,8 +30,10 @@ self.addEventListener("push", (e) => {
   const title = d.title || "🔔 התראת StratNinja";
   const opts = {
     body: d.body || "מניה מהמועדפים שלך נכנסה לסריקה",
-    icon: "/icon-192.png",     // large logo (candlestick) — PNG renders reliably on Android
-    badge: "/badge-96.png",    // monochrome candle silhouette for the status bar (Android tints it white)
+    // the server may embed the icon/badge as data: URIs so they show even in Doze (no network fetch);
+    // fall back to the cached PNG files otherwise.
+    icon: d.icon || "/icon-192.png",     // large logo (candlestick)
+    badge: d.badge || "/badge-96.png",   // status-bar candle silhouette (Android tints it white)
     tag: d.tag || "sn-alert",
     dir: "rtl",
     lang: "he",
