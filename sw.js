@@ -12,8 +12,8 @@ self.addEventListener("push", (e) => {
   const title = d.title || "🔔 התראת StratNinja";
   const opts = {
     body: d.body || "מניה מהמועדפים שלך נכנסה לסריקה",
-    icon: "/favicon.svg",
-    badge: "/favicon.svg",
+    icon: "/icon-192.png",     // large logo (candlestick) — PNG renders reliably on Android
+    badge: "/badge-96.png",    // monochrome candle silhouette for the status bar (Android tints it white)
     tag: d.tag || "sn-alert",
     dir: "rtl",
     lang: "he",
