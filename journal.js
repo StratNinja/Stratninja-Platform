@@ -1443,7 +1443,7 @@
     }
     const hasExit = d.exitPrice !== "" && d.exitPrice != null && !isNaN(parseFloat(d.exitPrice));
     try { localStorage.setItem("sn_last_fee", String(d.fees == null ? 0 : d.fees)); } catch (e) {}
-    const base = { account: account, symbol: d.symbol, assetType: d.assetType, direction: d.direction, entryPrice: d.entryPrice, sl: d.sl, tp: d.tp, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined,
+    const base = { account: account, symbol: d.symbol, assetType: d.assetType, optType: d.optType, direction: d.direction, entryPrice: d.entryPrice, sl: d.sl, tp: d.tp, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined,
       exitReason: hasExit ? d.exitReason : "", managedWell: hasExit ? d.managedWell : "", feeling: hasExit ? d.feeling : "" };
     // partial close → a closed record for the sold qty + a remaining OPEN record
     if (isClose && hasExit && d.closeType === "partial") {
