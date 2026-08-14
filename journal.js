@@ -343,6 +343,12 @@
       if (conf.length) return ' <span class="jsig conflict" title="' + ("קונפליקט כיוון: פוזיציית " + (t.direction === "long" ? "לונג" : "שורט") + " שנכנסה לסריקה בכיוון הפוך — " + conf.map(h => h.name).join(" · ")).replace(/"/g, "&quot;") + '">⚠️ קונפליקט</span>';
       return ' <span class="jsig" title="' + ("נכנסה לסריקות: " + hits.map(h => h.name).join(" · ")).replace(/"/g, "&quot;") + '">🔔 בסריקה</span>';
     };
+    // SL/TP display + red flag when no stop-loss was set (risk management)
+    const slBadge = t => {
+      const hasSL = t.sl != null && t.sl !== "";
+      if (!hasSL) return ' <span class="jsl none" title="לא הוצב סטופ לוס לעסקה זו — סיכון לא מוגן">🛑 אין SL</span>';
+      return ' <span class="jsl" title="ניהול סיכון">🛑 ' + money(t.sl, 2) + (t.tp != null && t.tp !== "" ? ' · 🎯 ' + money(t.tp, 2) : "") + "</span>";
+    };
     const pctCell = (un, posVal) => (un != null && posVal > 0)
       ? '<td class="' + cls(un) + '">' + (un >= 0 ? "+" : "") + (un / posVal * 100).toFixed(2) + "%</td>"
       : '<td class="muted">—</td>';
@@ -365,7 +371,7 @@
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + chartSym(t.symbol) +
-        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + "</td>" +
+        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + slBadge(t) + "</td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
           "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
@@ -1197,6 +1203,8 @@
       direction: existing ? existing.direction : "long",
       qty: existing && existing.qty != null ? existing.qty : "",
       entryPrice: existing && existing.entryPrice != null ? existing.entryPrice : "",
+      sl: existing && existing.sl != null ? existing.sl : "",   // stop-loss price (optional but strongly encouraged)
+      tp: existing && existing.tp != null ? existing.tp : "",   // take-profit price (optional)
       exitPrice: existing && existing.exitPrice != null ? existing.exitPrice : "",
       entryDate: existing ? (existing.entryDate || "") : "",
       exitDate: existing && existing.exitDate ? existing.exitDate : "",
@@ -1217,7 +1225,7 @@
     const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
     const set = (k, id) => { const v = g(id); if (v !== undefined) _mData[k] = v; };
     set("entryDate", "m_ed"); set("account", "m_acct"); set("symbol", "m_sym"); set("assetType", "m_asset");
-    set("optType", "m_optt"); set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("notes", "m_notes");
+    set("optType", "m_optt"); set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("sl", "m_sl"); set("tp", "m_tp"); set("notes", "m_notes");
     set("exitDate", "m_xd"); set("exitPrice", "m_xp"); set("fees", "m_fee");
     set("closeType", "m_closetype"); set("closeQty", "m_closeqty");
     set("exitReason", "m_exitreason"); set("managedWell", "m_managed"); set("feeling", "m_feeling");
@@ -1244,6 +1252,8 @@
         field("כיוון", '<select id="m_dir">' + opt("long", d.direction, "קנייה (לונג)") + opt("short", d.direction, "מכירה (שורט)") + "</select>") +
         field("כמות", '<input id="m_qty" type="number" step="any" placeholder="100" value="' + (d.qty === "" ? "" : d.qty) + '">') +
         field("מחיר כניסה", '<input id="m_ep" type="number" step="any" value="' + (d.entryPrice === "" ? "" : d.entryPrice) + '">') +
+        field("🛑 סטופ לוס (SL)", '<input id="m_sl" type="number" step="any" placeholder="מומלץ מאוד — ניהול סיכון" value="' + (d.sl === "" ? "" : d.sl) + '"' + (d.sl === "" ? ' class="sl-missing"' : "") + ">") +
+        field("🎯 טייק פרופיט (TP)", '<input id="m_tp" type="number" step="any" placeholder="אופציונלי" value="' + (d.tp === "" ? "" : d.tp) + '">') +
         field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?">' + (d.notes || "") + "</textarea>", true) +
         field("📷 צילום גרף (אופציונלי)",
           '<div id="m_imgzone" class="img-zone" tabindex="0">' +
@@ -1288,9 +1298,11 @@
     }
     modal(title, body, actions);
     // wire common preview + validation
-    ["m_asset", "m_optt", "m_dir", "m_qty", "m_ep", "m_xp", "m_fee", "m_closetype", "m_closeqty"].forEach(id => {
+    ["m_asset", "m_optt", "m_dir", "m_qty", "m_ep", "m_sl", "m_tp", "m_xp", "m_fee", "m_closetype", "m_closeqty"].forEach(id => {
       const e = document.getElementById(id); if (e) { e.oninput = updatePreview; e.onchange = updatePreview; }
     });
+    // SL field turns red while empty (missing risk management) — live feedback as they type
+    { const sl = document.getElementById("m_sl"); if (sl) sl.oninput = () => { sl.classList.toggle("sl-missing", !sl.value.trim()); updatePreview(); }; }
     // show the CALL/PUT selector only when the asset is an option
     { const a = document.getElementById("m_asset"), row = document.getElementById("m_optt_row");
       if (a && row) a.addEventListener("change", () => { row.style.display = a.value === "option" ? "" : "none"; }); }
@@ -1424,9 +1436,14 @@
     if (!d.entryDate) { alert("צריך תאריך כניסה"); return; }
     const fullQty = Math.abs(parseFloat(d.qty) || 0);
     if (!fullQty) { alert("צריך כמות"); return; }
+    // risk-management nudge: no stop-loss → force an explicit acknowledgement (Adi's request)
+    const hasSL = d.sl !== "" && d.sl != null && !isNaN(parseFloat(d.sl));
+    if (!hasSL) {
+      if (!confirm('🛑 לא הצבת סטופ לוס.\n\n"אני מודע לסיכונים של לא לשים סטופ לוס ולמרות זאת אני בוחר לא להציב."\n\nאישור = המשך בלי SL · ביטול = חזור והוסף סטופ.')) return;
+    }
     const hasExit = d.exitPrice !== "" && d.exitPrice != null && !isNaN(parseFloat(d.exitPrice));
     try { localStorage.setItem("sn_last_fee", String(d.fees == null ? 0 : d.fees)); } catch (e) {}
-    const base = { account: account, symbol: d.symbol, assetType: d.assetType, direction: d.direction, entryPrice: d.entryPrice, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined,
+    const base = { account: account, symbol: d.symbol, assetType: d.assetType, direction: d.direction, entryPrice: d.entryPrice, sl: d.sl, tp: d.tp, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined,
       exitReason: hasExit ? d.exitReason : "", managedWell: hasExit ? d.managedWell : "", feeling: hasExit ? d.feeling : "" };
     // partial close → a closed record for the sold qty + a remaining OPEN record
     if (isClose && hasExit && d.closeType === "partial") {

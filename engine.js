@@ -335,6 +335,8 @@ window.Engine = (function () {
       symbol: (m.symbol || "").toUpperCase().trim(),
       assetType: m.assetType || "stock",
       optType: m.assetType === "option" ? (m.optType || "call") : null,   // call/put label (P&L is identical for a long option either way)
+      sl: (m.sl !== "" && m.sl != null && !isNaN(parseFloat(m.sl))) ? parseFloat(m.sl) : null,   // stop-loss price
+      tp: (m.tp !== "" && m.tp != null && !isNaN(parseFloat(m.tp))) ? parseFloat(m.tp) : null,   // take-profit price
       direction: m.direction || "long",
       qty: qty,
       mult: mult,

@@ -1824,6 +1824,11 @@ html[data-theme="light"] .fav-alert-chip { color:#0b6e43; background:rgba(14,157
 .jsig { display:inline-block; font-size:10.5px; font-weight:800; padding:1px 6px; border-radius:6px; margin-inline-start:4px;
   background:rgba(124,108,240,.18); color:#c7bdff; border:1px solid rgba(124,108,240,.42); white-space:nowrap; cursor:help; }
 .jsig.conflict { background:rgba(255,114,111,.2); color:#ff9a97; border-color:rgba(255,114,111,.55); }
+/* SL/TP badge + missing-stop flag */
+.jsl { display:inline-block; font-size:10.5px; font-weight:800; padding:1px 6px; border-radius:6px; margin-inline-start:4px;
+  background:rgba(240,240,240,.08); color:var(--muted); border:1px solid var(--line); white-space:nowrap; }
+.jsl.none { background:rgba(255,114,111,.2); color:#ff9a97; border-color:rgba(255,114,111,.55); }
+input.sl-missing { border-color:rgba(255,114,111,.7) !important; background:rgba(255,114,111,.06); }
 .fav-other { margin-top:14px; border:1px dashed rgba(124,108,240,.4); }
 .scan-table tr.fav-grouphdr td { background: var(--panel2); color: var(--muted); font-size: 11px; font-weight: 800;
   letter-spacing: .04em; text-align: start; padding: 6px 12px; border-top: 1px solid var(--line); }
