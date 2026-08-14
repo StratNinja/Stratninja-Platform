@@ -3570,7 +3570,9 @@
             '<div class="fgrp"><label>📉 דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(SMA 20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.compMax + '"></div>' +
             '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
             '<div class="fgrp"><label>🎈 בולינגר · מיקום ברצועות <span class="muted" style="font-size:10px">(%B · חזרה לממוצע)</span></label><select id="tBbPos">' +
-              opt("off", techState.bbPos, "— הכל") + opt("below", techState.bbPos, "מתחת לרצועה · LONG") + opt("above", techState.bbPos, "מעל הרצועה · SHORT") + opt("rev", techState.bbPos, "שני הקצוות · חזרה לממוצע") +
+              opt("off", techState.bbPos, "— הכל") +
+              opt("lowerZone", techState.bbPos, "בחלק התחתון · נוגעת מבפנים (%B≤20)") + opt("upperZone", techState.bbPos, "בחלק העליון · נוגעת מבפנים (%B≥80)") +
+              opt("below", techState.bbPos, "מתחת לרצועה · LONG (%B≤0)") + opt("above", techState.bbPos, "מעל הרצועה · SHORT (%B≥100)") + opt("rev", techState.bbPos, "שני הקצוות · חזרה לממוצע") +
               "</select></div>" +
             '<div class="fgrp"><label>〽️ סווינג</label><div class="chips" style="align-items:center"><select id="tSwSide">' +
               opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
@@ -3835,6 +3837,8 @@
         if (_bbPosActive()) { const b = k.bbp; if (b == null) return false;
           if (techState.bbPos === "above" && b < 100) return false;
           if (techState.bbPos === "below" && b > 0) return false;
+          if (techState.bbPos === "upperZone" && b < 80) return false;   // inside, hugging the upper band (or beyond)
+          if (techState.bbPos === "lowerZone" && b > 20) return false;   // inside, hugging the lower band (or below)
           if (techState.bbPos === "rev" && !(b <= 0 || b >= 100)) return false; }
         if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
         if (techState.swSide === "low" && (k.swlo_d == null || Math.abs(k.swlo_d) > techState.swPct)) return false;
