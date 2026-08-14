@@ -334,6 +334,15 @@
       items.sort((a, b) => { const va = sv(a), vb = sv(b); return typeof va === "string" ? _openSort.dir * va.localeCompare(vb) : _openSort.dir * (va - vb); });
     }
     let totUn = 0, totInv = 0, totPosVal = 0, haveAll = true, hasOpt = false;
+    // alerts ↔ open positions: which saved scans each position currently matches (+ direction conflicts)
+    const posSignals = (window._snPositionSignals) ? window._snPositionSignals(openTrades.map(t => ({ sym: String(t.symbol || "").split(" ")[0], direction: t.direction }))) : {};
+    const sigBadge = t => {
+      const hits = posSignals[String(t.symbol || "").split(" ")[0]];
+      if (!hits || !hits.length) return "";
+      const conf = hits.filter(h => h.conflict);
+      if (conf.length) return ' <span class="jsig conflict" title="' + ("קונפליקט כיוון: פוזיציית " + (t.direction === "long" ? "לונג" : "שורט") + " שנכנסה לסריקה בכיוון הפוך — " + conf.map(h => h.name).join(" · ")).replace(/"/g, "&quot;") + '">⚠️ קונפליקט</span>';
+      return ' <span class="jsig" title="' + ("נכנסה לסריקות: " + hits.map(h => h.name).join(" · ")).replace(/"/g, "&quot;") + '">🔔 בסריקה</span>';
+    };
     const pctCell = (un, posVal) => (un != null && posVal > 0)
       ? '<td class="' + cls(un) + '">' + (un >= 0 ? "+" : "") + (un / posVal * 100).toFixed(2) + "%</td>"
       : '<td class="muted">—</td>';
@@ -356,7 +365,7 @@
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + chartSym(t.symbol) +
-        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span></td>" +
+        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + "</td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
           "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +

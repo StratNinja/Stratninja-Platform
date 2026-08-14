@@ -360,6 +360,28 @@
   window._snOpenChart = openMultiChart;
   // exposed so the journal can open a chart-grid of all its open positions
   window._snOpenChartGrid = (rows, opts) => openChartGrid(rows, opts || {});
+  // exposed for the journal: for each open position {sym,direction}, which saved scans it currently
+  // matches + whether the scan's direction CONFLICTS with the position (e.g. a long position that just
+  // entered a short/bearish scan). Returns { SYM: [{name, dir, conflict}] } — only symbols with hits.
+  window._snPositionSignals = function (positions) {
+    try {
+      if (!positions || !positions.length || !(window.Prefs && Prefs.scanPresets)) return {};
+      const presets = Prefs.scanPresets() || [];
+      const pm = presets.map(p => ({ name: p.name, dir: (p.cfg && p.cfg.s && p.cfg.s.dir) || "", syms: new Set(evalPreset(p) || []) }));
+      const res = {};
+      positions.forEach(pos => {
+        const sym = pos.sym, dir = pos.direction;
+        const hits = [];
+        pm.forEach(x => {
+          if (!x.syms.has(sym)) return;
+          const conflict = !!(dir && x.dir && ((dir === "long" && x.dir === "short") || (dir === "short" && x.dir === "long")));
+          hits.push({ name: x.name, dir: x.dir, conflict: conflict });
+        });
+        if (hits.length) res[sym] = hits;
+      });
+      return res;
+    } catch (e) { return {}; }
+  };
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
   const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
