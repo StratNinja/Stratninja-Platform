@@ -1255,7 +1255,18 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .flow-tf-btn { font-size:11px; font-weight:700; padding:3px 10px; border-radius:7px; cursor:pointer; background:rgba(255,255,255,.05); color:var(--muted); border:1px solid var(--line); letter-spacing:.3px; transition:.15s; }
 .flow-tf-btn.on { background:linear-gradient(90deg, rgba(88,101,242,.92), rgba(124,108,240,.85)); color:#fff; border-color:transparent; }
 .flow-tf-btn:hover:not(.on){ color:var(--ink); }
-@media (max-width:560px){ .td-flow .tdf-row { grid-template-columns:92px 1fr 52px; } .td-flow .tdf-top { display:none; } }
+/* ---- battery-cell money-flow list: ranked, equal-length cells, biggest gainer on top ---- */
+.td-flow .bcell-list { display:flex; flex-direction:column; gap:5px; margin-top:12px; }
+.bc-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:48px; padding:0 13px; border-radius:9px; color:#fff; will-change:transform; }
+.bc-cell .bc-left { display:flex; align-items:center; gap:8px; min-width:0; }
+.bc-cell .bc-etf { font-family:'Inter',sans-serif; font-size:12px; font-weight:700; letter-spacing:.3px; direction:ltr; background:rgba(255,255,255,.18); border-radius:6px; padding:3px 8px; cursor:pointer; white-space:nowrap; flex:none; transition:background .15s; }
+.bc-cell .bc-etf:hover { background:rgba(255,255,255,.30); }
+.bc-cell .bc-etf.bc-noetf { padding:3px 9px; font-size:13px; }
+.bc-cell .bc-name { font-family:'Rubik',sans-serif; font-size:16px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bc-cell .bc-right { display:flex; align-items:baseline; gap:8px; flex:none; direction:ltr; font-family:'Inter',sans-serif; }
+.bc-cell .bc-pct { font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; }
+.bc-cell .bc-usd { font-size:12px; font-weight:700; opacity:.85; font-variant-numeric:tabular-nums; }
+@media (max-width:560px){ .bc-cell { min-height:44px; padding:0 11px; } .bc-cell .bc-name { font-size:15px; } .bc-cell .bc-pct { font-size:16px; } .td-flow .tdf-row { grid-template-columns:92px 1fr 52px; } .td-flow .tdf-top { display:none; } }
 /* money-flow list is compact in the narrower 3-col layout (drop the secondary top-holding).
    wider name column + narrower bar so long names + ETF chips (צריכה בסיסית/מחזורית) fit */
 .td-grid3 .td-flow .tdf-row { grid-template-columns:132px minmax(0,1fr) 48px; }

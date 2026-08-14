@@ -3243,8 +3243,8 @@
     const etf = el.dataset.secetf, name = el.dataset.secname, isSub = el.dataset.secsub === "1";
     const label = isSub ? name : secHe(name);
     const pop = document.createElement("div"); pop.className = "tf-addpop sec-menu"; pop.id = "secEtfPop";
-    pop.innerHTML = '<div class="tf-addpop-lbl">' + escHtml(label) + " · " + escHtml(etf) + "</div>" +
-      '<button class="sec-menu-item" data-secact="etf">📊 ניתוח תעודת הסל (' + escHtml(etf) + ")</button>" +
+    pop.innerHTML = '<div class="tf-addpop-lbl">' + escHtml(label) + (etf ? " · " + escHtml(etf) : "") + "</div>" +
+      (etf ? '<button class="sec-menu-item" data-secact="etf">📊 ניתוח תעודת הסל (' + escHtml(etf) + ")</button>" : "") +
       '<button class="sec-menu-item" data-secact="grid">🗂️ גרפים של כל הסקטור</button>' +
       '<button class="sec-menu-item" data-secact="scan">🎯 הצב בסורק (סנן לפי ' + (isSub ? "הענף" : "הסקטור") + ")</button>" +
       ((isSub
@@ -3260,7 +3260,7 @@
     pop.style.insetInlineStart = "auto";
     pop.style.left = left + "px";
     pop.style.top = (r.bottom + window.scrollY + 6) + "px";
-    pop.querySelector('[data-secact="etf"]').onclick = () => { closeSecMenu(); openChart(etf, "D"); };
+    { const eb = pop.querySelector('[data-secact="etf"]'); if (eb) eb.onclick = () => { closeSecMenu(); openChart(etf, "D"); }; }
     pop.querySelector('[data-secact="grid"]').onclick = () => {
       closeSecMenu();
       const key = isSub ? "ind" : "sector";
@@ -4750,8 +4750,8 @@
   let flowSubMode = "etf";  // sub-sector metric: etf (real ETF move, cap-weighted) | avg (equal-weight stock average = breadth)
   const FLOW_TF_LBL = { "1d": "היום", "5d": "5 ימים", "20d": "20 ימים" };
   function todaySectors(rows) {
-    const liveChg = {}, live5d = {}, live20d = {};
-    if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => { liveChg[s.name] = s.chg; live5d[s.name] = s.chg5d; live20d[s.name] = s.chg20d; });
+    const liveChg = {}, live5d = {}, live20d = {}, livePx = {};
+    if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => { liveChg[s.name] = s.chg; live5d[s.name] = s.chg5d; live20d[s.name] = s.chg20d; livePx[s.name] = s.px; });
     const m = {};
     rows.forEach(t => {
       const s = t.sector || "—";
@@ -4776,6 +4776,7 @@
         chg: liveChg[s] != null ? liveChg[s] : avg(d.s1, d.n1),
         chg5d: live5d[s] != null ? live5d[s] : null,
         chg20d: live20d[s] != null ? live20d[s] : null,
+        px: livePx[s] != null ? livePx[s] : null,
       });
     });
   }
@@ -4808,33 +4809,67 @@
     rows.forEach(t => { if (!t.ind) return; if (t.mc && (!topByInd[t.ind] || t.mc > topByInd[t.ind].mc)) topByInd[t.ind] = { sym: t.sym, mc: t.mc, chg: t.chg, chg5d: (t.tech || {}).c5, chg20d: (t.tech || {}).c20 }; });
     return subs.map(s => ({
       name: s.ind, etf: s.etf, top: topByInd[s.ind] || null,
-      chg: s.chg, chg5d: s.chg5d, chg20d: s.chg20d,
+      chg: s.chg, chg5d: s.chg5d, chg20d: s.chg20d, px: s.px != null ? s.px : null,
     }));
   }
-  // reusable money-flow panel (sectors or sub-sectors) — diverging bars over the selected timeframe
+  // ---- battery-cell money-flow panel (ranked list, biggest gainer on top) ----
+  const _bcellVal = (s, tf) => tf === "5d" ? s.chg5d : tf === "20d" ? s.chg20d : s.chg;
+  // 5 discrete buckets: >+0.5% vivid green · +0.1..0.5 muted green · ±0.1 slate · -0.1..-0.5 muted red · <-0.5 vivid red
+  function _bcellColor(v) {
+    if (v == null) return "#565d69";
+    if (v >= 0.5) return "#10b981";
+    if (v >= 0.1) return "#2e6f4e";
+    if (v > -0.1) return "#565d69";
+    if (v > -0.5) return "#8f3b42";
+    return "#e5384a";
+  }
+  function _bcellRowHtml(s, tf, isSub) {
+    const v = _bcellVal(s, tf);
+    const etf = isSub ? (s.etf || subEtfFor(s.name)) : etfFor(s.name);
+    const name = isSub ? s.name : secHe(s.name);
+    // $ move of the sector ETF for this timeframe, derived from its current price: px - px/(1+v/100)
+    const usd = (s.px != null && v != null) ? s.px * v / (100 + v) : null;
+    // ETF ticker → menu. Sectors without an ETF (אחר/קריפטו) still get a bare ▾ with the same menu.
+    const chip = '<span class="bc-etf flow-etf' + (etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(etf || "") +
+      '" data-secname="' + escAttr(s.name) + '" data-secsub="' + (isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (etf ? etf + " ▾" : "▾") + "</span>";
+    const pctTxt = v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
+    const usdTxt = usd == null ? "" : '<span class="bc-usd">' + (usd >= 0 ? "+" : "−") + "$" + Math.abs(usd).toFixed(2) + "</span>";
+    return '<div class="bc-cell" data-bckey="' + escAttr(s.name) + '" style="background:' + _bcellColor(v) + '">' +
+      '<span class="bc-left">' + chip + '<span class="bc-name">' + name + "</span></span>" +
+      '<span class="bc-right"><span class="bc-pct">' + pctTxt + "</span>" + usdTxt + "</span></div>";
+  }
+  function _bcellSorted(data, tf, limit) {
+    const v = s => _bcellVal(s, tf), byV = (a, b) => (v(b) == null ? -Infinity : v(b)) - (v(a) == null ? -Infinity : v(a));
+    let flow = data.slice().sort(byV);
+    if (limit && flow.length > limit) flow = flow.slice().sort((a, b) => Math.abs(v(b) || 0) - Math.abs(v(a) || 0)).slice(0, limit).sort(byV);
+    return flow;
+  }
+  function _bcellListHtml(data, tf, isSub, limit) {
+    const flow = _bcellSorted(data, tf, limit);
+    return flow.length ? flow.map(s => _bcellRowHtml(s, tf, isSub)).join("") : '<div class="muted" style="padding:10px">—</div>';
+  }
+  // FLIP: re-render a battery list in place with a slide animation when the timeframe changes
+  function _bcellFlip(listEl, data, tf, isSub, limit) {
+    const olds = {};
+    listEl.querySelectorAll(".bc-cell").forEach(el => olds[el.dataset.bckey] = el.getBoundingClientRect());
+    listEl.setAttribute("data-tf", tf);
+    listEl.innerHTML = _bcellListHtml(data, tf, isSub, limit);
+    requestAnimationFrame(() => {
+      listEl.querySelectorAll(".bc-cell").forEach(el => {
+        const o = olds[el.dataset.bckey]; if (!o) return;
+        const n = el.getBoundingClientRect(), dy = o.top - n.top;
+        if (dy) {
+          el.style.transition = "none"; el.style.transform = "translateY(" + dy + "px)";
+          requestAnimationFrame(() => { el.style.transition = "transform .5s cubic-bezier(.4,0,.2,1)"; el.style.transform = ""; });
+        }
+      });
+    });
+    listEl.querySelectorAll(".flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
+  }
   function _flowPanelHtml(o) {
-    const valOf = s => o.tf === "5d" ? s.chg5d : o.tf === "20d" ? s.chg20d : s.chg;
-    const byVal = (a, b) => { const va = valOf(a), vb = valOf(b); return (vb == null ? -Infinity : vb) - (va == null ? -Infinity : va); };
-    let flow = o.data.slice().sort(byVal);
-    // keep the panel compact: show only the strongest N flows (biggest |move|), then re-sort for display
-    if (o.limit && flow.length > o.limit) flow = flow.slice().sort((a, b) => Math.abs(valOf(b) || 0) - Math.abs(valOf(a) || 0)).slice(0, o.limit).sort(byVal);
-    const maxAbs = Math.max.apply(null, flow.map(s => Math.abs(valOf(s) || 0)).concat([0.1]));
-    const nameOf = s => o.isSub ? s.name : secHe(s.name);
-    const etfOf = s => o.isSub ? (s.etf || subEtfFor(s.name)) : etfFor(s.name);
-    const row = s => {
-      const v = valOf(s);
-      const topV = s.top ? (o.tf === "5d" ? s.top.chg5d : o.tf === "20d" ? s.top.chg20d : s.top.chg) : null;
-      const top = s.top ? '<span class="tdf-top" title="האחזקה הגדולה · תנועה ב' + FLOW_TF_LBL[o.tf] + '"><span class="tsym clickable" data-chart="' + s.top.sym + '" data-tf="D">' + s.top.sym + "</span> " + pct(topV == null ? 0 : topV) + "</span>" : '<span class="tdf-top"></span>';
-      // ETF ticker → opens a small menu (analyze the ETF · or open charts of every stock in the sector)
-      const etfEl = etfOf(s) ? ' <span class="tsym etf-chip flow-etf" data-secetf="' + escAttr(etfOf(s)) + '" data-secname="' + escAttr(s.name) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="לחץ לאפשרויות: ניתוח התעודה · או גרפים של כל הסקטור">' + etfOf(s) + " ▾</span>" : "";
-      const nameHtml = '<span class="tdf-name">' + nameOf(s) + etfEl + "</span>";
-      if (v == null) return '<div class="tdf-row">' + nameHtml + '<span class="tdf-bar"><span class="tdf-center"></span></span><span class="tdf-pct muted">—</span>' + top + "</div>";
-      const pos = v >= 0, w = Math.min(50, Math.abs(v) / maxAbs * 50);
-      return '<div class="tdf-row">' + nameHtml + '<span class="tdf-bar"><span class="tdf-center"></span><span class="tdf-fill ' + (pos ? "pos" : "neg") + '" style="width:' + w.toFixed(1) + '%"></span></span><span class="tdf-pct ' + (pos ? "pos" : "neg") + '">' + (pos ? "+" : "") + v.toFixed(2) + "%</span>" + top + "</div>";
-    };
     const tfSwitch = '<span class="flow-tf">' + ["1d", "5d", "20d"].map(k =>
       '<button class="flow-tf-btn' + (k === o.tf ? " on" : "") + '" data-' + o.tfAttr + '="' + k + '">' + k.toUpperCase() + "</button>").join("") + "</span>";
-    // metric toggle (both panels now): cap-weighted ETF move vs equal-weight breadth (stock average)
+    // metric toggle (both panels): cap-weighted ETF move vs equal-weight breadth (stock average)
     const modeSwitch = o.modeAttr ? '<span class="flow-tf flow-mode">' +
       [["etf", "תעודת סל", "תנועת תעודת הסל (משוקלל שווי-שוק) — תואם לגרף שנפתח בלחיצה"],
        ["avg", "ממוצע ענף", "ממוצע תנועת המניות (משקל שווה = רוחב) — כמה מהמניות באמת השתתפו"]].map(x =>
@@ -4842,8 +4877,9 @@
     const modeLbl = o.mode ? (o.mode === "avg" ? "ממוצע ענף" : "תעודת סל") : "";
     const subLbl = (o.isSub ? "תתי-סקטורים" : "כל הסקטורים") + (modeLbl ? " (" + modeLbl + ")" : "");
     return '<div class="panel td-flow"><h3 class="tdf-head"><span>' + o.title + '</span><span class="tdf-switches">' + modeSwitch + tfSwitch + "</span></h3>" +
-      '<div class="muted tdf-sub">' + subLbl + " לפי התנועה ב" + FLOW_TF_LBL[o.tf] + ' · 🟢 כסף נכנס · 🔴 כסף יוצא · + האחזקה הגדולה</div>' +
-      '<div class="tdf-list">' + (flow.length ? flow.map(row).join("") : '<div class="muted" style="padding:10px">—</div>') + "</div></div>";
+      '<div class="muted tdf-sub">' + subLbl + " · מדורג לפי התנועה ב" + FLOW_TF_LBL[o.tf] + ' · 🟢 כסף נכנס · 🔴 כסף יוצא</div>' +
+      '<div class="bcell-list" data-issub="' + (o.isSub ? "1" : "0") + '" data-tf="' + o.tf + '" data-limit="' + (o.limit || "") + '">' +
+      _bcellListHtml(o.data, o.tf, o.isSub, o.limit) + "</div></div>";
   }
   function todayStockRow(t) {
     return "<tr><td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
@@ -4915,11 +4951,19 @@
     document.querySelectorAll(".flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
     document.querySelectorAll("[data-flowtf]").forEach(b => b.onclick = () => {
       if (flowTf === b.dataset.flowtf) return;
-      flowTf = b.dataset.flowtf; reRender();
+      flowTf = b.dataset.flowtf;
+      b.parentNode.querySelectorAll(".flow-tf-btn").forEach(x => x.classList.toggle("on", x === b));
+      const listEl = document.querySelector('.bcell-list[data-issub="0"]');
+      if (listEl) { const rows = scanSource().filter(t => t.ninja != null); _bcellFlip(listEl, todaySectors(rows), flowTf, false, listEl.dataset.limit ? +listEl.dataset.limit : null); }
+      else reRender();
     });
     document.querySelectorAll("[data-flowtfsub]").forEach(b => b.onclick = () => {
       if (flowTfSub === b.dataset.flowtfsub) return;
-      flowTfSub = b.dataset.flowtfsub; reRender();
+      flowTfSub = b.dataset.flowtfsub;
+      b.parentNode.querySelectorAll(".flow-tf-btn").forEach(x => x.classList.toggle("on", x === b));
+      const listEl = document.querySelector('.bcell-list[data-issub="1"]');
+      if (listEl) { const rows = scanSource().filter(t => t.ninja != null); _bcellFlip(listEl, todaySubsectors(rows), flowTfSub, true, listEl.dataset.limit ? +listEl.dataset.limit : null); }
+      else reRender();
     });
     document.querySelectorAll("[data-flowsubmode]").forEach(b => b.onclick = () => {
       if (flowSubMode === b.dataset.flowsubmode) return;
