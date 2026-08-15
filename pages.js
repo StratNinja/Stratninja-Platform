@@ -4861,6 +4861,21 @@
       "<td>" + ftfcBadge(t) + "</td>" +
       '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
   }
+  // index % for the selected timeframe: 1d from the live quote (i.chg), 5d/20d from the daily OHLC closes
+  function _indexTfChg(i, tf) {
+    if (tf !== "5d" && tf !== "20d") return i.chg;
+    const oh = i.ohlc || [], n = oh.length, back = tf === "20d" ? 21 : 6;
+    if (n < back + 1) return null;
+    const last = oh[n - 1][3], prev = oh[n - back][3];
+    return prev ? (last - prev) / prev * 100 : null;
+  }
+  function _indicesInner(ms, tf) {
+    const lbl = FLOW_TF_LBL[tf] || "היום";
+    const ixCard = i => { const v = _indexTfChg(i, tf), up = (v || 0) >= 0, z = (v == null || v === 0);
+      return '<div class="td-ixc ' + (z ? "flat" : up ? "pos" : "neg") + '"><span class="td-ixc-sym">' + i.sym + '</span><span class="td-ixc-chg">' + (z ? "" : up ? "▲ " : "▼ ") + (v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%") + "</span></div>"; };
+    const vixCard = ms.vix ? '<div class="td-ixc vix"><span class="td-ixc-sym">VIX</span><span class="td-ixc-chg">' + ms.vix.level.toFixed(1) + "</span></div>" : "";
+    return '<h3 class="td-ix-h">📈 מדדים ראשיים <span class="muted" style="font-size:12px">· ' + lbl + '</span></h3><div class="td-ixc-row">' + ms.idx.map(ixCard).join("") + vixCard + "</div>";
+  }
   function renderToday() {
     const head = '<div class="page-head"><h1>🎯 לאן הכסף הולך?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם — מאילו סקטורים הוא יוצא ולאן הוא נכנס, עם ניתוח AI.</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
@@ -4868,13 +4883,8 @@
     if (!rows.length) return head + '<div class="panel"><div class="note" style="margin:6px 0">⏳ הנתונים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
 
     const ms = todayMarketState();
-    // ── indices strip: a tidy card row of the benchmark indices at the very top ──
-    let indicesPanel = "";
-    if (ms && ms.idx && ms.idx.length) {
-      const ixCard = i => { const up = (i.chg || 0) >= 0, z = (i.chg == null || i.chg === 0); return '<div class="td-ixc ' + (z ? "flat" : up ? "pos" : "neg") + '">' + '<span class="td-ixc-sym">' + i.sym + "</span>" + '<span class="td-ixc-chg">' + (z ? "" : up ? "▲ " : "▼ ") + (i.chg == null ? "—" : (i.chg >= 0 ? "+" : "") + i.chg.toFixed(2) + "%") + "</span></div>"; };
-      const vixCard = ms.vix ? '<div class="td-ixc vix"><span class="td-ixc-sym">VIX</span><span class="td-ixc-chg">' + ms.vix.level.toFixed(1) + "</span></div>" : "";
-      indicesPanel = '<div class="panel td-indices"><h3 class="td-ix-h">📈 מדדים ראשיים</h3><div class="td-ixc-row">' + ms.idx.map(ixCard).join("") + vixCard + "</div></div>";
-    }
+    // ── indices strip (top): reflects the SAME timeframe as the global control (1D/5D/20D) ──
+    const indicesPanel = (ms && ms.idx && ms.idx.length) ? '<div class="panel td-indices" id="tdIndices">' + _indicesInner(ms, flowTf) + "</div>" : "";
     let marketPanel;
     if (ms) {
       let brBar = "";
@@ -4941,6 +4951,8 @@
       if (secEl || subEl) {
         if (secEl) _bcellFlip(secEl, todaySectors(rows), flowTf, false, secEl.dataset.limit ? +secEl.dataset.limit : null);
         if (subEl) _bcellFlip(subEl, todaySubsectors(rows), flowTf, true, subEl.dataset.limit ? +subEl.dataset.limit : null);
+        const ixEl = document.getElementById("tdIndices"), ms2 = todayMarketState();   // top indices strip follows the same timeframe
+        if (ixEl && ms2) ixEl.innerHTML = _indicesInner(ms2, flowTf);
       } else reRender();
     });
     // the ONE global metric control (ETF vs sector-average) → governs both panels
