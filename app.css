@@ -1258,6 +1258,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* ---- battery-cell money-flow list: ranked, equal-length cells, biggest gainer on top ---- */
 .td-flow .bcell-list { display:flex; flex-direction:column; gap:5px; margin-top:12px; }
 .bc-cell { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:48px; padding:0 13px; border-radius:9px; color:#fff; will-change:transform; }
+.bc-cell.bc-clickable { cursor:pointer; transition:filter .12s, transform .12s; }
+.bc-cell.bc-clickable:hover { filter:brightness(1.08); }
 .bc-cell .bc-left { display:flex; align-items:center; gap:8px; min-width:0; }
 .bc-cell .bc-etf { font-family:'Inter',sans-serif; font-size:12px; font-weight:700; letter-spacing:.3px; direction:ltr; background:rgba(255,255,255,.18); border-radius:6px; padding:3px 8px; cursor:pointer; white-space:nowrap; flex:none; transition:background .15s; }
 .bc-cell .bc-etf:hover { background:rgba(255,255,255,.30); }

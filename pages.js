@@ -1025,37 +1025,38 @@
         '<div class="panel sp-grid-panel">' + sp500Grid() + "</div>" +
         (insightBox ? '<div class="sp-grid-did"><span class="sp-did-lbl">🧠 הידעת?</span>' + insightBox + "</div>" : "");
     }
-    const mvChip = x => {
-      const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(1) + "%";
-      return '<span class="mv-chip clickable" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " " + cs + '" style="background:' + chgColor(x.c) + '">' + x.s + " <b>" + cs + "</b></span>";
+    // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
+    // ranked by breadth = % of the sector's stocks above their open. Leaders/laggards moved into the click.
+    const _breadthColor = p => p == null ? "#565d69" : p >= 70 ? "#10b981" : p >= 55 ? "#2e6f4e" : p > 45 ? "#565d69" : p > 30 ? "#8f3b42" : "#e5384a";
+    const _breadthRow = (o, isSub) => {
+      const p = o.total ? o.above / o.total * 100 : null;
+      const etf = isSub ? subEtfFor(o.name) : etfFor(o.name);
+      const name = isSub ? o.name : secHe(o.name);
+      const chip = '<span class="bc-etf flow-etf' + (etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(etf || "") +
+        '" data-secname="' + escAttr(o.name) + '" data-secsub="' + (isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (etf ? etf + " ▾" : "▾") + "</span>";
+      return '<div class="bc-cell bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '" style="background:' + _breadthColor(p) + '">' +
+        '<span class="bc-left">' + chip + '<span class="bc-name">' + name + "</span></span>" +
+        '<span class="bc-right"><span class="bc-pct">' + (p == null ? "—" : p.toFixed(0) + "%") + '</span><span class="bc-usd">' + o.above + "/" + o.total + "</span></span></div>";
     };
-    const spCard = (s, extra) => {
-      const ap = s.above / (s.total || 1) * 100;
-      const st = s.stocks.slice().sort((x, y) => (y.c == null ? 0 : y.c) - (x.c == null ? 0 : x.c));
-      const gain = st.slice(0, 4), lose = st.slice(-4).reverse();
-      return '<div class="panel sector-card sp-card' + (extra ? " ss-extra" : "") + '" data-spdrill="' + encodeURIComponent(s.name) + '">' +
-        "<h3>" + secHe(s.name) + " " + etfChip(etfFor(s.name)) + ' <span class="muted" style="font-size:12px">' + s.above + "/" + s.total + " · " + ap.toFixed(0) + "% · " + pctSpanBare(s.chg) + "</span></h3>" +
-        '<div class="bigbreadth sm"><span class="bseg up" style="width:' + ap.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - ap).toFixed(1) + '%"></span></div>' +
-        '<div class="mv-row"><span class="mv-lbl">🟢 מובילים</span>' + gain.map(mvChip).join("") + "</div>" +
-        '<div class="mv-row"><span class="mv-lbl">🔴 חלשים</span>' + lose.map(mvChip).join("") + "</div>" +
-        '<div class="mv-more">' + s.total + " מניות · לחץ להצגת כולן ←</div></div>";
+    const _breadthLadder = (arr, isSub) => {
+      const rows = arr.slice().sort((a, c) => (c.total ? c.above / c.total : 0) - (a.total ? a.above / a.total : 0));
+      return rows.length ? rows.map(o => _breadthRow(o, isSub)).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
-    // split sectors into 3 columns by breadth (% above open): BULL (right) · neutral · BEAR (left)
-    const withAp = secs.map(s => ({ s, ap: s.above / (s.total || 1) * 100 }));
-    const spBull = withAp.filter(o => o.ap >= 55).sort((a, c) => c.ap - a.ap);
-    const spMid = withAp.filter(o => o.ap >= 45 && o.ap < 55).sort((a, c) => c.ap - a.ap);
-    const spBear = withAp.filter(o => o.ap < 45).sort((a, c) => a.ap - c.ap);
-    const SP_HEAD = 2;   // show 2 cards per column; the rest collapse behind an "עוד N" button
-    const spColHtml = (title, cls, arr) => {
-      const cards = arr.length ? arr.map((o, i) => spCard(o.s, i >= SP_HEAD)).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1;font-size:12px;text-align:center">אין כרגע</div>';
-      const hidden = Math.max(0, arr.length - SP_HEAD);
-      return '<div class="ss-col ' + cls + '"><div class="ss-col-h">' + title + ' <span class="muted">' + arr.length + "</span></div>" +
-        '<div class="sp-col-grid">' + cards + "</div>" +
-        (hidden ? '<button class="btn ghost ss-more" data-sssection>עוד ' + hidden + " ↓</button>" : "") + "</div>";
-    };
+    // sub-sector breadth: group the S&P stocks by sub-sector (.ind), count above-open
+    const subMap = {};
+    secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind) return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
+    let subArr = Object.keys(subMap).map(k => subMap[k]).filter(o => o.total >= 4);
+    if (subArr.length > 16) subArr = subArr.slice().sort((a, c) => Math.abs(c.above / c.total * 100 - 50) - Math.abs(a.above / a.total * 100 - 50)).slice(0, 16);   // keep it compact: most extreme breadth
     const secGridBtn = '<button class="btn ghost" id="spSectorGrid" style="font-size:12px;font-weight:600" title="פתח את כל תעודות-הסל של הסקטורים בתצוגת גרפים">📊 כל הסקטורים בגרפים</button>';
-    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · מחולק ל-3 לפי רוחב: <b>BULL</b> (55%+ מעל פתיחה) · <b>בין לבין</b> · <b>BEAR</b> (מתחת 45%). לחץ על סקטור לכל המניות.</div></div>' +
-      '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" + insightBox + liveBanner() + breadthTopBar + '<div class="subsec-3col sp-3col">' + spColHtml("🟢 BULL", "ss-bull", spBull) + spColHtml("⚪ בין לבין", "ss-mid", spMid) + spColHtml("🔴 BEAR", "ss-bear", spBear) + "</div>";
+    const sectorsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · רוחב</span></h3>' +
+      '<div class="muted tdf-sub">מדורג לפי אחוז המניות מעל הפתיחה · לחץ שורה לכל המניות</div>' +
+      '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs, false) + "</div></div>";
+    const subsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · רוחב</span></h3>' +
+      '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
+      '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
+    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · הסקטורים ותתי-הסקטורים מדורגים מהחזק לחלש לפי אחוז המניות מעל פתיחת היום. לחץ על שורה לכל המניות.</div></div>' +
+      '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" + insightBox + liveBanner() + breadthTopBar +
+      '<div class="td-flow2">' + sectorsLadder + subsLadder + "</div>";
   }
   let spDrillSort = { col: "c", dir: -1 };
   function spDrillVal(x, col) {
@@ -1113,7 +1114,9 @@
       if (sp500View === b.dataset.spview) return;
       sp500View = b.dataset.spview; reRender();
     });
-    document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill)));
+    document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill), c.dataset.spsub === "1"));
+    // ETF chip inside a ladder cell → the sector menu (analyze ETF · charts · scanner · table), not the row drill
+    document.querySelectorAll(".bcell-list .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
     // "עוד N" — reveal/hide the collapsed sector cards inside each column
     document.querySelectorAll("[data-sssection]").forEach(bt => bt.onclick = e => {
       e.stopPropagation();
@@ -1917,7 +1920,7 @@
           line(top2(secC, "g", secHe), "pos") + line(top2(indC, "g"), "pos") + "</div>" +
         '<div class="sc-sec-lbl neg" style="margin-top:12px">🔴 הכי הרבה FTFC אדום (המשכיות יורדת)</div><div class="sc-strip">' +
           line(top2(secC, "r", secHe), "neg") + line(top2(indC, "r"), "neg") + "</div>";
-      return { headline: "🗂️ סקטורים · FTFC " + (SEC_FTFC_LBL[sectorFtfcKey] || ""), cls: "zero", bodyHtml: bodyHtml };
+      return { headline: "🗂️ המשכיות זמנית · FTFC " + (SEC_FTFC_LBL[sectorFtfcKey] || ""), cls: "zero", bodyHtml: bodyHtml };
     }
     if (page === "sp500") {
       const b = mktU().breadth || {}; const pct = b.total ? Math.round(b.above / b.total * 100) : 0;
@@ -4316,7 +4319,7 @@
     const ftfcSwitch = '<div class="sec-ftfc-switch"><span class="muted">FTFC לפי טיימפריים:</span>' +
       Object.keys(SEC_FTFC_SETS).map(k => '<button class="secftfc-btn' + (k === sectorFtfcKey ? " on" : "") +
         '" data-secftfc="' + k + '">' + SEC_FTFC_LBL[k] + "</button>").join("") + "</div>";
-    const head = '<div class="page-head"><h1>סקטורים · Breadth + FTFC</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. הבר בכל כרטיס = הרכב ה-<b>FTFC</b> (המשכיות <b>' + TFLBL + '</b>): <span class="pos">🟢 המשכיות מעלה</span> · <span class="muted">⚪ ללא המשכיות</span> · <span class="neg">🔴 המשכיות מטה</span>. לחץ על סקטור לפירוט.</div></div>' + ftfcSwitch;
+    const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. הבר בכל כרטיס = הרכב ה-<b>FTFC</b> (המשכיות <b>' + TFLBL + '</b>): <span class="pos">🟢 המשכיות מעלה</span> · <span class="muted">⚪ ללא המשכיות</span> · <span class="neg">🔴 המשכיות מטה</span>. לחץ על סקטור לפירוט.</div></div>' + ftfcSwitch;
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
