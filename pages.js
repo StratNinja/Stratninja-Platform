@@ -4300,8 +4300,9 @@
 
   // ========== SECTORS ==========
   // sectors-page FTFC timeframe set — Adi's default is the LONG-TERM M·Q·Y (was D·W·M), switchable
-  const SEC_FTFC_SETS = { DWM: ["D", "W", "M"], WMQ: ["W", "M", "Q"], MQY: ["M", "Q", "Y"] };
-  const SEC_FTFC_LBL = { DWM: "D·W·M", WMQ: "W·M·Q", MQY: "M·Q·Y" };
+  // REALM = "Ninja Realm": full continuity across ALL five timeframes (strictest alignment)
+  const SEC_FTFC_SETS = { DWM: ["D", "W", "M"], WMQ: ["W", "M", "Q"], MQY: ["M", "Q", "Y"], REALM: ["D", "W", "M", "Q", "Y"] };
+  const SEC_FTFC_LBL = { DWM: "D·W·M", WMQ: "W·M·Q", MQY: "M·Q·Y", REALM: "D·W·M·Q·Y" };
   let sectorFtfcKey = "MQY";
   // full continuity across a set of timeframes → "up" | "down" | "" (any doji/none/mismatch breaks it)
   function secFtfcDir(m, tfs) {
@@ -4317,8 +4318,8 @@
     const TFS = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY;
     const TFLBL = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
     const ftfcSwitch = '<div class="sec-ftfc-switch"><span class="muted">FTFC לפי טיימפריים:</span>' +
-      Object.keys(SEC_FTFC_SETS).map(k => '<button class="secftfc-btn' + (k === sectorFtfcKey ? " on" : "") +
-        '" data-secftfc="' + k + '">' + SEC_FTFC_LBL[k] + "</button>").join("") + "</div>";
+      Object.keys(SEC_FTFC_SETS).map(k => '<button class="secftfc-btn' + (k === "REALM" ? " secftfc-realm" : "") + (k === sectorFtfcKey ? " on" : "") +
+        '" data-secftfc="' + k + '" title="' + (k === "REALM" ? "המשכיות מלאה בכל חמשת הזמנים D·W·M·Q·Y" : "המשכיות " + SEC_FTFC_LBL[k]) + '">' + (k === "REALM" ? "🥷 NINJA REALM" : SEC_FTFC_LBL[k]) + "</button>").join("") + "</div>";
     const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. הבר בכל כרטיס = הרכב ה-<b>FTFC</b> (המשכיות <b>' + TFLBL + '</b>): <span class="pos">🟢 המשכיות מעלה</span> · <span class="muted">⚪ ללא המשכיות</span> · <span class="neg">🔴 המשכיות מטה</span>. לחץ על סקטור לפירוט.</div></div>' + ftfcSwitch;
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';

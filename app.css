@@ -1658,6 +1658,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
   background: rgba(255,255,255,.05); color: var(--muted); border: 1px solid var(--line); transition: .15s; letter-spacing: .3px; }
 .secftfc-btn.on { background: linear-gradient(90deg, rgba(88,101,242,.92), rgba(124,108,240,.85)); color: #fff; border-color: transparent; }
 .secftfc-btn:hover:not(.on) { color: var(--ink); }
+.secftfc-btn.secftfc-realm { border-color: rgba(124,108,240,.5); color: #b9b1f5; letter-spacing: .3px; }
+.secftfc-btn.secftfc-realm.on { background: linear-gradient(90deg, #7c6cf0, #b06cf0); border-color: transparent; color: #fff; }
 @keyframes uniFlip { 0% { opacity: .2; transform: rotateX(7deg) translateY(8px); } 100% { opacity: 1; transform: none; } }
 .uni-flip { animation: uniFlip .42s ease; transform-origin: top center; }
 /* "what's happening now" pulse */
