@@ -3983,7 +3983,7 @@
     if (grid) grid.onclick = () => openScannerGrid();
     const copy = $("#scanCopy");
     if (copy) copy.onclick = () => {
-      const rows = filterRows(scanSource());
+      const rows = sortRows(filterRows(scanSource()));   // copy in the DISPLAYED order (respect the active sort)
       const syms = rows.map(t => t.sym).join(", ");
       const orig = copy.textContent;
       copyToClipboard(syms, () => { copy.textContent = "✓ הועתקו " + rows.length; setTimeout(() => copy.textContent = orig, 1600); });
@@ -5075,6 +5075,7 @@
   // ---- favorites table sorting (self-contained; null col = default alert-grouped order) ----
   const favSort = { col: null, dir: -1 };
   let favPresetFilter = [];   // active preset NAMES filtering favorites — a stock must match ALL of them (AND); [] = show all
+  let favViewOrder = [];      // the favorites rows in their CURRENT displayed order → copy follows the table
   function favSortVal(t, col) {
     if (col === "sym") return t.sym;
     if (col === "alert") return t._alertN || 0;
@@ -5087,6 +5088,17 @@
   }
   function favSortRows(rows) {
     const col = favSort.col, dir = favSort.dir;
+    if (col === "alert") {
+      // "sort by the alert": alerted stocks always on top, clustered by WHICH alert (preset name), then symbol.
+      const firstAlert = t => (t._alertNames && t._alertNames.length) ? t._alertNames.slice().sort((x, y) => x.localeCompare(y, "he"))[0] : "￿";
+      return rows.slice().sort((a, b) => {
+        const aa = a._alertN > 0 ? 0 : 1, ba = b._alertN > 0 ? 0 : 1;
+        if (aa !== ba) return aa - ba;                                    // alerted first (both click directions)
+        const ka = firstAlert(a), kb = firstAlert(b);
+        if (ka !== kb) return dir * ka.localeCompare(kb, "he");           // group by alert name (dir flips the order)
+        return String(a.sym).localeCompare(String(b.sym));
+      });
+    }
     return rows.slice().sort((a, b) => {
       let va = favSortVal(a, col), vb = favSortVal(b, col);
       const na = va == null || va === "" || (typeof va === "number" && isNaN(va));
@@ -5191,18 +5203,20 @@
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
           "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       };
-      // annotate each row for sorting (alert count / open-position) + the default grouping
-      list.forEach(t => { t._alertN = (pmatch[t.sym] || []).length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); });
+      // annotate each row for sorting (alert count / names / open-position) + the default grouping
+      list.forEach(t => { t._alertNames = pmatch[t.sym] || []; t._alertN = t._alertNames.length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); });
       // when a preset filter is active, show only favorites matching that preset
       const viewList = favPresetFilter.length ? list.filter(t => favPresetFilter.every(pn => (pmatch[t.sym] || []).indexOf(pn) >= 0)) : list;
-      let rows = "";
+      let rows = "", ordered;
       if (favSort.col) {
         // an active column sort → one flat sorted list (per-row alert/position highlights are kept)
-        rows = favSortRows(viewList).map(rowHtml).join("");
+        ordered = favSortRows(viewList);
+        rows = ordered.map(rowHtml).join("");
       } else {
         // default order: 🔔 עם התראה → 📓 פוזיציה פעילה → שאר המניות (stable within each group)
         const groups = [[], [], []];
         viewList.forEach(t => groups[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
+        ordered = groups[0].concat(groups[1], groups[2]);
         const GHDR = ["🔔 עם התראה", "📓 פוזיציה פעילה", "⭐ שאר המניות"];
         const nonEmpty = groups.filter(g => g.length).length;
         groups.forEach((g, i) => {
@@ -5211,6 +5225,7 @@
           rows += g.map(rowHtml).join("");
         });
       }
+      favViewOrder = ordered;   // copy buttons follow this exact (displayed) order
       // when filtering by preset(s), discover the OTHER stocks matching ALL selected scans (not already favorites)
       let otherPanel = "";
       if (favPresetFilter.length) {
@@ -5226,7 +5241,7 @@
         const others = [...(inter || new Set())].filter(s => !favsSet[s]);
         otherPanel = favOtherMatchesPanel(favPresetFilter.join(" + "), others);
       }
-      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל רשימת המניות ללוח (מופרד בפסיקים)">📋 העתק רשימה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
+      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל המניות ברשימה — לפי סדר הטבלה הנוכחי">📋 העתק הכל</button><button class="btn ghost" id="favCopyAlerts" style="font-size:12px;font-weight:600" title="העתק רק מניות עם התראה פעילה — לפי סדר הטבלה">🔔 העתק עם התראה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
@@ -5268,7 +5283,8 @@
     document.querySelectorAll("[data-shalert]").forEach(b => b.onclick = e => { e.stopPropagation(); const sym = b.dataset.shalert, names = (favAlertMatches()[sym] || []); if (names.length <= 3) shareAlertCard(sym, names); else chooseAlertPresets(sym, names); });
     // manual refresh — pull the latest scan and re-check which favorites overlap the saved scans
     { const rf = $("#favRefresh"); if (rf) rf.onclick = async () => { rf.disabled = true; rf.textContent = "🔄 מרענן…"; _clearFavDismissed(); try { await fetchScanner(); } catch (e) {} if (state.page === "favorites") reRender(); snToast("ההתראות עודכנו ✓"); }; }
-    { const fc = $("#favCopy"); if (fc) fc.onclick = () => { const favs = window.Prefs ? window.Prefs.favorites() : []; if (!favs.length) { snToast("אין מניות ברשימה"); return; } const o = fc.textContent; copyToClipboard(favs.join(", "), () => { fc.textContent = "✓ הועתקו " + favs.length; setTimeout(() => fc.textContent = o, 1600); }); }; }
+    { const fc = $("#favCopy"); if (fc) fc.onclick = () => { const syms = favViewOrder.map(t => t.sym); if (!syms.length) { snToast("אין מניות ברשימה"); return; } const o = fc.textContent; copyToClipboard(syms.join(", "), () => { fc.textContent = "✓ הועתקו " + syms.length; setTimeout(() => fc.textContent = o, 1600); }); }; }
+    { const fca = $("#favCopyAlerts"); if (fca) fca.onclick = () => { const syms = favViewOrder.filter(t => t._alertN > 0).map(t => t.sym); if (!syms.length) { snToast("אין מניות עם התראה פעילה כרגע"); return; } const o = fca.textContent; copyToClipboard(syms.join(", "), () => { fca.textContent = "✓ הועתקו " + syms.length; setTimeout(() => fca.textContent = o, 1600); }); }; }
     const fg = $("#favGrid");
     if (fg) fg.onclick = () => {
       const favs = window.Prefs ? window.Prefs.favorites() : [];
