@@ -4337,19 +4337,21 @@
       const bucket = ft === 0 ? "mid" : (fg / ft > 0.6 ? "bull" : (fg / ft < 0.4 ? "bear" : "mid"));
       return { name, members, bucket, fg, fr, tot };
     });
-    // ── strength ladder (battery-cell style) — ranked by FTFC bias, like the money-flow / breadth pages ──
-    // bias = of the sector's stocks that have full continuity, what % are bullish-aligned (🟢). 5 color buckets.
-    const _ftfcColor = bias => bias == null ? "#565d69" : bias >= 70 ? "#10b981" : bias >= 55 ? "#2e6f4e" : bias > 45 ? "#565d69" : bias > 30 ? "#8f3b42" : "#e5384a";
+    // ── strength ladder (battery-cell style) — like the money-flow / breadth pages ──
+    // Metric = NET continuity of the WHOLE group: (🟢 up-aligned − 🔴 down-aligned) / total stocks.
+    // This only reaches ±100% when EVERY stock is fully aligned — honest. (The old bias fg/(fg+fr) hid the
+    // non-aligned stocks, so a group with 16🟢 0🔴 out of 27 showed a misleading "100%".)
+    const _ftfcColor = net => net >= 35 ? "#10b981" : net >= 15 ? "#2e6f4e" : net > -15 ? "#565d69" : net > -35 ? "#8f3b42" : "#e5384a";
     const _ftfcRow = o => {
-      const al = o.fg + o.fr, bias = al ? Math.round(o.fg / al * 100) : null;
+      const net = o.tot ? Math.round((o.fg - o.fr) / o.tot * 100) : 0;
       const chip = '<span class="bc-etf flow-etf' + (o.etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(o.etf || "") +
         '" data-secname="' + escAttr(o.rawname) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (o.etf ? o.etf + " ▾" : "▾") + "</span>";
-      return '<div class="bc-cell bc-clickable" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '" style="background:' + _ftfcColor(bias) + '">' +
+      return '<div class="bc-cell bc-clickable" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '" style="background:' + _ftfcColor(net) + '">' +
         '<span class="bc-left">' + chip + '<span class="bc-name">' + o.name + "</span></span>" +
-        '<span class="bc-right"><span class="bc-pct">' + (bias == null ? "—" : bias + "%") + '</span><span class="bc-usd">' + o.fg + "🟢 " + o.fr + "🔴</span></span></div>";
+        '<span class="bc-right"><span class="bc-pct">' + (net >= 0 ? "+" : "−") + Math.abs(net) + '%</span><span class="bc-usd">' + o.fg + "🟢 " + o.fr + "🔴 /" + o.tot + "</span></span></div>";
     };
     const _ftfcLadder = arr => {
-      const key = o => { const al = o.fg + o.fr; return al ? (o.fg + 1) / (al + 2) : 0.5; };   // smoothed bias — tiny samples pulled to neutral
+      const key = o => o.tot ? (o.fg - o.fr) / o.tot : 0;
       const rows = arr.slice().sort((a, c) => key(c) - key(a) || (c.fg - c.fr) - (a.fg - a.fr));
       return rows.length ? rows.map(_ftfcRow).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
@@ -4373,13 +4375,13 @@
     });
     let subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true }));
     // keep the sub panel compact: the 16 with the most decisive FTFC lean (furthest from neutral)
-    if (subArr.length > 16) { const ext = o => { const al = o.fg + o.fr; return Math.abs((al ? (o.fg + 1) / (al + 2) : 0.5) - 0.5); }; subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 16); }
+    if (subArr.length > 16) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 16); }
     const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
-      '<div class="muted tdf-sub">מדורג לפי הטיית ה-FTFC (' + TFLBL + ') · 🟢 המשכיות עולה · 🔴 יורדת · לחץ שורה למניות</div>' +
+      '<div class="muted tdf-sub">אחוז נטו מכלל המניות בהמשכיות מלאה (' + TFLBL + '): 🟢 עולה − 🔴 יורדת · לחץ שורה למניות</div>' +
       '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArr) + "</div></div>";
     const subLadder = indNames.length
       ? '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · המשכיות</span></h3>' +
-        '<div class="muted tdf-sub">מדורג לפי הטיית ה-FTFC · לחץ ענף למניות</div>' +
+        '<div class="muted tdf-sub">אחוז נטו מכלל המניות בהמשכיות מלאה (' + TFLBL + ') · לחץ ענף למניות</div>' +
         '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArr) + "</div></div>"
       : "";
     return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>";
