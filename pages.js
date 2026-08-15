@@ -1044,13 +1044,13 @@
     };
     // sub-sector breadth: group the S&P stocks by sub-sector (.ind), count above-open
     const subMap = {};
-    secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind) return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
+    secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
     let subArr = Object.keys(subMap).map(k => subMap[k]).filter(o => o.total >= 4);
     if (subArr.length > 16) subArr = subArr.slice().sort((a, c) => Math.abs(c.above / c.total * 100 - 50) - Math.abs(a.above / a.total * 100 - 50)).slice(0, 16);   // keep it compact: most extreme breadth
     const secGridBtn = '<button class="btn ghost" id="spSectorGrid" style="font-size:12px;font-weight:600" title="פתח את כל תעודות-הסל של הסקטורים בתצוגת גרפים">📊 כל הסקטורים בגרפים</button>';
     const sectorsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי אחוז המניות מעל הפתיחה · לחץ שורה לכל המניות</div>' +
-      '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs, false) + "</div></div>";
+      '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs.filter(s => s.name !== "אחר" && s.name !== "מדדים"), false) + "</div></div>";
     const subsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
       '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
@@ -4327,7 +4327,7 @@
     const bySec = {};
     SCAN.rows.forEach(r => { const s = r.sec || "אחר"; (bySec[s] = bySec[s] || []).push(r); });
     const liveMap = {}; if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => liveMap[s.name] = s);
-    const names = Object.keys(bySec).filter(s => s !== "מדדים").sort((a, b) => bySec[b].length - bySec[a].length);   // מדדים isn't a sector
+    const names = Object.keys(bySec).filter(s => s !== "מדדים" && s !== "אחר").sort((a, b) => bySec[b].length - bySec[a].length);   // מדדים/אחר aren't real sectors — hide them
     // classify each main sector by its FTFC directional bias (of its FTFC stocks, more green or red?)
     const secInfo = names.map(name => {
       const members = bySec[name];
@@ -4363,7 +4363,7 @@
     // ---- sub-sectors (industries): split into BULL / neutral / BEAR by FTFC direction ----
     const byInd = {};
     SCAN.rows.forEach(r => { const k = (r.ind || "").trim(); if (k) (byInd[k] = byInd[k] || []).push(r); });
-    const indNames = Object.keys(byInd).filter(k => byInd[k].length >= 4 && k !== "מדדים");
+    const indNames = Object.keys(byInd).filter(k => byInd[k].length >= 4 && k !== "מדדים" && k !== "אחר");
     const subInfo = indNames.map(name => {
       const mem = byInd[name], tot = mem.length;
       const green = mem.filter(m => (m.D || {}).c === "up").length;
@@ -4739,7 +4739,7 @@
     const avg = (sum, n) => n ? sum / n : null;
     // two lenses (toggle): "etf" = the sector's official ETF move (LIVE.sectors, cap-weighted; falls back to
     // the stock average when live data isn't loaded) · "avg" = equal-weight average of its stocks (breadth).
-    return Object.keys(m).filter(s => m[s].n >= 3 && s !== "מדדים").map(s => {   // מדדים shown in the top strip, not as a sector row
+    return Object.keys(m).filter(s => m[s].n >= 3 && s !== "מדדים" && s !== "אחר").map(s => {   // מדדים shown in the top strip, not as a sector row
       const d = m[s], base = { name: s, n: d.n, greenPct: d.green / d.n * 100, top: d.top };
       if (flowSecMode === "avg") {
         return Object.assign(base, { chg: avg(d.s1, d.n1), chg5d: avg(d.s5, d.n5), chg20d: avg(d.s20, d.n20) });
@@ -4768,7 +4768,7 @@
         if (k.c20 != null) { m[s].s20 += k.c20; m[s].n20++; }
         if (t.mc && (!m[s].top || t.mc > m[s].top.mc)) m[s].top = { sym: t.sym, mc: t.mc, chg: t.chg, chg5d: k.c5, chg20d: k.c20 };
       });
-      return Object.keys(m).filter(s => m[s].n >= 3 && s !== "מדדים").map(s => ({
+      return Object.keys(m).filter(s => m[s].n >= 3 && s !== "מדדים" && s !== "אחר").map(s => ({
         name: s, etf: subEtfFor(s) || "", top: m[s].top,
         chg: m[s].n1 ? m[s].s1 / m[s].n1 : null,
         chg5d: m[s].n5 ? m[s].s5 / m[s].n5 : null,
