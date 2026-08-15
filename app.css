@@ -1170,6 +1170,20 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* what-to-check-now (daily briefing) */
 .td-mode { font-size:20px; font-weight:800; margin:2px 0 10px; }
 .td-mode.pos { color:#4fe39b; } .td-mode.neg { color:#ff6b7a; } .td-mode.zero { color:#e0c760; }
+/* indices strip — a tidy card row of the benchmark indices at the top of the money-flow page */
+.td-indices { margin-bottom:12px; padding:12px 14px; }
+.td-indices .td-ix-h { margin:0 0 10px; font-size:14px; }
+.td-ixc-row { display:flex; flex-wrap:wrap; gap:8px; }
+.td-ixc { flex:1 1 auto; min-width:96px; display:flex; flex-direction:column; align-items:center; gap:3px; padding:10px 12px; border-radius:11px; background:rgba(255,255,255,.04); border:1px solid var(--line); }
+.td-ixc .td-ixc-sym { font-family:'Inter',sans-serif; font-size:13px; font-weight:800; color:#c3ccdd; letter-spacing:.4px; }
+.td-ixc .td-ixc-chg { font-family:'Inter',sans-serif; font-size:17px; font-weight:800; font-variant-numeric:tabular-nums; direction:ltr; }
+.td-ixc.pos { background:rgba(22,184,119,.12); border-color:rgba(22,184,119,.3); } .td-ixc.pos .td-ixc-chg { color:#3fe0a0; }
+.td-ixc.neg { background:rgba(229,56,74,.12); border-color:rgba(229,56,74,.3); } .td-ixc.neg .td-ixc-chg { color:#ff6b7a; }
+.td-ixc.flat .td-ixc-chg { color:var(--muted); }
+.td-ixc.vix { background:rgba(124,108,240,.12); border-color:rgba(124,108,240,.3); } .td-ixc.vix .td-ixc-chg { color:#b9b1f5; }
+/* one global money-flow control (metric + timeframe) */
+.flow-ctrl { display:flex; align-items:center; gap:8px 12px; flex-wrap:wrap; margin-bottom:14px; padding:11px 14px; }
+.flow-ctrl-lbl { font-size:12px; color:var(--muted); font-weight:700; }
 .td-strip { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
 .td-idx { font-size:13px; background:rgba(255,255,255,.04); padding:5px 10px; border-radius:8px; }
 .td-idx b { color:#c3ccdd; margin-inline-end:4px; }
