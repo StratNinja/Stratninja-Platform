@@ -3015,8 +3015,9 @@
       tags = src.filter(t => t.ftfc).sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
     }
     const tagStr = cash(tags);
-    return cap + (tagStr ? "\n\n" + tagStr : "") + "\n\nstratninja.win";
+    return cap + (tagStr ? "\n\n" + tagStr : "") + "\n\n" + SHARE_HASHTAGS + "\n\nstratninja.win";
   }
+  const SHARE_HASHTAGS = "#Trading #TheStrat #StratNinja";
   function showShareModal(canvas, capOverride) {
     canvas.toBlob(blob => {
       if (!blob) { snToast("שגיאה ביצירת התמונה"); return; }
@@ -3024,7 +3025,9 @@
       const file = new File([blob], "stratninja.png", { type: "image/png" });
       // capOverride lets a specific share (e.g. one alert) supply a caption with ONLY its own tickers,
       // instead of the page-wide list. Falls back to the page-aware caption when not provided.
-      const tweetTxt = (typeof capOverride === "string" && capOverride) ? capOverride : shareTweetText();
+      let tweetTxt = (typeof capOverride === "string" && capOverride) ? capOverride : shareTweetText();
+      // ensure every share (incl. alert-card overrides) carries the hashtags, without duplicating stratninja.win
+      if (tweetTxt.indexOf("#StratNinja") < 0) tweetTxt = tweetTxt.replace(/\s*stratninja\.win\s*$/i, "").replace(/\s+$/, "") + "\n\n" + SHARE_HASHTAGS + "\n\nstratninja.win";
       const tweet = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(tweetTxt);
       const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [file] }));
       const capPreview = tweetTxt.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>");
