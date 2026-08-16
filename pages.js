@@ -2940,8 +2940,13 @@
       try { rows = (typeof sortRows === "function") ? sortRows(rows) : rows; } catch (e) {}
       tags = rows.slice(0, 5).map(t => t.sym);
     } else if (page === "today") {
-      cap = "🎯 מה לבדוק היום · StratNinja";
-      tags = src.filter(t => (t.D || {}).c === "up").sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 4).map(t => t.sym);
+      // match the card: the ETFs of the sectors/sub-sectors money is flowing INTO, at the card's timeframe
+      cap = "🎯 לאן הכסף זורם היום · StratNinja";
+      const frows = src.filter(t => t.ninja != null);
+      const vOf = o => flowTf === "5d" ? o.chg5d : flowTf === "20d" ? o.chg20d : o.chg;
+      const secs = (typeof todaySectors === "function" ? todaySectors(frows) : []).filter(o => vOf(o) != null).sort((a, b) => vOf(b) - vOf(a));
+      const subs = (typeof todaySubsectors === "function" ? todaySubsectors(frows) : []).filter(o => vOf(o) != null).sort((a, b) => vOf(b) - vOf(a));
+      tags = secs.slice(0, 2).map(o => etfFor(o.name)).concat(subs.slice(0, 3).map(o => o.etf || subEtfFor(o.name))).filter(Boolean);
     } else if (page === "gappers") {
       cap = "⚡ הגאפרים של היום · StratNinja";
       const g = (LIVE && LIVE.gappers) || { up: [], down: [] };
