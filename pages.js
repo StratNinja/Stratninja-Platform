@@ -148,7 +148,15 @@
   function etfChip(t) { return t ? '<span class="tsym clickable etf-chip" data-chart="' + t + '" title="תעודת סל · לחץ לגרף">' + t + "</span>" : ""; }
   // broad SPDR sector ETFs — must NOT appear as a sub-sector tag (that would just duplicate the sector's own ETF)
   const SECTOR_ETF_VALS = Object.keys(SECTOR_ETF).map(function (k) { return SECTOR_ETF[k]; });
-  function subEtfFor(ind) { const e = indEtf(ind); return (e && SECTOR_ETF_VALS.indexOf(e) < 0) ? e : ""; }
+  // normalize a sub-sector label so "אנרגיה - נפט וגז" and "אנרגיה-נפט וגז" match (dash/space variants)
+  function _normInd(s) { return String(s || "").replace(/\s*[-–—]\s*/g, "-").replace(/\s+/g, " ").trim(); }
+  function subEtfFor(ind) {
+    if (!ind) return "";
+    // prefer the server's authoritative sub-sector→ETF map (LIVE.subsectors carries the real ETF, e.g. XOP);
+    // the keyword heuristic below is only a fallback and can mis-match a sub-sector to its parent sector ETF.
+    if (LIVE && LIVE.subsectors) { const k = _normInd(ind), m = LIVE.subsectors.find(s => _normInd(s.ind) === k); if (m && m.etf) return m.etf; }
+    const e = indEtf(ind); return (e && SECTOR_ETF_VALS.indexOf(e) < 0) ? e : "";
+  }
   function cell(t, c) { return { t: t, c: c }; }
   function tf(x, sym, tfl) {
     const c = x && x.c ? x.c : "doji";
@@ -276,9 +284,17 @@
     const s = t.sym;
     return "<td>" + tf(t.Y, s, "Y") + "</td><td>" + tf(t.Q, s, "Q") + "</td><td>" + tf(t.M, s, "M") + "</td><td>" + tf(t.W, s, "W") + "</td><td>" + tf(t.D, s, "D") + "</td>";
   }
-  // FTFC badge — GREEN when the continuity is bullish (daily up), RED ("bear") when bearish (daily down)
-  function ftfcBadge(row) {
-    if (!row || !row.ftfc) return "—";
+  // FTFC badge — GREEN when the continuity is bullish, RED ("bear") when bearish.
+  // Default = the server's D·W·M flag (row.ftfc). Pass `tfs` (e.g. M·Q·Y / D·W·M·Q·Y) to compute the
+  // badge for a SPECIFIC timeframe set instead — so a drill matches the FTFC selector the user picked.
+  function ftfcBadge(row, tfs) {
+    if (!row) return "—";
+    if (tfs && tfs.length) {
+      const dir = (typeof secFtfcDir === "function") ? secFtfcDir(row, tfs) : "";
+      if (dir !== "up" && dir !== "down") return "—";
+      return '<span class="badge-ftfc' + (dir === "down" ? " bear" : "") + '">FTFC</span>';
+    }
+    if (!row.ftfc) return "—";
     return '<span class="badge-ftfc' + ((row.D || {}).c === "down" ? " bear" : "") + '">FTFC</span>';
   }
   // ── moving-average overlays on the embedded TradingView charts ───────────────────────────────
@@ -2944,9 +2960,11 @@
       cap = "📅 הביצועים שלי ב-StratNinja";
       tags = [];
     } else if (page === "sectors") {
-      cap = "🗂️ הסקטורים ותתי-הסקטורים המעניינים היום · StratNinja";
+      cap = "🗂️ המשכיות זמנית · StratNinja";
+      // count FTFC-up/down per the SELECTED timeframe set (matches the card + its FTFC badge), not the fixed D·W·M flag
+      const TFS = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY;
       const secC = {}, indC = {};
-      src.forEach(t => { if (!t.ftfc) return; const dir = (t.D || {}).c; if (dir !== "up" && dir !== "down") return; const up = dir === "up"; if (t.sector) { const o = secC[t.sector] = secC[t.sector] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } if (t.ind) { const o = indC[t.ind] = indC[t.ind] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } });
+      src.forEach(t => { const dir = secFtfcDir(t, TFS); if (dir !== "up" && dir !== "down") return; const up = dir === "up"; if (t.sector && t.sector !== "אחר" && t.sector !== "מדדים") { const o = secC[t.sector] = secC[t.sector] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } if (t.ind && t.ind !== "אחר" && t.ind !== "מדדים") { const o = indC[t.ind] = indC[t.ind] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } });
       const topSec = Object.keys(secC).sort((a, b) => secC[b].g - secC[a].g).slice(0, 2).map(s => etfFor(s));
       const topInd = Object.keys(indC).sort((a, b) => indC[b].g - indC[a].g).slice(0, 3).map(i => subEtfFor(i));
       tags = topSec.concat(topInd);
@@ -4434,8 +4452,8 @@
     if (col === "sym") return r.s;
     if (col === "price") return r.p || (r.tech ? r.tech.px : 0);
     if (col === "chg") return r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
-    // FTFC-green (D up) on top, then FTFC-red (D down), then non-FTFC — so descending groups green→red→none
-    if (col === "ftfc") return r.ftfc ? ((r.D || {}).c === "down" ? 1 : 2) : 0;
+    // FTFC-green on top, then FTFC-red, then non-FTFC — computed for the SELECTED timeframe set (matches the badge)
+    if (col === "ftfc") { const dir = (typeof secFtfcDir === "function") ? secFtfcDir(r, SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY) : ""; return dir === "up" ? 2 : dir === "down" ? 1 : 0; }
     if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(r[col]);
     return null;
   }
@@ -4446,16 +4464,19 @@
     const displayName = isSub ? indFilter : secName;
     const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => isSub ? r.ind === indFilter : r.sec === secName) : [];
     if (!members.length) { modal(displayName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
+    // FTFC column follows the timeframe set the user picked on the המשכיות-זמנית page (default M·Q·Y),
+    // so the badge matches the selector instead of always showing the server's fixed D·W·M flag.
+    const _drillTfs = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY, _drillTfLbl = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
     const rowHtml = r => {
       const t = { sym: r.s, Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
       const chg = r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
-      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p || (r.tech ? r.tech.px : 0)) + "</td><td>" + pct(chg) + "</td>" + tfCells(t) + "<td>" + ftfcBadge(r) + "</td></tr>";
+      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p || (r.tech ? r.tech.px : 0)) + "</td><td>" + pct(chg) + "</td>" + tfCells(t) + "<td>" + ftfcBadge(r, _drillTfs) + "</td></tr>";
     };
     const th = (label, col, start) => {
       const arrow = secSort.col === col ? (secSort.dir < 0 ? " ▼" : " ▲") : "";
       return '<th class="sortable" data-ssort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>";
     };
-    const head = "<th></th>" + th("סימבול", "sym", true) + th("מחיר", "price") + th("%", "chg") + th("Y", "Y") + th("Q", "Q") + th("M", "M") + th("W", "W") + th("D", "D") + th("FTFC", "ftfc");
+    const head = "<th></th>" + th("סימבול", "sym", true) + th("מחיר", "price") + th("%", "chg") + th("Y", "Y") + th("Q", "Q") + th("M", "M") + th("W", "W") + th("D", "D") + th("FTFC " + _drillTfLbl, "ftfc");
     const sortMembers = () => members.slice().sort((a, b) => {
       let va = secSortVal(a, secSort.col), vb = secSortVal(b, secSort.col);
       const na = va == null || va === "" || (typeof va === "number" && isNaN(va)), nb = vb == null || vb === "" || (typeof vb === "number" && isNaN(vb));
