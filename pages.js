@@ -322,6 +322,24 @@
       if (onChange) onChange();
     });
   }
+  // Warm the TradingView charting library in the background: one hidden iframe downloads TV's JS/CSS
+  // ONCE, so when the trader opens a chart grid the cells reuse the cached library and appear fast
+  // (the first iframe's library download is the slow part). Idempotent + runs when the browser is idle.
+  let _tvWarmed = false;
+  function warmTradingView() {
+    if (_tvWarmed || typeof document === "undefined") return;
+    _tvWarmed = true;
+    const go = () => {
+      try {
+        const f = document.createElement("iframe");
+        f.src = "https://www.tradingview.com/widgetembed/?frameElementId=tvwarm&symbol=SPY&interval=D&range=1M&theme=dark&style=1&hidesidetoolbar=1&hidetoptoolbar=1&hide_legend=1&saveimage=0";
+        f.setAttribute("loading", "eager"); f.setAttribute("tabindex", "-1"); f.setAttribute("aria-hidden", "true");
+        f.style.cssText = "position:absolute;width:2px;height:2px;left:-9999px;top:-9999px;opacity:0;pointer-events:none;border:0";
+        document.body.appendChild(f);
+      } catch (e) { }
+    };
+    if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 1500);
+  }
   function openChart(sym, tfl) {
     const iv = ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M" })[tfl] || "D";
     const base = "https://www.tradingview.com/widgetembed/?frameElementId=tvchart&symbol=" + encodeURIComponent(sym) +
@@ -3250,13 +3268,15 @@
     closeSecMenu();
     const etf = el.dataset.secetf, name = el.dataset.secname, isSub = el.dataset.secsub === "1";
     const label = isSub ? name : secHe(name);
-    // "table" option: prefer the S&P above-open table (renderSp500Drill) when we have breadth data for
-    // this group; otherwise (Crypto, אחר, non-S&P groups) fall back to the scanner-based table (renderSecDrill).
-    const hasAoTable = isSub
-      ? ((LIVE && LIVE.sectors) || []).some(sec => (sec.stocks || []).some(x => (x.ind || "") === name))
-      : ((LIVE && LIVE.sectors) || []).some(x => x.name === name);
-    const hasRowsTable = (typeof scanSource === "function") && scanSource().some(t => t[isSub ? "ind" : "sector"] === name);
-    const showTable = hasAoTable || hasRowsTable;
+    // "table" option: prefer the S&P above-open table (renderSp500Drill) ONLY when it covers most of the
+    // group. For groups that are mostly non-S&P (Crypto, gold miners, אחר…) it would show a misleading
+    // subset (e.g. gold-mining GDX → only NEM), so fall back to the full scanner table (renderSecDrill).
+    let aoCount = 0;
+    if (isSub) ((LIVE && LIVE.sectors) || []).forEach(sec => (sec.stocks || []).forEach(x => { if ((x.ind || "") === name) aoCount++; }));
+    else { const sec = ((LIVE && LIVE.sectors) || []).find(x => x.name === name); aoCount = sec ? (sec.stocks || []).length : 0; }
+    const fullCount = (typeof scanSource === "function") ? scanSource().filter(t => t[isSub ? "ind" : "sector"] === name).length : 0;
+    const hasAoTable = aoCount > 0 && (fullCount === 0 || aoCount >= fullCount * 0.6);   // above-open only if it covers ≥60% of the group
+    const showTable = hasAoTable || fullCount > 0;
     const tableLbl = "📋 טבלת " + (isSub ? "הענף" : "הסקטור") + (hasAoTable ? " (מעל פתיחה)" : "");
     const pop = document.createElement("div"); pop.className = "tf-addpop sec-menu"; pop.id = "secEtfPop";
     pop.innerHTML = '<div class="tf-addpop-lbl">' + escHtml(label) + (etf ? " · " + escHtml(etf) : "") + "</div>" +
@@ -5637,6 +5657,8 @@
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
     if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") { loadScanner(); if (state.page === "today") { loadLive(); loadFlow(); } }
+    // on any chart-capable page, warm the TradingView library in the background so grids open fast
+    if (["scanner", "sectors", "sp500", "today", "gappers", "favorites"].indexOf(state.page) >= 0) warmTradingView();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
   }
   window.setPageExternal = setPage;
