@@ -2167,12 +2167,13 @@
   function buildSectorsCardEl() {
     const src = (typeof scanSource === "function") ? scanSource() : [];
     const ms = todayMarketState();
-    const tf = flowTf;
-    const vOf = s => tf === "5d" ? s.chg5d : tf === "20d" ? s.chg20d : s.chg;
-    const rangeLbl = tf === "5d" ? "5D" : tf === "20d" ? "20D" : "1D";
-    let secs = (typeof todaySectors === "function" ? todaySectors(src) : [])
-      .filter(s => s && s.name && s.name !== "אחר" && s.name !== "—" && vOf(s) != null)
-      .map(s => ({ name: s.name, v: vOf(s) }));
+    // this card is shared from the המשכיות-זמנית page → rank by FTFC net continuity (up-aligned − down-aligned)/
+    // total, over the SELECTED timeframe set (D·W·M / M·Q·Y / NINJA REALM), not by a 1D price move.
+    const TFS = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY;
+    const rangeLbl = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
+    const _bySec = {};
+    src.forEach(t => { const s = t.sector; if (!s || s === "אחר" || s === "מדדים") return; const o = _bySec[s] = (_bySec[s] || { g: 0, r: 0, n: 0 }); o.n++; const d = secFtfcDir(t, TFS); if (d === "up") o.g++; else if (d === "down") o.r++; });
+    let secs = Object.keys(_bySec).filter(s => _bySec[s].n >= 3).map(s => { const o = _bySec[s]; return { name: s, v: Math.round((o.g - o.r) / o.n * 100) }; });
     secs.sort((a, b) => b.v - a.v);
     const total = secs.length || 1;
     const green = secs.filter(s => s.v > 0.05).length, red = secs.filter(s => s.v < -0.05).length, neutral = total - green - red;
@@ -2188,7 +2189,7 @@
     const seg = (n, cls) => { let o = ""; for (let i = 0; i < n; i++) o += '<span class="' + cls + '"></span>'; return o; };
     const segbar = seg(green, "sec2-sg") + seg(neutral, "sec2-sn") + seg(red, "sec2-sr");
     const t1 = leaders[0] ? secHe(leaders[0].name) : "—", t2 = leaders[1] ? secHe(leaders[1].name) : "", wk = weakest[0] ? secHe(weakest[0].name) : "";
-    const subT = green > red ? "רוחב סקטוריאלי חיובי" : red > green ? "רוחב סקטוריאלי שלילי" : "רוחב סקטוריאלי מעורב";
+    const subT = green > red ? "המשכיות סקטוריאלית חיובית" : red > green ? "המשכיות סקטוריאלית שלילית" : "המשכיות סקטוריאלית מעורבת";
     const sentiment = green > red ? "Risk-On מתון" : red > green ? "Risk-Off" : "סנטימנט מעורב";
     const insTxt = "הובלת <b>" + escHtml(t1) + (t2 ? "</b> ו<b>" + escHtml(t2) : "") + "</b> מצביעה על " + sentiment + (wk ? ", לצד חולשה ב<b>" + escHtml(wk) + "</b>" : "") + ".";
     const rtag = ms ? '<span class="sec2-tag sec2-' + ms.cls + '">' + ms.emoji + " " + ms.mode + "</span>" : "";
@@ -2200,7 +2201,7 @@
         (upd ? '<div class="sec2-upd"><span class="sec2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
       '<div class="sec2-ct">' +
         '<div class="sec2-topwrap">' +
-          '<div class="sec2-hero"><div class="sec2-htext"><div class="sec2-tags">' + rtag + '<span class="sec2-tag sec2-range">טווח נבדק: <b>' + rangeLbl + "</b></span></div>" +
+          '<div class="sec2-hero"><div class="sec2-htext"><div class="sec2-tags">' + rtag + '<span class="sec2-tag sec2-range">FTFC · <b>' + rangeLbl + "</b></span></div>" +
             '<h1>השוק בהובלת ה<b>' + escHtml(t1) + "</b></h1><div class=\"sec2-sub\">" + subT + "</div></div>" +
             '<div class="sec2-big"><div class="sec2-kpi">' + green + "/" + total + '</div><div class="sec2-cap">סקטורים חיוביים</div></div></div>' +
           '<div class="sec2-cols">' +
@@ -3009,14 +3010,14 @@
       cap = "📅 הביצועים שלי ב-StratNinja";
       tags = [];
     } else if (page === "sectors") {
-      cap = "🗂️ המשכיות זמנית · StratNinja";
-      // count FTFC-up/down per the SELECTED timeframe set (matches the card + its FTFC badge), not the fixed D·W·M flag
+      // match the card: sectors ranked by FTFC net over the SELECTED timeframe set — and name that set in the caption
+      const _tfl = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
+      cap = "🗂️ המשכיות זמנית · FTFC " + _tfl + " · StratNinja";
       const TFS = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY;
-      const secC = {}, indC = {};
-      src.forEach(t => { const dir = secFtfcDir(t, TFS); if (dir !== "up" && dir !== "down") return; const up = dir === "up"; if (t.sector && t.sector !== "אחר" && t.sector !== "מדדים") { const o = secC[t.sector] = secC[t.sector] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } if (t.ind && t.ind !== "אחר" && t.ind !== "מדדים") { const o = indC[t.ind] = indC[t.ind] || { g: 0, r: 0 }; o[up ? "g" : "r"]++; } });
-      const topSec = Object.keys(secC).sort((a, b) => secC[b].g - secC[a].g).slice(0, 2).map(s => etfFor(s));
-      const topInd = Object.keys(indC).sort((a, b) => indC[b].g - indC[a].g).slice(0, 3).map(i => subEtfFor(i));
-      tags = topSec.concat(topInd);
+      const bySec = {};
+      src.forEach(t => { const s = t.sector; if (!s || s === "אחר" || s === "מדדים") return; const o = bySec[s] = (bySec[s] || { g: 0, r: 0, n: 0 }); o.n++; const d = secFtfcDir(t, TFS); if (d === "up") o.g++; else if (d === "down") o.r++; });
+      const secs = Object.keys(bySec).filter(s => bySec[s].n >= 3 && etfFor(s)).map(s => { const o = bySec[s]; return { name: s, v: (o.g - o.r) / o.n }; }).sort((a, b) => b.v - a.v);
+      tags = secs.slice(0, 3).map(s => etfFor(s.name)).concat(secs.slice(-2).map(s => etfFor(s.name)));
     } else if (page === "scanner") {
       cap = "🔍 הסטאפים החזקים היום ב-StratNinja";
       // match the 5 tickers the SHARE CARD actually shows: current filter + the user's current sort (not by-chg)
