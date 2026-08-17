@@ -2387,12 +2387,49 @@
     });
     return all;
   }
+  // journal-share scope: which period the card summarizes + whether to include open positions
+  let _jShareScope = { range: "day", open: false };
+  function _dateMinusDays(ymd, days) {   // "YYYY-MM-DD" minus N days → "YYYY-MM-DD"
+    const p = String(ymd || "").split("-"); if (p.length !== 3) return ymd;
+    const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); d.setUTCDate(d.getUTCDate() - days);
+    return d.toISOString().slice(0, 10);
+  }
+  // pre-share picker: let the trader choose a day / period + whether to include open trades
+  function openJournalSharePicker() {
+    const R = _jShareScope.range;
+    const rbtn = (k, lbl) => '<button class="btn ghost' + (k === R ? " primary" : "") + '" data-jsprange="' + k + '" style="font-size:13px;font-weight:600">' + lbl + "</button>";
+    const body = '<div style="padding:2px">' +
+      '<div class="muted" style="font-size:13px;margin-bottom:9px">📅 בחר טווח לכרטיס:</div>' +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px">' + rbtn("day", "היום האחרון") + rbtn("7d", "7 ימים") + rbtn("30d", "30 ימים") + rbtn("all", "כל התקופה") + "</div>" +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px"><input type="checkbox" id="jspOpen"' + (_jShareScope.open ? " checked" : "") + "> כלול גם עסקאות פתוחות (רווח/הפסד לא ממומש)</label>" +
+      '<button class="btn primary" id="jspGo" style="width:100%;font-weight:700">📤 צור כרטיס שיתוף</button></div>';
+    modal("📅 שיתוף יומן מסחר", body, "jshare");
+    document.querySelectorAll("[data-jsprange]").forEach(b => b.onclick = () => { _jShareScope.range = b.dataset.jsprange; document.querySelectorAll("[data-jsprange]").forEach(x => x.classList.toggle("primary", x === b)); });
+    const go = document.getElementById("jspGo");
+    if (go) go.onclick = () => { const ck = document.getElementById("jspOpen"); _jShareScope.open = !!(ck && ck.checked); closeModal(); _captureRedesignCard(buildJournalCardEl); };
+  }
   function buildJournalCardEl() {
     const E = window.Engine;
     const all = _journalClosedTrades();
-    // scope = latest trading day (by exitDate)
-    let day = null; all.forEach(t => { if (t.exitDate && (!day || t.exitDate > day)) day = t.exitDate; });
-    const trades = day ? all.filter(t => t.exitDate === day) : [];
+    let latest = null; all.forEach(t => { if (t.exitDate && (!latest || t.exitDate > latest)) latest = t.exitDate; });
+    const range = (_jShareScope && _jShareScope.range) || "day";
+    const isDay = range === "day";
+    const dstr = d => d ? d.split("-").reverse().join(".") : "—";
+    // pick the trade set + labels for the chosen scope
+    let trades, dayHe, resultCap, stateCap;
+    if (range === "all" || !latest) {
+      trades = all.filter(t => t.exitDate);
+      let first = null; trades.forEach(t => { if (t.exitDate && (!first || t.exitDate < first)) first = t.exitDate; });
+      dayHe = (first && latest && first !== latest) ? dstr(first) + "–" + dstr(latest) : dstr(latest);
+      resultCap = "תוצאה כוללת"; stateCap = "סיכום כולל";
+    } else if (isDay) {
+      trades = all.filter(t => t.exitDate === latest);
+      dayHe = dstr(latest); resultCap = "תוצאה יומית"; stateCap = "מצב היום";
+    } else {
+      const cut = _dateMinusDays(latest, (range === "7d" ? 7 : 30) - 1);
+      trades = all.filter(t => t.exitDate && t.exitDate >= cut);
+      dayHe = dstr(cut) + "–" + dstr(latest); resultCap = "תוצאה בתקופה"; stateCap = "מצב התקופה";
+    }
     const st = (E && E.stats) ? E.stats(trades) : { count: 0, net: 0, winRate: 0, wins: 0, losses: 0, avgWin: 0, avgLoss: 0, profitFactor: 0, bestTrade: 0, worstTrade: 0 };
     const n = st.count, net = st.net;
     const wins = st.wins, losses = st.losses, be = Math.max(0, n - wins - losses);
@@ -2404,14 +2441,16 @@
     // money formatter: +$1,234 / −$210
     const usd = v => (v < 0 ? "−$" : "+$") + Math.round(Math.abs(v)).toLocaleString("en-US");
     const usdBare = v => "$" + Math.round(Math.abs(v)).toLocaleString("en-US");
-    // headline / state
+    // headline / state — wording adapts to a single day vs a period
     let l1, kpiCls, brCls, brLbl, dayTag;
     if (n === 0) { l1 = "אין עדיין עסקאות סגורות"; kpiCls = "jrn2-z"; brCls = "jrn2-z"; brLbl = "אין נתונים"; dayTag = '<span class="jrn2-tag jrn2-z">⚪ יומן ריק</span>'; }
-    else if (net > 0) { l1 = st.winRate >= 60 ? "יום <b>ירוק</b> וחזק" : "יום <b>ירוק</b>"; kpiCls = "jrn2-pos"; brCls = ""; brLbl = "יום רווחי"; dayTag = '<span class="jrn2-tag jrn2-pos">🟢 יום ירוק</span>'; }
-    else if (net < 0) { l1 = "יום <b>אדום</b> — ללמידה"; kpiCls = "jrn2-neg"; brCls = "jrn2-neg"; brLbl = "יום הפסדי"; dayTag = '<span class="jrn2-tag jrn2-neg">🔴 יום אדום</span>'; }
-    else { l1 = "יום <b>מאוזן</b>"; kpiCls = "jrn2-z"; brCls = "jrn2-z"; brLbl = "יום מאוזן"; dayTag = '<span class="jrn2-tag jrn2-z">⚪ יום מאוזן</span>'; }
-    const dayHe = day ? day.split("-").reverse().join(".") : "—";
-    const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום יומי" : (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + usd(avgPer) + " לעסקה");
+    else if (net > 0) { l1 = isDay ? (st.winRate >= 60 ? "יום <b>ירוק</b> וחזק" : "יום <b>ירוק</b>") : (st.winRate >= 60 ? "תקופה <b>ירוקה</b> וחזקה" : "תקופה <b>ירוקה</b>"); kpiCls = "jrn2-pos"; brCls = ""; brLbl = isDay ? "יום רווחי" : "תקופה רווחית"; dayTag = '<span class="jrn2-tag jrn2-pos">🟢 ' + (isDay ? "יום ירוק" : "תקופה ירוקה") + "</span>"; }
+    else if (net < 0) { l1 = (isDay ? "יום <b>אדום</b>" : "תקופה <b>אדומה</b>") + " — ללמידה"; kpiCls = "jrn2-neg"; brCls = "jrn2-neg"; brLbl = isDay ? "יום הפסדי" : "תקופה הפסדית"; dayTag = '<span class="jrn2-tag jrn2-neg">🔴 ' + (isDay ? "יום אדום" : "תקופה אדומה") + "</span>"; }
+    else { l1 = isDay ? "יום <b>מאוזן</b>" : "תקופה <b>מאוזנת</b>"; kpiCls = "jrn2-z"; brCls = "jrn2-z"; brLbl = isDay ? "יום מאוזן" : "תקופה מאוזנת"; dayTag = '<span class="jrn2-tag jrn2-z">⚪ ' + (isDay ? "יום מאוזן" : "תקופה מאוזנת") + "</span>"; }
+    // optional open-positions tag (unrealized P&L), when the trader chose to include open trades
+    let openTag = "";
+    if (_jShareScope && _jShareScope.open) { const js = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null; if (js && js.open) openTag = '<span class="jrn2-tag jrn2-z">🔓 ' + js.open + " פתוחות" + (js.unrealized != null ? " · לא ממומש " + usd(js.unrealized) : "") + "</span>"; }
+    const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום" : (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + usd(avgPer) + " לעסקה");
     // trade rows (best pnl first, up to 5)
     const day5 = trades.slice().sort((a, b) => (b.pnl || 0) - (a.pnl || 0)).slice(0, 5);
     const dirTag = t => t.direction === "short" ? '<span class="jrn2-stag jrn2-sh">שורט</span>' : '<span class="jrn2-stag">לונג</span>';
@@ -2448,13 +2487,13 @@
       '<div class="jrn2-hd">' + photo + '<div><div class="jrn2-bt">StratNinja <span>Scanner</span></div><div class="jrn2-bs">The Strat · יומן מסחר</div></div>' +
         (upd ? '<div class="jrn2-upd"><span class="jrn2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
       '<div class="jrn2-ct">' +
-        '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span></div>" +
+        '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span>" + openTag + "</div>" +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
-          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? usd(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">העסקה הטובה <b>' + iso(usd(st.bestTrade)) + '</b> · הגרועה <b>' + iso(usd(st.worstTrade)) + "</b></div>" : "") + '<div class="jrn2-cap">תוצאה יומית</div></div></div>' +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? usd(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">העסקה הטובה <b>' + iso(usd(st.bestTrade)) + '</b> · הגרועה <b>' + iso(usd(st.worstTrade)) + "</b></div>" : "") + '<div class="jrn2-cap">' + resultCap + "</div></div></div>" +
         '<div class="jrn2-cols">' +
           '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות</div>' + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
-        '<div class="jrn2-breadth"><div class="jrn2-btop ' + brCls + '">מצב היום · <b>' + brLbl + "</b></div>" +
+        '<div class="jrn2-breadth"><div class="jrn2-btop ' + brCls + '">' + stateCap + ' · <b>' + brLbl + "</b></div>" +
           '<div class="jrn2-bar"><span class="jrn2-g" style="width:' + bg + '%"></span><span class="jrn2-n" style="width:' + bn + '%"></span><span class="jrn2-r" style="width:' + brr + '%"></span></div>' +
           '<div class="jrn2-blabels"><span class="jrn2-lup">▲ <span class="jrn2-num">' + wins + '</span> רווחיות</span><span class="jrn2-sepd">·</span><span class="jrn2-lflat"><span class="jrn2-num">' + be + '</span> ברייק-איבן</span><span class="jrn2-sepd">·</span><span class="jrn2-ldn"><span class="jrn2-num">' + losses + '</span> הפסדיות ▼</span></div></div>' +
         '<div class="jrn2-opp"><div class="jrn2-oph"><span class="jrn2-oic"></span> איכות הביצוע</div>' +
@@ -2803,7 +2842,7 @@
     // market-page "After/Pre-Market" share during the gappers window → the new square gappers card (not the legacy landscape one)
     if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } _captureRedesignCard(buildMoversCardEl); return; }
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
-    if (state.page === "journal") { _captureRedesignCard(buildJournalCardEl); return; }   // redesigned journal day-summary card
+    if (state.page === "journal") { openJournalSharePicker(); return; }   // pick day/period + open-trades, then capture
     if (state.page === "gappers") { _captureRedesignCard(buildGappersCardEl); return; }   // redesigned gappers pre-market card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
