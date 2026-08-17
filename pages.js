@@ -3059,6 +3059,14 @@
       const upS = (data.up || []).slice().sort((a, b) => (b.gp || 0) - (a.gp || 0));
       const dnS = (data.down || []).slice().sort((a, b) => (a.gp || 0) - (b.gp || 0));
       tags = upS.slice(0, 3).map(x => x.s).concat(dnS.slice(0, 2).map(x => x.s));
+    } else if (page === "market") {
+      // market-overview "state" card → the exact leaders/laggards it displays (SNDK/COHR · CHTR/STZ),
+      // not a generic top-FTFC list that has nothing to do with the card.
+      cap = "📊 סקירת השוק היום · StratNinja";
+      const U = mktU();
+      const lead = (U.leaders || []).slice().sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 2).map(x => x.s);
+      const lag = (U.laggards || []).slice().sort((a, b) => (a.c || 0) - (b.c || 0)).slice(0, 2).map(x => x.s);
+      tags = lead.concat(lag);
     } else {
       cap = "📊 סקירת השוק היום ב-StratNinja";
       tags = src.filter(t => t.ftfc).sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
