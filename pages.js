@@ -2451,8 +2451,18 @@
     let openTag = "";
     if (_jShareScope && _jShareScope.open) { const js = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null; if (js && js.open) openTag = '<span class="jrn2-tag jrn2-z">🔓 ' + js.open + " פתוחות" + (js.unrealized != null ? " · לא ממומש " + usd(js.unrealized) : "") + "</span>"; }
     const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום" : (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + usd(avgPer) + " לעסקה");
-    // trade rows (best pnl first, up to 5)
-    const day5 = trades.slice().sort((a, b) => (b.pnl || 0) - (a.pnl || 0)).slice(0, 5);
+    // trade rows — surface BOTH the biggest winners and the worst losers (top-5-by-pnl hid all the losses
+    // on a losing day, so the card looked all-green while the headline was red). Balanced, then sorted.
+    const _byPnl = (a, b) => (b.pnl || 0) - (a.pnl || 0);
+    const _wins = trades.filter(t => (t.pnl || 0) > 0).sort(_byPnl);
+    const _loss = trades.filter(t => (t.pnl || 0) < 0).sort((a, b) => (a.pnl || 0) - (b.pnl || 0));   // worst first
+    let day5;
+    if (_wins.length && _loss.length) {
+      const nL = Math.min(2, _loss.length), nW = Math.min(5 - nL, _wins.length);
+      day5 = _wins.slice(0, nW).concat(_loss.slice(0, 5 - nW)).slice(0, 5).sort(_byPnl);
+    } else {
+      day5 = trades.slice().sort(_byPnl).slice(0, 5);
+    }
     const dirTag = t => t.direction === "short" ? '<span class="jrn2-stag jrn2-sh">שורט</span>' : '<span class="jrn2-stag">לונג</span>';
     const pcCls = v => v > 0 ? "jrn2-p-pos" : v < 0 ? "jrn2-p-neg" : "jrn2-p-flat";
     const tradeRow = (t, i) => '<div class="jrn2-rrow"><span class="jrn2-rk">' + (i + 1) + '</span><span class="jrn2-tk">' + escHtml(t.symbol || "—") + "</span>" +
@@ -2491,7 +2501,7 @@
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
           '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? usd(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">העסקה הטובה <b>' + iso(usd(st.bestTrade)) + '</b> · הגרועה <b>' + iso(usd(st.worstTrade)) + "</b></div>" : "") + '<div class="jrn2-cap">' + resultCap + "</div></div></div>" +
         '<div class="jrn2-cols">' +
-          '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות</div>' + tradesHtml + "</div>" +
+          '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות' + (n > day5.length ? ' <span style="font-weight:400;opacity:.6;font-size:11px">· מובילות ומפסידות מתוך ' + n + "</span>" : "") + "</div>" + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
         '<div class="jrn2-breadth"><div class="jrn2-btop ' + brCls + '">' + stateCap + ' · <b>' + brLbl + "</b></div>" +
           '<div class="jrn2-bar"><span class="jrn2-g" style="width:' + bg + '%"></span><span class="jrn2-n" style="width:' + bn + '%"></span><span class="jrn2-r" style="width:' + brr + '%"></span></div>' +
