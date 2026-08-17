@@ -2147,7 +2147,7 @@
         (upd ? '<div class="spm-upd"><span class="spm-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
       '<div class="spm-ct">' +
         '<div class="spm-hero"><div><div class="spm-l1">רוחב השוק ' + (pct >= 55 ? "תומך בראלי" : pct <= 45 ? "חלש" : "מעורב") + "</div>" +
-          '<div class="spm-l2"><b>' + pct + '%</b> ממניות ה-S&P 500 בירוק — ה' + escHtml(strongHe) + " מובילה</div></div>" +
+          '<div class="spm-l2"><b>' + pct + '%</b> ממניות ה-S&P 500 בירוק — בהובלת ה' + escHtml(strongHe) + "</div></div>" +
           '<div class="spm-big"><div class="spm-pct">' + pct + '%</div><div class="spm-cap">מעל מחיר הפתיחה</div></div></div>' +
         '<div class="spm-breadth"><div class="spm-bar"><span class="spm-g" style="width:' + barG + '%"></span><span class="spm-r" style="width:' + barR + '%"></span></div>' +
           '<div class="spm-blabels"><span class="spm-up">▲ <span class="spm-num">' + up + '</span> עולות</span><span class="spm-sepd">·</span><span class="spm-dn"><span class="spm-num">' + down + '</span> יורדות ▼</span><span class="spm-sepd">·</span><span class="spm-flat"><span class="spm-num">' + flat + '</span> ללא שינוי</span></div></div>' +
@@ -2201,7 +2201,7 @@
       '<div class="sec2-ct">' +
         '<div class="sec2-topwrap">' +
           '<div class="sec2-hero"><div class="sec2-htext"><div class="sec2-tags">' + rtag + '<span class="sec2-tag sec2-range">טווח נבדק: <b>' + rangeLbl + "</b></span></div>" +
-            '<h1>ה<b>' + escHtml(t1) + '</b> מובילה את השוק</h1><div class="sec2-sub">' + subT + "</div></div>" +
+            '<h1>השוק בהובלת ה<b>' + escHtml(t1) + "</b></h1><div class=\"sec2-sub\">" + subT + "</div></div>" +
             '<div class="sec2-big"><div class="sec2-kpi">' + green + "/" + total + '</div><div class="sec2-cap">סקטורים חיוביים</div></div></div>' +
           '<div class="sec2-cols">' +
             '<div class="sec2-col sec2-pos"><div class="sec2-ch"><span class="sec2-ic"></span> 5 הסקטורים המובילים</div>' + rows(leaders) + "</div>" +
@@ -2262,7 +2262,7 @@
         (upd ? '<div class="mkt2-upd"><span class="mkt2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
       '<div class="mkt2-ct">' +
         '<div class="mkt2-hero"><div class="mkt2-htext"><div class="mkt2-tags">' + rtag + '<span class="mkt2-tag mkt2-range">S&P 500</span></div>' +
-          '<h1><span class="mkt2-l1">' + l1 + '</span><span class="mkt2-l2">ה<b>' + escHtml(topSec) + '</b> מובילה</span></h1><div class="mkt2-sub">' + subT + "</div></div>" +
+          '<h1><span class="mkt2-l1">' + l1 + '</span><span class="mkt2-l2">בהובלת ה<b>' + escHtml(topSec) + "</b></span></h1><div class=\"mkt2-sub\">" + subT + "</div></div>" +
           '<div class="mkt2-big"><div class="mkt2-kpi">' + up + '<span>/' + total + '</span></div><div class="mkt2-cap">מניות מעל הפתיחה</div></div></div>' +
         '<div class="mkt2-idx">' + vixTile + idxTiles + "</div>" +
         '<div class="mkt2-breadth"><div class="mkt2-bar"><span class="mkt2-g" style="width:' + barG + '%"></span><span class="mkt2-r" style="width:' + barR + '%"></span></div>' +
@@ -2745,7 +2745,7 @@
     const L0 = secUp[0], D0 = secDn[0];
     const gap = ((L0 ? +L0.chg : 0) - (D0 ? +D0.chg : 0));
     const h1 = (L0 && D0)
-      ? '<b class="g">' + escHtml(secHeDef(L0.name)) + '</b> מובילה — <b class="r">' + escHtml(secHeDef(D0.name)) + '</b> מאחור'
+      ? '<b class="g">' + escHtml(secHeDef(L0.name)) + '</b> בהובלה — <b class="r">' + escHtml(secHeDef(D0.name)) + '</b> מאחור'
       : 'מובילים ומפגרים של היום';
     const hint = (L0 && D0 && etfFor(L0.name) && etfFor(D0.name))
       ? '<span class="n">' + etfFor(L0.name) + '</span> מול <span class="n">' + etfFor(D0.name) + '</span> · מוביל מול חלש' : 'מוביל מול חלש';
