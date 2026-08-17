@@ -3072,6 +3072,19 @@
       const lead = (U.leaders || []).slice().sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 2).map(x => x.s);
       const lag = (U.laggards || []).slice().sort((a, b) => (a.c || 0) - (b.c || 0)).slice(0, 2).map(x => x.s);
       tags = lead.concat(lag);
+    } else if (page === "sp500") {
+      // S&P 500 breadth-map card → the strong sector ETF, weak sector ETF + leading stocks it highlights
+      cap = "🗺️ רוחב שוק S&P 500 · StratNinja";
+      const mrows = ((SCAN && SCAN.rows) || []).filter(r => r.sp && r.c != null);
+      const bySec = {}; mrows.forEach(r => { const s = r.sec || "אחר"; (bySec[s] = bySec[s] || []).push(r); });
+      const secStat = Object.keys(bySec).filter(s => s !== "אחר" && s !== "מדדים" && bySec[s].length >= 4)
+        .map(s => { const arr = bySec[s]; const g = arr.filter(r => (r.c || 0) > 0.05).length; return { sec: s, pct: g / arr.length }; });
+      const strong = secStat.slice().sort((a, b) => b.pct - a.pct)[0], weak = secStat.slice().sort((a, b) => a.pct - b.pct)[0];
+      const t = [];
+      if (strong && etfFor(strong.sec)) t.push(etfFor(strong.sec));
+      if (weak && etfFor(weak.sec)) t.push(etfFor(weak.sec));
+      mrows.slice().sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 3).forEach(r => { if (t.indexOf(r.s) < 0) t.push(r.s); });   // top leading stocks
+      tags = t;
     } else {
       cap = "📊 סקירת השוק היום ב-StratNinja";
       tags = src.filter(t => t.ftfc).sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
