@@ -3043,9 +3043,14 @@
       cap = "🗺️ Candle Map · S&P 500 · StratNinja";   // structure map — not ticker-specific
       tags = [];
     } else if (page === "market" && _mktShareSection === "leaders") {
+      // the card shows leading/lagging SECTORS *and* stocks — the caption must carry both (sectors were missing)
       cap = "🏆 מובילים ומפגרים היום · StratNinja";
       const U = mktU();
-      tags = (U.leaders || []).slice(0, 3).map(x => x.s).concat((U.laggards || []).slice(0, 2).map(x => x.s));
+      const secLead = (U.sectorLeaders || []).filter(s => etfFor(s.name)).slice(0, 2).map(s => etfFor(s.name));
+      const secLag = (U.sectorLaggards || []).filter(s => etfFor(s.name)).slice(0, 1).map(s => etfFor(s.name));
+      const stkLead = (U.leaders || []).slice(0, 2).map(x => x.s);
+      const stkLag = (U.laggards || []).slice(0, 1).map(x => x.s);
+      tags = secLead.concat(secLag, stkLead, stkLag);
     } else if (page === "market" && _mktShareSection === "movers") {
       // MUST match the card's source: the movers cards use the WIDEST universe (.all), not the
       // S&P-500 toggle — else the caption listed sp500 tickers (TPL/COHR/GLW) absent from the card.
