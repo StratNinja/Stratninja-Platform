@@ -2468,11 +2468,17 @@
     const usd = v => (v < 0 ? "−$" : "+$") + Math.round(Math.abs(v)).toLocaleString("en-US");
     const usdBare = v => "$" + Math.round(Math.abs(v)).toLocaleString("en-US");
     const pctMode = !!(_jShareScope && _jShareScope.pct);
-    const _tp = t => { const ep = +t.entryPrice || 0, xp = +t.exitPrice || 0; if (!ep || !xp) return null; return (t.direction === "short" ? (ep / xp - 1) : (xp / ep - 1)) * 100; };
+    // per-trade % = P&L ÷ capital deployed (entryPrice × qty × mult): +$100 on a $1,000 position = +10%.
+    const _cost = t => Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
+    const _tp = t => { const c = _cost(t); return c ? (t.pnl || 0) / c * 100 : null; };
     const tv = t => pctMode ? (_tp(t) || 0) : (t.pnl || 0);   // per-trade display value ($ or %)
     const _pcts = trades.map(_tp).filter(v => v != null), _mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+    // TOTAL return is capital-WEIGHTED: Σ P&L ÷ Σ capital deployed — NOT a naive sum/mean of the per-trade %s
+    // (which overstates when a small position posts a huge %). $200 profit on $1,100 deployed = +18.2%, not +110%.
+    let _sumP = 0, _sumC = 0; trades.forEach(t => { const c = _cost(t); if (c) { _sumP += (t.pnl || 0); _sumC += c; } });
+    const _wRet = _sumC ? _sumP / _sumC * 100 : 0;
     const D = pctMode
-      ? { net: _pcts.reduce((x, y) => x + y, 0), avgPer: _mean(_pcts), best: _pcts.length ? Math.max.apply(null, _pcts) : 0, worst: _pcts.length ? Math.min.apply(null, _pcts) : 0, avgWin: _mean(_pcts.filter(v => v > 0)), avgLoss: _mean(_pcts.filter(v => v < 0)) }
+      ? { net: _wRet, avgPer: _mean(_pcts), best: _pcts.length ? Math.max.apply(null, _pcts) : 0, worst: _pcts.length ? Math.min.apply(null, _pcts) : 0, avgWin: _mean(_pcts.filter(v => v > 0)), avgLoss: _mean(_pcts.filter(v => v < 0)) }
       : { net: st.net, avgPer: n ? st.net / n : 0, best: st.bestTrade, worst: st.worstTrade, avgWin: st.avgWin, avgLoss: st.avgLoss };
     const net = D.net, avgPer = D.avgPer;
     const fmt = v => pctMode ? ((v >= 0 ? "+" : "−") + Math.abs(+v || 0).toFixed(1) + "%") : usd(v);
@@ -2533,7 +2539,7 @@
       '<div class="jrn2-ct">' +
         '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span>" + openTag + "</div>" +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
-          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(pctMode ? avgPer : net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + (pctMode ? "ממוצע על פני <b>" + n + "</b> עסקאות" : "העסקה הטובה <b>" + iso(fmt(D.best)) + "</b> · הגרועה <b>" + iso(fmt(D.worst)) + "</b>") + "</div>" : "") + '<div class="jrn2-cap">' + (pctMode ? "תשואה ממוצעת לעסקה" : resultCap) + "</div></div></div>" +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + (pctMode ? "משוקלל לפי גודל הפוזיציה" : "העסקה הטובה <b>" + iso(fmt(D.best)) + "</b> · הגרועה <b>" + iso(fmt(D.worst)) + "</b>") + "</div>" : "") + '<div class="jrn2-cap">' + (pctMode ? "תשואה על ההון" : resultCap) + "</div></div></div>" +
         '<div class="jrn2-cols">' +
           '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות' + (n > day5.length ? ' <span style="font-weight:400;opacity:.6;font-size:11px">· מובילות ומפסידות מתוך ' + n + "</span>" : "") + "</div>" + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
@@ -2543,7 +2549,7 @@
         '<div class="jrn2-opp"><div class="jrn2-oph"><span class="jrn2-oic"></span> איכות הביצוע</div>' +
           '<div class="jrn2-otiles">' +
             '<div class="jrn2-ot"><div class="jrn2-ov">' + st.winRate + '%</div><div class="jrn2-ok2">אחוז הצלחה</div></div>' +
-            '<div class="jrn2-ot"><div class="jrn2-ov">' + (n ? fmt(pctMode ? net : avgPer) : "—") + '</div><div class="jrn2-ok2">' + (pctMode ? 'סה"כ תשואה' : "ממוצע לעסקה") + "</div></div>" +
+            '<div class="jrn2-ot"><div class="jrn2-ov">' + (n ? fmt(pctMode ? D.worst : avgPer) : "—") + '</div><div class="jrn2-ok2">' + (pctMode ? "העסקה הגרועה" : "ממוצע לעסקה") + "</div></div>" +
             '<div class="jrn2-ot"><div class="jrn2-ov">' + pf + '</div><div class="jrn2-ok2">Profit Factor</div></div>' +
             '<div class="jrn2-ot jrn2-ready"><span class="jrn2-rdy">שיא</span><div class="jrn2-ov">' + bestV + '</div><div class="jrn2-ok2">העסקה הטובה</div></div>' +
           "</div></div>" +
