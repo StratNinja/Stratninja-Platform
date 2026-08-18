@@ -2388,8 +2388,8 @@
     });
     return all;
   }
-  // journal-share scope: which period the card summarizes + whether to include open positions
-  let _jShareScope = { range: "day", open: false };
+  // journal-share scope: period + open-positions + $/% display + custom date range
+  let _jShareScope = { range: "day", open: false, pct: false, from: "", to: "" };
   function _dateMinusDays(ymd, days) {   // "YYYY-MM-DD" minus N days → "YYYY-MM-DD"
     const p = String(ymd || "").split("-"); if (p.length !== 3) return ymd;
     const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); d.setUTCDate(d.getUTCDate() - days);
@@ -2399,15 +2399,35 @@
   function openJournalSharePicker() {
     const R = _jShareScope.range;
     const rbtn = (k, lbl) => '<button class="btn ghost' + (k === R ? " primary" : "") + '" data-jsprange="' + k + '" style="font-size:13px;font-weight:600">' + lbl + "</button>";
+    // sensible bounds/defaults for the custom date pickers = the journal's actual date span
+    const _all = _journalClosedTrades(); let _lo = null, _hi = null;
+    _all.forEach(t => { if (t.exitDate) { if (!_lo || t.exitDate < _lo) _lo = t.exitDate; if (!_hi || t.exitDate > _hi) _hi = t.exitDate; } });
+    const dFrom = _jShareScope.from || (_hi ? _dateMinusDays(_hi, 6) : ""), dTo = _jShareScope.to || _hi || "";
+    const dateInp = (id, v) => '<input type="date" id="' + id + '" value="' + v + '"' + (_lo ? ' min="' + _lo + '"' : "") + (_hi ? ' max="' + _hi + '"' : "") + ' style="font-size:13px;padding:5px 8px;border-radius:7px">';
     const body = '<div style="padding:2px">' +
       '<div class="muted" style="font-size:13px;margin-bottom:9px">📅 בחר טווח לכרטיס:</div>' +
-      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px">' + rbtn("day", "היום האחרון") + rbtn("7d", "7 ימים") + rbtn("30d", "30 ימים") + rbtn("all", "כל התקופה") + "</div>" +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px"><input type="checkbox" id="jspOpen"' + (_jShareScope.open ? " checked" : "") + "> כלול גם עסקאות פתוחות (רווח/הפסד לא ממומש)</label>" +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">' + rbtn("day", "היום האחרון") + rbtn("7d", "7 ימים") + rbtn("30d", "30 ימים") + rbtn("all", "כל התקופה") + rbtn("custom", "📆 תאריכים מותאמים") + "</div>" +
+      '<div id="jspCustom" style="display:' + (R === "custom" ? "flex" : "none") + ';gap:8px;align-items:center;margin-bottom:14px;font-size:13px;flex-wrap:wrap"><span class="muted">מ־</span>' + dateInp("jspFrom", dFrom) + '<span class="muted">עד</span>' + dateInp("jspTo", dTo) + "</div>" +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:11px"><input type="checkbox" id="jspOpen"' + (_jShareScope.open ? " checked" : "") + "> כלול גם עסקאות פתוחות (רווח/הפסד לא ממומש)</label>" +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px"><input type="checkbox" id="jspPct"' + (_jShareScope.pct ? " checked" : "") + "> הצג באחוזים (%) במקום דולר ($)</label>" +
       '<button class="btn primary" id="jspGo" style="width:100%;font-weight:700">📤 צור כרטיס שיתוף</button></div>';
     modal("📅 שיתוף יומן מסחר", body, "jshare");
-    document.querySelectorAll("[data-jsprange]").forEach(b => b.onclick = () => { _jShareScope.range = b.dataset.jsprange; document.querySelectorAll("[data-jsprange]").forEach(x => x.classList.toggle("primary", x === b)); });
+    document.querySelectorAll("[data-jsprange]").forEach(b => b.onclick = () => {
+      _jShareScope.range = b.dataset.jsprange;
+      document.querySelectorAll("[data-jsprange]").forEach(x => x.classList.toggle("primary", x === b));
+      const c = document.getElementById("jspCustom"); if (c) c.style.display = b.dataset.jsprange === "custom" ? "flex" : "none";
+    });
     const go = document.getElementById("jspGo");
-    if (go) go.onclick = () => { const ck = document.getElementById("jspOpen"); _jShareScope.open = !!(ck && ck.checked); closeModal(); _captureRedesignCard(buildJournalCardEl); };
+    if (go) go.onclick = () => {
+      _jShareScope.open = !!(document.getElementById("jspOpen") || {}).checked;
+      _jShareScope.pct = !!(document.getElementById("jspPct") || {}).checked;
+      if (_jShareScope.range === "custom") {
+        let f = (document.getElementById("jspFrom") || {}).value || "", t = (document.getElementById("jspTo") || {}).value || "";
+        if (f && t && f > t) { const tmp = f; f = t; t = tmp; }   // swap if reversed
+        _jShareScope.from = f; _jShareScope.to = t;
+      }
+      closeModal(); _captureRedesignCard(buildJournalCardEl);
+    };
   }
   function buildJournalCardEl() {
     const E = window.Engine;
@@ -2426,22 +2446,36 @@
     } else if (isDay) {
       trades = all.filter(t => t.exitDate === latest);
       dayHe = dstr(latest); resultCap = "תוצאה יומית"; stateCap = "מצב היום";
+    } else if (range === "custom") {
+      const from = (_jShareScope && _jShareScope.from) || "", to = (_jShareScope && _jShareScope.to) || latest || "";
+      trades = all.filter(t => t.exitDate && (!from || t.exitDate >= from) && (!to || t.exitDate <= to));
+      dayHe = (from && to) ? (from === to ? dstr(to) : dstr(from) + "–" + dstr(to)) : (to ? dstr(to) : "—");
+      resultCap = "תוצאה בתקופה"; stateCap = "מצב התקופה";
     } else {
       const cut = _dateMinusDays(latest, (range === "7d" ? 7 : 30) - 1);
       trades = all.filter(t => t.exitDate && t.exitDate >= cut);
       dayHe = dstr(cut) + "–" + dstr(latest); resultCap = "תוצאה בתקופה"; stateCap = "מצב התקופה";
     }
     const st = (E && E.stats) ? E.stats(trades) : { count: 0, net: 0, winRate: 0, wins: 0, losses: 0, avgWin: 0, avgLoss: 0, profitFactor: 0, bestTrade: 0, worstTrade: 0 };
-    const n = st.count, net = st.net;
+    const n = st.count;
     const wins = st.wins, losses = st.losses, be = Math.max(0, n - wins - losses);
-    const avgPer = n ? net / n : 0;
     const reflected = trades.filter(t => t.exitReason || t.managedWell);
     const emoExits = trades.filter(t => t.exitReason === "emotion").length;
     const tgtExits = trades.filter(t => t.exitReason === "target").length;
     const managedOk = trades.filter(t => t.managedWell === "yes").length;
-    // money formatter: +$1,234 / −$210
+    // $ / % display. In % mode every figure is a per-trade PRICE return; aggregate net = SUM, average = mean —
+    // so the card reads in % (e.g. avg +2.4%) without exposing $ amounts.
     const usd = v => (v < 0 ? "−$" : "+$") + Math.round(Math.abs(v)).toLocaleString("en-US");
     const usdBare = v => "$" + Math.round(Math.abs(v)).toLocaleString("en-US");
+    const pctMode = !!(_jShareScope && _jShareScope.pct);
+    const _tp = t => { const ep = +t.entryPrice || 0, xp = +t.exitPrice || 0; if (!ep || !xp) return null; return (t.direction === "short" ? (ep / xp - 1) : (xp / ep - 1)) * 100; };
+    const tv = t => pctMode ? (_tp(t) || 0) : (t.pnl || 0);   // per-trade display value ($ or %)
+    const _pcts = trades.map(_tp).filter(v => v != null), _mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+    const D = pctMode
+      ? { net: _pcts.reduce((x, y) => x + y, 0), avgPer: _mean(_pcts), best: _pcts.length ? Math.max.apply(null, _pcts) : 0, worst: _pcts.length ? Math.min.apply(null, _pcts) : 0, avgWin: _mean(_pcts.filter(v => v > 0)), avgLoss: _mean(_pcts.filter(v => v < 0)) }
+      : { net: st.net, avgPer: n ? st.net / n : 0, best: st.bestTrade, worst: st.worstTrade, avgWin: st.avgWin, avgLoss: st.avgLoss };
+    const net = D.net, avgPer = D.avgPer;
+    const fmt = v => pctMode ? ((v >= 0 ? "+" : "−") + Math.abs(+v || 0).toFixed(1) + "%") : usd(v);
     // headline / state — wording adapts to a single day vs a period
     let l1, kpiCls, brCls, brLbl, dayTag;
     if (n === 0) { l1 = "אין עדיין עסקאות סגורות"; kpiCls = "jrn2-z"; brCls = "jrn2-z"; brLbl = "אין נתונים"; dayTag = '<span class="jrn2-tag jrn2-z">⚪ יומן ריק</span>'; }
@@ -2451,12 +2485,11 @@
     // optional open-positions tag (unrealized P&L), when the trader chose to include open trades
     let openTag = "";
     if (_jShareScope && _jShareScope.open) { const js = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null; if (js && js.open) openTag = '<span class="jrn2-tag jrn2-z">🔓 ' + js.open + " פתוחות" + (js.unrealized != null ? " · לא ממומש " + usd(js.unrealized) : "") + "</span>"; }
-    const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום" : (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + usd(avgPer) + " לעסקה");
-    // trade rows — surface BOTH the biggest winners and the worst losers (top-5-by-pnl hid all the losses
-    // on a losing day, so the card looked all-green while the headline was red). Balanced, then sorted.
-    const _byPnl = (a, b) => (b.pnl || 0) - (a.pnl || 0);
-    const _wins = trades.filter(t => (t.pnl || 0) > 0).sort(_byPnl);
-    const _loss = trades.filter(t => (t.pnl || 0) < 0).sort((a, b) => (a.pnl || 0) - (b.pnl || 0));   // worst first
+    const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום" : (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + fmt(avgPer) + " לעסקה");
+    // trade rows — surface BOTH the biggest winners and the worst losers (ranked by the displayed metric $/%)
+    const _byPnl = (a, b) => tv(b) - tv(a);
+    const _wins = trades.filter(t => tv(t) > 0).sort(_byPnl);
+    const _loss = trades.filter(t => tv(t) < 0).sort((a, b) => tv(a) - tv(b));   // worst first
     let day5;
     if (_wins.length && _loss.length) {
       const nL = Math.min(2, _loss.length), nW = Math.min(5 - nL, _wins.length);
@@ -2467,14 +2500,14 @@
     const dirTag = t => t.direction === "short" ? '<span class="jrn2-stag jrn2-sh">שורט</span>' : '<span class="jrn2-stag">לונג</span>';
     const pcCls = v => v > 0 ? "jrn2-p-pos" : v < 0 ? "jrn2-p-neg" : "jrn2-p-flat";
     const tradeRow = (t, i) => '<div class="jrn2-rrow"><span class="jrn2-rk">' + (i + 1) + '</span><span class="jrn2-tk">' + escHtml(t.symbol || "—") + "</span>" +
-      dirTag(t) + '<span class="jrn2-spacer"></span><span class="jrn2-pc ' + pcCls(t.pnl || 0) + '">' + usd(t.pnl || 0) + "</span></div>";
+      dirTag(t) + '<span class="jrn2-spacer"></span><span class="jrn2-pc ' + pcCls(tv(t)) + '">' + fmt(tv(t)) + "</span></div>";
     const tradesHtml = day5.length ? day5.map(tradeRow).join("") : '<div class="jrn2-rrow"><span class="jrn2-tk" style="color:var(--mftxt2)">אין עסקאות</span></div>';
     // behavior/quality panel (only real data; reflection rows show "לא תועד" when no reflection)
     const iso = s => '<span style="unicode-bidi:isolate;direction:ltr;display:inline-block">' + s + "</span>";
     const drow = (ico, icoCls, lbl, val, valCls) => '<div class="jrn2-drow"><span class="jrn2-dico ' + icoCls + '">' + ico + '</span><span class="jrn2-dlbl">' + lbl + '</span><span class="jrn2-spacer"></span><span class="jrn2-dval ' + valCls + '">' + val + "</span></div>";
     const rowsD = [];
-    rowsD.push(drow("▲", "jrn2-ok", "עסקה מנצחת ממוצעת", wins ? iso(usd(st.avgWin)) : "—", "numi " + (wins ? "jrn2-ok" : "jrn2-mut")));
-    rowsD.push(drow("▼", "jrn2-bad", "עסקה מפסידה ממוצעת", losses ? iso(usd(-Math.abs(st.avgLoss))) : "—", "numi " + (losses ? "jrn2-neg" : "jrn2-mut")));
+    rowsD.push(drow("▲", "jrn2-ok", "עסקה מנצחת ממוצעת", wins ? iso(fmt(D.avgWin)) : "—", "numi " + (wins ? "jrn2-ok" : "jrn2-mut")));
+    rowsD.push(drow("▼", "jrn2-bad", "עסקה מפסידה ממוצעת", losses ? iso(fmt(-Math.abs(D.avgLoss))) : "—", "numi " + (losses ? "jrn2-neg" : "jrn2-mut")));
     rowsD.push(drow("😰", "jrn2-bad", "יציאות רגשיות", reflected.length ? String(emoExits) : "לא תועד", reflected.length ? (emoExits ? "jrn2-neg numi" : "jrn2-ok numi") : "jrn2-na"));
     rowsD.push(drow("✓", "jrn2-ok", "ניהול טוב", reflected.length ? (managedOk + "/" + reflected.length) : "לא תועד", reflected.length ? "jrn2-ok numi" : "jrn2-na"));
     rowsD.push(drow("🎯", "jrn2-met", "יציאות ביעד", reflected.length ? String(tgtExits) : "לא תועד", reflected.length ? "jrn2-brand numi" : "jrn2-na"));
@@ -2484,7 +2517,7 @@
     const bg = Math.round(wins / denom * 100), bn = Math.round(be / denom * 100), brr = Math.max(0, 100 - bg - bn);
     // tiles
     const pf = st.profitFactor === Infinity ? "∞" : (losses ? Number(st.profitFactor).toFixed(2) : (wins ? "∞" : "—"));
-    const bestV = n ? usd(st.bestTrade) : "—";
+    const bestV = n ? fmt(D.best) : "—";
     // insight
     let insTxt;
     if (n === 0) insTxt = "אין עדיין עסקאות סגורות ביומן — ייבא CSV או הוסף עסקה כדי לקבל סיכום.";
@@ -2500,7 +2533,7 @@
       '<div class="jrn2-ct">' +
         '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span>" + openTag + "</div>" +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
-          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? usd(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">העסקה הטובה <b>' + iso(usd(st.bestTrade)) + '</b> · הגרועה <b>' + iso(usd(st.worstTrade)) + "</b></div>" : "") + '<div class="jrn2-cap">' + resultCap + "</div></div></div>" +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">העסקה הטובה <b>' + iso(fmt(D.best)) + '</b> · הגרועה <b>' + iso(fmt(D.worst)) + "</b></div>" : "") + '<div class="jrn2-cap">' + resultCap + "</div></div></div>" +
         '<div class="jrn2-cols">' +
           '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות' + (n > day5.length ? ' <span style="font-weight:400;opacity:.6;font-size:11px">· מובילות ומפסידות מתוך ' + n + "</span>" : "") + "</div>" + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
@@ -2510,7 +2543,7 @@
         '<div class="jrn2-opp"><div class="jrn2-oph"><span class="jrn2-oic"></span> איכות הביצוע</div>' +
           '<div class="jrn2-otiles">' +
             '<div class="jrn2-ot"><div class="jrn2-ov">' + st.winRate + '%</div><div class="jrn2-ok2">אחוז הצלחה</div></div>' +
-            '<div class="jrn2-ot"><div class="jrn2-ov">' + (n ? usd(avgPer) : "—") + '</div><div class="jrn2-ok2">ממוצע לעסקה</div></div>' +
+            '<div class="jrn2-ot"><div class="jrn2-ov">' + (n ? fmt(avgPer) : "—") + '</div><div class="jrn2-ok2">ממוצע לעסקה</div></div>' +
             '<div class="jrn2-ot"><div class="jrn2-ov">' + pf + '</div><div class="jrn2-ok2">Profit Factor</div></div>' +
             '<div class="jrn2-ot jrn2-ready"><span class="jrn2-rdy">שיא</span><div class="jrn2-ov">' + bestV + '</div><div class="jrn2-ok2">העסקה הטובה</div></div>' +
           "</div></div>" +
