@@ -2485,7 +2485,7 @@
     // optional open-positions tag (unrealized P&L), when the trader chose to include open trades
     let openTag = "";
     if (_jShareScope && _jShareScope.open) { const js = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null; if (js && js.open) openTag = '<span class="jrn2-tag jrn2-z">🔓 ' + js.open + " פתוחות" + (js.unrealized != null ? " · לא ממומש " + usd(js.unrealized) : "") + "</span>"; }
-    const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום" : (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + fmt(avgPer) + " לעסקה");
+    const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום" : (n + " עסקאות · " + st.winRate + "% הצלחה" + (pctMode ? "" : " · ממוצע " + fmt(avgPer) + " לעסקה"));
     // trade rows — surface BOTH the biggest winners and the worst losers (ranked by the displayed metric $/%)
     const _byPnl = (a, b) => tv(b) - tv(a);
     const _wins = trades.filter(t => tv(t) > 0).sort(_byPnl);
@@ -2533,7 +2533,7 @@
       '<div class="jrn2-ct">' +
         '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span>" + openTag + "</div>" +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
-          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">העסקה הטובה <b>' + iso(fmt(D.best)) + '</b> · הגרועה <b>' + iso(fmt(D.worst)) + "</b></div>" : "") + '<div class="jrn2-cap">' + resultCap + "</div></div></div>" +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(pctMode ? avgPer : net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + (pctMode ? "ממוצע על פני <b>" + n + "</b> עסקאות" : "העסקה הטובה <b>" + iso(fmt(D.best)) + "</b> · הגרועה <b>" + iso(fmt(D.worst)) + "</b>") + "</div>" : "") + '<div class="jrn2-cap">' + (pctMode ? "תשואה ממוצעת לעסקה" : resultCap) + "</div></div></div>" +
         '<div class="jrn2-cols">' +
           '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות' + (n > day5.length ? ' <span style="font-weight:400;opacity:.6;font-size:11px">· מובילות ומפסידות מתוך ' + n + "</span>" : "") + "</div>" + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
@@ -2543,7 +2543,7 @@
         '<div class="jrn2-opp"><div class="jrn2-oph"><span class="jrn2-oic"></span> איכות הביצוע</div>' +
           '<div class="jrn2-otiles">' +
             '<div class="jrn2-ot"><div class="jrn2-ov">' + st.winRate + '%</div><div class="jrn2-ok2">אחוז הצלחה</div></div>' +
-            '<div class="jrn2-ot"><div class="jrn2-ov">' + (n ? fmt(avgPer) : "—") + '</div><div class="jrn2-ok2">ממוצע לעסקה</div></div>' +
+            '<div class="jrn2-ot"><div class="jrn2-ov">' + (n ? fmt(pctMode ? net : avgPer) : "—") + '</div><div class="jrn2-ok2">' + (pctMode ? 'סה"כ תשואה' : "ממוצע לעסקה") + "</div></div>" +
             '<div class="jrn2-ot"><div class="jrn2-ov">' + pf + '</div><div class="jrn2-ok2">Profit Factor</div></div>' +
             '<div class="jrn2-ot jrn2-ready"><span class="jrn2-rdy">שיא</span><div class="jrn2-ov">' + bestV + '</div><div class="jrn2-ok2">העסקה הטובה</div></div>' +
           "</div></div>" +
