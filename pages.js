@@ -419,7 +419,7 @@
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
   const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
-  function openScannerGrid() { openChartGrid(sortRows(filterRows(scanSource())), {}); }
+  function openScannerGrid() { openChartGrid(sortRows(filterRows(scanRowsView())), {}); }   // respect live/yesterday view
   // generic chart-grid: takes a list of rows ({sym, price, chg, name/ind/sector}) and shows them as a TV grid
   function openChartGrid(rows, opts) {
     opts = opts || {};
@@ -4108,7 +4108,7 @@
     if (grid) grid.onclick = () => openScannerGrid();
     const copy = $("#scanCopy");
     if (copy) copy.onclick = () => {
-      const rows = sortRows(filterRows(scanSource()));   // copy in the DISPLAYED order (respect the active sort)
+      const rows = sortRows(filterRows(scanRowsView()));   // copy in DISPLAYED order + respect the live/yesterday view
       const syms = rows.map(t => t.sym).join(", ");
       const orig = copy.textContent;
       copyToClipboard(syms, () => { copy.textContent = "✓ הועתקו " + rows.length; setTimeout(() => copy.textContent = orig, 1600); });
