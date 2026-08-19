@@ -784,11 +784,13 @@
     const posVal = t => Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
     const net = dayTrades.reduce((s, t) => s + t.pnl, 0);
     const totalPos = dayTrades.reduce((s, t) => s + posVal(t), 0);
-    const retPct = totalPos ? net / totalPos * 100 : 0;
-    const pctS = (retPct >= 0 ? "+" : "−") + Math.abs(retPct).toFixed(1) + "%";   // capital-weighted day return
+    // capital actually in the market = PEAK open at once (avoids double-counting reused capital)
+    const peakCap = (function (ts) { const it = ts.map(t => ({ c: posVal(t), e: t.entryDate || t.exitDate, x: t.exitDate || t.entryDate })).filter(o => o.c && o.e && o.x); let pk = 0; Array.from(new Set(it.map(o => o.e))).forEach(d => { let s = 0; it.forEach(o => { if (o.e <= d && d <= o.x) s += o.c; }); if (s > pk) pk = s; }); return pk; })(dayTrades);
+    const retPct = peakCap ? net / peakCap * 100 : 0;
+    const pctS = (retPct >= 0 ? "+" : "−") + Math.abs(retPct).toFixed(1) + "%";   // return on peak capital in the market
     const rows = dayTrades.map(t => tradeRow(t)).join("");
     const body =
-      '<div style="margin-bottom:12px" class="' + cls(net) + '"><b style="font-size:18px">' + money(net, 2) + "</b> · " + dayTrades.length + " עסקאות · הושקע " + money(totalPos, 0) + ' · <b>' + pctS + "</b> תשואה על ההון</div>" +
+      '<div style="margin-bottom:12px" class="' + cls(net) + '"><b style="font-size:18px">' + money(net, 2) + "</b> · " + dayTrades.length + " עסקאות · הון מקס׳ בשוק " + money(peakCap, 0) + ' · <b>' + pctS + "</b> תשואה על ההון</div>" +
       '<div class="tablebox" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table><thead><tr>' +
       "<th>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>שווי פוזיציה</th><th>יציאה</th><th>נטו</th><th></th></tr></thead><tbody>" +
       rows + "</tbody>" +

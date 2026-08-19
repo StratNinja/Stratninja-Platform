@@ -2473,10 +2473,12 @@
     const _tp = t => { const c = _cost(t); return c ? (t.pnl || 0) / c * 100 : null; };
     const tv = t => pctMode ? (_tp(t) || 0) : (t.pnl || 0);   // per-trade display value ($ or %)
     const _pcts = trades.map(_tp).filter(v => v != null), _mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
-    // TOTAL return is capital-WEIGHTED: Σ P&L ÷ Σ capital deployed — NOT a naive sum/mean of the per-trade %s
-    // (which overstates when a small position posts a huge %). $200 profit on $1,100 deployed = +18.2%, not +110%.
-    let _sumP = 0, _sumC = 0; trades.forEach(t => { const c = _cost(t); if (c) { _sumP += (t.pnl || 0); _sumC += c; } });
-    const _wRet = _sumC ? _sumP / _sumC * 100 : 0;
+    // TOTAL return = P&L ÷ the capital that was actually IN the market = the PEAK amount open at once, NOT the
+    // Σ of every trade's cost (which double-counts when the same capital is reused across non-overlapping trades).
+    const _peakDeployed = ts => { const it = ts.map(t => ({ c: _cost(t), e: t.entryDate || t.exitDate, x: t.exitDate || t.entryDate })).filter(o => o.c && o.e && o.x); let pk = 0; Array.from(new Set(it.map(o => o.e))).forEach(d => { let s = 0; it.forEach(o => { if (o.e <= d && d <= o.x) s += o.c; }); if (s > pk) pk = s; }); return pk; };
+    let _sumP = 0; trades.forEach(t => { _sumP += (t.pnl || 0); });
+    const _cap = _peakDeployed(trades);
+    const _wRet = _cap ? _sumP / _cap * 100 : 0;
     const D = pctMode
       ? { net: _wRet, avgPer: _mean(_pcts), best: _pcts.length ? Math.max.apply(null, _pcts) : 0, worst: _pcts.length ? Math.min.apply(null, _pcts) : 0, avgWin: _mean(_pcts.filter(v => v > 0)), avgLoss: _mean(_pcts.filter(v => v < 0)) }
       : { net: st.net, avgPer: n ? st.net / n : 0, best: st.bestTrade, worst: st.worstTrade, avgWin: st.avgWin, avgLoss: st.avgLoss };
@@ -2539,7 +2541,7 @@
       '<div class="jrn2-ct">' +
         '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span>" + openTag + "</div>" +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
-          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + (pctMode ? "משוקלל לפי גודל הפוזיציה" : "העסקה הטובה <b>" + iso(fmt(D.best)) + "</b> · הגרועה <b>" + iso(fmt(D.worst)) + "</b>") + "</div>" : "") + '<div class="jrn2-cap">' + (pctMode ? "תשואה על ההון" : resultCap) + "</div></div></div>" +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + (pctMode ? "לפי ההון המקסימלי שהיה בשוק" : "העסקה הטובה <b>" + iso(fmt(D.best)) + "</b> · הגרועה <b>" + iso(fmt(D.worst)) + "</b>") + "</div>" : "") + '<div class="jrn2-cap">' + (pctMode ? "תשואה על ההון" : resultCap) + "</div></div></div>" +
         '<div class="jrn2-cols">' +
           '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות' + (n > day5.length ? ' <span style="font-weight:400;opacity:.6;font-size:11px">· מובילות ומפסידות מתוך ' + n + "</span>" : "") + "</div>" + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
