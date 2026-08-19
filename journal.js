@@ -781,13 +781,19 @@
     const { trades } = tradesForAccount();
     const dayTrades = trades.filter(t => t.exitDate === dateKey);
     if (!dayTrades.length) { closeModal(); render(); return; }
+    const posVal = t => Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
     const net = dayTrades.reduce((s, t) => s + t.pnl, 0);
+    const totalPos = dayTrades.reduce((s, t) => s + posVal(t), 0);
+    const retPct = totalPos ? net / totalPos * 100 : 0;
+    const pctS = (retPct >= 0 ? "+" : "−") + Math.abs(retPct).toFixed(1) + "%";   // capital-weighted day return
     const rows = dayTrades.map(t => tradeRow(t)).join("");
     const body =
-      '<div style="margin-bottom:12px" class="' + cls(net) + '"><b style="font-size:18px">' + money(net, 2) + "</b> · " + dayTrades.length + " עסקאות</div>" +
-      '<div class="tablebox"><table><thead><tr>' +
-      "<th>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>יציאה</th><th>נטו</th><th></th></tr></thead><tbody>" +
-      rows + "</tbody></table></div>" +
+      '<div style="margin-bottom:12px" class="' + cls(net) + '"><b style="font-size:18px">' + money(net, 2) + "</b> · " + dayTrades.length + " עסקאות · הושקע " + money(totalPos, 0) + ' · <b>' + pctS + "</b> תשואה על ההון</div>" +
+      '<div class="tablebox" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table><thead><tr>' +
+      "<th>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>שווי פוזיציה</th><th>יציאה</th><th>נטו</th><th></th></tr></thead><tbody>" +
+      rows + "</tbody>" +
+      '<tfoot><tr class="jr-day-total"><td colspan="4" style="text-align:start;font-weight:700">סה"כ · ' + dayTrades.length + ' עסקאות</td><td style="font-weight:700">' + money(totalPos, 0) + '</td><td></td><td class="' + cls(net) + '" style="font-weight:700">' + money(net, 2) + ' <span style="font-size:11px;opacity:.85">(' + pctS + ')</span></td><td></td></tr></tfoot>' +
+      "</table></div>" +
       '<div class="note">✏️ עריכה — לעסקאות ידניות · 🗑 מחיקה — לכולן (מחיקת עסקת CSV מסירה את פקודות הביצוע שמרכיבות אותה).</div>';
     modal("עסקאות · " + dateKey, body);
     wireTradeActions($("#modalBg"), dayTrades, () => openDay(dateKey));
@@ -813,9 +819,10 @@
       (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
       (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
       '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>';
+    const posVal = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));   // capital deployed
     return "<tr><td>" + chartSym(t.symbol) + '</td><td><span class="pill ' + t.direction + '">' +
       (t.direction === "long" ? "לונג" : "שורט") + "</span></td><td>" + t.qty + "</td><td>" +
-      money(t.entryPrice, 2) + "</td><td>" + money(t.exitPrice, 2) + '</td><td class="' + cls(t.pnl) +
+      money(t.entryPrice, 2) + "</td><td>" + money(posVal, 0) + "</td><td>" + money(t.exitPrice, 2) + '</td><td class="' + cls(t.pnl) +
       '">' + money(t.pnl, 2) + "</td><td>" + actions + "</td></tr>";
   }
   /* wire ✏️/🗑 buttons within a container to a list of trades. `reopen` (optional)

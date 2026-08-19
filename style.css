@@ -114,6 +114,7 @@ svg .eqarea{fill:url(#eqgrad)}
 
 /* tables */
 .tablebox{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+.jr-day-total td{border-top:2px solid var(--line);border-bottom:none;background:rgba(255,255,255,.035)}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
 th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;cursor:pointer;user-select:none}
