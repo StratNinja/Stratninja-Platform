@@ -2390,6 +2390,7 @@
   }
   // journal-share scope: period + open-positions + $/% display + custom date range
   let _jShareScope = { range: "day", open: false, pct: false, from: "", to: "" };
+  let _journalShareCap = null;   // headline summary of the last-built journal card, for the share caption
   function _dateMinusDays(ymd, days) {   // "YYYY-MM-DD" minus N days → "YYYY-MM-DD"
     const p = String(ymd || "").split("-"); if (p.length !== 3) return ymd;
     const d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); d.setUTCDate(d.getUTCDate() - days);
@@ -2481,6 +2482,8 @@
       : { net: st.net, avgPer: n ? st.net / n : 0, best: st.bestTrade, worst: st.worstTrade, avgWin: st.avgWin, avgLoss: st.avgLoss };
     const net = D.net, avgPer = D.avgPer;
     const fmt = v => pctMode ? ((v >= 0 ? "+" : "−") + Math.abs(+v || 0).toFixed(1) + "%") : usd(v);
+    // stash the headline for the share caption (so the tweet text matches the card)
+    _journalShareCap = n ? { val: fmt(net), he: dayHe, dir: net > 0 ? "pos" : net < 0 ? "neg" : "flat", isDay: isDay } : null;
     // headline / state — wording adapts to a single day vs a period
     let l1, kpiCls, brCls, brLbl, dayTag;
     if (n === 0) { l1 = "אין עדיין עסקאות סגורות"; kpiCls = "jrn2-z"; brCls = "jrn2-z"; brLbl = "אין נתונים"; dayTag = '<span class="jrn2-tag jrn2-z">⚪ יומן ריק</span>'; }
@@ -3044,8 +3047,13 @@
     const cash = arr => arr.filter(Boolean).map(s => "$" + s).slice(0, 8).join(" ");
     let cap = "סרקתי את השוק ב-StratNinja 📊", tags = [];
     if (page === "journal") {
-      // the journal is personal performance — NOT a watchlist, so no scanner $tickers in the caption
-      cap = "📅 הביצועים שלי ב-StratNinja";
+      // reflect the card: the day/period result + return. No scanner $tickers (this is personal performance).
+      const s = _journalShareCap;
+      if (s && s.val) {
+        const em = s.dir === "pos" ? "🟢" : s.dir === "neg" ? "🔴" : "⚪";
+        const word = s.isDay ? "יום מסחר" : "התקופה";
+        cap = "📅 " + em + " " + word + " " + s.val + (s.he && s.he !== "—" ? " · " + s.he : "") + " · StratNinja";
+      } else cap = "📅 הביצועים שלי ב-StratNinja";
       tags = [];
     } else if (page === "sectors") {
       // match the card: sectors ranked by FTFC net over the SELECTED timeframe set — and name that set in the caption
