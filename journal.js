@@ -1001,8 +1001,8 @@
     const wrap = el("div");
     const agg = state.aggTrades !== false;
     const base = agg ? aggregateTrades(trades) : trades;
-    // position value = entry notional (qty × entry price × multiplier). Precomputed so the column sorts.
-    const withPv = base.map(t => { const pv = (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1); return Object.assign({}, t, { posValue: pv, pnlPct: pv > 0 ? (t.pnl || 0) / pv * 100 : 0 }); });
+    // exposure = entry notional (qty × entry price × multiplier); exit value = same at the exit price.
+    const withPv = base.map(t => { const pv = (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1); const xv = (t.exitPrice || 0) * (t.qty || 0) * (t.mult || 1); return Object.assign({}, t, { posValue: pv, exitValue: xv, pnlPct: pv > 0 ? (t.pnl || 0) / pv * 100 : 0 }); });
     const sorted = withPv.sort((a, b) => {
       let av = a[state.sortKey], bv = b[state.sortKey];
       if (typeof av === "string") { return (av < bv ? -1 : av > bv ? 1 : 0) * state.sortDir; }
@@ -1012,8 +1012,8 @@
     const cols = [
       ...(showAcct ? [["account", "חשבון"]] : []),
       ["exitDate", "תאריך יציאה"], ["symbol", "סימבול"], ["assetType", "סוג"],
-      ["direction", "כיוון"], ["qty", "כמות"], ["entryPrice", "כניסה"], ["posValue", "שווי פוזיציה"],
-      ["exitPrice", "יציאה"], ["fees", "עמלות"], ["pnl", "נטו"], ["pnlPct", "% נטו"], ["source", "מקור"],
+      ["direction", "כיוון"], ["qty", "כמות"], ["entryPrice", "כניסה"], ["posValue", "חשיפה"],
+      ["exitPrice", "יציאה"], ["exitValue", "שווי ביציאה"], ["fees", "עמלות"], ["pnl", "נטו"], ["pnlPct", "% נטו"], ["source", "מקור"],
     ];
     let head = "<tr>";
     cols.forEach(([k, l]) => {
@@ -1035,6 +1035,7 @@
         "<td>" + money(t.entryPrice, 2) + "</td>" +
         "<td>" + money(t.posValue, 0) + "</td>" +
         "<td>" + money(t.exitPrice, 2) + "</td>" +
+        "<td>" + money(t.exitValue, 0) + "</td>" +
         '<td class="zero">' + money(-t.fees, 2) + "</td>" +
         '<td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td>" +
         '<td class="' + cls(t.pnl) + '">' + (t.posValue > 0 ? (t.pnlPct >= 0 ? "+" : "") + t.pnlPct.toFixed(2) + "%" : "—") + "</td>" +
