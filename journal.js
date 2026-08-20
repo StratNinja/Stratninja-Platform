@@ -1578,6 +1578,21 @@
           unrealized: unHave ? un : null };
       } catch (e) { return null; }
     },
+    // enriched list of CURRENTLY-OPEN positions (for a "share open positions" card)
+    openList: function () {
+      try {
+        const r = tradesForAccount();
+        const optPx = _optPrices();
+        const enrich = t => {
+          const isOpt = t.assetType === "option";
+          const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+          const cost = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
+          return { symbol: t.symbol, direction: t.direction || (t.qty > 0 ? "long" : "short"), qty: t.qty,
+            entryPrice: t.entryPrice, mult: t.mult || 1, cp: cp, un: (cp != null) ? unrealizedPnl(t, cp) : null, cost: cost, isOption: isOpt };
+        };
+        return (r.manualOpen || []).map(enrich).concat((r.openPositions || []).map(enrich));
+      } catch (e) { return []; }
+    },
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);

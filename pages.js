@@ -2407,9 +2407,11 @@
     const dateInp = (id, v) => '<input type="date" id="' + id + '" value="' + v + '"' + (_lo ? ' min="' + _lo + '"' : "") + (_hi ? ' max="' + _hi + '"' : "") + ' style="font-size:13px;padding:5px 8px;border-radius:7px">';
     const body = '<div style="padding:2px">' +
       '<div class="muted" style="font-size:13px;margin-bottom:9px">📅 בחר טווח לכרטיס:</div>' +
-      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">' + rbtn("day", "היום האחרון") + rbtn("7d", "7 ימים") + rbtn("30d", "30 ימים") + rbtn("all", "כל התקופה") + rbtn("custom", "📆 תאריכים מותאמים") + "</div>" +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">' + rbtn("day", "היום האחרון") + rbtn("7d", "7 ימים") + rbtn("30d", "30 ימים") + rbtn("all", "כל התקופה") + rbtn("custom", "📆 תאריכים מותאמים") + "</div>" +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">' + rbtn("open", "🔓 פוזיציות פתוחות בלבד") + "</div>" +
+      '<div id="jspClosedOpts">' +
       '<div id="jspCustom" style="display:' + (R === "custom" ? "flex" : "none") + ';gap:8px;align-items:center;margin-bottom:14px;font-size:13px;flex-wrap:wrap"><span class="muted">מ־</span>' + dateInp("jspFrom", dFrom) + '<span class="muted">עד</span>' + dateInp("jspTo", dTo) + "</div>" +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:11px"><input type="checkbox" id="jspOpen"' + (_jShareScope.open ? " checked" : "") + "> כלול גם עסקאות פתוחות (רווח/הפסד לא ממומש)</label>" +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:11px"><input type="checkbox" id="jspOpen"' + (_jShareScope.open ? " checked" : "") + "> כלול גם עסקאות פתוחות (רווח/הפסד לא ממומש)</label></div>" +
       '<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:16px"><input type="checkbox" id="jspPct"' + (_jShareScope.pct ? " checked" : "") + "> הצג באחוזים (%) במקום דולר ($)</label>" +
       '<button class="btn primary" id="jspGo" style="width:100%;font-weight:700">📤 צור כרטיס שיתוף</button></div>';
     modal("📅 שיתוף יומן מסחר", body, "jshare");
@@ -2417,6 +2419,7 @@
       _jShareScope.range = b.dataset.jsprange;
       document.querySelectorAll("[data-jsprange]").forEach(x => x.classList.toggle("primary", x === b));
       const c = document.getElementById("jspCustom"); if (c) c.style.display = b.dataset.jsprange === "custom" ? "flex" : "none";
+      const co = document.getElementById("jspClosedOpts"); if (co) co.style.display = b.dataset.jsprange === "open" ? "none" : "block";   // open-only mode hides the closed-trade options
     });
     const go = document.getElementById("jspGo");
     if (go) go.onclick = () => {
@@ -2427,7 +2430,8 @@
         if (f && t && f > t) { const tmp = f; f = t; t = tmp; }   // swap if reversed
         _jShareScope.from = f; _jShareScope.to = t;
       }
-      closeModal(); _captureRedesignCard(buildJournalCardEl);
+      closeModal();
+      _captureRedesignCard(_jShareScope.range === "open" ? buildOpenPositionsCardEl : buildJournalCardEl);
     };
   }
   function buildJournalCardEl() {
@@ -2560,6 +2564,52 @@
       "</div>" +
       '<div class="jrn2-ft"><span><b>stratninja.win</b> · נתוני יומן מסחר</span><span>Adi Koriat · @KoriatTrade · <span class="jrn2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
     document.body.appendChild(el);
+    return el;
+  }
+  // ===== Open-positions share card (currently-open trades + their unrealized P&L) =====
+  function buildOpenPositionsCardEl() {
+    const list = (window.Journal && window.Journal.openList) ? window.Journal.openList() : [];
+    const pctMode = !!(_jShareScope && _jShareScope.pct);
+    const usd = v => (v < 0 ? "−$" : "+$") + Math.round(Math.abs(v)).toLocaleString("en-US");
+    const pctF = v => (v >= 0 ? "+" : "−") + Math.abs(+v || 0).toFixed(1) + "%";
+    let sumUn = 0, sumCost = 0, wins = 0, losses = 0;
+    list.forEach(p => { if (p.un != null) { sumUn += p.un; sumCost += p.cost; if (p.un > 0) wins++; else if (p.un < 0) losses++; } });
+    const totalPct = sumCost ? sumUn / sumCost * 100 : 0;
+    const n = list.length;
+    const kpiCls = sumUn > 0 ? "jrn2-pos" : sumUn < 0 ? "jrn2-neg" : "jrn2-z";
+    const bigVal = n ? (pctMode ? pctF(totalPct) : usd(sumUn)) : "—";
+    const dirTag = p => p.direction === "short" ? '<span class="jrn2-stag jrn2-sh">שורט</span>' : '<span class="jrn2-stag">לונג</span>';
+    const rowP = (p, i) => {
+      const upct = (p.un != null && p.cost) ? p.un / p.cost * 100 : null;
+      const cls = p.un == null ? "jrn2-p-flat" : p.un > 0 ? "jrn2-p-pos" : p.un < 0 ? "jrn2-p-neg" : "jrn2-p-flat";
+      const val = p.un == null ? "טוען…" : (pctMode ? (upct == null ? "—" : pctF(upct)) : usd(p.un));
+      return '<div class="jrn2-rrow"><span class="jrn2-rk">' + (i + 1) + '</span><span class="jrn2-tk">' + escHtml(String(p.symbol || "—").split(" ")[0]) + (p.isOption ? ' <span style="font-size:10px;opacity:.55">אופ׳</span>' : "") + "</span>" + dirTag(p) + '<span class="jrn2-spacer"></span><span class="jrn2-pc ' + cls + '">' + val + "</span></div>";
+    };
+    const emptyR = '<div class="jrn2-rrow"><span class="jrn2-tk" style="color:var(--mftxt2)">—</span></div>';
+    const winList = list.filter(p => (p.un || 0) > 0).sort((a, b) => (b.un || 0) - (a.un || 0)).slice(0, 6);
+    const lossList = list.filter(p => (p.un || 0) < 0).sort((a, b) => (a.un || 0) - (b.un || 0)).slice(0, 6);
+    const winsHtml = winList.length ? winList.map((p, i) => rowP(p, i)).join("") : emptyR;
+    const lossHtml = lossList.length ? lossList.map((p, i) => rowP(p, i)).join("") : emptyR;
+    const sub = n ? (n + " פוזיציות פתוחות · " + wins + " ברווח · " + losses + " בהפסד") : "אין פוזיציות פתוחות כרגע";
+    const photo = _heroSquare ? '<img class="jrn2-photo" src="' + _heroSquare + '">' : '<img class="jrn2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "jrn2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="jrn2-hd">' + photo + '<div><div class="jrn2-bt">StratNinja <span>Scanner</span></div><div class="jrn2-bs">The Strat · פוזיציות פתוחות</div></div>' +
+        (upd ? '<div class="jrn2-upd"><span class="jrn2-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
+      '<div class="jrn2-ct">' +
+        '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags"><span class="jrn2-tag jrn2-z">🔓 ' + n + ' פוזיציות פתוחות</span></div>' +
+          '<h1 class="' + kpiCls + '">רווח/הפסד לא ממומש</h1><div class="jrn2-sub">' + sub + "</div></div>" +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + bigVal + '</div><div class="jrn2-cap">' + (pctMode ? "תשואה לא ממומשת" : "לא ממומש כולל") + "</div></div></div>" +
+        '<div class="jrn2-cols">' +
+          '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> 🟢 ברווח</div>' + winsHtml + "</div>" +
+          '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> 🔴 בהפסד</div>' + lossHtml + "</div></div>" +
+        '<div class="jrn2-bottom"><div class="jrn2-insight"><span class="jrn2-mi">i</span><div><span class="jrn2-lbl">Ninja Insight:</span> ' + (n ? ("סה\"כ חשיפה פתוחה " + usd(sumCost).replace("+$", "$") + " על פני " + n + " פוזיציות · " + (pctMode ? pctF(totalPct) + " לא ממומש" : usd(sumUn) + " לא ממומש") + ".") : "אין פוזיציות פתוחות — כל העסקאות סגורות.") + "</div></div>" +
+          '<div class="jrn2-cta">ליומן המסחר המלא →</div></div>' +
+      "</div>" +
+      '<div class="jrn2-ft"><span><b>stratninja.win</b> · פוזיציות פתוחות ביומן</span><span>Adi Koriat · @KoriatTrade · <span class="jrn2-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    _journalShareCap = n ? { val: bigVal, he: "", dir: sumUn > 0 ? "pos" : sumUn < 0 ? "neg" : "flat", isDay: true, open: true } : null;
     return el;
   }
   // ===== Gappers share card (pre-market gap-up / gap-down, ranked by %Gap; RVOL joined from the universe) =====
@@ -3051,8 +3101,8 @@
       const s = _journalShareCap;
       if (s && s.val) {
         const em = s.dir === "pos" ? "🟢" : s.dir === "neg" ? "🔴" : "⚪";
-        const word = s.isDay ? "יום מסחר" : "התקופה";
-        cap = "📅 " + em + " " + word + " " + s.val + (s.he && s.he !== "—" ? " · " + s.he : "") + " · StratNinja";
+        if (s.open) cap = "🔓 " + em + " פוזיציות פתוחות · " + s.val + " לא ממומש · StratNinja";
+        else cap = "📅 " + em + " " + (s.isDay ? "יום מסחר" : "התקופה") + " " + s.val + (s.he && s.he !== "—" ? " · " + s.he : "") + " · StratNinja";
       } else cap = "📅 הביצועים שלי ב-StratNinja";
       tags = [];
     } else if (page === "sectors") {
