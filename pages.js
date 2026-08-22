@@ -4965,10 +4965,12 @@
       if (flowSecMode === "avg") {
         return Object.assign(base, { chg: avg(d.s1, d.n1), chg5d: avg(d.s5, d.n5), chg20d: avg(d.s20, d.n20) });
       }
+      // ETF move when available (cap-weighted); else fall back to the equal-weight stock average — so
+      // no-ETF buckets (קריפטו/סחורות) still show a real 5D/20D move instead of a "—".
       return Object.assign(base, {
         chg: liveChg[s] != null ? liveChg[s] : avg(d.s1, d.n1),
-        chg5d: live5d[s] != null ? live5d[s] : null,
-        chg20d: live20d[s] != null ? live20d[s] : null,
+        chg5d: live5d[s] != null ? live5d[s] : avg(d.s5, d.n5),
+        chg20d: live20d[s] != null ? live20d[s] : avg(d.s20, d.n20),
         px: livePx[s] != null ? livePx[s] : null,
       });
     });
