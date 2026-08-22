@@ -514,13 +514,15 @@
     const wrap = el("div", "panel jr-totalpnl");
     const note = u.missing ? " · <span style='font-size:11px'>" + u.missing + " פוזיציות בלי מחיר חי (לרוב אופציות) לא נכללו</span>" : "";
     wrap.innerHTML =
-      "<div class='jtp-top'><span class='jtp-lbl'>💰 P&L כולל <span class='muted' style='font-weight:400;font-size:12px'>(ממומש + לא-ממומש)</span></span>" +
+      "<div class='jtp-top'><span class='jtp-lbl'>💰 P&L כולל <span class='muted' style='font-weight:400;font-size:12px'>· כל הזמן (ממומש + לא-ממומש)</span></span>" +
         "<span class='jtp-val " + cls(combined) + "'>" + money(combined, 2) + "</span></div>" +
       "<div class='jtp-sub'>ממומש (עסקאות סגורות): <b class='" + cls(realized) + "'>" + money(realized, 2) + "</b>  +  לא-ממומש (פוזיציות פתוחות): <b class='" + cls(u.un) + "'>" + money(u.un, 2) + "</b>" + note + "</div>";
     return wrap;
   }
   function renderStatCards(trades) {
     const s = E.stats(trades);
+    const box = el("div", "jr-statwrap");
+    box.appendChild(el("div", "jr-scope-lbl", "📊 סטטיסטיקה כללית · כל הזמן (סיכום כל החודשים) — לוח השנה למטה מציג חודש אחד בכל פעם"));
     const wrap = el("div", "cards");
     const pf = s.profitFactor === Infinity ? "∞" : s.profitFactor.toFixed(2);
     const items = [
@@ -539,7 +541,8 @@
       card.appendChild(el("div", "val " + (c || ""), String(v)));
       wrap.appendChild(card);
     });
-    return wrap;
+    box.appendChild(wrap);
+    return box;
   }
 
   /* compact Stocks vs Options breakdown */
@@ -720,7 +723,8 @@
     bar.appendChild(nav); bar.appendChild(todayBtn);
     bar.appendChild(el("div", "spacer"));
     const monTot = el("span", "badge"), monDays = el("span", "badge days");
-    bar.appendChild(el("span", "badge lbl", "סטטיסטיקה חודשית:"));
+    const monLbl = el("span", "badge lbl", "סטטיסטיקה חודשית:");
+    bar.appendChild(monLbl);
     bar.appendChild(monTot); bar.appendChild(monDays);
     wrap.appendChild(bar);
 
@@ -729,6 +733,7 @@
     const ym = months[state.monthIdx];
     const [y, m] = ym.split("-").map(Number);
     label.textContent = HEB[m - 1] + " " + y;
+    monLbl.textContent = "סטטיסטיקה של " + HEB[m - 1] + " " + y + " בלבד:";
     const first = new Date(y, m - 1, 1);
     const startDow = first.getDay();
     const daysInMonth = new Date(y, m, 0).getDate();
