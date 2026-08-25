@@ -96,6 +96,8 @@
   let openPosMin = false;   // collapse the open-positions panel
   try { openPosMin = localStorage.getItem("sn_openpos_min") === "1"; } catch (e) {}
   let _openSort = { col: null, dir: 1 };   // open-positions table sort (click a header)
+  let _openAgg = false;   // aggregate duplicate tickers in the open-positions table (weighted-avg entry)
+  try { _openAgg = localStorage.getItem("sn_openpos_agg") === "1"; } catch (e) {}
   // live-stream privacy: hide the trades on entry (toggle persisted); _peek = temporarily revealed
   let _journalPrivate = false;
   try { _journalPrivate = localStorage.getItem("sn_journal_private") === "1"; } catch (e) {}
@@ -301,6 +303,34 @@
       '<b>משמעת מנצחת כמות.</b> 🎯</div>');
   }
 
+  // merge already-priced open-position items (each {t, isOpt, cp, un}) that share a ticker/direction/
+  // contract into one synthetic position: summed qty, weighted-avg entry, summed exposure & Unrealized.
+  function _aggOpenItems(items) {
+    const groups = {};
+    items.forEach(it => {
+      const t = it.t;
+      const k = (t.symbol || "") + "|" + (t.account || "") + "|" + (t.direction || "") + "|" + (t.optType || "");
+      (groups[k] = groups[k] || []).push(it);
+    });
+    return Object.keys(groups).map(k => {
+      const g = groups[k];
+      if (g.length === 1) { const it = g[0]; return { t: Object.assign({}, it.t, { _n: 1 }), isOpt: it.isOpt, cp: it.cp, un: it.un }; }
+      const f = g[0].t;
+      const qty = g.reduce((s, x) => s + (+x.t.qty || 0), 0);
+      const wavgEntry = qty ? g.reduce((s, x) => s + (+x.t.entryPrice || 0) * (+x.t.qty || 0), 0) / qty : 0;
+      const dates = g.map(x => x.t.entryDate).filter(Boolean).sort();
+      const entryDate = dates.length ? (dates[0] === dates[dates.length - 1] ? dates[0] : dates[0] + " … " + dates[dates.length - 1]) : "";
+      const allCp = g.every(x => x.cp != null);
+      const cp = (allCp && qty) ? g.reduce((s, x) => s + (+x.cp || 0) * (+x.t.qty || 0), 0) / qty : null;   // weighted-avg current price
+      const un = g.every(x => x.un != null) ? g.reduce((s, x) => s + x.un, 0) : null;
+      const mt = {
+        id: "aggopen|" + k, symbol: f.symbol, account: f.account, direction: f.direction,
+        assetType: f.assetType, optType: f.optType, mult: f.mult, qty: qty, entryPrice: wavgEntry,
+        entryDate: entryDate, _n: g.length,
+      };
+      return { t: mt, isOpt: f.assetType === "option", cp: cp, un: un };
+    });
+  }
   function renderOpenPositions(openTrades) {
     const wrap = el("div", "panel open-pos");
     const showAcct = state.account === ALL;   // combined view → show which account each position is in
@@ -308,13 +338,17 @@
     // derive per-position values first (live prices are STOCK prices — not an option's premium,
     // so Unrealized P&L is only computable for stocks). Needed for both display AND sorting.
     const optPx = _optPrices();
-    const items = openTrades.map(t => {
+    let items = openTrades.map(t => {
       const isOpt = t.assetType === "option";
       // stocks → live feed price · options → the price the trader typed in (if any)
       const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
       const un = (cp != null) ? unrealizedPnl(t, cp) : null;
       return { t: t, isOpt: isOpt, cp: cp, un: un };
     });
+    // aggregate duplicate tickers → one row per (symbol·account·direction·optType) with the
+    // WEIGHTED-AVERAGE entry price and summed quantity/exposure/Unrealized. Same key as the
+    // closed-trades aggregation. e.g. 100@$1 + 200@$2 → 300 @ $1.67.
+    if (_openAgg) items = _aggOpenItems(items);
     if (_openSort.col) {
       const sv = it => {
         switch (_openSort.col) {
@@ -354,12 +388,16 @@
       : '<td class="muted">—</td>';
     const rows = items.map(function (it) {
       const t = it.t, isOpt = it.isOpt, cp = it.cp, posVal = posValOf(t);
+      const merged = (t._n || 1) > 1;   // aggregated row (several lots of the same ticker)
       totPosVal += posVal;
       let pnlHtml, cpHtml, pctHtml;
       if (isOpt) {
         hasOpt = true;
-        // no live option-price feed → let the trader type the current premium; P&L updates live
-        cpHtml = '<input class="opt-px" data-optpx="' + t.id + '" type="number" step="0.01" min="0" placeholder="הזן מחיר" value="' + (cp != null ? cp : "") + '">';
+        // no live option-price feed → let the trader type the current premium; P&L updates live.
+        // merged rows can't edit per-lot → show the weighted-avg premium read-only.
+        cpHtml = merged
+          ? (cp != null ? money(cp, 2) : "—")
+          : '<input class="opt-px" data-optpx="' + t.id + '" type="number" step="0.01" min="0" placeholder="הזן מחיר" value="' + (cp != null ? cp : "") + '">';
         if (cp != null && it.un != null) { totUn += it.un; totInv += posVal; pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>"; pctHtml = pctCell(it.un, posVal); }
         else { pnlHtml = '<span class="muted" title="הזן את מחיר האופציה הנוכחי כדי לחשב רווח/הפסד לא ממומש">הזן מחיר ←</span>'; pctHtml = '<td class="muted">—</td>'; }
       } else if (cp != null) {
@@ -367,20 +405,24 @@
         pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>";
         cpHtml = money(cp, 2); pctHtml = pctCell(it.un, posVal);
       } else { haveAll = false; pnlHtml = '<span class="muted">' + (livePrices ? "אין מחיר" : "טוען…") + "</span>"; cpHtml = "—"; pctHtml = '<td class="muted">—</td>'; }
-      return "<tr data-editopen='" + t.id + "' style='cursor:pointer'>" +
+      const nBadge = merged ? ' <span class="agg-badge" title="' + t._n + ' לוטים מאוגדים · מחיר כניסה = ממוצע משוקלל — כבה \'אגד\' כדי לנהל/לסגור כל לוט בנפרד">×' + t._n + "</span>" : "";
+      const actions = merged
+        ? '<span class="muted" style="font-size:11px" title="כבה \'אגד טיקרים\' כדי לסגור/למחוק לוט בודד">🧬 מאוגד</span>'
+        : ((t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
+           "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
+           "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button>");
+      return "<tr" + (merged ? "" : " data-editopen='" + t.id + "' style='cursor:pointer'") + ">" +
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
-        "<td class='sym'>" + chartSym(t.symbol) +
-        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + slBadge(t) + "</td>" +
+        "<td class='sym'>" + chartSym(t.symbol) + nBadge +
+        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + (merged ? "" : slBadge(t)) + "</td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
-        "<td>" + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
-          "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
-          "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button></td></tr>";
+        "<td>" + actions + "</td></tr>";
     }).join("");
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
-    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "שווי פוזיציה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
-    const labelSpan = 5 + (showAcct ? 1 : 0);   // entryDate..entryPrice (before the שווי-פוזיציה column)
+    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
+    const labelSpan = 5 + (showAcct ? 1 : 0);   // entryDate..entryPrice (before the חשיפה column)
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
@@ -394,7 +436,8 @@
       : "";
     const refreshBtn = "<button class='btn ghost' id='openPxRefresh' style='font-size:12px;padding:4px 10px' title='רענן מחירים עכשיו'>🔄 רענן</button>";
     const gridBtn = "<button class='btn ghost' id='openPosGrid' style='font-size:12px;padding:4px 12px' title='ראה גרפים של כל הפוזיציות הפתוחות'>📊 גרפים</button>" +
-      "<button class='btn ghost' id='openPosCopy' style='font-size:12px;padding:4px 12px' title='העתק את רשימת הפוזיציות הפתוחות ללוח'>📋 העתק</button>";
+      "<button class='btn ghost' id='openPosCopy' style='font-size:12px;padding:4px 12px' title='העתק את רשימת הפוזיציות הפתוחות ללוח'>📋 העתק</button>" +
+      "<button class='btn ghost" + (_openAgg ? " on" : "") + "' id='openPosAgg' style='font-size:12px;padding:4px 12px' title='אחד לוטים כפולים של אותו טיקר לשורה אחת עם מחיר כניסה ממוצע משוקלל'>🧬 " + (_openAgg ? "מאוגד" : "אגד טיקרים") + "</button>";
     const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
     const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · שווי " + money(totPosVal, 0) + " · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
@@ -430,6 +473,7 @@
         if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(syms).then(done).catch(fallback); else fallback();
       }; }
     { const tg = wrap.querySelector("#openPosToggle"); if (tg) tg.onclick = () => { openPosMin = !openPosMin; try { localStorage.setItem("sn_openpos_min", openPosMin ? "1" : "0"); } catch (e) {} render(); }; }
+    { const ag = wrap.querySelector("#openPosAgg"); if (ag) ag.onclick = () => { _openAgg = !_openAgg; try { localStorage.setItem("sn_openpos_agg", _openAgg ? "1" : "0"); } catch (e) {} render(); }; }
     wrap.querySelectorAll("[data-jsort]").forEach(th => th.onclick = () => {
       const c = th.dataset.jsort;
       if (_openSort.col === c) _openSort.dir *= -1;
