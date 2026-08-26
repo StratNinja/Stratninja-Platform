@@ -5826,9 +5826,106 @@
     { const rp = $("#clReplay"); if (rp) rp.onclick = () => runCandleLesson(type, stage, callout, tfEl); }
   }
 
+  // ===== Candle drawing board (admin teaching tool) ==========================
+  // Draw candles by hand for explanations: press-hold to open a candle at the current Y (= open price),
+  // drag up/down to shape body + wicks (green = close above open, red = below), release to commit and
+  // auto-advance one column to the right. Values are stored NORMALIZED (0=top .. 1=bottom of the board)
+  // so they survive resize. Admin-only for now.
+  const _drawBoard = { candles: [], gridN: 20, gridOn: true, nextCol: 0, cur: null, _ro: null };
+  function renderDrawBoard() {
+    if (!_snIsAdmin()) return '<div class="page-head"><h1>✏️ שרטוט נרות</h1><div class="sub">הכלי זמין לניהול בלבד.</div></div>';
+    const head = '<div class="page-head"><h1>✏️ שרטוט נרות — לוח הסבר</h1><div class="sub">' +
+      '<b>לחץ והחזק</b> על הלוח כדי לפתוח נר (נקודת הפתיחה = מיקום העכבר), <b>הזז מעלה/מטה</b> תוך כדי לחיצה כדי לעצב גוף ופתילים — ' +
+      '<span class="pos">ירוק</span> כשהמחיר מעל הפתיחה, <span class="neg">אדום</span> כשמתחת. <b>שחרר</b> לסגירת הנר, והלוח עובר אוטומטית לנר הבא מימין.</div></div>';
+    const gridBtns = [10, 20, 50, 100].map(n => '<button class="flow-tf-btn' + (n === _drawBoard.gridN ? " on" : "") + '" data-drawgrid="' + n + '">' + n + "</button>").join("");
+    const toolbar = '<div class="panel draw-toolbar">' +
+      '<button class="btn ghost" id="drawGridToggle">' + (_drawBoard.gridOn ? "▦ גריד מוצג" : "▦ גריד מוסתר") + "</button>" +
+      '<span class="flow-ctrl-lbl">קוביות:</span><span class="flow-tf">' + gridBtns + "</span>" +
+      '<span class="muted" id="drawStatus" style="font-size:12px"></span>' +
+      '<span style="margin-inline-start:auto"></span>' +
+      '<button class="btn ghost" id="drawUndo">↶ בטל נר אחרון</button>' +
+      '<button class="btn ghost" id="drawClear">🗑 נקה הכל</button>' +
+      '<button class="btn ghost" id="drawExport">📷 שמור PNG</button>' +
+      "</div>";
+    const board = '<div class="panel draw-boardwrap"><canvas id="drawCanvas" class="draw-canvas"></canvas></div>';
+    return head + toolbar + board;
+  }
+  function wireDrawBoard() {
+    if (!_snIsAdmin()) return;
+    const cv = document.getElementById("drawCanvas"); if (!cv) return;
+    const ctx = cv.getContext("2d");
+    let W = 0, H = 0;
+    const S = _drawBoard;
+    const slotW = () => W / S.gridN;
+    const clampY = y => Math.max(0, Math.min(H, y));
+    const status = () => { const el = document.getElementById("drawStatus"); if (el) el.textContent = S.candles.length + " נרות · הבא: " + Math.min(S.nextCol + 1, S.gridN) + "/" + S.gridN; };
+    function setup() {
+      const r = cv.getBoundingClientRect(); if (!r.width || !r.height) return;
+      const dpr = window.devicePixelRatio || 1;
+      cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+      W = r.width; H = r.height; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+    function drawGrid() {
+      if (!S.gridOn) return;
+      const cw = slotW();
+      ctx.strokeStyle = "rgba(255,255,255,.09)"; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x <= W + 0.5; x += cw) { const px = Math.round(x) + 0.5; ctx.moveTo(px, 0); ctx.lineTo(px, H); }
+      for (let y = 0; y <= H + 0.5; y += cw) { const py = Math.round(y) + 0.5; ctx.moveTo(0, py); ctx.lineTo(W, py); }
+      ctx.stroke();
+    }
+    function drawCandle(c) {
+      const cw = slotW(), xc = (c.col + 0.5) * cw, bw = Math.max(3, cw * 0.6);
+      const yO = c.open * H, yC = c.close * H, yH = c.high * H, yL = c.low * H;
+      const bull = c.close <= c.open;   // normalized: smaller value = higher price → bullish
+      const col = bull ? "#26a69a" : "#ef5350";
+      ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = Math.max(1, cw * 0.09);
+      ctx.beginPath(); ctx.moveTo(xc, yH); ctx.lineTo(xc, yL); ctx.stroke();   // wick
+      const top = Math.min(yO, yC); ctx.fillRect(xc - bw / 2, top, bw, Math.max(1.5, Math.abs(yC - yO)));   // body
+    }
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+      drawGrid();
+      S.candles.forEach(drawCandle);
+      if (S.cur) drawCandle(S.cur);
+    }
+    const pos = e => { const r = cv.getBoundingClientRect(); return clampY(e.clientY - r.top) / H; };
+    cv.addEventListener("pointerdown", e => {
+      if (S.nextCol >= S.gridN) { snToast("הלוח מלא — נקה או הגדל את מספר הקוביות"); return; }
+      const n = pos(e);
+      S.cur = { col: S.nextCol, open: n, high: n, low: n, close: n };
+      try { cv.setPointerCapture(e.pointerId); } catch (x) {}
+      e.preventDefault(); draw();
+    });
+    cv.addEventListener("pointermove", e => {
+      if (!S.cur) return;
+      const n = pos(e);
+      S.cur.close = n; S.cur.high = Math.min(S.cur.high, n); S.cur.low = Math.max(S.cur.low, n);
+      draw();
+    });
+    function finish() {
+      if (!S.cur) return;
+      S.candles.push(S.cur); S.nextCol++; S.cur = null; draw(); status();
+    }
+    cv.addEventListener("pointerup", finish);
+    cv.addEventListener("pointercancel", finish);
+    // toolbar
+    { const g = document.getElementById("drawGridToggle"); if (g) g.onclick = () => { S.gridOn = !S.gridOn; reRender(); }; }
+    document.querySelectorAll("[data-drawgrid]").forEach(b => b.onclick = () => { S.gridN = +b.dataset.drawgrid; if (S.nextCol > S.gridN) S.nextCol = S.gridN; reRender(); });
+    { const u = document.getElementById("drawUndo"); if (u) u.onclick = () => { if (S.candles.length) { S.candles.pop(); S.nextCol = Math.max(0, S.nextCol - 1); draw(); status(); } }; }
+    { const c = document.getElementById("drawClear"); if (c) c.onclick = () => { S.candles = []; S.nextCol = 0; S.cur = null; draw(); status(); }; }
+    { const x = document.getElementById("drawExport"); if (x) x.onclick = () => { try { const a = document.createElement("a"); a.href = cv.toDataURL("image/png"); a.download = "stratninja-candles.png"; a.click(); } catch (er) { snToast("ייצוא נכשל"); } }; }
+    if (S._ro) { try { S._ro.disconnect(); } catch (x) {} }
+    if (window.ResizeObserver) { S._ro = new ResizeObserver(() => setup()); S._ro.observe(cv); }
+    setup(); status();
+  }
+
   // ---------- router ----------
   const PAGES = {
     market: { render: renderMarket, wire: wireMarket },
+    draw: { render: renderDrawBoard, wire: wireDrawBoard },
     today: { render: renderToday, wire: wireToday },
     sp500: { render: renderSp500, wire: wireSp500 },
     scanner: { render: renderScanner, wire: wireScanner },
@@ -6230,7 +6327,7 @@
     { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
     // reveal the admin-only community panel link for Adi (and whenever auth state changes)
-    const _revealAdmin = () => { const el = document.getElementById("sideCommAdmin"); if (el) el.style.display = _snIsAdmin() ? "" : "none"; };
+    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "navDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };
     _revealAdmin();
     try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(_revealAdmin); } catch (e) {}
     updateAlertBell();
