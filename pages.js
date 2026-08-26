@@ -3778,6 +3778,13 @@
             '<div class="fgrp"><label>52ש׳</label><div class="chips" style="align-items:center"><select id="tExt52">' +
               opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+            '<div class="fgrp"><label>🎯 מבחן פתיחה תקופתית <span class="muted" style="font-size:10px">(תמיכה/התנגדות על פתיחת Y/Q/M)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPopenTest">' +
+              opt("off", techState.popenTest, "— כבוי") + opt("support", techState.popenTest, "🟢 תמיכה (לונג)") + opt("resistance", techState.popenTest, "🔴 התנגדות (שורט)") + opt("any", techState.popenTest, "⚡ שניהם") +
+              "</select>" + (_popenActive()
+                ? '<span class="muted">≤</span><input id="tPopenMult" type="number" step="0.1" min="0.1" style="width:52px" value="' + techState.popenMult + '"><span class="muted">×ATR</span>' +
+                  '<span class="chips" style="gap:6px;margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
+                    '<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer"><input type="checkbox" data-popentf="' + tf + '"' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " checked" : "") + ">" + (TF_HE_SHORT[tf] || tf) + "</label>").join("") + "</span>"
+                : "") + "</div></div>" +
             '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
             '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
             '<div class="fgrp"><label>גאפ (פתיחה מול אתמול)</label><div class="chips" style="align-items:center"><select id="tGapDir">' +
@@ -4069,6 +4076,7 @@
         if (_atrp() > 0) { const av2 = _techVal(k, "atrp"); if (av2 == null || av2 < _atrp()) return false; }
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
+        if (_popenActive() && !_popenTest(t)) return false;   // price must be within N×ATR of a Y/Q/M open (support/resistance)
       }
       // indicator scanners (compression / Bollinger / swing / trend-lines / Fibonacci) — own collapsible panel, stack AND independently
       if (_compActive() || _bbActive() || _bbPosActive() || _swActive() || _trendActive() || _fibActive()) {
@@ -4184,6 +4192,13 @@
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
     bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
+    bind("tPopenTest", "onchange", e => { techState.popenTest = e.target.value; reRender(); });
+    bind("tPopenMult", "onchange", e => { techState.popenMult = parseFloat(e.target.value) || 0.5; reRender(); });
+    document.querySelectorAll("[data-popentf]").forEach(cb => cb.onchange = () => {
+      const tf = cb.dataset.popentf, arr = techState.popenTfs || [], i = arr.indexOf(tf);
+      if (cb.checked && i < 0) arr.push(tf); else if (!cb.checked && i >= 0) arr.splice(i, 1);
+      techState.popenTfs = arr; reRender();
+    });
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
@@ -4251,6 +4266,7 @@
     gid("tEarnMin", techState.earnMin !== "");
     gid("tAvgVolMin", techState.avgVolMin > 0);
     gid("tExt52", techState.ext52 !== "off");
+    gid("tPopenTest", _popenActive());
     gid("tAtrpMin", _atrp() > 0);
     gid("tChgMin", techState.chgMin !== "");
     gid("tChgMax", techState.chgMax !== "");
@@ -4295,6 +4311,7 @@
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
     fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
+    popenTest: "off", popenMult: 0.5, popenTfs: ["Y", "Q", "M"],   // period-open test: price within N×ATR of the Yearly/Quarterly/Monthly open (support/resistance)
   };
   const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
   const COMP_MAS = ["20", "50", "100", "200"];
@@ -4368,6 +4385,26 @@
   function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_bbPosActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
+  // period-open test: is the price within N×ATR of a Yearly/Quarterly/Monthly OPEN?
+  // side = "support" (price at/above the open → potential long) | "resistance" (price at/below → potential short).
+  function _popenActive() { return techState.popenTest && techState.popenTest !== "off" && (techState.popenTfs || []).length > 0; }
+  function _popenTest(t) {
+    const price = +t.p, atr = t.tech && t.tech.atr;
+    if (!price || !atr) return null;
+    const tol = atr * (parseFloat(techState.popenMult) || 0.5);
+    const tfs = (techState.popenTfs && techState.popenTfs.length) ? techState.popenTfs : ["Y", "Q", "M"];
+    let best = null;
+    for (let i = 0; i < tfs.length; i++) {
+      const cell = t[tfs[i]], lvl = cell && cell.o;
+      if (lvl == null) continue;
+      const dist = Math.abs(price - lvl);
+      if (dist <= tol) {
+        const side = price >= lvl ? "support" : "resistance";
+        if ((techState.popenTest === "any" || techState.popenTest === side) && (!best || dist < best.dist)) best = { tf: tfs[i], level: lvl, side: side, dist: dist };
+      }
+    }
+    return best;
+  }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
   function _gapActive() { return techState.gapDir === "up" || techState.gapDir === "down"; }
   function _volTrendActive() { return techState.volTrendDir === "up" || techState.volTrendDir === "down"; }
@@ -4415,7 +4452,7 @@
     return techState.maRel !== "off" || _maExtraActive() > 0 || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || _volTrendActive() || _volAvgActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMin !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
-      _atrp() > 0 || _chgActive() || _gapActive();
+      _atrp() > 0 || _chgActive() || _gapActive() || _popenActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -4435,6 +4472,7 @@
     if (_atrp() > 0) n++;
     if (_chgActive()) n++;
     if (_gapActive()) n++;
+    if (_popenActive()) n++;
     return n;
   }
   function resetTech() {
@@ -4448,6 +4486,7 @@
     techState.compMax = ""; techState.bbSqMax = ""; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
+    techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"];
     techState.techTf = "D";
   }
   function fmtVol(n) {
