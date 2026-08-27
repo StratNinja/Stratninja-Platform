@@ -4202,13 +4202,20 @@
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
     bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
-    bind("tPopenTest", "onchange", e => { techState.popenTest = e.target.value; reRender(); });
+    bind("tPopenTest", "onchange", e => {
+      techState.popenTest = e.target.value;
+      // re-enabling after all timeframes were cleared → restore the default Y/Q/M so the chips reappear
+      if (techState.popenTest !== "off" && !(techState.popenTfs && techState.popenTfs.length)) techState.popenTfs = ["Y", "Q", "M"];
+      reRender();
+    });
     bind("tPopenMult", "onchange", e => { techState.popenMult = parseFloat(e.target.value) || 0.5; reRender(); });
     bind("tPopenTouch", "onchange", e => { techState.popenTouch = e.target.value; reRender(); });
     document.querySelectorAll("[data-popentf]").forEach(b => b.onclick = () => {
       const tf = b.dataset.popentf, arr = techState.popenTfs || [], i = arr.indexOf(tf);
       if (i >= 0) arr.splice(i, 1); else arr.push(tf);
-      techState.popenTfs = arr; reRender();
+      techState.popenTfs = arr;
+      if (!arr.length) techState.popenTest = "off";   // removed the last timeframe → turn the filter off cleanly (recoverable — pick a direction to re-enable)
+      reRender();
     });
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
