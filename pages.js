@@ -2491,10 +2491,18 @@
     const _pcts = trades.map(_tp).filter(v => v != null), _mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
     // TOTAL return = capital-WEIGHTED: Σ P&L ÷ Σ capital deployed (the $200 ÷ $1,100 = +18.2% model).
     let _sumP = 0, _sumC = 0; trades.forEach(t => { const c = _cost(t); if (c) { _sumP += (t.pnl || 0); _sumC += c; } });
-    const _wRet = _sumC ? _sumP / _sumC * 100 : 0;
+    // fold OPEN positions' unrealized P&L into the headline when the trader ticked "include open positions"
+    let openUn = 0, openCost = 0, openUnPct = null;
+    if (_jShareScope && _jShareScope.open) {
+      const ol = (window.Journal && window.Journal.openList) ? window.Journal.openList() : [];
+      ol.forEach(p => { if (p.un != null && p.cost) { openUn += p.un; openCost += p.cost; } });
+      openUnPct = openCost ? openUn / openCost * 100 : null;
+    }
+    const inclOpen = openCost > 0;   // only fold in when there are priced open positions
+    const _wRet = (_sumC + (inclOpen ? openCost : 0)) ? (_sumP + (inclOpen ? openUn : 0)) / (_sumC + (inclOpen ? openCost : 0)) * 100 : 0;   // capital-weighted, incl. open
     const D = pctMode
       ? { net: _wRet, avgPer: _mean(_pcts), best: _pcts.length ? Math.max.apply(null, _pcts) : 0, worst: _pcts.length ? Math.min.apply(null, _pcts) : 0, avgWin: _mean(_pcts.filter(v => v > 0)), avgLoss: _mean(_pcts.filter(v => v < 0)) }
-      : { net: st.net, avgPer: n ? st.net / n : 0, best: st.bestTrade, worst: st.worstTrade, avgWin: st.avgWin, avgLoss: st.avgLoss };
+      : { net: st.net + (inclOpen ? openUn : 0), avgPer: n ? st.net / n : 0, best: st.bestTrade, worst: st.worstTrade, avgWin: st.avgWin, avgLoss: st.avgLoss };
     const net = D.net, avgPer = D.avgPer;
     const fmt = v => pctMode ? ((v >= 0 ? "+" : "−") + Math.abs(+v || 0).toFixed(1) + "%") : usd(v);
     // stash the headline for the share caption (so the tweet text matches the card)
@@ -2507,7 +2515,14 @@
     else { l1 = isDay ? "יום <b>מאוזן</b>" : "תקופה <b>מאוזנת</b>"; kpiCls = "jrn2-z"; brCls = "jrn2-z"; brLbl = isDay ? "יום מאוזן" : "תקופה מאוזנת"; dayTag = '<span class="jrn2-tag jrn2-z">⚪ ' + (isDay ? "יום מאוזן" : "תקופה מאוזנת") + "</span>"; }
     // optional open-positions tag (unrealized P&L), when the trader chose to include open trades
     let openTag = "";
-    if (_jShareScope && _jShareScope.open) { const js = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null; if (js && js.open) openTag = '<span class="jrn2-tag jrn2-z">🔓 ' + js.open + " פתוחות" + (js.unrealized != null ? " · לא ממומש " + usd(js.unrealized) : "") + "</span>"; }
+    if (_jShareScope && _jShareScope.open) {
+      const js = (window.Journal && window.Journal.summary) ? window.Journal.summary() : null;
+      if (js && js.open) {
+        // in % mode show the unrealized as a return %, otherwise in $
+        const unTxt = pctMode ? (openUnPct != null ? " · לא ממומש " + fmt(openUnPct) : "") : (js.unrealized != null ? " · לא ממומש " + usd(js.unrealized) : "");
+        openTag = '<span class="jrn2-tag jrn2-z">🔓 ' + js.open + " פתוחות" + unTxt + "</span>";
+      }
+    }
     const sub = n === 0 ? "סמן עסקאות ביומן כדי לראות סיכום" : (n + " עסקאות · " + st.winRate + "% הצלחה" + (pctMode ? "" : " · ממוצע " + fmt(avgPer) + " לעסקה"));
     // trade rows — surface BOTH the biggest winners and the worst losers (ranked by the displayed metric $/%)
     const _byPnl = (a, b) => tv(b) - tv(a);
