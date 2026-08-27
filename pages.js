@@ -3915,6 +3915,12 @@
       visCols.map(c => sortableTh(c.th, c.key, c.tip ? ' title="' + escAttr(c.tip) + '"' : "")).join("") +
       "<th></th>";
     const nCols = 14 + (seqActive() ? 3 : 0) + visCols.length;
+    // the period-open filter needs each cell's .o (period open) — older "אתמול" snapshots (saved before
+    // 2026-08-27) lack it, so explain instead of showing a silent "0 results".
+    const _popenNoData = _popenActive() && all.length && !all.some(t => (t.Y && t.Y.o != null) || (t.Q && t.Q.o != null) || (t.M && t.M.o != null));
+    const emptyMsg = _popenNoData
+      ? 'מבחן הפתיחה התקופתית לא זמין בתצוגה הזו (הנתון נוסף ב-27/08) — עברו ל🔴 לייב, או המתינו לסנאפשוט "אתמול" הבא.'
+      : "אין תוצאות לפילטרים האלה";
     const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
       optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '" title="' + escAttr((c.tip ? c.tip : c.th) + (c.active ? " · פילטר פעיל" : "")) + '">' + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
@@ -4389,7 +4395,7 @@
   // side = "support" (price at/above the open → potential long) | "resistance" (price at/below → potential short).
   function _popenActive() { return techState.popenTest && techState.popenTest !== "off" && (techState.popenTfs || []).length > 0; }
   function _popenTest(t) {
-    const price = +t.p, atr = t.tech && t.tech.atr;
+    const price = +(t.price != null ? t.price : t.p), atr = t.tech && t.tech.atr;   // mapped scan rows use .price (raw feed uses .p)
     if (!price || !atr) return null;
     const tol = atr * (parseFloat(techState.popenMult) || 0.5);
     const tfs = (techState.popenTfs && techState.popenTfs.length) ? techState.popenTfs : ["Y", "Q", "M"];
