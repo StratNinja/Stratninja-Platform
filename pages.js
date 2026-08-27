@@ -3719,6 +3719,13 @@
         '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp"><label>שווי שוק <span class="muted" style="font-size:10px">(B=מיליארד · M=מיליון)</span></label><div class="chips" style="align-items:center"><input id="scanCapMin" type="text" placeholder="מ- 2B" style="width:72px" value="' + escAttr(scanState.capMin) + '"><span class="muted">–</span><input id="scanCapMax" type="text" placeholder="עד 100B" style="width:72px" value="' + escAttr(scanState.capMax) + '"></div></div>' +
         '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
+        '<div class="fgrp"><label>🎯 מבחן פתיחה תקופתית <span class="muted" style="font-size:10px">(תמיכה/התנגדות על פתיחת Y/Q/M)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPopenTest">' +
+          [["off", "— כבוי"], ["support", "🟢 תמיכה (לונג)"], ["resistance", "🔴 התנגדות (שורט)"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.popenTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
+          "</select>" + (_popenActive()
+            ? '<span class="muted">≤</span><input id="tPopenMult" type="number" step="0.1" min="0.1" style="width:52px" value="' + techState.popenMult + '"><span class="muted">×ATR</span>' +
+              '<span class="chips" style="gap:6px;margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
+                '<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer"><input type="checkbox" data-popentf="' + tf + '"' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " checked" : "") + ">" + (TF_HE_SHORT[tf] || tf) + "</label>").join("") + "</span>"
+            : "") + "</div></div>" +
         '<div class="fgrp"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
       "</div></div>";
 
@@ -3778,13 +3785,6 @@
             '<div class="fgrp"><label>52ש׳</label><div class="chips" style="align-items:center"><select id="tExt52">' +
               opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
-            '<div class="fgrp"><label>🎯 מבחן פתיחה תקופתית <span class="muted" style="font-size:10px">(תמיכה/התנגדות על פתיחת Y/Q/M)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPopenTest">' +
-              opt("off", techState.popenTest, "— כבוי") + opt("support", techState.popenTest, "🟢 תמיכה (לונג)") + opt("resistance", techState.popenTest, "🔴 התנגדות (שורט)") + opt("any", techState.popenTest, "⚡ שניהם") +
-              "</select>" + (_popenActive()
-                ? '<span class="muted">≤</span><input id="tPopenMult" type="number" step="0.1" min="0.1" style="width:52px" value="' + techState.popenMult + '"><span class="muted">×ATR</span>' +
-                  '<span class="chips" style="gap:6px;margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
-                    '<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer"><input type="checkbox" data-popentf="' + tf + '"' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " checked" : "") + ">" + (TF_HE_SHORT[tf] || tf) + "</label>").join("") + "</span>"
-                : "") + "</div></div>" +
             '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
             '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
             '<div class="fgrp"><label>גאפ (פתיחה מול אתמול)</label><div class="chips" style="align-items:center"><select id="tGapDir">' +
