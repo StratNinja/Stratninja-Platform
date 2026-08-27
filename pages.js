@@ -3723,8 +3723,8 @@
           [["off", "— כבוי"], ["support", "🟢 תמיכה (לונג)"], ["resistance", "🔴 התנגדות (שורט)"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.popenTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
           "</select>" + (_popenActive()
             ? '<span class="muted">≤</span><input id="tPopenMult" type="number" step="0.1" min="0.1" style="width:52px" value="' + techState.popenMult + '"><span class="muted">×ATR</span>' +
-              '<span class="chips" style="gap:6px;margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
-                '<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer"><input type="checkbox" data-popentf="' + tf + '"' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " checked" : "") + ">" + (TF_HE_SHORT[tf] || tf) + "</label>").join("") + "</span>" +
+              '<span class="chips" style="margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
+                '<button class="chip' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " on" : "") + '" data-popentf="' + tf + '">' + (TF_HE_SHORT[tf] || tf) + "</button>").join("") + "</span>" +
               '<select id="tPopenTouch" title="נגיעה רגילה = הסגירה בטווח הרמה · פתיל = הנר נגע ברמה עם פתיל וסגר בצד השני (דחייה — חזק יותר)" style="margin-inline-start:8px">' +
                 '<option value="price"' + (techState.popenTouch === "price" ? " selected" : "") + ">נגיעה רגילה</option>" +
                 '<option value="wick"' + (techState.popenTouch === "wick" ? " selected" : "") + ">🕯️ פתיל (דחייה)</option>" +
@@ -4205,9 +4205,9 @@
     bind("tPopenTest", "onchange", e => { techState.popenTest = e.target.value; reRender(); });
     bind("tPopenMult", "onchange", e => { techState.popenMult = parseFloat(e.target.value) || 0.5; reRender(); });
     bind("tPopenTouch", "onchange", e => { techState.popenTouch = e.target.value; reRender(); });
-    document.querySelectorAll("[data-popentf]").forEach(cb => cb.onchange = () => {
-      const tf = cb.dataset.popentf, arr = techState.popenTfs || [], i = arr.indexOf(tf);
-      if (cb.checked && i < 0) arr.push(tf); else if (!cb.checked && i >= 0) arr.splice(i, 1);
+    document.querySelectorAll("[data-popentf]").forEach(b => b.onclick = () => {
+      const tf = b.dataset.popentf, arr = techState.popenTfs || [], i = arr.indexOf(tf);
+      if (i >= 0) arr.splice(i, 1); else arr.push(tf);
       techState.popenTfs = arr; reRender();
     });
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
