@@ -2115,25 +2115,36 @@
   }
   // ===== S&P 500 breadth-map share card =====
   function _spSqColor(c) { c = c || 0; if (Math.abs(c) < 0.1) return "#182236"; if (c >= 3) return "rgba(50,214,154,1)"; if (c > 0) return "rgba(50,214,154,.5)"; if (c <= -3) return "rgba(255,100,116,1)"; return "rgba(255,100,116,.5)"; }
+  // square color by ABOVE-OPEN (green) / below (red); intensity by the size of the day's move.
+  function _spSqColorAO(ao, c) { const m = Math.abs(c || 0); return ao ? (m >= 3 ? "rgba(50,214,154,1)" : "rgba(50,214,154,.55)") : (m >= 3 ? "rgba(255,100,116,1)" : "rgba(255,100,116,.55)"); }
   function buildSpMapCardEl() {
-    const rows = ((SCAN && SCAN.rows) || []).filter(r => r.sp && r.c != null);
+    // Build from the SAME source as the live S&P 500 page — LIVE.sectors[].stocks[].ao (above today's
+    // open) — so the breadth number matches the live page EXACTLY. Falls back to SCAN rows (live price
+    // vs the daily open) only if the live snapshot isn't loaded.
+    let rows = [];
+    if (LIVE && LIVE.sectors && LIVE.sectors.length) {
+      LIVE.sectors.forEach(sec => (sec.stocks || []).forEach(st => rows.push({ s: st.s, c: st.c || 0, sec: sec.name, ao: !!st.ao, mc: st.mc || 0 })));
+    } else {
+      rows = ((SCAN && SCAN.rows) || []).filter(r => r.sp && r.c != null)
+        .map(r => ({ s: r.s, c: r.c || 0, sec: r.sec, ao: !!(r.D && r.D.o && r.p && r.p >= r.D.o), mc: r.mc || 0 }));
+    }
     const total = rows.length || 1;
-    let up = 0, down = 0, flat = 0;
-    rows.forEach(r => { const c = r.c || 0; if (c > 0.05) up++; else if (c < -0.05) down++; else flat++; });
-    const pct = Math.round(up / total * 100), barG = Math.round(up / total * 100), barR = Math.round(down / total * 100);
+    let up = 0, down = 0; rows.forEach(r => { if (r.ao) up++; else down++; });
+    const flat = 0;
+    const pct = Math.round(up / total * 100), barG = pct, barR = Math.round(down / total * 100);
     const bySec = {}; rows.forEach(r => { const s = r.sec || "אחר"; (bySec[s] = bySec[s] || []).push(r); });
     const secStat = Object.keys(bySec).filter(s => s !== "אחר" && bySec[s].length >= 4)
-      .map(s => { const arr = bySec[s]; const g = arr.filter(r => (r.c || 0) > 0.05).length; return { sec: s, n: arr.length, pct: Math.round(g / arr.length * 100) }; });
-    let lead = rows[0] || null; rows.forEach(r => { if (lead && (r.c || 0) > (lead.c || 0)) lead = r; });
+      .map(s => { const arr = bySec[s]; const g = arr.filter(r => r.ao).length; return { sec: s, n: arr.length, pct: Math.round(g / arr.length * 100) }; });
+    let lead = rows[0] || null; rows.forEach(r => { if (lead && r.c > lead.c) lead = r; });
     const leadSec = lead ? lead.sec : null;
     const strong = secStat.slice().sort((a, b) => b.pct - a.pct)[0];
     const weak = secStat.slice().sort((a, b) => a.pct - b.pct)[0];
     const bySize = secStat.slice().sort((a, b) => b.n - a.n);
     const topSet = {}; bySize.slice(0, 5).forEach(x => topSet[x.sec] = 1);
     const blk = so => {
-      const arr = bySec[so.sec].slice().sort((a, b) => (b.c || 0) - (a.c || 0));
+      const arr = bySec[so.sec].slice().sort((a, b) => (Number(b.ao) - Number(a.ao)) || (b.c - a.c));
       const cols = Math.max(4, Math.round(Math.sqrt(arr.length)));
-      const sq = arr.map(r => '<span class="spm-sq' + (so.sec === leadSec && lead && r.s === lead.s ? " spm-lead" : "") + '" style="background:' + _spSqColor(r.c) + '"></span>').join("");
+      const sq = arr.map(r => '<span class="spm-sq' + (so.sec === leadSec && lead && r.s === lead.s ? " spm-lead" : "") + '" style="background:' + _spSqColorAO(r.ao, r.c) + '"></span>').join("");
       return '<div class="spm-blk"><div class="spm-blbl"><span>' + escHtml(secHe(so.sec)) + '</span><span class="spm-sep">·</span><span class="spm-p">' + so.pct + '%</span></div>' +
         '<div class="spm-grid" style="grid-template-columns:repeat(' + cols + ',1fr)">' + sq + "</div></div>";
     };
@@ -2147,16 +2158,16 @@
         (upd ? '<div class="spm-upd"><span class="spm-dot"></span> עודכן ' + upd + "</div>" : "") + "</div>" +
       '<div class="spm-ct">' +
         '<div class="spm-hero"><div><div class="spm-l1">רוחב השוק ' + (pct >= 55 ? "תומך בראלי" : pct <= 45 ? "חלש" : "מעורב") + "</div>" +
-          '<div class="spm-l2"><b>' + pct + '%</b> ממניות ה-S&P 500 בירוק — בהובלת ה' + escHtml(strongHe) + "</div></div>" +
+          '<div class="spm-l2"><b>' + pct + '%</b> ממניות ה-S&P 500 מעל מחיר הפתיחה — בהובלת ה' + escHtml(strongHe) + "</div></div>" +
           '<div class="spm-big"><div class="spm-pct">' + pct + '%</div><div class="spm-cap">מעל מחיר הפתיחה</div></div></div>' +
         '<div class="spm-breadth"><div class="spm-bar"><span class="spm-g" style="width:' + barG + '%"></span><span class="spm-r" style="width:' + barR + '%"></span></div>' +
-          '<div class="spm-blabels"><span class="spm-up">▲ <span class="spm-num">' + up + '</span> עולות</span><span class="spm-sepd">·</span><span class="spm-dn"><span class="spm-num">' + down + '</span> יורדות ▼</span><span class="spm-sepd">·</span><span class="spm-flat"><span class="spm-num">' + flat + '</span> ללא שינוי</span></div></div>' +
+          '<div class="spm-blabels"><span class="spm-up">▲ <span class="spm-num">' + up + '</span> מעל פתיחה</span><span class="spm-sepd">·</span><span class="spm-dn"><span class="spm-num">' + down + '</span> מתחת ▼</span></div></div>' +
         '<div><div class="spm-maplbl"><span class="spm-mapt">🗺️ ' + total + ' מניות · מקובצות לפי סקטור</span>' +
-          '<span class="spm-leg"><span><i style="background:rgba(255,100,116,1)"></i> ≤−3%</span><span><i style="background:rgba(255,100,116,.5)"></i> −3%–0%</span><span><i style="background:#182236"></i> ללא שינוי</span><span><i style="background:rgba(50,214,154,.5)"></i> 0%–3%</span><span><i style="background:rgba(50,214,154,1)"></i> ≥3%</span></span></div>' +
+          '<span class="spm-leg"><span><i style="background:rgba(50,214,154,1)"></i> מעל הפתיחה</span><span><i style="background:rgba(255,100,116,1)"></i> מתחת לפתיחה</span><span class="muted" style="opacity:.7">· עוצמת הצבע = גודל התנועה</span></span></div>' +
           '<div class="spm-map">' + rowTop + rowBot + "</div></div>" +
         '<div class="spm-sum">' +
-          '<div class="spm-scard spm-g"><span class="spm-slead">הסקטור החזק:</span> ' + escHtml(strongHe) + " · <b>" + (strong ? strong.pct : 0) + '% ירוקות</b></div>' +
-          '<div class="spm-scard spm-r"><span class="spm-slead">הסקטור החלש:</span> ' + escHtml(weakHe) + " · <b>" + (weak ? weak.pct : 0) + '% ירוקות</b></div>' +
+          '<div class="spm-scard spm-g"><span class="spm-slead">הסקטור החזק:</span> ' + escHtml(strongHe) + " · <b>" + (strong ? strong.pct : 0) + '% מעל פתיחה</b></div>' +
+          '<div class="spm-scard spm-r"><span class="spm-slead">הסקטור החלש:</span> ' + escHtml(weakHe) + " · <b>" + (weak ? weak.pct : 0) + '% מעל פתיחה</b></div>' +
           '<div class="spm-scard spm-b"><span class="spm-slead">המניה המובילה:</span> ' + escHtml(lead ? lead.s : "—") + " · <b>" + (lead ? (lead.c >= 0 ? "+" : "") + Number(lead.c).toFixed(2) + "%" : "—") + "</b></div></div>" +
         '<div class="spm-insight"><span class="spm-mi">i</span><div><span class="spm-lbl">Ninja Insight:</span> רוחב השוק ' + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + ', ההובלה מרוכזת ב<b>' + escHtml(strongHe) + "</b> בעוד ה<b>" + escHtml(weakHe) + "</b> מפגרת.</div></div>" +
       "</div>" +
