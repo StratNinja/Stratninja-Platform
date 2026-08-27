@@ -3724,7 +3724,11 @@
           "</select>" + (_popenActive()
             ? '<span class="muted">≤</span><input id="tPopenMult" type="number" step="0.1" min="0.1" style="width:52px" value="' + techState.popenMult + '"><span class="muted">×ATR</span>' +
               '<span class="chips" style="gap:6px;margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
-                '<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer"><input type="checkbox" data-popentf="' + tf + '"' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " checked" : "") + ">" + (TF_HE_SHORT[tf] || tf) + "</label>").join("") + "</span>"
+                '<label style="display:inline-flex;align-items:center;gap:3px;font-size:12px;cursor:pointer"><input type="checkbox" data-popentf="' + tf + '"' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " checked" : "") + ">" + (TF_HE_SHORT[tf] || tf) + "</label>").join("") + "</span>" +
+              '<select id="tPopenTouch" title="נגיעה רגילה = הסגירה בטווח הרמה · פתיל = הנר נגע ברמה עם פתיל וסגר בצד השני (דחייה — חזק יותר)" style="margin-inline-start:8px">' +
+                '<option value="price"' + (techState.popenTouch === "price" ? " selected" : "") + ">נגיעה רגילה</option>" +
+                '<option value="wick"' + (techState.popenTouch === "wick" ? " selected" : "") + ">🕯️ פתיל (דחייה)</option>" +
+              "</select>"
             : "") + "</div></div>" +
         '<div class="fgrp"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
       "</div></div>";
@@ -4200,6 +4204,7 @@
     bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tPopenTest", "onchange", e => { techState.popenTest = e.target.value; reRender(); });
     bind("tPopenMult", "onchange", e => { techState.popenMult = parseFloat(e.target.value) || 0.5; reRender(); });
+    bind("tPopenTouch", "onchange", e => { techState.popenTouch = e.target.value; reRender(); });
     document.querySelectorAll("[data-popentf]").forEach(cb => cb.onchange = () => {
       const tf = cb.dataset.popentf, arr = techState.popenTfs || [], i = arr.indexOf(tf);
       if (cb.checked && i < 0) arr.push(tf); else if (!cb.checked && i >= 0) arr.splice(i, 1);
@@ -4317,7 +4322,7 @@
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
     fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
-    popenTest: "off", popenMult: 0.5, popenTfs: ["Y", "Q", "M"],   // period-open test: price within N×ATR of the Yearly/Quarterly/Monthly open (support/resistance)
+    popenTest: "off", popenMult: 0.5, popenTfs: ["Y", "Q", "M"], popenTouch: "price",   // period-open test: price within N×ATR of the Yearly/Quarterly/Monthly open (support/resistance). popenTouch: "price"=close in-range | "wick"=today's wick tagged the level and closed away (rejection)
   };
   const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
   const COMP_MAS = ["20", "50", "100", "200"];
@@ -4399,15 +4404,24 @@
     if (!price || !atr) return null;
     const tol = atr * (parseFloat(techState.popenMult) || 0.5);
     const tfs = (techState.popenTfs && techState.popenTfs.length) ? techState.popenTfs : ["Y", "Q", "M"];
+    const mode = techState.popenTest;                       // support / resistance / any
+    const wick = techState.popenTouch === "wick";           // require today's wick to tag the level + close away (rejection)
+    const lo = wick && t.D ? t.D.lo : null, hi = wick && t.D ? t.D.hi : null;
     let best = null;
     for (let i = 0; i < tfs.length; i++) {
       const cell = t[tfs[i]], lvl = cell && cell.o;
       if (lvl == null) continue;
-      const dist = Math.abs(price - lvl);
-      if (dist <= tol) {
-        const side = price >= lvl ? "support" : "resistance";
-        if ((techState.popenTest === "any" || techState.popenTest === side) && (!best || dist < best.dist)) best = { tf: tfs[i], level: lvl, side: side, dist: dist };
+      let side = null, dist = null;
+      if (wick) {
+        // TRUE rejection wick: the wick actually REACHED the level (pierced it, up to tol deep) and the
+        // CLOSE recovered to the other side. Support = low dipped to/below the open, closed above.
+        if (price > lvl && lo != null && lo <= lvl && (lvl - lo) <= tol) { side = "support"; dist = lvl - lo; }        // lower wick tagged → closed above = LONG
+        else if (price < lvl && hi != null && hi >= lvl && (hi - lvl) <= tol) { side = "resistance"; dist = hi - lvl; }  // upper wick tagged → closed below = SHORT
+      } else {
+        const d = Math.abs(price - lvl);
+        if (d <= tol) { side = price >= lvl ? "support" : "resistance"; dist = d; }
       }
+      if (side && (mode === "any" || mode === side) && (!best || dist < best.dist)) best = { tf: tfs[i], level: lvl, side: side, dist: dist };
     }
     return best;
   }
@@ -4492,7 +4506,7 @@
     techState.compMax = ""; techState.bbSqMax = ""; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
-    techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"];
+    techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
     techState.techTf = "D";
   }
   function fmtVol(n) {
