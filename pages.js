@@ -6079,10 +6079,23 @@
   // without recomputing the heavy Strat analysis (bar types / FTFC stay on their 15-min cadence) ----
   let PRICES = null;
   function applyLivePrices() {
-    // mutate ONLY row.p (price) + row.c (daily %). Never touch r.D/W/M/Q/Y / ftfc / tech.
+    // mutate row.p (price) + row.c (daily %), and stretch today's daily HIGH/LOW to include the live
+    // price so intraday extremes stay consistent (price can't exceed the recorded high / drop below the
+    // recorded low). Never touch the Strat bar types / ftfc / tech.
     if (!PRICES || !(SCAN && SCAN.rows)) return false;
     let changed = false;
-    SCAN.rows.forEach(row => { const lp = PRICES[row.s]; if (lp && lp[0]) { row.p = lp[0]; if (lp[1] != null) row.c = lp[1]; changed = true; } });
+    SCAN.rows.forEach(row => {
+      const lp = PRICES[row.s];
+      if (lp && lp[0]) {
+        row.p = lp[0];
+        if (lp[1] != null) row.c = lp[1];
+        if (row.D) {   // keep the daily wick extremes in sync with the live price (for the period-open "wick touch" test)
+          if (row.D.hi != null && lp[0] > row.D.hi) row.D.hi = lp[0];
+          if (row.D.lo != null && lp[0] < row.D.lo) row.D.lo = lp[0];
+        }
+        changed = true;
+      }
+    });
     return changed;
   }
   async function loadPrices() {
