@@ -3756,7 +3756,7 @@
                 '<option value="wick"' + (techState.popenTouch === "wick" ? " selected" : "") + ">🕯️ פתיל (דחייה)</option>" +
               "</select>"
             : "") + "</div></div>" +
-        '<div class="fgrp"><label>📏 קרוב לשיא/שפל תקופתי <span class="muted" style="font-size:10px">(קצה טווח Y/Q/M · פוטנציאל היפוך/פריצה)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPextTest">' +
+        '<div class="fgrp"><label>📏 קרוב לשיא/שפל תקופתי <span class="muted" style="font-size:10px">(קצה טווח · בחירת כמה מסגרות = קונפלואנס בכולן יחד)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPextTest">' +
           [["off", "— כבוי"], ["high", "🔺 קרוב לשיא"], ["low", "🔻 קרוב לשפל"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.pextTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
           "</select>" + (_pextActive()
             ? '<span class="muted">±</span><input id="tPextPct" type="number" step="0.5" min="0.1" style="width:52px" value="' + techState.pextPct + '"><span class="muted">%</span>' +
@@ -4496,22 +4496,24 @@
     const tfs = (techState.pextTfs && techState.pextTfs.length) ? techState.pextTfs : ["Y", "Q", "M"];
     const mode = techState.pextTest;   // high / low / any
     const usePrev = techState.pextRange !== "current";   // default = the PRIOR completed period's extremes (Strat trigger)
-    let best = null;
+    // AND across the selected timeframes — the stock must be near the extreme on EVERY chosen TF
+    // (e.g. M+Q+Y = a multi-timeframe bottom/top confluence → few results).
+    let closest = null;
     for (let i = 0; i < tfs.length; i++) {
-      const cell = t[tfs[i]]; if (!cell) continue;
+      const cell = t[tfs[i]]; if (!cell) return null;
       const hi = usePrev ? (cell.ph != null ? cell.ph : cell.h) : cell.h;   // fall back to current if prior missing (old data)
       const lo = usePrev ? (cell.pl != null ? cell.pl : cell.l) : cell.l;
       // "near" = within pct% of the level on EITHER side (approaching it, or just broke it) — not "anywhere beyond".
-      if ((mode === "high" || mode === "any") && hi != null && hi > 0) {
-        const d = Math.abs(price - hi) / hi * 100;
-        if (d <= pct && (!best || d < best.dist)) best = { tf: tfs[i], side: "high", level: hi, dist: d };
-      }
-      if ((mode === "low" || mode === "any") && lo != null && lo > 0) {
-        const d = Math.abs(price - lo) / lo * 100;
-        if (d <= pct && (!best || d < best.dist)) best = { tf: tfs[i], side: "low", level: lo, dist: d };
-      }
+      const dHi = (hi != null && hi > 0) ? Math.abs(price - hi) / hi * 100 : Infinity;
+      const dLo = (lo != null && lo > 0) ? Math.abs(price - lo) / lo * 100 : Infinity;
+      let side = null, dist = null;
+      if (mode === "high") { if (dHi <= pct) { side = "high"; dist = dHi; } }
+      else if (mode === "low") { if (dLo <= pct) { side = "low"; dist = dLo; } }
+      else { if (dHi <= pct && dHi <= dLo) { side = "high"; dist = dHi; } else if (dLo <= pct) { side = "low"; dist = dLo; } }   // "any": near either extreme
+      if (side == null) return null;   // this TF isn't near → the whole (AND) test fails
+      if (!closest || dist < closest.dist) closest = { tf: tfs[i], side: side, level: side === "high" ? hi : lo, dist: dist };
     }
-    return best;
+    return closest;   // all selected timeframes passed
   }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
   function _gapActive() { return techState.gapDir === "up" || techState.gapDir === "down"; }
