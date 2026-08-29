@@ -3761,7 +3761,11 @@
           "</select>" + (_pextActive()
             ? '<span class="muted">±</span><input id="tPextPct" type="number" step="0.5" min="0.1" style="width:52px" value="' + techState.pextPct + '"><span class="muted">%</span>' +
               '<span class="chips" style="margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
-                '<button class="chip' + ((techState.pextTfs || []).indexOf(tf) >= 0 ? " on" : "") + '" data-pexttf="' + tf + '">' + (TF_HE_SHORT[tf] || tf) + "</button>").join("") + "</span>"
+                '<button class="chip' + ((techState.pextTfs || []).indexOf(tf) >= 0 ? " on" : "") + '" data-pexttf="' + tf + '">' + (TF_HE_SHORT[tf] || tf) + "</button>").join("") + "</span>" +
+              '<select id="tPextRange" title="קודמת = השיא/שפל של התקופה המושלמת הקודמת (למשל יולי בסריקה חודשית — רמת ההדק להתרחבות) · נוכחית = התקופה שעדיין נסחרת (אוגוסט)" style="margin-inline-start:8px">' +
+                '<option value="prior"' + (techState.pextRange !== "current" ? " selected" : "") + ">תקופה קודמת (מושלמת)</option>" +
+                '<option value="current"' + (techState.pextRange === "current" ? " selected" : "") + ">תקופה נוכחית (נסחרת)</option>" +
+              "</select>"
             : "") + "</div></div>" +
         '<div class="fgrp"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
       "</div></div>";
@@ -4257,6 +4261,7 @@
       reRender();
     });
     bind("tPextPct", "onchange", e => { techState.pextPct = parseFloat(e.target.value) || 5; reRender(); });
+    bind("tPextRange", "onchange", e => { techState.pextRange = e.target.value; reRender(); });
     document.querySelectorAll("[data-pexttf]").forEach(b => b.onclick = () => {
       const tf = b.dataset.pexttf, arr = techState.pextTfs || [], i = arr.indexOf(tf);
       if (i >= 0) arr.splice(i, 1); else arr.push(tf);
@@ -4378,7 +4383,7 @@
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
     fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
     popenTest: "off", popenMult: 0.5, popenTfs: ["Y", "Q", "M"], popenTouch: "price",   // period-open test: price within N×ATR of the Yearly/Quarterly/Monthly open (support/resistance). popenTouch: "price"=close in-range | "wick"=today's wick tagged the level and closed away (rejection)
-    pextTest: "off", pextPct: 5, pextTfs: ["Y", "Q", "M"],   // near period HIGH/LOW: price within pextPct% of the Yearly/Quarterly/Monthly high (near a top) or low (near a bottom → reversal watch)
+    pextTest: "off", pextPct: 5, pextTfs: ["Y", "Q", "M"], pextRange: "prior",   // near period HIGH/LOW: price within pextPct% of the Yearly/Quarterly/Monthly high (near a top) or low (near a bottom → reversal watch). pextRange: "prior"=the PRIOR completed period's extremes (Strat trigger, e.g. July for a monthly scan) | "current"=the still-forming period
   };
   const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
   const COMP_MAS = ["20", "50", "100", "200"];
@@ -4490,17 +4495,20 @@
     const pct = parseFloat(techState.pextPct) || 5;
     const tfs = (techState.pextTfs && techState.pextTfs.length) ? techState.pextTfs : ["Y", "Q", "M"];
     const mode = techState.pextTest;   // high / low / any
+    const usePrev = techState.pextRange !== "current";   // default = the PRIOR completed period's extremes (Strat trigger)
     let best = null;
     for (let i = 0; i < tfs.length; i++) {
       const cell = t[tfs[i]]; if (!cell) continue;
-      const hi = cell.h, lo = cell.l;
-      if ((mode === "high" || mode === "any") && hi != null && hi > 0 && price >= hi * (1 - pct / 100)) {   // at/near/above the period high
-        const d = Math.abs(hi - price) / hi * 100;
-        if (!best || d < best.dist) best = { tf: tfs[i], side: "high", level: hi, dist: d };
+      const hi = usePrev ? (cell.ph != null ? cell.ph : cell.h) : cell.h;   // fall back to current if prior missing (old data)
+      const lo = usePrev ? (cell.pl != null ? cell.pl : cell.l) : cell.l;
+      // "near" = within pct% of the level on EITHER side (approaching it, or just broke it) — not "anywhere beyond".
+      if ((mode === "high" || mode === "any") && hi != null && hi > 0) {
+        const d = Math.abs(price - hi) / hi * 100;
+        if (d <= pct && (!best || d < best.dist)) best = { tf: tfs[i], side: "high", level: hi, dist: d };
       }
-      if ((mode === "low" || mode === "any") && lo != null && lo > 0 && price <= lo * (1 + pct / 100)) {     // at/near/below the period low
+      if ((mode === "low" || mode === "any") && lo != null && lo > 0) {
         const d = Math.abs(price - lo) / lo * 100;
-        if (!best || d < best.dist) best = { tf: tfs[i], side: "low", level: lo, dist: d };
+        if (d <= pct && (!best || d < best.dist)) best = { tf: tfs[i], side: "low", level: lo, dist: d };
       }
     }
     return best;
@@ -4588,7 +4596,7 @@
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
-    techState.pextTest = "off"; techState.pextPct = 5; techState.pextTfs = ["Y", "Q", "M"];
+    techState.pextTest = "off"; techState.pextPct = 5; techState.pextTfs = ["Y", "Q", "M"]; techState.pextRange = "prior";
     techState.techTf = "D";
   }
   function fmtVol(n) {
