@@ -852,7 +852,7 @@
       '<tfoot><tr class="jr-day-total"><td colspan="4" style="text-align:start;font-weight:700">סה"כ · ' + dayTrades.length + ' עסקאות</td><td style="font-weight:700">' + money(totalPos, 0) + '</td><td></td><td class="' + cls(net) + '" style="font-weight:700">' + money(net, 2) + ' <span style="font-size:11px;opacity:.85">(' + pctS + ')</span></td><td></td></tr></tfoot>' +
       "</table></div>" +
       '<div class="note">✏️ עריכה — לעסקאות ידניות · 🗑 מחיקה — לכולן (מחיקת עסקת CSV מסירה את פקודות הביצוע שמרכיבות אותה).</div>';
-    modal("עסקאות · " + dateKey, body);
+    modal("עסקאות · " + dateKey, body, null, "modal-trades");
     wireTradeActions($("#modalBg"), dayTrades, () => openDay(dateKey));
   }
   // all closed trades in a date RANGE (a month / quarter / year) — table + a footer that sums the
@@ -887,7 +887,7 @@
       '<tfoot><tr class="jr-day-total"><td colspan="5" style="text-align:start;font-weight:700">סה"כ · ' + list.length + ' עסקאות</td><td style="font-weight:700">' + money(totalPos, 0) + '</td><td></td><td class="' + cls(net) + '" style="font-weight:700">' + money(net, 2) + ' <span style="font-size:11px;opacity:.85">(' + pctS + ')</span></td><td></td></tr></tfoot>' +
       "</table></div>" +
       '<div class="note">💰 "חשיפה" = ההון שנכנס לכל עסקה (מחיר כניסה × כמות). הסיכום למטה = <b>סך ההון שנכנס לעסקאות בתקופה</b>.</div>';
-    modal(title, body);
+    modal(title, body, null, "modal-trades");
     wireTradeActions($("#modalBg"), list, () => openPeriod(fromKey, toKey, title));
   }
   const _EXIT_REASON_HE = { stop: "🛑 Stop Loss", target: "🎯 Take Profit", emotion: "😰 רגש", plan: "📋 לפי התוכנית", other: "אחר" };
@@ -1563,10 +1563,10 @@
   }
 
   // ---- Modal infra -------------------------------------------------------
-  function modal(title, bodyHtml, actions) {
+  function modal(title, bodyHtml, actions, extraCls) {
     closeModal();
     const bg = el("div", "modal-bg"); bg.id = "modalBg";
-    const m = el("div", "modal");
+    const m = el("div", "modal" + (extraCls ? " " + extraCls : ""));
     m.innerHTML = "<h2>" + title + "</h2>" + bodyHtml;
     const act = el("div", "modal-actions");
     (actions || []).forEach(a => { const b = el("button", "btn " + (a.cls || ""), a.label); b.onclick = a.fn; act.appendChild(b); });

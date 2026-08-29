@@ -1437,6 +1437,10 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 
 /* ===== wide modal ===== */
 .modal.wide { width:min(760px,95vw); }
+/* day / period trade-list modal — wide enough for the full table (no horizontal scroll on desktop;
+   the .tablebox keeps overflow-x:auto as a fallback on narrow/mobile screens) */
+.modal.modal-trades { width:min(960px,96vw); }
+.modal.modal-trades table { width:100%; }
 
 /* ===== clickable candle + charts ===== */
 .tf.clickable { cursor: pointer; }
