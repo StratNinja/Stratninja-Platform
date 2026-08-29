@@ -2384,6 +2384,9 @@
   }
   // ===== Journal share card (latest-day performance + real behavior traits, $ P&L — no R) =====
   function _journalClosedTrades() {
+    // respect the account the trader selected in the journal (only falls back to the all-accounts
+    // computation if the journal module isn't exposing its account-filtered trades at all)
+    if (window.Journal && typeof window.Journal.closedTrades === "function") return window.Journal.closedTrades();
     if (!window.Store || !window.Engine) return [];
     const S = window.Store, E = window.Engine;
     const buckets = (S.accounts ? S.accounts() : []).slice();

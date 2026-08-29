@@ -736,6 +736,11 @@
     bar.appendChild(el("span", "badge lbl", gran === "year" ? "סה\"כ שנתי:" : "סה\"כ רבעוני:"));
     bar.appendChild(el("span", "badge " + (pTot >= 0 ? "pos" : "neg"), money(pTot)));
     bar.appendChild(el("span", "badge days", pN + " עסקאות · " + (pN ? Math.round(100 * pWins / pN) : 0) + "%"));
+    if (pN) {
+      const perTradesBtn = el("button", "btn", "📋 עסקאות " + (gran === "year" ? "השנה" : "הרבעון"));
+      perTradesBtn.onclick = () => openPeriod(ymList[0] + "-01", ymList[ymList.length - 1] + "-31", "עסקאות · " + plabel);
+      bar.appendChild(perTradesBtn);
+    }
     wrap.appendChild(bar);
     const grid = el("div", "cal-mgrid" + (gran === "quarter" ? " q" : ""));
     ymList.forEach(ym => grid.appendChild(calMonthCell(ym, byMonth[ym])));
@@ -770,6 +775,8 @@
     const monLbl = el("span", "badge lbl", "סטטיסטיקה חודשית:");
     bar.appendChild(monLbl);
     bar.appendChild(monTot); bar.appendChild(monDays);
+    const monTradesBtn = el("button", "btn", "📋 עסקאות החודש");
+    bar.appendChild(monTradesBtn);
     wrap.appendChild(bar);
 
     if (!months.length) { wrap.appendChild(el("div", "note", "אין עסקאות סגורות בחשבון זה עדיין.")); return wrap; }
@@ -778,6 +785,7 @@
     const [y, m] = ym.split("-").map(Number);
     label.textContent = HEB[m - 1] + " " + y;
     monLbl.textContent = "סטטיסטיקה של " + HEB[m - 1] + " " + y + " בלבד:";
+    monTradesBtn.onclick = () => openPeriod(ym + "-01", ym + "-31", "עסקאות · " + HEB[m - 1] + " " + y);
     const first = new Date(y, m - 1, 1);
     const startDow = first.getDay();
     const daysInMonth = new Date(y, m, 0).getDate();
@@ -846,6 +854,41 @@
       '<div class="note">✏️ עריכה — לעסקאות ידניות · 🗑 מחיקה — לכולן (מחיקת עסקת CSV מסירה את פקודות הביצוע שמרכיבות אותה).</div>';
     modal("עסקאות · " + dateKey, body);
     wireTradeActions($("#modalBg"), dayTrades, () => openDay(dateKey));
+  }
+  // all closed trades in a date RANGE (a month / quarter / year) — table + a footer that sums the
+  // capital that entered trades ("חשיפה") over the whole period.
+  function openPeriod(fromKey, toKey, title) {
+    const { trades } = tradesForAccount();
+    const list = trades.filter(t => t.exitDate && t.exitDate >= fromKey && t.exitDate <= toKey)
+      .sort((a, b) => (a.exitDate < b.exitDate ? -1 : a.exitDate > b.exitDate ? 1 : 0));
+    if (!list.length) { modal(title, '<div class="note">אין עסקאות סגורות בתקופה הזו.</div>', []); return; }
+    const posVal = t => Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
+    const net = list.reduce((s, t) => s + t.pnl, 0);
+    const totalPos = list.reduce((s, t) => s + posVal(t), 0);
+    const retPct = totalPos ? net / totalPos * 100 : 0;   // capital-weighted: net ÷ total capital deployed
+    const pctS = (retPct >= 0 ? "+" : "−") + Math.abs(retPct).toFixed(1) + "%";
+    const dstr = d => (d ? d.split("-").reverse().join(".") : "—");
+    const rows = list.map(t => {
+      const actions =
+        (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה">🧠</button> ' : "") +
+        (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
+        (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
+        '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>';
+      const pv = posVal(t);
+      return '<tr><td class="muted" style="white-space:nowrap">' + dstr(t.exitDate) + "</td><td>" + chartSym(t.symbol) +
+        '</td><td><span class="pill ' + t.direction + '">' + (t.direction === "long" ? "לונג" : "שורט") + "</span></td><td>" + t.qty + "</td><td>" +
+        money(t.entryPrice, 2) + "</td><td>" + money(pv, 0) + "</td><td>" + money(t.exitPrice, 2) + '</td><td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td><td>" + actions + "</td></tr>";
+    }).join("");
+    const body =
+      '<div style="margin-bottom:12px" class="' + cls(net) + '"><b style="font-size:18px">' + money(net, 2) + "</b> · " + list.length + " עסקאות · הושקע " + money(totalPos, 0) + " · <b>" + pctS + "</b> תשואה על ההון</div>" +
+      '<div class="tablebox" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table><thead><tr>' +
+      "<th>תאריך</th><th>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>חשיפה</th><th>יציאה</th><th>נטו</th><th></th></tr></thead><tbody>" +
+      rows + "</tbody>" +
+      '<tfoot><tr class="jr-day-total"><td colspan="5" style="text-align:start;font-weight:700">סה"כ · ' + list.length + ' עסקאות</td><td style="font-weight:700">' + money(totalPos, 0) + '</td><td></td><td class="' + cls(net) + '" style="font-weight:700">' + money(net, 2) + ' <span style="font-size:11px;opacity:.85">(' + pctS + ')</span></td><td></td></tr></tfoot>' +
+      "</table></div>" +
+      '<div class="note">💰 "חשיפה" = ההון שנכנס לכל עסקה (מחיר כניסה × כמות). הסיכום למטה = <b>סך ההון שנכנס לעסקאות בתקופה</b>.</div>';
+    modal(title, body);
+    wireTradeActions($("#modalBg"), list, () => openPeriod(fromKey, toKey, title));
   }
   const _EXIT_REASON_HE = { stop: "🛑 Stop Loss", target: "🎯 Take Profit", emotion: "😰 רגש", plan: "📋 לפי התוכנית", other: "אחר" };
   const _MANAGED_HE = { yes: "✅ ניהול טוב", partial: "🟡 ניהול חלקי", no: "❌ ניהול לא טוב" };
@@ -1609,6 +1652,11 @@
     rerender: function () { try { render(); } catch (e) {} },
     // called by the main app when the journal tab is entered — re-hides trades if live-mode is on
     onEnter: function () { try { _journalPeek = false; render(); } catch (e) {} },
+    // CLOSED trades for the CURRENTLY-SELECTED account (or all, if "כל החשבונות") — so the share card
+    // reflects the account the trader picked, not every account combined.
+    closedTrades: function () { try { return (tradesForAccount().trades || []).filter(t => t.exitDate); } catch (e) { return []; } },
+    // the selected account label (ALL sentinel when combined)
+    account: function () { try { return state.account; } catch (e) { return null; } },
     // current-view performance summary (for the share card in the main app)
     summary: function () {
       try {
