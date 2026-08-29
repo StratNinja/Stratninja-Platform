@@ -3756,6 +3756,13 @@
                 '<option value="wick"' + (techState.popenTouch === "wick" ? " selected" : "") + ">🕯️ פתיל (דחייה)</option>" +
               "</select>"
             : "") + "</div></div>" +
+        '<div class="fgrp"><label>📏 קרוב לשיא/שפל תקופתי <span class="muted" style="font-size:10px">(קצה טווח Y/Q/M · פוטנציאל היפוך/פריצה)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPextTest">' +
+          [["off", "— כבוי"], ["high", "🔺 קרוב לשיא"], ["low", "🔻 קרוב לשפל"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.pextTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
+          "</select>" + (_pextActive()
+            ? '<span class="muted">±</span><input id="tPextPct" type="number" step="0.5" min="0.1" style="width:52px" value="' + techState.pextPct + '"><span class="muted">%</span>' +
+              '<span class="chips" style="margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
+                '<button class="chip' + ((techState.pextTfs || []).indexOf(tf) >= 0 ? " on" : "") + '" data-pexttf="' + tf + '">' + (TF_HE_SHORT[tf] || tf) + "</button>").join("") + "</span>"
+            : "") + "</div></div>" +
         '<div class="fgrp"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
       "</div></div>";
 
@@ -4113,6 +4120,7 @@
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
         if (_popenActive() && !_popenTest(t)) return false;   // price must be within N×ATR of a Y/Q/M open (support/resistance)
+        if (_pextActive() && !_pextTest(t)) return false;     // price must be within pextPct% of a Y/Q/M high/low
       }
       // indicator scanners (compression / Bollinger / swing / trend-lines / Fibonacci) — own collapsible panel, stack AND independently
       if (_compActive() || _bbActive() || _bbPosActive() || _swActive() || _trendActive() || _fibActive()) {
@@ -4243,6 +4251,19 @@
       if (!arr.length) techState.popenTest = "off";   // removed the last timeframe → turn the filter off cleanly (recoverable — pick a direction to re-enable)
       reRender();
     });
+    bind("tPextTest", "onchange", e => {
+      techState.pextTest = e.target.value;
+      if (techState.pextTest !== "off" && !(techState.pextTfs && techState.pextTfs.length)) techState.pextTfs = ["Y", "Q", "M"];
+      reRender();
+    });
+    bind("tPextPct", "onchange", e => { techState.pextPct = parseFloat(e.target.value) || 5; reRender(); });
+    document.querySelectorAll("[data-pexttf]").forEach(b => b.onclick = () => {
+      const tf = b.dataset.pexttf, arr = techState.pextTfs || [], i = arr.indexOf(tf);
+      if (i >= 0) arr.splice(i, 1); else arr.push(tf);
+      techState.pextTfs = arr;
+      if (!arr.length) techState.pextTest = "off";
+      reRender();
+    });
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
@@ -4311,6 +4332,7 @@
     gid("tAvgVolMin", techState.avgVolMin > 0);
     gid("tExt52", techState.ext52 !== "off");
     gid("tPopenTest", _popenActive());
+    gid("tPextTest", _pextActive());
     gid("tAtrpMin", _atrp() > 0);
     gid("tChgMin", techState.chgMin !== "");
     gid("tChgMax", techState.chgMax !== "");
@@ -4356,6 +4378,7 @@
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
     fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
     popenTest: "off", popenMult: 0.5, popenTfs: ["Y", "Q", "M"], popenTouch: "price",   // period-open test: price within N×ATR of the Yearly/Quarterly/Monthly open (support/resistance). popenTouch: "price"=close in-range | "wick"=today's wick tagged the level and closed away (rejection)
+    pextTest: "off", pextPct: 5, pextTfs: ["Y", "Q", "M"],   // near period HIGH/LOW: price within pextPct% of the Yearly/Quarterly/Monthly high (near a top) or low (near a bottom → reversal watch)
   };
   const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
   const COMP_MAS = ["20", "50", "100", "200"];
@@ -4458,6 +4481,30 @@
     }
     return best;
   }
+  // near the period HIGH/LOW: price within pextPct% of a Yearly/Quarterly/Monthly high (near a top) or
+  // low (near a bottom → potential reversal). Uses each cell's .h / .l (period extremes).
+  function _pextActive() { return techState.pextTest && techState.pextTest !== "off" && (techState.pextTfs || []).length > 0; }
+  function _pextTest(t) {
+    const price = +(t.price != null ? t.price : t.p);
+    if (!price) return null;
+    const pct = parseFloat(techState.pextPct) || 5;
+    const tfs = (techState.pextTfs && techState.pextTfs.length) ? techState.pextTfs : ["Y", "Q", "M"];
+    const mode = techState.pextTest;   // high / low / any
+    let best = null;
+    for (let i = 0; i < tfs.length; i++) {
+      const cell = t[tfs[i]]; if (!cell) continue;
+      const hi = cell.h, lo = cell.l;
+      if ((mode === "high" || mode === "any") && hi != null && hi > 0 && price >= hi * (1 - pct / 100)) {   // at/near/above the period high
+        const d = Math.abs(hi - price) / hi * 100;
+        if (!best || d < best.dist) best = { tf: tfs[i], side: "high", level: hi, dist: d };
+      }
+      if ((mode === "low" || mode === "any") && lo != null && lo > 0 && price <= lo * (1 + pct / 100)) {     // at/near/below the period low
+        const d = Math.abs(price - lo) / lo * 100;
+        if (!best || d < best.dist) best = { tf: tfs[i], side: "low", level: lo, dist: d };
+      }
+    }
+    return best;
+  }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
   function _gapActive() { return techState.gapDir === "up" || techState.gapDir === "down"; }
   function _volTrendActive() { return techState.volTrendDir === "up" || techState.volTrendDir === "down"; }
@@ -4505,7 +4552,7 @@
     return techState.maRel !== "off" || _maExtraActive() > 0 || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || _volTrendActive() || _volAvgActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMin !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
-      _atrp() > 0 || _chgActive() || _gapActive() || _popenActive();
+      _atrp() > 0 || _chgActive() || _gapActive() || _popenActive() || _pextActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -4526,6 +4573,7 @@
     if (_chgActive()) n++;
     if (_gapActive()) n++;
     if (_popenActive()) n++;
+    if (_pextActive()) n++;
     return n;
   }
   function resetTech() {
@@ -4540,6 +4588,7 @@
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
+    techState.pextTest = "off"; techState.pextPct = 5; techState.pextTfs = ["Y", "Q", "M"];
     techState.techTf = "D";
   }
   function fmtVol(n) {
