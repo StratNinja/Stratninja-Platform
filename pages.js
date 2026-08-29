@@ -2422,6 +2422,7 @@
     const body = '<div style="padding:2px">' +
       '<div class="muted" style="font-size:13px;margin-bottom:9px">📅 בחר טווח לכרטיס:</div>' +
       '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">' + rbtn("day", "היום האחרון") + rbtn("7d", "7 ימים") + rbtn("30d", "30 ימים") + rbtn("all", "כל התקופה") + rbtn("custom", "📆 תאריכים מותאמים") + "</div>" +
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">' + rbtn("mtd", "MTD · מתחילת החודש") + rbtn("qtd", "QTD · מתחילת הרבעון") + rbtn("ytd", "YTD · מתחילת השנה") + "</div>" +
       '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">' + rbtn("open", "🔓 פוזיציות פתוחות בלבד") + "</div>" +
       '<div id="jspClosedOpts">' +
       '<div id="jspCustom" style="display:' + (R === "custom" ? "flex" : "none") + ';gap:8px;align-items:center;margin-bottom:14px;font-size:13px;flex-wrap:wrap"><span class="muted">מ־</span>' + dateInp("jspFrom", dFrom) + '<span class="muted">עד</span>' + dateInp("jspTo", dTo) + "</div>" +
@@ -2470,6 +2471,15 @@
       trades = all.filter(t => t.exitDate && (!from || t.exitDate >= from) && (!to || t.exitDate <= to));
       dayHe = (from && to) ? (from === to ? dstr(to) : dstr(from) + "–" + dstr(to)) : (to ? dstr(to) : "—");
       resultCap = "תוצאה בתקופה"; stateCap = "מצב התקופה";
+    } else if (range === "mtd" || range === "qtd" || range === "ytd") {
+      // start of the current month / quarter / year (anchored on the most-recent exit date)
+      let from;
+      if (range === "mtd") from = latest.slice(0, 7) + "-01";
+      else if (range === "qtd") { const qs = Math.floor((+latest.slice(5, 7) - 1) / 3) * 3 + 1; from = latest.slice(0, 4) + "-" + String(qs).padStart(2, "0") + "-01"; }
+      else from = latest.slice(0, 4) + "-01-01";
+      trades = all.filter(t => t.exitDate && t.exitDate >= from && t.exitDate <= latest);
+      dayHe = dstr(from) + "–" + dstr(latest);
+      resultCap = (range === "mtd" ? "מתחילת החודש" : range === "qtd" ? "מתחילת הרבעון" : "מתחילת השנה"); stateCap = "מצב התקופה";
     } else {
       const cut = _dateMinusDays(latest, (range === "7d" ? 7 : 30) - 1);
       trades = all.filter(t => t.exitDate && t.exitDate >= cut);
