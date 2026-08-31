@@ -1682,6 +1682,11 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .secftfc-btn:hover:not(.on) { color: var(--ink); }
 .secftfc-btn.secftfc-realm { border-color: rgba(124,108,240,.5); color: #b9b1f5; letter-spacing: .3px; }
 .secftfc-btn.secftfc-realm.on { background: linear-gradient(90deg, #7c6cf0, #b06cf0); border-color: transparent; color: #fff; }
+/* modular single-timeframe chips (D/W/M/Q/Y) — compact toggles */
+.secftfc-tfs { display: inline-flex; gap: 4px; }
+.secftfc-btn.secftfc-tf { min-width: 30px; padding: 5px 9px; text-align: center; }
+.secftfc-sep { opacity: .5; margin: 0 2px; }
+.secftfc-btn.secftfc-preset { font-size: 11px; padding: 5px 10px; opacity: .92; }
 @keyframes uniFlip { 0% { opacity: .2; transform: rotateX(7deg) translateY(8px); } 100% { opacity: 1; transform: none; } }
 .uni-flip { animation: uniFlip .42s ease; transform-origin: top center; }
 /* "what's happening now" pulse */

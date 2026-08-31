@@ -1939,7 +1939,7 @@
       const secC = {}, indC = {};
       // use the SAME timeframe set the user is viewing on the sectors page (default M·Q·Y), not Daily-only,
       // so the shared card matches the screen — and we label which FTFC combo it is.
-      const _secTfs = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.DWM;
+      const _secTfs = _secFtfcTfs();
       src.forEach(t => {
         const dir = secFtfcDir(t, _secTfs);        // full continuity across the selected timeframe set
         if (dir !== "up" && dir !== "down") return;
@@ -1954,7 +1954,7 @@
           line(top2(secC, "g", secHe), "pos") + line(top2(indC, "g"), "pos") + "</div>" +
         '<div class="sc-sec-lbl neg" style="margin-top:12px">🔴 הכי הרבה FTFC אדום (המשכיות יורדת)</div><div class="sc-strip">' +
           line(top2(secC, "r", secHe), "neg") + line(top2(indC, "r"), "neg") + "</div>";
-      return { headline: "🗂️ המשכיות זמנית · FTFC " + (SEC_FTFC_LBL[sectorFtfcKey] || ""), cls: "zero", bodyHtml: bodyHtml };
+      return { headline: "🗂️ המשכיות זמנית · FTFC " + _secFtfcLbl(), cls: "zero", bodyHtml: bodyHtml };
     }
     if (page === "sp500") {
       const b = mktU().breadth || {}; const pct = b.total ? Math.round(b.above / b.total * 100) : 0;
@@ -2180,8 +2180,8 @@
     const ms = todayMarketState();
     // this card is shared from the המשכיות-זמנית page → rank by FTFC net continuity (up-aligned − down-aligned)/
     // total, over the SELECTED timeframe set (D·W·M / M·Q·Y / NINJA REALM), not by a 1D price move.
-    const TFS = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY;
-    const rangeLbl = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
+    const TFS = _secFtfcTfs();
+    const rangeLbl = _secFtfcLbl();
     const _bySec = {};
     src.forEach(t => { const s = t.sector; if (!s || s === "אחר" || s === "מדדים") return; const o = _bySec[s] = (_bySec[s] || { g: 0, r: 0, n: 0 }); o.n++; const d = secFtfcDir(t, TFS); if (d === "up") o.g++; else if (d === "down") o.r++; });
     let secs = Object.keys(_bySec).filter(s => _bySec[s].n >= 3).map(s => { const o = _bySec[s]; return { name: s, v: Math.round((o.g - o.r) / o.n * 100) }; });
@@ -3146,9 +3146,9 @@
       tags = [];
     } else if (page === "sectors") {
       // match the card: sectors ranked by FTFC net over the SELECTED timeframe set — and name that set in the caption
-      const _tfl = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
+      const _tfl = _secFtfcLbl();
       cap = "🗂️ המשכיות זמנית · FTFC " + _tfl + " · StratNinja";
-      const TFS = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY;
+      const TFS = _secFtfcTfs();
       const bySec = {};
       src.forEach(t => { const s = t.sector; if (!s || s === "אחר" || s === "מדדים") return; const o = bySec[s] = (bySec[s] || { g: 0, r: 0, n: 0 }); o.n++; const d = secFtfcDir(t, TFS); if (d === "up") o.g++; else if (d === "down") o.r++; });
       const secs = Object.keys(bySec).filter(s => bySec[s].n >= 3 && etfFor(s)).map(s => { const o = bySec[s]; return { name: s, v: (o.g - o.r) / o.n }; }).sort((a, b) => b.v - a.v);
@@ -4683,9 +4683,11 @@
   // ========== SECTORS ==========
   // sectors-page FTFC timeframe set — Adi's default is the LONG-TERM M·Q·Y (was D·W·M), switchable
   // REALM = "Ninja Realm": full continuity across ALL five timeframes (strictest alignment)
-  const SEC_FTFC_SETS = { DWM: ["D", "W", "M"], WMQ: ["W", "M", "Q"], MQY: ["M", "Q", "Y"], REALM: ["D", "W", "M", "Q", "Y"] };
-  const SEC_FTFC_LBL = { DWM: "D·W·M", WMQ: "W·M·Q", MQY: "M·Q·Y", REALM: "D·W·M·Q·Y" };
-  let sectorFtfcKey = "MQY";
+  const SEC_TF_ORDER = ["D", "W", "M", "Q", "Y"];
+  const SEC_FTFC_SETS = { DWM: ["D", "W", "M"], WMQ: ["W", "M", "Q"], MQY: ["M", "Q", "Y"], REALM: ["D", "W", "M", "Q", "Y"] };   // quick-pick presets
+  let sectorFtfcTfs = ["M", "Q", "Y"];   // the SELECTED FTFC timeframes — modular (any combination of D/W/M/Q/Y)
+  function _secFtfcTfs() { const s = (sectorFtfcTfs || []).filter(Boolean); return s.length ? SEC_TF_ORDER.filter(t => s.indexOf(t) >= 0) : ["M", "Q", "Y"]; }
+  function _secFtfcLbl() { return _secFtfcTfs().join("·"); }
   // full continuity across a set of timeframes → "up" | "down" | "" (any doji/none/mismatch breaks it)
   function secFtfcDir(m, tfs) {
     let dir = null;
@@ -4697,11 +4699,16 @@
     return dir || "";
   }
   function renderSectors() {
-    const TFS = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY;
-    const TFLBL = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
+    const TFS = _secFtfcTfs();
+    const TFLBL = _secFtfcLbl();
+    const _selTfs = _secFtfcTfs();
+    const _presetOn = tfs => _selTfs.length === tfs.length && tfs.every(t => _selTfs.indexOf(t) >= 0);
     const ftfcSwitch = '<div class="sec-ftfc-switch"><span class="muted">FTFC לפי טיימפריים:</span>' +
-      Object.keys(SEC_FTFC_SETS).map(k => '<button class="secftfc-btn' + (k === "REALM" ? " secftfc-realm" : "") + (k === sectorFtfcKey ? " on" : "") +
-        '" data-secftfc="' + k + '" title="' + (k === "REALM" ? "המשכיות מלאה בכל חמשת הזמנים D·W·M·Q·Y" : "המשכיות " + SEC_FTFC_LBL[k]) + '">' + (k === "REALM" ? "🥷 NINJA REALM" : SEC_FTFC_LBL[k]) + "</button>").join("") + "</div>";
+      '<span class="secftfc-tfs">' + SEC_TF_ORDER.map(t =>
+        '<button class="secftfc-btn secftfc-tf' + (_selTfs.indexOf(t) >= 0 ? " on" : "") + '" data-secftftf="' + t + '" title="הוסף/הסר ' + t + ' מבדיקת ההמשכיות (בחירה חופשית)">' + t + "</button>").join("") + "</span>" +
+      '<span class="secftfc-sep muted">·</span>' +
+      Object.keys(SEC_FTFC_SETS).map(k => { const tfs = SEC_FTFC_SETS[k], lbl = (k === "REALM" ? "NINJA REALM" : tfs.join("·"));
+        return '<button class="secftfc-btn secftfc-preset' + (k === "REALM" ? " secftfc-realm" : "") + (_presetOn(tfs) ? " on" : "") + '" data-secftfset="' + k + '" title="בחירה מהירה · ' + tfs.join("·") + '">' + lbl + "</button>"; }).join("") + "</div>";
     const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. הבר בכל כרטיס = הרכב ה-<b>FTFC</b> (המשכיות <b>' + TFLBL + '</b>): <span class="pos">🟢 המשכיות מעלה</span> · <span class="muted">⚪ ללא המשכיות</span> · <span class="neg">🔴 המשכיות מטה</span>. לחץ על סקטור לפירוט.</div></div>' + ftfcSwitch;
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
@@ -4769,9 +4776,16 @@
     return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>";
   }
   function wireSectors() {
-    document.querySelectorAll("[data-secftfc]").forEach(b => b.onclick = () => {
-      if (sectorFtfcKey === b.dataset.secftfc) return;
-      sectorFtfcKey = b.dataset.secftfc; reRender();
+    // preset shortcut → set the whole timeframe set
+    document.querySelectorAll("[data-secftfset]").forEach(b => b.onclick = () => {
+      sectorFtfcTfs = (SEC_FTFC_SETS[b.dataset.secftfset] || ["M", "Q", "Y"]).slice();
+      reRender();
+    });
+    // individual timeframe chip → toggle it in/out (modular; keeps at least one)
+    document.querySelectorAll("[data-secftftf]").forEach(b => b.onclick = () => {
+      const t = b.dataset.secftftf, arr = _secFtfcTfs().slice(), i = arr.indexOf(t);
+      if (i >= 0) { if (arr.length > 1) arr.splice(i, 1); } else arr.push(t);
+      sectorFtfcTfs = arr; reRender();
     });
     // ladder row → drill (sector / sub-sector). ETF chip → the sector menu (stopPropagation, below)
     document.querySelectorAll("[data-secladder]").forEach(c => c.onclick = () => openSectorDrillLive(decodeURIComponent(c.dataset.secladder)));
@@ -4792,7 +4806,7 @@
     if (col === "price") return r.p || (r.tech ? r.tech.px : 0);
     if (col === "chg") return r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
     // FTFC-green on top, then FTFC-red, then non-FTFC — computed for the SELECTED timeframe set (matches the badge)
-    if (col === "ftfc") { const dir = (typeof secFtfcDir === "function") ? secFtfcDir(r, SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY) : ""; return dir === "up" ? 2 : dir === "down" ? 1 : 0; }
+    if (col === "ftfc") { const dir = (typeof secFtfcDir === "function") ? secFtfcDir(r, _secFtfcTfs()) : ""; return dir === "up" ? 2 : dir === "down" ? 1 : 0; }
     if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(r[col]);
     return null;
   }
@@ -4805,7 +4819,7 @@
     if (!members.length) { modal(displayName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
     // FTFC column follows the timeframe set the user picked on the המשכיות-זמנית page (default M·Q·Y),
     // so the badge matches the selector instead of always showing the server's fixed D·W·M flag.
-    const _drillTfs = SEC_FTFC_SETS[sectorFtfcKey] || SEC_FTFC_SETS.MQY, _drillTfLbl = SEC_FTFC_LBL[sectorFtfcKey] || "M·Q·Y";
+    const _drillTfs = _secFtfcTfs(), _drillTfLbl = _secFtfcLbl();
     const rowHtml = r => {
       const t = { sym: r.s, Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
       const chg = r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
