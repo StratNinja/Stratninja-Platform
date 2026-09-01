@@ -1195,6 +1195,16 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .draw-phead { display:flex; align-items:center; gap:8px; margin:0 0 7px; font-size:13px; font-weight:700; color:var(--muted); }
 .draw-tf { font-size:12px; padding:4px 9px; border-radius:7px; }
 @media (max-width:760px){ .draw-boardwrap.draw-split { flex-direction:column; } .draw-split .draw-canvas { height:48vh; } }
+/* freehand pen: mode + color palette + thickness */
+.draw-sep { width:1px; align-self:stretch; min-height:24px; background:var(--line); margin:0 4px; }
+.draw-pen-ctl { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.draw-swatch { width:20px; height:20px; border-radius:50%; border:2px solid rgba(255,255,255,.25); cursor:pointer; padding:0; }
+.draw-swatch.on { border-color:#fff; box-shadow:0 0 0 2px rgba(255,255,255,.35); }
+.draw-swatch-custom { width:26px; height:26px; padding:0; border:1px solid var(--line); border-radius:6px; background:none; cursor:pointer; }
+.draw-widths { display:inline-flex; gap:4px; margin-inline-start:4px; }
+.draw-wbtn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:26px; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:7px; cursor:pointer; }
+.draw-wbtn.on { border-color:#fff; }
+.draw-wbtn span { display:block; width:16px; background:#fff; border-radius:4px; }
 .td-strip { display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
 .td-idx { font-size:13px; background:rgba(255,255,255,.04); padding:5px 10px; border-radius:8px; }
 .td-idx b { color:#c3ccdd; margin-inline-end:4px; }
