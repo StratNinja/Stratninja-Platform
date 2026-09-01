@@ -1193,6 +1193,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .draw-split .draw-panel { flex:1; min-width:0; }
 .draw-split .draw-canvas { height:60vh; }
 .draw-phead { display:flex; align-items:center; gap:8px; margin:0 0 7px; font-size:13px; font-weight:700; color:var(--muted); }
+.draw-autotag { font-weight:600; font-size:11px; color:#8ea2ff; }
+.draw-auto .draw-canvas { border-color:rgba(124,108,240,.55); cursor:default; }
 .draw-tf { font-size:12px; padding:4px 9px; border-radius:7px; }
 @media (max-width:760px){ .draw-boardwrap.draw-split { flex-direction:column; } .draw-split .draw-canvas { height:48vh; } }
 /* freehand pen: mode + color palette + thickness */

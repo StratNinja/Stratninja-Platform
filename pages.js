@@ -6018,13 +6018,36 @@
     mode: "candle", penColor: "#ffd54a", penWidth: 4,   // freehand pen: mode / color / thickness
     panels: [_newPanel("D"), _newPanel("W")],
   };
+  // approximate bars-per-year per timeframe → the aggregation ratio between two timeframes
+  const _TF_BPY = { "4H": 500, "D": 252, "W": 52, "M": 12, "Q": 4, "Y": 1 };
+  function _drawRatio(lowTf, highTf) { return Math.max(1, Math.round((_TF_BPY[lowTf] || 1) / (_TF_BPY[highTf] || 1))); }
+  // in split mode the two panels are LINKED: the lower timeframe is drawable, the higher one is built
+  // automatically by aggregating groups of `ratio` lower candles (OHLC roll-up). null = not linked (same TF / single).
+  function _drawLinkRoles(B) {
+    if (!B.split) return null;
+    const ra = _TF_BPY[B.panels[0].tf] || 1, rb = _TF_BPY[B.panels[1].tf] || 1;
+    if (ra === rb) return null;
+    const lowIdx = ra > rb ? 0 : 1, highIdx = ra > rb ? 1 : 0;   // lower TF = MORE bars/year
+    return { lowIdx: lowIdx, highIdx: highIdx, ratio: _drawRatio(B.panels[lowIdx].tf, B.panels[highIdx].tf) };
+  }
+  // roll up N lower-TF candles into one higher-TF candle (normalized coords: smaller y = higher price)
+  function _aggCandles(low, ratio) {
+    const out = [];
+    for (let i = 0; i < low.length; i += ratio) {
+      const chunk = low.slice(i, i + ratio); if (!chunk.length) break;
+      let hi = chunk[0].high, lo = chunk[0].low;
+      chunk.forEach(c => { if (c.high < hi) hi = c.high; if (c.low > lo) lo = c.low; });
+      out.push({ col: out.length, open: chunk[0].open, close: chunk[chunk.length - 1].close, high: hi, low: lo });
+    }
+    return out;
+  }
   function renderDrawBoard() {
     if (!_snIsAdmin()) return '<div class="page-head"><h1>✏️ שרטוט נרות</h1><div class="sub">הכלי זמין לניהול בלבד.</div></div>';
     const B = _drawBoard;
     const head = '<div class="page-head"><h1>✏️ שרטוט נרות — לוח הסבר</h1><div class="sub">' +
       '<b>לחץ והחזק</b> על הלוח כדי לפתוח נר, <b>הזז מעלה/מטה</b> כדי לעצב גוף ופתילים — ' +
       '<span class="pos">ירוק</span> מעל הפתיחה, <span class="neg">אדום</span> מתחת. <b>שחרר</b> לסגירה. ' +
-      'אפשר <b>פיצול מסך</b> לשני טיימפריימים במקביל (למשל יומי מול שבועי).</div></div>';
+      'ב<b>פיצול מסך</b> הלוחות <b>מקושרים</b>: מציירים על הטיימפריים הנמוך, והגבוה נבנה אוטומטית מהאגרגציה (למשל 5 יומי = נר שבועי אחד).</div></div>';
     const gridBtns = [10, 20, 50, 100].map(n => '<button class="flow-tf-btn' + (n === B.gridN ? " on" : "") + '" data-drawgrid="' + n + '">' + n + "</button>").join("");
     const modeBtns = '<span class="draw-modes flow-tf">' +
       '<button class="flow-tf-btn' + (B.mode === "candle" ? " on" : "") + '" data-drawmode="candle">🕯️ נר</button>' +
@@ -6049,11 +6072,17 @@
       '<button class="btn ghost" id="drawExport">📷 שמור PNG</button>' +
       "</div>";
     const tfSel = idx => '<select class="draw-tf" data-drawtf="' + idx + '">' + DRAW_TFS.map(t => '<option value="' + t + '"' + (B.panels[idx].tf === t ? " selected" : "") + ">" + t + "</option>").join("") + "</select>";
-    const panelHtml = (idx, sideLbl) => '<div class="draw-panel">' +
-      '<div class="draw-phead"><span>' + sideLbl + '</span><span class="muted" style="font-weight:400">טיימפריים:</span>' + tfSel(idx) + "</div>" +
-      '<canvas class="draw-canvas" data-drawpanel="' + idx + '"></canvas></div>';
+    const link = _drawLinkRoles(B);
+    const panelHtml = (idx, sideLbl) => {
+      const auto = link && idx === link.highIdx, low = link && idx === link.lowIdx;
+      const note = auto ? ' <span class="draw-autotag">🔗 אוטומטי · ' + link.ratio + "× " + B.panels[link.lowIdx].tf + "</span>"
+        : (low ? ' <span class="muted" style="font-weight:400;font-size:11px">✍️ צייר כאן</span>' : "");
+      return '<div class="draw-panel' + (auto ? " draw-auto" : "") + '">' +
+        '<div class="draw-phead"><span>' + sideLbl + note + '</span><span class="muted" style="font-weight:400">TF:</span>' + tfSel(idx) + "</div>" +
+        '<canvas class="draw-canvas" data-drawpanel="' + idx + '"></canvas></div>';
+    };
     const board = B.split
-      ? '<div class="panel draw-boardwrap draw-split">' + panelHtml(0, "🖼️ מסך ימני") + panelHtml(1, "🖼️ מסך שמאלי") + "</div>"
+      ? '<div class="panel draw-boardwrap draw-split">' + panelHtml(0, "🖼️ ימני") + panelHtml(1, "🖼️ שמאלי") + "</div>"
       : '<div class="panel draw-boardwrap">' + panelHtml(0, "🖼️ לוח") + "</div>";
     return head + toolbar + board;
   }
@@ -6065,6 +6094,7 @@
     if (B._ros) { B._ros.forEach(ro => { try { ro.disconnect(); } catch (e) {} }); }
     B._ros = [];
     const handles = [];
+    const link = _drawLinkRoles(B);   // split: lower TF drawable → higher TF auto-aggregated
     const slotW = W => W / B.gridN;
     function status() {
       const el = document.getElementById("drawStatus"); if (!el) return;
@@ -6085,6 +6115,7 @@
       cv.addEventListener("pointerdown", e => {
         B.active = idx; try { cv.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault();
         if (B.mode === "pen") { S.curStroke = { color: B.penColor, width: B.penWidth, pts: [pos2(e)] }; draw(); return; }
+        if (link && idx === link.highIdx) { snToast("הלוח הגבוה נבנה אוטומטית — צייר על הטיימפריים הנמוך"); return; }
         if (S.nextCol >= B.gridN) { snToast("הלוח מלא — נקה או הגדל את מספר הקוביות"); return; }
         const n = pos(e); S.cur = { col: S.nextCol, open: n, high: n, low: n, close: n }; draw();
       });
@@ -6095,6 +6126,7 @@
       function finish() {
         if (S.curStroke) { if (S.curStroke.pts.length) { S.strokes.push(S.curStroke); S.undoOrder.push("s"); } S.curStroke = null; draw(); status(); return; }
         if (!S.cur) return; S.candles.push(S.cur); S.nextCol++; S.undoOrder.push("c"); S.cur = null; draw(); status();
+        if (link && idx === link.lowIdx) syncHigher();   // roll the new candle up into the higher timeframe
       }
       cv.addEventListener("pointerup", finish);
       cv.addEventListener("pointercancel", finish);
@@ -6104,17 +6136,19 @@
     });
     status();
     const redrawPanel = i => { const h = handles.find(x => x.idx === i); if (h) h.draw(); };
+    function syncHigher() { if (!link) return; const lo = B.panels[link.lowIdx], hi = B.panels[link.highIdx]; hi.candles = _aggCandles(lo.candles, link.ratio); hi.nextCol = hi.candles.length; hi.cur = null; redrawPanel(link.highIdx); }
+    syncHigher();   // initial roll-up so the higher panel reflects existing lower candles
     { const g = document.getElementById("drawGridToggle"); if (g) g.onclick = () => { B.gridOn = !B.gridOn; reRender(); }; }
     document.querySelectorAll("[data-drawgrid]").forEach(b => b.onclick = () => { B.gridN = +b.dataset.drawgrid; B.panels.forEach(p => { if (p.nextCol > B.gridN) p.nextCol = B.gridN; }); reRender(); });
     { const sp = document.getElementById("drawSplit"); if (sp) sp.onclick = () => { B.split = !B.split; reRender(); }; }
-    document.querySelectorAll("[data-drawtf]").forEach(sel => sel.onchange = () => { const p = B.panels[+sel.dataset.drawtf]; if (p) { p.tf = sel.value; status(); } });
+    document.querySelectorAll("[data-drawtf]").forEach(sel => sel.onchange = () => { const p = B.panels[+sel.dataset.drawtf]; if (p) { p.tf = sel.value; if (B.split) reRender(); else status(); } });
     // pen: mode toggle (structural → reRender), color + width (live, no reRender so drawing is preserved)
     document.querySelectorAll("[data-drawmode]").forEach(b => b.onclick = () => { B.mode = b.dataset.drawmode; reRender(); });
     document.querySelectorAll("[data-drawcolor]").forEach(b => b.onclick = () => { B.penColor = b.dataset.drawcolor; document.querySelectorAll("[data-drawcolor]").forEach(x => x.classList.toggle("on", x === b)); const cc = document.getElementById("drawColorCustom"); if (cc) cc.value = b.dataset.drawcolor; });
     { const cc = document.getElementById("drawColorCustom"); if (cc) cc.oninput = () => { B.penColor = cc.value; document.querySelectorAll("[data-drawcolor]").forEach(x => x.classList.remove("on")); }; }
     document.querySelectorAll("[data-drawwidth]").forEach(b => b.onclick = () => { B.penWidth = +b.dataset.drawwidth; document.querySelectorAll("[data-drawwidth]").forEach(x => x.classList.toggle("on", x === b)); });
-    { const u = document.getElementById("drawUndo"); if (u) u.onclick = () => { const S = B.panels[B.active]; if (!S || !S.undoOrder.length) return; const last = S.undoOrder.pop(); if (last === "s") S.strokes.pop(); else { S.candles.pop(); S.nextCol = Math.max(0, S.nextCol - 1); } redrawPanel(B.active); status(); }; }
-    { const c = document.getElementById("drawClear"); if (c) c.onclick = () => { const S = B.panels[B.active]; if (S) { S.candles = []; S.strokes = []; S.undoOrder = []; S.nextCol = 0; S.cur = null; S.curStroke = null; redrawPanel(B.active); status(); } }; }
+    { const u = document.getElementById("drawUndo"); if (u) u.onclick = () => { const S = B.panels[B.active]; if (!S || !S.undoOrder.length) return; const last = S.undoOrder.pop(); if (last === "s") S.strokes.pop(); else { S.candles.pop(); S.nextCol = Math.max(0, S.nextCol - 1); } redrawPanel(B.active); if (link && B.active === link.lowIdx) syncHigher(); status(); }; }
+    { const c = document.getElementById("drawClear"); if (c) c.onclick = () => { const S = B.panels[B.active]; if (S) { S.candles = []; S.strokes = []; S.undoOrder = []; S.nextCol = 0; S.cur = null; S.curStroke = null; redrawPanel(B.active); if (link && B.active === link.lowIdx) syncHigher(); status(); } }; }
     { const x = document.getElementById("drawExport"); if (x) x.onclick = () => {
         try {
           const cvs = Array.from(document.querySelectorAll("[data-drawpanel]"));
