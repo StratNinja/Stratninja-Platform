@@ -335,6 +335,12 @@
     const wrap = el("div", "panel open-pos");
     const showAcct = state.account === ALL;   // combined view → show which account each position is in
     const posValOf = t => (+t.entryPrice || 0) * (+t.qty || 0) * (t.mult || 1);   // entry notional
+    // $ risked per trade = |entry − stop| × qty × mult. null when no stop, or aggregated (per-lot SL unknown).
+    const riskValOf = t => {
+      if ((t._n || 1) > 1) return null;
+      if (t.sl == null || t.sl === "") return null;
+      return Math.abs((+t.entryPrice || 0) - (+t.sl)) * (+t.qty || 0) * (t.mult || 1);
+    };
     // derive per-position values first (live prices are STOCK prices — not an option's premium,
     // so Unrealized P&L is only computable for stocks). Needed for both display AND sorting.
     const optPx = _optPrices();
@@ -359,6 +365,8 @@
           case "qty": return +it.t.qty || 0;
           case "entryPrice": return +it.t.entryPrice || 0;
           case "posValue": return posValOf(it.t);
+          case "stop": return (it.t.sl != null && it.t.sl !== "" && (it.t._n || 1) === 1) ? +it.t.sl : -Infinity;
+          case "risk": { const r = riskValOf(it.t); return r == null ? -Infinity : r; }
           case "cp": return it.cp == null ? -Infinity : it.cp;
           case "un": return it.un == null ? -Infinity : it.un;
           case "unpct": { const pv = posValOf(it.t); return (it.un != null && pv > 0) ? it.un / pv * 100 : -Infinity; }
@@ -368,6 +376,7 @@
       items.sort((a, b) => { const va = sv(a), vb = sv(b); return typeof va === "string" ? _openSort.dir * va.localeCompare(vb) : _openSort.dir * (va - vb); });
     }
     let totUn = 0, totInv = 0, totPosVal = 0, haveAll = true, hasOpt = false;
+    let totRisk = 0, totCurVal = 0, noStopCount = 0;   // risk column + live portfolio value (for "% מהתיק")
     // alerts ↔ open positions: which saved scans each position currently matches (+ direction conflicts)
     const posSignals = (window._snPositionSignals) ? window._snPositionSignals(openTrades.map(t => ({ sym: String(t.symbol || "").split(" ")[0], direction: t.direction }))) : {};
     const sigBadge = t => {
@@ -390,6 +399,20 @@
       const t = it.t, isOpt = it.isOpt, cp = it.cp, posVal = posValOf(t);
       const merged = (t._n || 1) > 1;   // aggregated row (several lots of the same ticker)
       totPosVal += posVal;
+      const mult = (t.mult || 1);
+      totCurVal += (cp != null ? cp * (+t.qty || 0) * mult : posVal);   // live portfolio value (falls back to entry notional)
+      // stop-loss column (was an inline badge) + $ risked per trade
+      const hasSL = !merged && t.sl != null && t.sl !== "";
+      const risk = riskValOf(t);
+      if (risk != null) totRisk += risk; else if (!merged) noStopCount++;
+      const tpTag = (!merged && t.tp != null && t.tp !== "") ? "<div class='muted' style='font-size:11px'>🎯 " + money(t.tp, 2) + "</div>" : "";
+      const stopHtml = merged
+        ? "<td class='muted'>—</td>"
+        : (hasSL ? "<td style='white-space:nowrap'>🛑 " + money(t.sl, 2) + tpTag + "</td>"
+                 : "<td><span class='jsl none' title='לא הוצב סטופ לוס לעסקה זו — סיכון לא מוגן'>🛑 אין</span>" + tpTag + "</td>");
+      const riskHtml = risk != null
+        ? "<td class='risk-cell' style='white-space:nowrap' title='סכום ההפסד אם תיגע בסטופ'>" + money(risk, 0) + "</td>"
+        : "<td class='muted'>—</td>";
       let pnlHtml, cpHtml, pctHtml;
       if (isOpt) {
         hasOpt = true;
@@ -415,16 +438,20 @@
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + chartSym(t.symbol) + nBadge +
-        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + (merged ? "" : slBadge(t)) + "</td>" +
-        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td><td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
+        '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + "</td>" +
+        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td>" + stopHtml + riskHtml + "<td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + actions + "</td></tr>";
     }).join("");
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
-    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
+    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("stop", "סטופ") + _sh("risk", "סיכון") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
     const labelSpan = 5 + (showAcct ? 1 : 0);   // entryDate..entryPrice (before the חשיפה column)
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
+    // total $ risked across all open positions, as % of the live portfolio value ("% מהתיק")
+    const totRiskPct = totCurVal > 0 ? (totRisk / totCurVal * 100).toFixed(1) : "0.0";
+    const totRiskHtml = "🛑 " + money(totRisk, 0) + ' <span class="muted" style="font-weight:600">(' + totRiskPct + "% מהתיק)</span>"
+      + (noStopCount ? " <span class='jsl none' style='font-size:11px' title='" + noStopCount + " פוזיציות ללא סטופ — לא נכללות בסיכום הסיכון'>· " + noStopCount + " ללא SL</span>" : "");
     const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
     const count = openTrades.length;
     // live-price freshness: show WHEN the market feed last updated + a manual refresh button, so it's
@@ -439,7 +466,7 @@
       "<button class='btn ghost' id='openPosCopy' style='font-size:12px;padding:4px 12px' title='העתק את רשימת הפוזיציות הפתוחות ללוח'>📋 העתק</button>" +
       "<button class='btn ghost" + (_openAgg ? " on" : "") + "' id='openPosAgg' style='font-size:12px;padding:4px 12px' title='אחד לוטים כפולים של אותו טיקר לשורה אחת עם מחיר כניסה ממוצע משוקלל'>🧬 " + (_openAgg ? "מאוגד" : "אגד טיקרים") + "</button>";
     const toggleBtn = "<button class='btn ghost' id='openPosToggle' style='font-size:12px;padding:4px 12px;margin-inline-start:auto'>" + (openPosMin ? "▸ הצג" : "▾ מזער") + "</button>";
-    const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · שווי " + money(totPosVal, 0) + " · Unrealized " + totHtml + "</span>" : "";
+    const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · שווי " + money(totPosVal, 0) + " · סיכון 🛑 " + money(totRisk, 0) + " (" + totRiskPct + "%) · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
       "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
         (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : (pxTimeHtml + refreshBtn + gridBtn)) + toggleBtn + "</h3>" +
@@ -447,6 +474,8 @@
         "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
         "<tbody>" + rows + "</tbody><tfoot><tr>" +
           "<td colspan='" + labelSpan + "' style='text-align:start;font-weight:700;padding-top:10px'>סה\"כ</td>" +
+          "<td style='padding-top:10px'></td>" +
+          "<td class='risk-cell' style='font-weight:800;padding-top:10px' title='סך הסיכון בכל הפוזיציות · באחוזים משווי התיק הפתוח כרגע'>" + totRiskHtml + "</td>" +
           "<td style='font-weight:800;padding-top:10px' title='סך שווי הפוזיציות הפתוחות'>" + money(totPosVal, 0) + "</td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totHtml + "</td>" +
