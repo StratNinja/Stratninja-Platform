@@ -1344,7 +1344,7 @@
       body =
         '<div class="wiz-steps"><span class="wiz-dot on">1 · פתיחה</span><span class="wiz-arrow">→</span><span class="wiz-dot">2 · סגירה</span></div>' +
         '<div class="form">' +
-        field("תאריך כניסה", '<input id="m_ed" type="date" value="' + (d.entryDate || "") + '">') +
+        field("תאריך כניסה", '<div class="jr-date-row"><input id="m_ed" type="date" value="' + (d.entryDate || "") + '"><button type="button" id="m_ed_today" class="btn ghost jr-today-btn">📅 היום</button></div>') +
         field("חשבון", acctField, true) +
         field("סימבול", '<input id="m_sym" placeholder="AAPL" style="text-transform:uppercase" value="' + (d.symbol || "") + '">') +
         field("סוג נכס", '<select id="m_asset">' + opt("stock", d.assetType, "מניה") + opt("option", d.assetType, "אופציה (×100)") + "</select>") +
@@ -1352,7 +1352,7 @@
         field("כיוון", '<select id="m_dir">' + opt("long", d.direction, "קנייה (לונג)") + opt("short", d.direction, "מכירה (שורט)") + "</select>") +
         field("כמות", '<input id="m_qty" type="number" step="any" placeholder="100" value="' + (d.qty === "" ? "" : d.qty) + '">') +
         field("מחיר כניסה", '<input id="m_ep" type="number" step="any" value="' + (d.entryPrice === "" ? "" : d.entryPrice) + '">') +
-        field("🛑 סטופ לוס (SL)", '<input id="m_sl" type="number" step="any" placeholder="מומלץ מאוד — ניהול סיכון" value="' + (d.sl === "" ? "" : d.sl) + '"' + (d.sl === "" ? ' class="sl-missing"' : "") + ">") +
+        field("🛑 סטופ לוס (SL)", '<input id="m_sl" type="number" step="any" placeholder="מומלץ מאוד — ניהול סיכון" value="' + (d.sl === "" ? "" : d.sl) + '"' + (d.sl === "" ? ' class="sl-missing"' : "") + '><div id="m_risk" class="jr-risk"></div>') +
         field("🎯 טייק פרופיט (TP)", '<input id="m_tp" type="number" step="any" placeholder="אופציונלי" value="' + (d.tp === "" ? "" : d.tp) + '">') +
         field("הערות", '<textarea id="m_notes" placeholder="למה נכנסתי? מה למדתי?">' + (d.notes || "") + "</textarea>", true) +
         field("📷 צילום גרף (אופציונלי)",
@@ -1415,6 +1415,7 @@
       if (ct && cq) ct.onchange = () => { cq.disabled = ct.value !== "partial"; if (ct.value !== "partial") cq.value = ""; updatePreview(); };
     }
     if (_mStep === 1) {
+      { const tb = document.getElementById("m_ed_today"); if (tb) tb.onclick = () => { const ed = document.getElementById("m_ed"); if (ed) { const dt = new Date(); ed.value = dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-" + String(dt.getDate()).padStart(2, "0"); ed.dispatchEvent(new Event("change")); updatePreview(); } }; }
       const acctSel = document.getElementById("m_acct");
       if (acctSel && acctSel.tagName === "SELECT") acctSel.onchange = () => {
         if (acctSel.value === "__new") {
@@ -1494,8 +1495,22 @@
       img: manualImg || undefined,
     };
   }
+  // live risk readout under the SL field: how much we risk in $ and as % of the trade
+  function updateRisk() {
+    const el = document.getElementById("m_risk"); if (!el) return;
+    const d = _mData;
+    const ep = parseFloat(d.entryPrice), sl = parseFloat(d.sl), qty = Math.abs(parseFloat(d.qty) || 0);
+    const mult = d.assetType === "option" ? 100 : 1;
+    if (isNaN(ep) || isNaN(sl) || !ep || !qty) { el.className = "jr-risk"; el.innerHTML = ""; return; }
+    const wrongSide = (d.direction === "short") ? (sl <= ep) : (sl >= ep);   // long: SL must be below entry; short: above
+    if (wrongSide) { el.className = "jr-risk warn"; el.innerHTML = "⚠️ הסטופ בצד הלא-נכון של מחיר הכניסה"; return; }
+    const perShare = Math.abs(ep - sl), risk = perShare * qty * mult, riskPct = perShare / ep * 100;
+    el.className = "jr-risk";
+    el.innerHTML = "🛑 סיכון: <b>" + money(risk, 2) + "</b> · <b>" + riskPct.toFixed(2) + "%</b> מהעסקה";
+  }
   function updatePreview() {
     syncFromDOM();
+    updateRisk();
     const p = document.getElementById("m_preview");
     if (!p) return;
     const d = _mData;
