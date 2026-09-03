@@ -6127,6 +6127,7 @@
       cv.addEventListener("pointermove", e => {
         if (S.curStroke) { S.curStroke.pts.push(pos2(e)); draw(); return; }
         if (!S.cur) return; const n = pos(e); S.cur.close = n; S.cur.high = Math.min(S.cur.high, n); S.cur.low = Math.max(S.cur.low, n); draw();
+        if (link && idx === link.lowIdx) syncHigher();   // LIVE: the higher-TF candle updates as you draw
       });
       function finish() {
         if (S.curStroke) { if (S.curStroke.pts.length) { S.strokes.push(S.curStroke); S.undoOrder.push("s"); } S.curStroke = null; draw(); status(); return; }
@@ -6141,7 +6142,7 @@
     });
     status();
     const redrawPanel = i => { const h = handles.find(x => x.idx === i); if (h) h.draw(); };
-    function syncHigher() { if (!link) return; const lo = B.panels[link.lowIdx], hi = B.panels[link.highIdx]; hi.candles = _aggCandles(lo.candles, link.ratio); hi.nextCol = hi.candles.length; hi.cur = null; redrawPanel(link.highIdx); }
+    function syncHigher() { if (!link) return; const lo = B.panels[link.lowIdx], hi = B.panels[link.highIdx]; const src = lo.cur ? lo.candles.concat([lo.cur]) : lo.candles; hi.candles = _aggCandles(src, link.ratio); hi.nextCol = hi.candles.length; hi.cur = null; redrawPanel(link.highIdx); }
     syncHigher();   // initial roll-up so the higher panel reflects existing lower candles
     { const g = document.getElementById("drawGridToggle"); if (g) g.onclick = () => { B.gridOn = !B.gridOn; reRender(); }; }
     document.querySelectorAll("[data-drawgrid]").forEach(b => b.onclick = () => { B.gridN = +b.dataset.drawgrid; B.panels.forEach(p => { if (p.nextCol > B.gridN) p.nextCol = B.gridN; }); reRender(); });
