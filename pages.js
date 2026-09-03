@@ -3437,7 +3437,7 @@
     if (col === "comp") return _compSpread(k);
     if (col === "bbsq") return k.bbsq;
     if (col === "bbp") return k.bbp;
-    if (col === "swd") return techState.swSide === "low" ? k.swlo_d : k.swhi_d;
+    if (col === "swd") return (techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d;
     if (col === "trend") return _trendVal(k);
     if (col === "fib") return k.fibr;
     return null;
@@ -3877,8 +3877,9 @@
               opt("lowerZone", techState.bbPos, "בחלק התחתון · נוגעת מבפנים (%B≤20)") + opt("upperZone", techState.bbPos, "בחלק העליון · נוגעת מבפנים (%B≥80)") +
               opt("below", techState.bbPos, "מתחת לרצועה · LONG (%B≤0)") + opt("above", techState.bbPos, "מעל הרצועה · SHORT (%B≥100)") + opt("rev", techState.bbPos, "שני הקצוות · חזרה לממוצע") +
               "</select></div>" +
-            '<div class="fgrp"><label>〽️ סווינג</label><div class="chips" style="align-items:center"><select id="tSwSide">' +
+            '<div class="fgrp"><label>〽️ סווינג <span class="muted" style="font-size:10px">(שיא/שפל אופקי · קרבה או בדיקת פריצה)</span></label><div class="chips" style="align-items:center"><select id="tSwSide">' +
               opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
+              opt("breakHi", techState.swSide, "🚀 פריצת שיא + בדיקה") + opt("breakLo", techState.swSide, "🔻 שבירת שפל + בדיקה") +
               "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>📐 קווי מגמה אלכסוניים</label><div class="chips" style="align-items:center"><select id="tTrendMode">' +
               opt("off", techState.trendMode, "— הכל") +
@@ -3928,7 +3929,7 @@
       { key: "comp", th: "דחיסת MA", tip: "דחיסת ממוצעים: כמה הממוצעים הנעים צפופים זה לזה — נמוך = קפיץ דחוס לפני פריצה", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
       { key: "bbsq", th: "BB דחיסה", tip: "דחיסת בולינגר: אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = דחוס/קפיץ", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
       { key: "bbp", th: "%B", tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => "<td>" + (k.bbp == null ? "—" : k.bbp <= 0 ? '<b class="pos">' + k.bbp.toFixed(0) + " ▲</b>" : k.bbp >= 100 ? '<b class="neg">' + k.bbp.toFixed(0) + " ▼</b>" : k.bbp.toFixed(0)) + "</td>", active: _bbPosActive() },
-      { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct(techState.swSide === "low" ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
+      { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct((techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
       { key: "fib", th: "פיבו %", tip: "אחוז הריטרייסמנט של המחיר מה-swing האחרון (0% = בשיא/שפל האחרון · 100% = חזרה לנקודת ההתחלה). ↗ = פולבק בטרנד עולה · ↘ = תיקון בטרנד יורד", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
     ];
@@ -4153,6 +4154,10 @@
           if (techState.bbPos === "rev" && !(b <= 0 || b >= 100)) return false; }
         if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
         if (techState.swSide === "low" && (k.swlo_d == null || Math.abs(k.swlo_d) > techState.swPct)) return false;
+        // breakout retest = broke ABOVE the swing high and pulled back to it (still above, within pct)
+        if (techState.swSide === "breakHi" && (k.swhi_d == null || k.swhi_d < 0 || k.swhi_d > techState.swPct)) return false;
+        // breakdown retest = broke BELOW the swing low and pulled back to it (still below, within pct)
+        if (techState.swSide === "breakLo" && (k.swlo_d == null || k.swlo_d > 0 || k.swlo_d < -techState.swPct)) return false;
         if (_trendActive() && !_trendPass(k)) return false;
         if (_fibActive() && !_fibPass(k)) return false;
       }
@@ -4422,7 +4427,7 @@
   function _compActive() { return techState.compMax !== "" && !isNaN(parseFloat(techState.compMax)); }
   function _bbActive() { return techState.bbSqMax !== "" && !isNaN(parseFloat(techState.bbSqMax)); }
   function _bbPosActive() { return techState.bbPos && techState.bbPos !== "off"; }
-  function _swActive() { return techState.swSide === "high" || techState.swSide === "low"; }
+  function _swActive() { return !!techState.swSide && techState.swSide !== "off"; }
   function _trendActive() { return ["touchsup", "touchres", "breakup", "breakdn"].indexOf(techState.trendMode) >= 0; }
   function _trendThr() { const v = parseFloat(techState.trendPct); return isNaN(v) ? 1.5 : v; }
   function _trendVal(k) {   // the line-distance relevant to the active mode (support vs resistance side)
