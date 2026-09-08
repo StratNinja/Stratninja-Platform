@@ -10,6 +10,7 @@
      panels) — panels are defined by their fill + a soft shadow, like floating cards. */
   --panelbd:transparent;
   --panelsh:0 2px 6px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
+  --tline:rgba(255,255,255,.05);   /* table row separator — a whisper, not the old grey line */
 }
 html[data-theme="light"]{
   --bg:#dfe4ee; --panel:#ffffff; --panel2:#eef1f7; --cell:#d5dbe7; --line:#c2cbdb;
@@ -19,6 +20,7 @@ html[data-theme="light"]{
   --soft:rgba(20,26,38,.06); --soft2:rgba(20,26,38,.04);
   --panelbd:var(--line);   /* light theme keeps a crisp edge (it reads fine on white) */
   --panelsh:0 1px 3px rgba(20,26,38,.11),0 1px 2px rgba(20,26,38,.06);
+  --tline:var(--line);     /* light theme keeps a crisp row separator */
 }
 html[data-theme="light"] body{ background:var(--bg); color:var(--ink); }
 html[data-theme="light"] .panel{ box-shadow:var(--panelsh); }

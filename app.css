@@ -146,7 +146,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 
 /* indices table */
 .idx-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.idx-table th, .idx-table td { padding: 11px 12px; text-align: center; border-bottom: 1px solid var(--line); }
+.idx-table th, .idx-table td { padding: 11px 12px; text-align: center; border-bottom: 1px solid var(--tline); }
 .idx-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
 .idx-table td.sym { text-align: start; }
 .idx-table .tsym { font-weight: 700; }
@@ -1324,7 +1324,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* ===== tables ===== */
 .tablewrap { overflow-x:auto; }
 .scan-table { width:100%; border-collapse:collapse; font-size:13px; white-space:nowrap; }
-.scan-table th, .scan-table td { padding:9px 10px; text-align:center; border-bottom:1px solid var(--line); }
+.scan-table th, .scan-table td { padding:9px 10px; text-align:center; border-bottom:1px solid var(--tline); }
 .scan-table th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.03em; }
 .scan-table td.sym { text-align:start; }
 .scan-table tbody tr:hover { background:var(--panel2); }
