@@ -130,7 +130,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .page-head h1 { font-size: 24px; margin: 0 0 4px; }
 .page-head .sub { color: var(--muted); font-size: 14px; }
 
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+.panel { background: var(--panel); border: 1px solid var(--panelbd); border-radius: 14px; padding: 18px; margin-bottom: 18px; box-shadow: var(--panelsh); }
 .panel h3 { margin: 0 0 14px; font-size: 15px; display: flex; justify-content: space-between; align-items: center; }
 .muted { color: var(--muted); }
 
