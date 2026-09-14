@@ -5463,6 +5463,7 @@
   function favSortVal(t, col) {
     if (col === "sym") return t.sym;
     if (col === "alert") return t._alertN || 0;
+    if (col === "atime") return t._alertTs;   // fire time (epoch); null → blanks-last, newest first by default
     if (col === "sec") return t.sector || "";
     if (col === "ind") return t.ind || "";
     if (col === "price") return t.price;
@@ -5549,6 +5550,14 @@
       // which favorites CURRENTLY match a saved scan (live), and which merely fired earlier today (stale)
       const pmatch = favAlertMatches();
       const staleMatch = favStaleAlerts(pmatch);
+      // WHEN each favorite's alert fired today (from the alert feed) → drives the sortable "🕐 זמן" column.
+      // ts = precise epoch for sorting · tm = "HH:MM" IL for display. Keep the LATEST fire per symbol.
+      const _favFireMap = {};
+      try {
+        const _today = new Date().toISOString().slice(0, 10);
+        const _feed = (window.Prefs && Prefs.alertFeed) ? Prefs.alertFeed() : [];
+        _feed.forEach(e => { if (!e || e.date !== _today || !e.ts) return; const c = _favFireMap[e.sym]; if (!c || e.ts > c.ts) _favFireMap[e.sym] = { ts: e.ts, tm: e.tm || "" }; });
+      } catch (e) {}
       const jsyms = _openPositionSymbols();   // favorites with an ACTIVE (open) position in the journal → violet glow
       // preset-filter chips: every preset name that ≥1 favorite currently matches
       const presetNames = [];
@@ -5575,6 +5584,10 @@
           ? '<td class="fav-alert-cell" style="text-align:start"><span class="fav-alert-chip fav-alert-stale" title="' + escAttr(stale.names.join(" · ")) + '">🔕 נורתה' + (stale.tm ? " " + escHtml(stale.tm) : "") + ' · לא בטווח כעת</span>' + pmChip +
             ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את הסימון">✕</span></td>'
           : '<td class="muted" style="text-align:start">—</td>';
+        // fire-time cell (sortable via the "🕐 זמן" column) — HH:MM the alert popped today, "—" if it hasn't
+        const atimeCell = t._alertTmStr
+          ? '<td class="fav-atime muted" style="text-align:start;white-space:nowrap">🕐 ' + escHtml(t._alertTmStr) + "</td>"
+          : '<td class="muted">—</td>';
         const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
         const cls = [];
         if (pm.length) cls.push("fav-inpreset");
@@ -5582,13 +5595,13 @@
         if (hasTrade) cls.push("fav-journal");
         return "<tr" + (cls.length ? ' class="' + cls.join(" ") + '"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + "</span></td>" +
           '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span>" + jtag + "</td>" +
-          alertCell +
+          alertCell + atimeCell +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
           "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       };
       // annotate each row for sorting (alert count / names / open-position) + the default grouping
-      list.forEach(t => { t._alertNames = pmatch[t.sym] || []; t._alertN = t._alertNames.length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); });
+      list.forEach(t => { t._alertNames = pmatch[t.sym] || []; t._alertN = t._alertNames.length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); const f = _favFireMap[t.sym]; t._alertTs = f ? f.ts : null; t._alertTmStr = f ? f.tm : ""; });
       // when a preset filter is active, show only favorites matching that preset
       const viewList = favPresetFilter.length ? list.filter(t => favPresetFilter.every(pn => (pmatch[t.sym] || []).indexOf(pn) >= 0)) : list;
       let rows = "", ordered;
@@ -5625,7 +5638,7 @@
         const others = [...(inter || new Set())].filter(s => !favsSet[s]);
         otherPanel = favOtherMatchesPanel(favPresetFilter.join(" + "), others);
       }
-      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל המניות ברשימה — לפי סדר הטבלה הנוכחי">📋 העתק הכל</button><button class="btn ghost" id="favCopyAlerts" style="font-size:12px;font-weight:600" title="העתק רק מניות עם התראה פעילה — לפי סדר הטבלה">🔔 העתק עם התראה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
+      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל המניות ברשימה — לפי סדר הטבלה הנוכחי">📋 העתק הכל</button><button class="btn ghost" id="favCopyAlerts" style="font-size:12px;font-weight:600" title="העתק רק מניות עם התראה פעילה — לפי סדר הטבלה">🔔 העתק עם התראה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
