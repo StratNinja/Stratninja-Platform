@@ -6275,10 +6275,22 @@
   // ---- live prices overlay (id='prices' feed, ~1-min fresh) — keeps the DISPLAYED price/% current
   // without recomputing the heavy Strat analysis (bar types / FTFC stay on their 15-min cadence) ----
   let PRICES = null;
+  // Live prices only from the RTH open onward. BEFORE the open the scanner shows the last COMPLETED
+  // daily session (yesterday) — so the displayed price/% must stay on that SAME session for coherence,
+  // instead of overlaying a pre-market live quote onto yesterday's Strat cells (per Adi). DST-safe (ET).
+  function _usMarketOpenYet() {
+    try {
+      const et = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const dow = et.getDay();                       // 0=Sun … 6=Sat
+      if (dow === 0 || dow === 6) return false;      // weekend → no live session, show last close
+      return (et.getHours() * 60 + et.getMinutes()) >= 9 * 60 + 30;   // 9:30 ET open → live from here through the ET day
+    } catch (e) { return true; }                     // TZ math failed → fail open (keep prior live behavior)
+  }
   function applyLivePrices() {
     // mutate row.p (price) + row.c (daily %), and stretch today's daily HIGH/LOW to include the live
     // price so intraday extremes stay consistent (price can't exceed the recorded high / drop below the
     // recorded low). Never touch the Strat bar types / ftfc / tech.
+    if (!_usMarketOpenYet()) return false;   // pre-market/overnight → keep yesterday's completed-session price/%
     if (!PRICES || !(SCAN && SCAN.rows)) return false;
     let changed = false;
     SCAN.rows.forEach(row => {
