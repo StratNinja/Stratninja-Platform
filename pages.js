@@ -6186,8 +6186,64 @@
   }
 
   // ---------- router ----------
+  // ---- admin usage-analytics dashboard ("מטריצת שימוש") ------------------------
+  let _anaDays = 7;
+  const _ANA_PAGE_HE = { market: "סקירת שוק", sp500: "S&P 500", sectors: "המשכיות זמנית", today: "לאן הכסף הולך", scanner: "סורק עסקאות", gappers: "גאפרים", favorites: "מועדפים", journal: "יומן מסחר", learn: "לימוד", draw: "שרטוט נרות", analytics: "אנליטיקס" };
+  const _ANA_CLICK_HE = { share_alert: "שיתוף התראה", open_chart: "פתיחת גרף", fav_refresh: "רענון מועדפים", fav_chartgrid: "גרפים (מועדפים)", fav_copy: "העתקת מועדפים", journal_refresh_prices: "רענון מחירים (יומן)", journal_chartgrid: "גרפים (יומן)", news: "חדשות", share_screen: "שיתוף מסך", request_form: "טופס בקשות", suggest_ticker: "הצעת מניה", alerts_center: "מרכז התראות", fav_preset_filter: "סינון לפי סריקה", preset_save: "שמירת פריסט" };
+  function _anaBars(counts, label, limit) {
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, limit || 12);
+    if (!entries.length) return '<div class="muted" style="font-size:12px">אין נתונים בטווח</div>';
+    const max = entries[0][1] || 1;
+    const lbl = label || (k => k);
+    return '<div style="display:flex;flex-direction:column;gap:7px">' + entries.map(([k, v]) =>
+      '<div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px"><span>' + escHtml(lbl(k)) + "</span><b>" + v + "</b></div>" +
+      '<div style="height:8px;background:var(--panel2);border-radius:5px;overflow:hidden"><div style="height:100%;width:' + Math.round(v / max * 100) + '%;background:var(--accent);border-radius:5px"></div></div></div>').join("") + "</div>";
+  }
+  function renderAnalytics() {
+    if (!_snIsAdmin()) return '<div class="page-head"><h1>📈 מטריצת שימוש</h1><div class="sub">האזור זמין לניהול בלבד.</div></div>';
+    const chip = (d, l) => '<button class="btn ghost' + (_anaDays === d ? " on" : "") + '" data-anarange="' + d + '" style="font-size:12px">' + l + "</button>";
+    return '<div class="page-head"><h1>📈 מטריצת שימוש</h1><div class="sub">מה משתמשים עושים באתר — צפיות בעמודים ולחיצות על פיצ׳רים. עוזר לראות מה פופולרי ואיפה כדאי לשפר.</div></div>' +
+      '<div class="panel"><div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">' +
+        '<span class="muted" style="font-size:12px">טווח:</span>' + chip(1, "היום") + chip(7, "7 ימים") + chip(30, "30 יום") +
+        '<button class="btn ghost" id="anaRefresh" style="font-size:12px;margin-inline-start:auto">🔄 רענן</button></div>' +
+        '<div id="anaSummary" class="muted" style="font-size:13px">טוען…</div></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">' +
+        '<div class="panel"><h3>📄 עמודים הכי נצפים</h3><div id="anaPages">—</div></div>' +
+        '<div class="panel"><h3>🖱️ פיצ׳רים הכי בשימוש</h3><div id="anaClicks">—</div></div>' +
+        '<div class="panel"><h3>👤 משתמשים פעילים</h3><div id="anaUsers">—</div></div>' +
+      "</div>";
+  }
+  async function wireAnalytics() {
+    if (!_snIsAdmin()) return;
+    document.querySelectorAll("[data-anarange]").forEach(b => b.onclick = () => { _anaDays = +b.dataset.anarange; reRender(); });
+    { const rb = document.getElementById("anaRefresh"); if (rb) rb.onclick = () => reRender(); }
+    const setTxt = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+    let client = null; try { client = window.SNAuth && SNAuth.getClient && SNAuth.getClient(); } catch (e) {}
+    if (!client) { setTxt("anaSummary", "צריך להיות מחובר כאדמין כדי לראות נתונים."); return; }
+    const since = new Date(Date.now() - _anaDays * 86400000).toISOString();
+    let rows = [];
+    try {
+      const { data, error } = await client.from("usage_events").select("event,page,user_id,ts").gte("ts", since).order("ts", { ascending: false }).limit(20000);
+      if (error) throw error;
+      rows = data || [];
+    } catch (e) { setTxt("anaSummary", "שגיאה בטעינה: " + (e.message || e) + " — ודא שהרצת את usage_events.sql."); return; }
+    if (!rows.length) { setTxt("anaSummary", "אין עדיין נתונים בטווח הזה. הנתונים מצטברים ככל שמשתמשים מחוברים גולשים באתר."); ["anaPages", "anaClicks", "anaUsers"].forEach(i => setTxt(i, '<div class="muted" style="font-size:12px">—</div>')); return; }
+    const pages = {}, clicks = {}, users = {};
+    rows.forEach(r => {
+      const ev = r.event || "";
+      if (ev.indexOf("page:") === 0) pages[ev.slice(5)] = (pages[ev.slice(5)] || 0) + 1;
+      else if (ev.indexOf("click:") === 0) clicks[ev.slice(6)] = (clicks[ev.slice(6)] || 0) + 1;
+      if (r.user_id) users[r.user_id] = (users[r.user_id] || 0) + 1;
+    });
+    setTxt("anaSummary", "<b>" + rows.length + "</b> אירועים · <b>" + Object.keys(users).length + "</b> משתמשים פעילים · טווח " + _anaDays + " ימים");
+    setTxt("anaPages", _anaBars(pages, k => _ANA_PAGE_HE[k] || k));
+    setTxt("anaClicks", _anaBars(clicks, k => _ANA_CLICK_HE[k] || k));
+    setTxt("anaUsers", _anaBars(users, k => "…" + String(k).slice(0, 8), 15));
+  }
+
   const PAGES = {
     market: { render: renderMarket, wire: wireMarket },
+    analytics: { render: renderAnalytics, wire: wireAnalytics },
     draw: { render: renderDrawBoard, wire: wireDrawBoard },
     today: { render: renderToday, wire: wireToday },
     sp500: { render: renderSp500, wire: wireSp500 },
@@ -6712,7 +6768,7 @@
     { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
     // reveal the admin-only community panel link for Adi (and whenever auth state changes)
-    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "navDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };
+    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "navDraw", "navAnalytics"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };
     _revealAdmin();
     try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(_revealAdmin); } catch (e) {}
     updateAlertBell();
