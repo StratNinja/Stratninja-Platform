@@ -6322,6 +6322,55 @@
     } catch (e) { /* keep last */ }
   }
 
+  // ---- backend outage banner ---------------------------------------------------
+  // When Supabase (the data backend) is unreachable — e.g. a provider outage / weekend
+  // maintenance that returns a 522 — the whole site can't load data. Instead of a blank
+  // or a raw error, show a friendly notice so users KNOW it's a known issue, not their fault.
+  // This lives entirely in the client (served by Vercel), so it works even when Supabase is 100% down.
+  let _beFails = 0, _beDown = false;
+  function _snBackendBanner(show) {
+    let el = document.getElementById("sn-backend-banner");
+    if (show) {
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "sn-backend-banner";
+        el.setAttribute("style", "position:fixed;top:0;left:0;right:0;z-index:99999;background:#7a1f24;color:#fff;" +
+          "padding:10px 16px;font-size:14px;line-height:1.5;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.4);" +
+          "font-family:system-ui,'Segoe UI',Arial,sans-serif;direction:rtl");
+        el.innerHTML = "⚠️ <b>תקלה זמנית בשרת הנתונים</b> — ייתכן שהאתר לא מציג נתונים מעודכנים כרגע " +
+          "(תחזוקה/תקלה אצל ספק הנתונים, קורה לרוב בסופי שבוע). אנחנו מודעים ועובדים על זה · " +
+          "<button id='sn-backend-retry' style='background:#fff;color:#7a1f24;border:0;border-radius:7px;" +
+          "padding:4px 12px;font-weight:700;cursor:pointer;margin-inline-start:6px'>נסה שוב</button>";
+        document.body.appendChild(el);
+        const rb = el.querySelector("#sn-backend-retry");
+        if (rb) rb.onclick = () => { rb.textContent = "בודק…"; _snBackendHealthTick(); };
+      }
+      el.style.display = "";
+    } else if (el) {
+      el.remove();
+    }
+  }
+  async function _snBackendHealthTick() {
+    const cfg = window.SN_CONFIG;
+    if (!cfg || !cfg.SUPABASE_URL) return;
+    let ok = false;
+    try {
+      const ctrl = new AbortController();
+      const to = setTimeout(() => ctrl.abort(), 9000);
+      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?select=id&limit=1",
+        { cache: "no-store", signal: ctrl.signal, headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      clearTimeout(to);
+      ok = r.ok;
+    } catch (e) { ok = false; }
+    if (ok) {
+      _beFails = 0;
+      if (_beDown) { _beDown = false; _snBackendBanner(false); try { loadScan(); loadPrices(); } catch (e) {} }  // recovered → refetch in place
+    } else {
+      _beFails++;
+      if (_beFails >= 2 && !_beDown) { _beDown = true; _snBackendBanner(true); }   // 2 strikes → it's a real outage, not a blip
+    }
+  }
+
   // ---- Hebrew news feed (opens from the sidebar; not a permanent floating box) ----
   async function loadFlow() {
     try {
@@ -6621,6 +6670,8 @@
     updateAlertBell();
     loadNews();
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min
+    _snBackendHealthTick();                       // show a friendly banner if the data backend is unreachable
+    setInterval(_snBackendHealthTick, 90000);     // re-check every 90s (auto-clears when it recovers)
     // 52-week-high celebration: boot once scan data is present AND the app is visible,
     // then refresh each minute
     const _athBoot = setInterval(() => {
