@@ -6218,6 +6218,7 @@
     // on any chart-capable page, warm the TradingView library in the background so grids open fast
     if (["scanner", "sectors", "sp500", "today", "gappers", "favorites"].indexOf(state.page) >= 0) warmTradingView();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
+    snTrack("page:" + state.page);   // usage analytics — which pages get visited
   }
   window.setPageExternal = setPage;
 
@@ -6369,6 +6370,53 @@
       _beFails++;
       if (_beFails >= 2 && !_beDown) { _beDown = true; _snBackendBanner(true); }   // 2 strikes → it's a real outage, not a blip
     }
+  }
+
+  // ---- lightweight usage analytics ---------------------------------------------
+  // Records which features/pages logged-in users actually use, so the admin dashboard can
+  // show what's popular and where to improve. Batched (flush every ~20s / on page-hide) so it
+  // never adds per-click load on Supabase. Logged-in only; failures are swallowed (never block UI).
+  const _trackQ = [];
+  let _trackTimer = null; const _trackLast = {};
+  function snTrack(event, meta) {
+    try {
+      if (!event || !(window.SNAuth && SNAuth.user && SNAuth.user())) return;   // logged-in users only
+      const now = Date.now();
+      if (_trackLast[event] && now - _trackLast[event] < 1500) return;          // de-dupe rapid repeats
+      _trackLast[event] = now;
+      _trackQ.push({ event: String(event).slice(0, 80), page: state.page || "", ts: new Date().toISOString(), meta: meta || null });
+      if (_trackQ.length >= 25) _flushTrack();
+      else if (!_trackTimer) _trackTimer = setTimeout(_flushTrack, 20000);
+    } catch (e) {}
+  }
+  async function _flushTrack() {
+    clearTimeout(_trackTimer); _trackTimer = null;
+    if (!_trackQ.length) return;
+    let client = null, uid = null;
+    try { client = window.SNAuth && SNAuth.getClient && SNAuth.getClient(); uid = SNAuth.user() && SNAuth.user().id; } catch (e) {}
+    if (!client || !uid) { _trackQ.length = 0; return; }
+    const batch = _trackQ.splice(0, _trackQ.length).map(e => ({ user_id: uid, event: e.event, page: e.page, ts: e.ts, meta: e.meta }));
+    try { await client.from("usage_events").insert(batch); } catch (e) { /* table missing / offline → drop silently */ }
+  }
+  window.snTrack = snTrack;                                          // so other modules (journal) can log too
+  document.addEventListener("visibilitychange", () => { if (document.hidden) _flushTrack(); });
+  window.addEventListener("pagehide", _flushTrack);
+  // curated feature-click tracking (page views are logged in setPage). Names stay stable for the dashboard.
+  const _TRACK_CLICKS = [
+    ["[data-shalert]", "click:share_alert"], ["[data-jchart]", "click:open_chart"], ["[data-chart]", "click:open_chart"],
+    ["#favRefresh", "click:fav_refresh"], ["#favGrid", "click:fav_chartgrid"], ["#favCopy", "click:fav_copy"],
+    ["#openPxRefresh", "click:journal_refresh_prices"], ["#openPosGrid", "click:journal_chartgrid"],
+    ["#sideNews", "click:news"], ["#sideCam", "click:share_screen"], ["#sideRequest", "click:request_form"],
+    ["#sideSuggest", "click:suggest_ticker"], ["#sideAlerts", "click:alerts_center"], ["[data-favpreset]", "click:fav_preset_filter"],
+    [".fav-pfilter-chip", "click:fav_preset_filter"], ["[data-savepreset]", "click:preset_save"],
+  ];
+  function _wireTrackClicks() {
+    document.addEventListener("click", e => {
+      try {
+        if (!e.target || !e.target.closest) return;
+        for (let i = 0; i < _TRACK_CLICKS.length; i++) { if (e.target.closest(_TRACK_CLICKS[i][0])) { snTrack(_TRACK_CLICKS[i][1]); break; } }
+      } catch (err) {}
+    }, true);
   }
 
   // ---- Hebrew news feed (opens from the sidebar; not a permanent floating box) ----
@@ -6672,6 +6720,8 @@
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min
     _snBackendHealthTick();                       // show a friendly banner if the data backend is unreachable
     setInterval(_snBackendHealthTick, 90000);     // re-check every 90s (auto-clears when it recovers)
+    _wireTrackClicks();                           // usage analytics — curated feature-click tracking
+    snTrack("app:open");                          // session-start signal (logged-in users)
     // 52-week-high celebration: boot once scan data is present AND the app is visible,
     // then refresh each minute
     const _athBoot = setInterval(() => {
