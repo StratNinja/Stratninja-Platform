@@ -882,6 +882,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .jrn2-card .jrn2-sub2{font-size:14px;font-weight:700;color:var(--mftxt2);margin-top:6px;line-height:1.55;}
 .jrn2-card .jrn2-sub2 b{color:#c3ccdd;font-weight:800;font-family:'Inter';font-variant-numeric:tabular-nums;}
 .jrn2-card .jrn2-cap{font-size:15px;color:var(--mftxt2);font-weight:700;margin-top:4px;}
+.jrn2-card .jrn2-brk{font-size:13px;font-weight:700;color:var(--mftxt2);margin-top:8px;direction:rtl;}
+.jrn2-card .jrn2-brk b{font-family:'Inter';font-variant-numeric:tabular-nums;font-weight:800;direction:ltr;display:inline-block;}
+.jrn2-card .jrn2-brk b.jrn2-pos{color:var(--mfpos);} .jrn2-card .jrn2-brk b.jrn2-neg{color:var(--mfneg);}
 .jrn2-card .jrn2-cols{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
 .jrn2-card .jrn2-col{background:var(--mfsurf);border:1px solid var(--mfline);border-radius:16px;padding:16px 18px;box-shadow:0 8px 24px rgba(0,0,0,.28);}
 .jrn2-card .jrn2-ch{font-size:18px;font-weight:800;color:#c3ccdd;margin-bottom:6px;display:flex;align-items:center;gap:9px;}

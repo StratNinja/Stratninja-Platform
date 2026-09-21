@@ -2604,7 +2604,9 @@
       '<div class="jrn2-ct">' +
         '<div class="jrn2-hero"><div class="jrn2-htext"><div class="jrn2-tags">' + dayTag + '<span class="jrn2-tag jrn2-range">טווח · ' + dayHe + "</span>" + openTag + "</div>" +
           '<h1 class="' + kpiCls + '">' + l1 + '</h1><div class="jrn2-sub">' + sub + "</div></div>" +
-          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + (pctMode ? "לפי סך ההון שהושקע בעסקאות" : "העסקה הטובה <b>" + iso(fmt(D.best)) + "</b> · הגרועה <b>" + iso(fmt(D.worst)) + "</b>") + "</div>" : "") + '<div class="jrn2-cap">' + (pctMode ? "תשואה על ההון" : resultCap) + "</div></div></div>" +
+          '<div class="jrn2-big"><div class="jrn2-kpi ' + kpiCls + '">' + (n ? fmt(net) : "—") + '</div>' + (n ? '<div class="jrn2-sub2">' + (pctMode ? "לפי סך ההון שהושקע בעסקאות" : "העסקה הטובה <b>" + iso(fmt(D.best)) + "</b> · הגרועה <b>" + iso(fmt(D.worst)) + "</b>") + "</div>" : "") + '<div class="jrn2-cap">' + (pctMode ? "תשואה על ההון" : resultCap) + (inclOpen ? " · כולל פתוחות" : "") + "</div>" +
+          ((n && inclOpen) ? '<div class="jrn2-brk">ממומש <b class="' + (((pctMode ? (_sumC ? _sumP / _sumC * 100 : 0) : st.net) >= 0) ? "jrn2-pos" : "jrn2-neg") + '">' + fmt(pctMode ? (_sumC ? _sumP / _sumC * 100 : 0) : st.net) + '</b> · לא-ממומש <b class="' + (((pctMode ? (openUnPct || 0) : openUn) >= 0) ? "jrn2-pos" : "jrn2-neg") + '">' + fmt(pctMode ? (openUnPct || 0) : openUn) + "</b></div>" : "") +
+          "</div></div>" +
         '<div class="jrn2-cols">' +
           '<div class="jrn2-col jrn2-up"><div class="jrn2-ch"><span class="jrn2-cdot"></span> ביצועי העסקאות' + (n > day5.length ? ' <span style="font-weight:400;opacity:.6;font-size:11px">· מובילות ומפסידות מתוך ' + n + "</span>" : "") + "</div>" + tradesHtml + "</div>" +
           '<div class="jrn2-col"><div class="jrn2-ch"><span class="jrn2-cdot"></span> מאפייני ביצוע</div>' + behHtml + "</div></div>" +
