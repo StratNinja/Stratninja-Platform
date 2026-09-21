@@ -357,8 +357,16 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ap-timer { font-size:12px; font-weight:700; color:#c7bdff; min-width:34px; text-align:center; }
 .ap-pin { background:rgba(124,108,240,.22); border:1px solid rgba(124,108,240,.5); color:#c7bdff; cursor:pointer; font-size:13px; border-radius:8px; padding:3px 8px; line-height:1; }
 .ap-pin.pinned { background:#7c6cf0; border-color:#7c6cf0; color:#fff; }
+.ap-cmp { background:rgba(124,108,240,.22); border:1px solid rgba(124,108,240,.5); color:#c7bdff; cursor:pointer; font-size:13px; border-radius:8px; padding:3px 8px; line-height:1; }
+.ap-cmp.on { background:#7c6cf0; border-color:#7c6cf0; color:#fff; }
 .ap-x { background:none; border:none; color:var(--muted); cursor:pointer; font-size:15px; }
 .ap-body { padding:8px 15px 13px; overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; }
+/* compact view — one tight line per alert (opt-in, remembered) */
+.alert-pop.compact .ap-verb { display:none; }
+.alert-pop.compact .ap-body { padding-top:5px; }
+.alert-pop.compact .ap-row { padding:3px 0; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.alert-pop.compact .ap-sym { font-size:13.5px; margin-inline-end:8px; }
+.alert-pop.compact .ap-link { font-size:11px; }
 .ap-row { font-size:14px; padding:6px 0; line-height:1.5; }
 .ap-sym { font-weight:800; color:#9db9ff; margin-inline-end:6px; font-size:15px; }
 .ap-link { color:#7fa8ff; text-decoration:none; margin-inline-start:6px; font-size:12px; }

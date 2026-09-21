@@ -1524,16 +1524,18 @@
   // prominent on-screen alert — can't be missed
   function showAlertBanner(fresh) {
     const box = document.createElement("div");
-    box.className = "alert-pop";
+    let compact = false; try { compact = localStorage.getItem("sn_alert_compact") === "1"; } catch (e) {}   // remembered per-device
+    box.className = "alert-pop" + (compact ? " compact" : "");
     let secs = Math.min(90, Math.max(20, (fresh.length || 1) * 3));   // more alerts → more time to read (20–90s)
     box.innerHTML = '<div class="ap-head"><span>🔔 התראה חדשה! <span class="ap-count">(' + fresh.length + ')</span></span>' +
       '<span class="ap-ctrls">' +
         '<span class="ap-timer" title="הרשימה תיעלם בעוד (שניות)">' + secs + '</span>' +
+        '<button class="ap-cmp' + (compact ? " on" : "") + '" aria-label="תצוגה קומפקטית" title="תצוגה קומפקטית">▤</button>' +
         '<button class="ap-pin" aria-label="נעל" title="נעל — שהרשימה לא תיעלם">📌</button>' +
         '<button class="ap-x" aria-label="סגור">✕</button>' +
       "</span></div>" +
       '<div class="ap-body">' + fresh.map(e =>
-        '<div class="ap-row"><span class="ap-sym">' + escAttr(e.sym) + "</span>נכנסה לסריקה <b>" + escAttr(e.preset) + "</b>" +
+        '<div class="ap-row"><span class="ap-sym">' + escAttr(e.sym) + '</span><span class="ap-verb">נכנסה לסריקה </span><b>' + escAttr(e.preset) + "</b>" +
         ' <a class="ap-link" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener">📈 גרף</a></div>').join("") +
       "</div>";
     document.body.appendChild(box);
@@ -1553,6 +1555,13 @@
       box.classList.toggle("pinned", pinned);
       if (timerEl) timerEl.textContent = pinned ? "נעוץ" : secs;
       pinBtn.title = pinned ? "נעוץ — לא ייעלם עד סגירה ידנית. לחץ לחידוש הטיימר" : "נעל — שהרשימה לא תיעלם";
+    };
+    const cmpBtn = box.querySelector(".ap-cmp");
+    if (cmpBtn) cmpBtn.onclick = () => {
+      compact = !compact;
+      box.classList.toggle("compact", compact);
+      cmpBtn.classList.toggle("on", compact);
+      try { localStorage.setItem("sn_alert_compact", compact ? "1" : "0"); } catch (e) {}
     };
     const x = box.querySelector(".ap-x"); if (x) x.onclick = close;
   }
