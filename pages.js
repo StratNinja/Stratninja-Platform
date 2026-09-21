@@ -1525,16 +1525,36 @@
   function showAlertBanner(fresh) {
     const box = document.createElement("div");
     box.className = "alert-pop";
-    box.innerHTML = '<div class="ap-head"><span>🔔 התראה חדשה!</span><button class="ap-x" aria-label="סגור">✕</button></div>' +
+    let secs = Math.min(90, Math.max(20, (fresh.length || 1) * 3));   // more alerts → more time to read (20–90s)
+    box.innerHTML = '<div class="ap-head"><span>🔔 התראה חדשה! <span class="ap-count">(' + fresh.length + ')</span></span>' +
+      '<span class="ap-ctrls">' +
+        '<span class="ap-timer" title="הרשימה תיעלם בעוד (שניות)">' + secs + '</span>' +
+        '<button class="ap-pin" aria-label="נעל" title="נעל — שהרשימה לא תיעלם">📌</button>' +
+        '<button class="ap-x" aria-label="סגור">✕</button>' +
+      "</span></div>" +
       '<div class="ap-body">' + fresh.map(e =>
         '<div class="ap-row"><span class="ap-sym">' + escAttr(e.sym) + "</span>נכנסה לסריקה <b>" + escAttr(e.preset) + "</b>" +
         ' <a class="ap-link" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener">📈 גרף</a></div>').join("") +
       "</div>";
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));
-    const close = () => { box.classList.remove("show"); setTimeout(() => box.remove(), 300); };
+    let pinned = false, timer = null;
+    const timerEl = box.querySelector(".ap-timer"), pinBtn = box.querySelector(".ap-pin");
+    const close = () => { if (timer) clearInterval(timer); box.classList.remove("show"); setTimeout(() => box.remove(), 300); };
+    timer = setInterval(() => {
+      if (pinned) return;
+      secs--;
+      if (timerEl) timerEl.textContent = secs;
+      if (secs <= 0) close();
+    }, 1000);
+    if (pinBtn) pinBtn.onclick = () => {
+      pinned = !pinned;
+      pinBtn.classList.toggle("pinned", pinned);
+      box.classList.toggle("pinned", pinned);
+      if (timerEl) timerEl.textContent = pinned ? "נעוץ" : secs;
+      pinBtn.title = pinned ? "נעוץ — לא ייעלם עד סגירה ידנית. לחץ לחידוש הטיימר" : "נעל — שהרשימה לא תיעלם";
+    };
     const x = box.querySelector(".ap-x"); if (x) x.onclick = close;
-    setTimeout(close, 15000);
   }
   // alert-style preference: "both" (default) | "visual" (silent) | "sound"
   function _alertStyle() { try { return localStorage.getItem("sn_alert_style") || "both"; } catch (e) { return "both"; } }
