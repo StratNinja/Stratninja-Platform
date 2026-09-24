@@ -3466,9 +3466,9 @@
     if (col === "gap") return k.gap;
     if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
     if (col === "comp") return _compSpread(k);
-    if (col === "bbsq") return k.bbsq;
-    if (col === "bbw") return k.bbw;
-    if (col === "bbp") return k.bbp;
+    if (col === "bbsq") return _bbVal(k, "bbsq");
+    if (col === "bbw") return _bbVal(k, "bbw");
+    if (col === "bbp") return _bbVal(k, "bbp");
     if (col === "swd") return (techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d;
     if (col === "trend") return _trendVal(k);
     if (col === "fib") return k.fibr;
@@ -3903,6 +3903,7 @@
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
         : '<div class="frow tech-row">' +
             '<div class="fgrp"><label>📉 דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(SMA 20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.compMax + '"></div>' +
+            '<div class="fgrp"><label>🎈 תקופת בולינגר</label><select id="tBbPeriod">' + opt("20", techState.bbPeriod, "20 (קלאסי)") + opt("50", techState.bbPeriod, "50 (ארוך)") + "</select></div>" +
             '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100, יחסי למניה)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
             '<div class="fgrp"><label>🎈 רוחב בולינגר ≤ <span class="muted" style="font-size:10px">(% אבסולוטי — צר ממש)</span></label><input id="tBbwMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.bbwMax + '"></div>' +
             '<div class="fgrp"><label>🎈 בולינגר · מיקום ברצועות <span class="muted" style="font-size:10px">(%B · חזרה לממוצע)</span></label><select id="tBbPos">' +
@@ -3960,9 +3961,9 @@
       { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", tip: "מרחק המחיר משיא 52 השבועות (0% = בשיא)", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
       { key: "comp", th: "דחיסת MA", tip: "דחיסת ממוצעים: כמה הממוצעים הנעים צפופים זה לזה — נמוך = קפיץ דחוס לפני פריצה", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
-      { key: "bbsq", th: "BB דחיסה", tip: "דחיסת בולינגר (יחסי): אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = הכי דחוס שהמניה הייתה. תופס גם מניות תנודתיות בקפיץ יחסי", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
-      { key: "bbw", th: "רוחב BB", tip: "רוחב רצועות בולינגר כאחוז מהמחיר (אבסולוטי): נמוך = רצועות צרות ממש עכשיו. p25 של השוק ≈ 10%", cell: k => "<td>" + (k.bbw == null ? "—" : k.bbw.toFixed(1) + "%") + "</td>", active: _bbwActive() },
-      { key: "bbp", th: "%B", tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => "<td>" + (k.bbp == null ? "—" : k.bbp <= 0 ? '<b class="pos">' + k.bbp.toFixed(0) + " ▲</b>" : k.bbp >= 100 ? '<b class="neg">' + k.bbp.toFixed(0) + " ▼</b>" : k.bbp.toFixed(0)) + "</td>", active: _bbPosActive() },
+      { key: "bbsq", th: "BB דחיסה" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "דחיסת בולינגר (יחסי): אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = הכי דחוס שהמניה הייתה. תופס גם מניות תנודתיות בקפיץ יחסי", cell: k => { const v = _bbVal(k, "bbsq"); return "<td>" + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: _bbActive() },
+      { key: "bbw", th: "רוחב BB" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "רוחב רצועות בולינגר כאחוז מהמחיר (אבסולוטי): נמוך = רצועות צרות ממש עכשיו. p25 של השוק ≈ 10%", cell: k => { const v = _bbVal(k, "bbw"); return "<td>" + (v == null ? "—" : v.toFixed(1) + "%") + "</td>"; }, active: _bbwActive() },
+      { key: "bbp", th: "%B" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => { const v = _bbVal(k, "bbp"); return "<td>" + (v == null ? "—" : v <= 0 ? '<b class="pos">' + v.toFixed(0) + " ▲</b>" : v >= 100 ? '<b class="neg">' + v.toFixed(0) + " ▼</b>" : v.toFixed(0)) + "</td>"; }, active: _bbPosActive() },
       { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct((techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
       { key: "fib", th: "פיבו %", tip: "אחוז הריטרייסמנט של המחיר מה-swing האחרון (0% = בשיא/שפל האחרון · 100% = חזרה לנקודת ההתחלה). ↗ = פולבק בטרנד עולה · ↘ = תיקון בטרנד יורד", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
@@ -4179,9 +4180,9 @@
         const k = t.tech;
         if (!k) return false;
         if (_compActive()) { const sp = _compSpread(k); if (sp == null || sp > parseFloat(techState.compMax)) return false; }
-        if (_bbActive() && (k.bbsq == null || k.bbsq > parseFloat(techState.bbSqMax))) return false;
-        if (_bbwActive() && (k.bbw == null || k.bbw > parseFloat(techState.bbwMax))) return false;
-        if (_bbPosActive()) { const b = k.bbp; if (b == null) return false;
+        if (_bbActive()) { const v = _bbVal(k, "bbsq"); if (v == null || v > parseFloat(techState.bbSqMax)) return false; }
+        if (_bbwActive()) { const v = _bbVal(k, "bbw"); if (v == null || v > parseFloat(techState.bbwMax)) return false; }
+        if (_bbPosActive()) { const b = _bbVal(k, "bbp"); if (b == null) return false;
           if (techState.bbPos === "above" && b < 100) return false;
           if (techState.bbPos === "below" && b > 0) return false;
           if (techState.bbPos === "upperZone" && b < 80) return false;   // inside, hugging the upper band (or beyond)
@@ -4330,6 +4331,7 @@
     bind("tCompMax", "onchange", e => { techState.compMax = e.target.value; reRender(); });
     bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
     bind("tBbwMax", "onchange", e => { techState.bbwMax = e.target.value; reRender(); });
+    bind("tBbPeriod", "onchange", e => { techState.bbPeriod = e.target.value; reRender(); });
     bind("tBbPos", "onchange", e => { techState.bbPos = e.target.value; reRender(); });
     bind("tSwSide", "onchange", e => { techState.swSide = e.target.value; reRender(); });
     bind("tSwPct", "onchange", e => { techState.swPct = parseFloat(e.target.value) || 0; reRender(); });
@@ -4434,6 +4436,7 @@
     compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
     bbSqMax: "",                 // Bollinger squeeze percentile ≤ (relative to the stock's own history)
     bbwMax: "",                  // Bollinger bandwidth % ≤ (absolute — objectively narrow bands)
+    bbPeriod: "20",              // Bollinger MA period: "20" (classic) or "50"
     bbPos: "off",                // Bollinger %B position: off / below (≤0, LONG rev) / above (≥100, SHORT rev) / rev (both extremes)
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
@@ -4465,6 +4468,9 @@
   function _compActive() { return techState.compMax !== "" && !isNaN(parseFloat(techState.compMax)); }
   function _bbActive() { return techState.bbSqMax !== "" && !isNaN(parseFloat(techState.bbSqMax)); }
   function _bbwActive() { return techState.bbwMax !== "" && !isNaN(parseFloat(techState.bbwMax)); }
+  // Bollinger period selector (20 classic / 50 longer) — picks which precomputed field to read
+  function _bbP() { return techState.bbPeriod === "50" ? "50" : ""; }
+  function _bbVal(k, base) { return k ? k[base + _bbP()] : null; }
   function _bbPosActive() { return techState.bbPos && techState.bbPos !== "off"; }
   function _swActive() { return !!techState.swSide && techState.swSide !== "off"; }
   function _trendActive() { return ["touchsup", "touchres", "breakup", "breakdn"].indexOf(techState.trendMode) >= 0; }
@@ -4651,7 +4657,7 @@
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = "";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
-    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
+    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
