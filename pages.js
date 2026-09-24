@@ -3467,6 +3467,7 @@
     if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
     if (col === "comp") return _compSpread(k);
     if (col === "bbsq") return k.bbsq;
+    if (col === "bbw") return k.bbw;
     if (col === "bbp") return k.bbp;
     if (col === "swd") return (techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d;
     if (col === "trend") return _trendVal(k);
@@ -3902,7 +3903,8 @@
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
         : '<div class="frow tech-row">' +
             '<div class="fgrp"><label>📉 דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(SMA 20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.compMax + '"></div>' +
-            '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
+            '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100, יחסי למניה)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
+            '<div class="fgrp"><label>🎈 רוחב בולינגר ≤ <span class="muted" style="font-size:10px">(% אבסולוטי — צר ממש)</span></label><input id="tBbwMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.bbwMax + '"></div>' +
             '<div class="fgrp"><label>🎈 בולינגר · מיקום ברצועות <span class="muted" style="font-size:10px">(%B · חזרה לממוצע)</span></label><select id="tBbPos">' +
               opt("off", techState.bbPos, "— הכל") +
               opt("lowerZone", techState.bbPos, "בחלק התחתון · נוגעת מבפנים (%B≤20)") + opt("upperZone", techState.bbPos, "בחלק העליון · נוגעת מבפנים (%B≥80)") +
@@ -3958,7 +3960,8 @@
       { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", tip: "מרחק המחיר משיא 52 השבועות (0% = בשיא)", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
       { key: "comp", th: "דחיסת MA", tip: "דחיסת ממוצעים: כמה הממוצעים הנעים צפופים זה לזה — נמוך = קפיץ דחוס לפני פריצה", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
-      { key: "bbsq", th: "BB דחיסה", tip: "דחיסת בולינגר: אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = דחוס/קפיץ", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
+      { key: "bbsq", th: "BB דחיסה", tip: "דחיסת בולינגר (יחסי): אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = הכי דחוס שהמניה הייתה. תופס גם מניות תנודתיות בקפיץ יחסי", cell: k => "<td>" + (k.bbsq == null ? "—" : k.bbsq.toFixed(0)) + "</td>", active: _bbActive() },
+      { key: "bbw", th: "רוחב BB", tip: "רוחב רצועות בולינגר כאחוז מהמחיר (אבסולוטי): נמוך = רצועות צרות ממש עכשיו. p25 של השוק ≈ 10%", cell: k => "<td>" + (k.bbw == null ? "—" : k.bbw.toFixed(1) + "%") + "</td>", active: _bbwActive() },
       { key: "bbp", th: "%B", tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => "<td>" + (k.bbp == null ? "—" : k.bbp <= 0 ? '<b class="pos">' + k.bbp.toFixed(0) + " ▲</b>" : k.bbp >= 100 ? '<b class="neg">' + k.bbp.toFixed(0) + " ▼</b>" : k.bbp.toFixed(0)) + "</td>", active: _bbPosActive() },
       { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct((techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
@@ -4172,11 +4175,12 @@
         if (_pextActive() && !_pextTest(t)) return false;     // price must be within pextPct% of a Y/Q/M high/low
       }
       // indicator scanners (compression / Bollinger / swing / trend-lines / Fibonacci) — own collapsible panel, stack AND independently
-      if (_compActive() || _bbActive() || _bbPosActive() || _swActive() || _trendActive() || _fibActive()) {
+      if (_compActive() || _bbActive() || _bbwActive() || _bbPosActive() || _swActive() || _trendActive() || _fibActive()) {
         const k = t.tech;
         if (!k) return false;
         if (_compActive()) { const sp = _compSpread(k); if (sp == null || sp > parseFloat(techState.compMax)) return false; }
         if (_bbActive() && (k.bbsq == null || k.bbsq > parseFloat(techState.bbSqMax))) return false;
+        if (_bbwActive() && (k.bbw == null || k.bbw > parseFloat(techState.bbwMax))) return false;
         if (_bbPosActive()) { const b = k.bbp; if (b == null) return false;
           if (techState.bbPos === "above" && b < 100) return false;
           if (techState.bbPos === "below" && b > 0) return false;
@@ -4325,6 +4329,7 @@
     bind("tGapPct", "onchange", e => { techState.gapPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tCompMax", "onchange", e => { techState.compMax = e.target.value; reRender(); });
     bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
+    bind("tBbwMax", "onchange", e => { techState.bbwMax = e.target.value; reRender(); });
     bind("tBbPos", "onchange", e => { techState.bbPos = e.target.value; reRender(); });
     bind("tSwSide", "onchange", e => { techState.swSide = e.target.value; reRender(); });
     bind("tSwPct", "onchange", e => { techState.swPct = parseFloat(e.target.value) || 0; reRender(); });
@@ -4394,6 +4399,7 @@
     // ---- indicator panel ----
     gid("tCompMax", _compActive());
     gid("tBbSqMax", _bbActive());
+    gid("tBbwMax", _bbwActive());
     gid("tSwSide", _swActive());
     gid("tTrendMode", _trendActive());
     gid("tFibLevel", _fibActive());
@@ -4426,7 +4432,8 @@
     chgMin: "", chgMax: "",      // daily % move, from–to (signed)
     gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
     compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
-    bbSqMax: "",                 // Bollinger squeeze percentile ≤
+    bbSqMax: "",                 // Bollinger squeeze percentile ≤ (relative to the stock's own history)
+    bbwMax: "",                  // Bollinger bandwidth % ≤ (absolute — objectively narrow bands)
     bbPos: "off",                // Bollinger %B position: off / below (≤0, LONG rev) / above (≥100, SHORT rev) / rev (both extremes)
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
@@ -4457,6 +4464,7 @@
   }
   function _compActive() { return techState.compMax !== "" && !isNaN(parseFloat(techState.compMax)); }
   function _bbActive() { return techState.bbSqMax !== "" && !isNaN(parseFloat(techState.bbSqMax)); }
+  function _bbwActive() { return techState.bbwMax !== "" && !isNaN(parseFloat(techState.bbwMax)); }
   function _bbPosActive() { return techState.bbPos && techState.bbPos !== "off"; }
   function _swActive() { return !!techState.swSide && techState.swSide !== "off"; }
   function _trendActive() { return ["touchsup", "touchres", "breakup", "breakdn"].indexOf(techState.trendMode) >= 0; }
@@ -4503,7 +4511,7 @@
       default:     return inBand(k.fibr);   // "any" — close near the level, either direction
     }
   }
-  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_bbPosActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
+  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_bbwActive() ? 1 : 0) + (_bbPosActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   // period-open test: is the price within N×ATR of a Yearly/Quarterly/Monthly OPEN?
@@ -4643,7 +4651,7 @@
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = "";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
-    techState.compMax = ""; techState.bbSqMax = ""; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
+    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
