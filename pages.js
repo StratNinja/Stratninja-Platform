@@ -3464,7 +3464,7 @@
     if (col === "dhi52") return k.dhi52;
     if (col === "atrp") return k.atrp;
     if (col === "gap") return k.gap;
-    if (col === "dma") { const dmap = techState.maType === "EMA" ? k.dema : k.dsma; return dmap ? dmap[techState.maPeriod] : null; }
+    if (col === "dma") { const dmap = k[_dmapKey(techState.maType)]; return dmap ? dmap[techState.maPeriod] : null; }
     if (col === "comp") return _compSpread(k);
     if (col === "bbsq") return _bbVal(k, "bbsq");
     if (col === "bbw") return _bbVal(k, "bbw");
@@ -3642,8 +3642,8 @@
   // shared by the primary MA filter + every stacked (+) extra condition. rel "off" = no constraint.
   function _maCondPass(k, type, period, rel, pct) {
     if (!rel || rel === "off") return true;
-    const isE = type === "EMA";
-    const dmap = isE ? k.dema : k.dsma;
+    const mk = _dmapKey(type);                            // dsma / dema / dwma
+    const dmap = k[mk];
     const d = dmap ? dmap[period] : null;                 // signed % distance of CLOSE from the MA
     if (d == null) return false;
     if (rel === "near" && Math.abs(d) > pct) return false;
@@ -3653,7 +3653,7 @@
     if (rel === "above" && d <= 0) return false;
     if (rel === "below" && d >= 0) return false;
     if (rel === "touchAbove" || rel === "touchBelow") {   // wick "touch" — mirrors the SMA150 Sniper
-      const loMap = isE ? k.dema_lo : k.dsma_lo, hiMap = isE ? k.dema_hi : k.dsma_hi;
+      const loMap = k[mk + "_lo"], hiMap = k[mk + "_hi"];
       const dLo = loMap ? loMap[period] : null, dHi = hiMap ? hiMap[period] : null;
       if (rel === "touchAbove") { if (d <= 0 || dLo == null || Math.abs(dLo) > pct) return false; }
       else { if (d >= 0 || dHi == null || Math.abs(dHi) > pct) return false; }
@@ -3828,7 +3828,7 @@
               ["D", "W", "M", "Q", "Y"].map(t => opt(t, techState.techTf, t + " · " + (TF_HE_SHORT[t] || t))).join("") + "</select>" +
               (techState.techTf !== "D" ? '<span class="tf-ind-badge">' + (TF_HE_SHORT[techState.techTf] || techState.techTf) + "</span>" : "") + "</div></div>" +
             '<div class="fgrp"><label>מיקום מול ממוצע (MA)</label><div class="chips" style="align-items:center">' +
-              '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + '</select>' +
+              '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + opt("WMA", techState.maType) + '</select>' +
               '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
               '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע (2 הכיוונים)") + opt("farAbove", techState.maRel, "יותר מ-% מעל הממוצע ↑ לונג") + opt("farBelow", techState.maRel, "יותר מ-% מתחת לממוצע ↓ שורט") + opt("touchAbove", techState.maRel, "🎯 נגיעה מלמעלה (צל תחתון)") + opt("touchBelow", techState.maRel, "🎯 נגיעה מלמטה (צל עליון)") + '</select>' +
               (_maPctShown() ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
@@ -3836,7 +3836,7 @@
             '<div id="maExtraWrap">' + (techState.maExtra || []).map((c, i) =>
               '<div class="chips ma-ex" style="align-items:center;margin-top:6px">' +
                 '<span class="ma-and">＋ וגם</span>' +
-                '<select data-maex="type" data-idx="' + i + '">' + opt("SMA", c.type) + opt("EMA", c.type) + '</select>' +
+                '<select data-maex="type" data-idx="' + i + '">' + opt("SMA", c.type) + opt("EMA", c.type) + opt("WMA", c.type) + '</select>' +
                 '<select data-maex="period" data-idx="' + i + '">' + MA_PERIODS.map(p => opt(p, c.period)).join("") + '</select>' +
                 '<select data-maex="rel" data-idx="' + i + '">' + [["above", "מעל הממוצע"], ["below", "מתחת לממוצע"], ["near", "עד ±% מהממוצע"], ["far", "יותר מ-±% מהממוצע"], ["farAbove", "יותר מ-% מעל ↑ לונג"], ["farBelow", "יותר מ-% מתחת ↓ שורט"], ["touchAbove", "🎯 נגיעה מלמעלה (צל תחתון)"], ["touchBelow", "🎯 נגיעה מלמטה (צל עליון)"]].map(o => opt(o[0], c.rel, o[1])).join("") + '</select>' +
                 (_maPctShownFor(c.rel) ? '<input type="number" step="0.5" min="0" style="width:54px" data-maex="pct" data-idx="' + i + '" value="' + c.pct + '"><span class="muted">%</span>' : "") +
@@ -3943,7 +3943,7 @@
     }
     const CAP = 300;
     const shown = rows.slice(0, CAP);
-    const dmapKey = techState.maType === "EMA" ? "dema" : "dsma";
+    const dmapKey = _dmapKey(techState.maType);
     // optional result columns — shown if the user toggled them on OR the matching filter is active
     const optCols = [
       { key: "ind", th: "תת-סקטור", tip: "תת-הסקטור (התעשייה) של המניה + תעודת הסל שלה", cell: (k, dma, t) => '<td class="tname" style="text-align:start">' + (t && t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : '<span class="muted">—</span>') + "</td>", active: scanState.subsec.length > 0 },
@@ -4444,7 +4444,8 @@
     popenTest: "off", popenMult: 0.5, popenTfs: ["Y", "Q", "M"], popenTouch: "price",   // period-open test: price within N×ATR of the Yearly/Quarterly/Monthly open (support/resistance). popenTouch: "price"=close in-range | "wick"=today's wick tagged the level and closed away (rejection)
     pextTest: "off", pextPct: 5, pextTfs: ["Y", "Q", "M"], pextRange: "prior",   // near period HIGH/LOW: price within pextPct% of the Yearly/Quarterly/Monthly high (near a top) or low (near a bottom → reversal watch). pextRange: "prior"=the PRIOR completed period's extremes (Strat trigger, e.g. July for a monthly scan) | "current"=the still-forming period
   };
-  const MA_PERIODS = ["5", "10", "20", "50", "100", "150", "200"];
+  const MA_PERIODS = ["5", "10", "20", "30", "50", "60", "100", "150", "200"];
+  function _dmapKey(type) { return type === "EMA" ? "dema" : type === "WMA" ? "dwma" : "dsma"; }
   const COMP_MAS = ["20", "50", "100", "200"];
   // RSI/MFI/RVOL/ATR value on the SELECTED indicator timeframe (D uses the daily tech block;
   // W/M/Q/Y read the per-timeframe block the server attaches as tech.tf). null if unavailable there.
