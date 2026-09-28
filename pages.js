@@ -5839,6 +5839,7 @@
     if (col === "sym") return t.sym;
     if (col === "alert") return t._alertN || 0;
     if (col === "atime") return t._alertTs;   // fire time (epoch); null → blanks-last, newest first by default
+    if (col === "trade") return t._hasPos ? 1 : 0;   // has an open journal position on this ticker
     if (col === "sec") return t.sector || "";
     if (col === "ind") return t.ind || "";
     if (col === "price") return t.price;
@@ -5978,6 +5979,7 @@
           alertCell + atimeCell +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
+          '<td style="text-align:start">' + (hasTrade ? '<span class="fav-jtag" title="פוזיציה פעילה ביומן">📓</span>' : '<span class="muted">—</span>') + "</td>" +
           '<td data-flick="fvp-' + t.sym + '">' + money(t.price) + '</td><td data-flick="fvc-' + t.sym + '">' + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       };
       // annotate each row for sorting (alert count / names / open-position) + the default grouping
@@ -6018,7 +6020,7 @@
         const others = [...(inter || new Set())].filter(s => !favsSet[s]);
         otherPanel = favOtherMatchesPanel(favPresetFilter.join(" + "), others);
       }
-      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל המניות ברשימה — לפי סדר הטבלה הנוכחי">📋 העתק הכל</button><button class="btn ghost" id="favCopyAlerts" style="font-size:12px;font-weight:600" title="העתק רק מניות עם התראה פעילה — לפי סדר הטבלה">🔔 העתק עם התראה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
+      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל המניות ברשימה — לפי סדר הטבלה הנוכחי">📋 העתק הכל</button><button class="btn ghost" id="favCopyAlerts" style="font-size:12px;font-weight:600" title="העתק רק מניות עם התראה פעילה — לפי סדר הטבלה">🔔 העתק עם התראה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("📓 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
@@ -6639,6 +6641,7 @@
 
   function reRender() {
     const p = PAGES[state.page]; if (!p) return;
+    const _sy = window.scrollY || window.pageYOffset || 0;   // preserve scroll across in-place re-renders (e.g. changing a filter)
     try { document.body.setAttribute("data-page", state.page); } catch (e) {}   // lets CSS target a specific page (e.g. compact 'sectors')
     $("#page").innerHTML = guideSection(state.page) + p.render();   // guide-video area at the TOP (most viewers don't scroll down)
     if (p.wire) p.wire();
@@ -6646,6 +6649,7 @@
     wireCharts($("#page"));
     wireNinja($("#page"));
     runFlicker();   // Koyfin-style subtle flash on any value that changed since the last render
+    if (_sy) { try { window.scrollTo(0, _sy); } catch (e) {} }   // stay where the user was (filtering shouldn't jump to top)
   }
 
   // Koyfin-style tick flash: after a render, any [data-flick] cell whose value changed vs the last
@@ -6675,7 +6679,7 @@
     document.querySelectorAll(".side-nav a").forEach(a => a.classList.toggle("active", a.dataset.page === name));
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
-    else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
+    else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); try { window.scrollTo(0, 0); } catch (e) {} }   // navigating to a page starts at the top
     if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "breadth") { loadScanner(); if (state.page === "today") { loadLive(); loadFlow(); } if (state.page === "breadth") loadBreadth(); }
     // on any chart-capable page, warm the TradingView library in the background so grids open fast
     if (["scanner", "sectors", "sp500", "today", "gappers", "favorites", "breadth", "market"].indexOf(state.page) >= 0) warmTradingView();
@@ -7172,6 +7176,12 @@
     { const t = document.getElementById("snDockTheme"); if (t) t.onclick = () => { try { if (window.snToggleTheme) snToggleTheme(); } catch (e) {} setThemeIcon(); }; }
     { const c = document.getElementById("snDockCam"); if (c) c.onclick = () => captureShare(); }
     { const d = document.getElementById("snDockDraw"); if (d) d.onclick = () => setPage("draw"); }
+    // display density (comfortable / compact / dense) — user-selectable, persisted, applies site-wide
+    const DENS = ["comfortable", "compact", "dense"], DENS_HE = { comfortable: "רגיל", compact: "קומפקטי", dense: "צפוף" };
+    let dens = "compact"; try { dens = localStorage.getItem("sn_density") || "compact"; } catch (e) {}
+    const applyDens = () => { try { document.documentElement.setAttribute("data-density", dens); } catch (e) {} };
+    applyDens();
+    { const db = document.getElementById("snDockDensity"); if (db) db.onclick = () => { dens = DENS[(DENS.indexOf(dens) + 1) % DENS.length]; applyDens(); try { localStorage.setItem("sn_density", dens); } catch (e) {} try { if (window.snToast || snToast) snToast("תצוגה: " + DENS_HE[dens]); } catch (e) {} }; }
     const tg = document.getElementById("snDockToggle");
     const apply = col => { dock.classList.toggle("collapsed", col); if (tg) tg.textContent = col ? "›" : "‹"; };
     let col = false; try { col = localStorage.getItem("sn_dock_col") === "1"; } catch (e) {}

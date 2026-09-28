@@ -135,6 +135,32 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .req-chooser { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
 .req-chooser .btn { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
 
+/* ---------- display density (user-selectable): comfortable (default look) / compact / dense ---------- */
+/* !important so the user's choice wins over any per-page spacing. comfortable = no overrides. */
+html[data-density="compact"] .main { padding: 16px 24px !important; }
+html[data-density="dense"]   .main { padding: 10px 18px !important; }
+html[data-density="compact"] .panel { padding: 12px 15px !important; }
+html[data-density="dense"]   .panel { padding: 9px 12px !important; }
+html[data-density="compact"] .page-head { margin: 4px 0 12px !important; }
+html[data-density="dense"]   .page-head { margin: 2px 0 8px !important; }
+html[data-density="dense"]   .page-head h1 { font-size: 26px !important; }
+html[data-density="dense"]   .page-head .sub { font-size: 12px !important; line-height: 1.5 !important; }
+html[data-density="compact"] .scan-table td { padding: 10px 9px !important; }
+html[data-density="dense"]   .scan-table td { padding: 6px 8px !important; font-size: 14px !important; }
+html[data-density="dense"]   .scan-table th { padding: 8px 8px !important; }
+html[data-density="compact"] .bc-cell { min-height: 40px !important; }
+html[data-density="dense"]   .bc-cell { min-height: 34px !important; }
+html[data-density="compact"] .bc-cell.ftfc-cell { min-height: 27px !important; }
+html[data-density="dense"]   .bc-cell.ftfc-cell { min-height: 23px !important; }
+html[data-density="compact"] .brd-svg { height: 150px !important; }
+html[data-density="dense"]   .brd-svg { height: 120px !important; }
+html[data-density="compact"] .rank .rk { padding: 3px 0 !important; }
+html[data-density="dense"]   .rank .rk { padding: 2px 0 !important; font-size: 12.5px !important; }
+html[data-density="dense"]   .gm-row { padding: 2px 0 !important; font-size: 12.5px !important; }
+html[data-density="dense"]   .idx-card { padding: 5px 10px !important; }
+html[data-density="dense"]   .mkt-sec-title { margin: 5px 0 4px !important; }
+html[data-density="dense"]   .cockpit { padding: 8px 14px !important; }
+
 /* ---------- column picker: base + optional groups ---------- */
 .col-picker .col-grp-lbl { font-size: 11px; font-weight: 700; opacity: .7; margin-inline-start: 4px; }
 .col-picker .col-sep { display: inline-block; width: 1px; height: 18px; background: var(--line); margin: 0 6px; vertical-align: middle; }
