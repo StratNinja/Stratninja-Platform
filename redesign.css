@@ -10,7 +10,15 @@ body { font-family: 'Heebo', 'Rubik', 'Segoe UI', 'Assistant', Arial, sans-serif
 .page-eyebrow { font: 700 12px/1 var(--mono); letter-spacing: 3px; color: var(--muted); opacity: .8; margin-bottom: 12px; }
 
 /* ---------- sidebar: wider, grouped, clean (no colorful icons) ---------- */
-.sidebar { width: 250px; padding: 28px 16px; }
+/* desktop only: the wider label sidebar. On mobile (≤820px) the app collapses to a 60px icon rail,
+   so we must NOT force a wide width there — and the emoji (kept in .nav-emoji) shows on that rail. */
+@media (min-width: 821px) {
+  .sidebar { width: 250px; padding: 28px 16px; }
+  .side-nav a .nav-emoji { display: none; }   /* clean, icon-free labels on desktop */
+}
+@media (max-width: 820px) {
+  .nav-group-label { display: none; }          /* group labels don't fit the narrow icon rail */
+}
 .side-brand { padding: 0 8px 22px; }
 .side-brand b { font-size: 23px; letter-spacing: -0.5px; }
 .side-brand .tag { font-size: 10.5px; letter-spacing: 3px; text-transform: uppercase; opacity: .7; }
@@ -21,8 +29,8 @@ body { font-family: 'Heebo', 'Rubik', 'Segoe UI', 'Assistant', Arial, sans-serif
   color: var(--muted); opacity: .6; margin: 20px 12px 7px; }
 .side-nav .nav-group-label:first-child { margin-top: 2px; }
 
-/* ---------- main breathing room ---------- */
-.main { padding: 26px 36px; }
+/* ---------- main breathing room (desktop; app handles mobile padding) ---------- */
+@media (min-width: 821px) { .main { padding: 26px 36px; } }
 
 /* ---------- panels as clean, premium cards ---------- */
 .panel { border-radius: 18px; padding: 22px; }
@@ -155,8 +163,8 @@ body.sn-broadcast .scan-table td { padding: 19px 12px; }
 body.sn-broadcast .scan-table td.sym .tsym { font-size: 21px; }
 body.sn-broadcast .page-head h1 { font-size: 46px; }
 
-@media (max-width: 1000px) {
+@media (min-width: 821px) and (max-width: 1000px) {
   .sidebar { width: 205px; padding: 18px 10px; }
   .main { padding: 18px; }
-  .page-head h1 { font-size: 30px; }
 }
+@media (max-width: 1000px) { .page-head h1 { font-size: 30px; } }

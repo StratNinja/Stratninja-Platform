@@ -25,11 +25,19 @@
     });
     document.body.insertBefore(bar, document.body.firstChild);
   }
-  // luxury/uniform look: strip the colorful emoji icons from the sidebar nav (labels stay).
+  // luxury/uniform look: WRAP the leading emoji of each sidebar link in a span so CSS can hide it on
+  // desktop (clean, icon-free labels) but SHOW it on mobile — where the sidebar collapses to a narrow
+  // icon rail and the text labels are hidden. (Deleting the emoji outright left the mobile rail empty.)
   function stripNavEmojis() {
     document.querySelectorAll(".side-nav a").forEach(a => {
+      if (a.querySelector(".nav-emoji")) return;   // already processed
       [...a.childNodes].forEach(n => {
-        if (n.nodeType === 3) n.textContent = n.textContent.replace(/[\p{Extended_Pictographic}️‍]/gu, "");
+        if (n.nodeType === 3 && /[\p{Extended_Pictographic}]/u.test(n.textContent)) {
+          const span = document.createElement("span");
+          span.className = "nav-emoji";
+          span.textContent = n.textContent.trim();
+          n.replaceWith(span);
+        }
       });
     });
   }
