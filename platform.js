@@ -3,12 +3,43 @@
   "use strict";
   const $ = s => document.querySelector(s);
 
+  // Versioned per-tab notice: closing it survives refreshes during this visit.
+  let designNoticeSeen = false;
+  function showDesignNotice(afterClose) {
+    const key = "sn-design-notice-2026-09";
+    let seen = designNoticeSeen;
+    try { seen = seen || sessionStorage.getItem(key) === "1"; } catch (_) {}
+    if (seen) { afterClose(); return; }
+    if (document.getElementById("snDesignNotice")) return;
+    const dialog = document.createElement("dialog");
+    dialog.id = "snDesignNotice";
+    dialog.className = "sn-design-notice";
+    dialog.dir = "rtl";
+    dialog.setAttribute("aria-labelledby", "snDesignNoticeTitle");
+    dialog.setAttribute("aria-describedby", "snDesignNoticeText");
+    dialog.innerHTML = '<button type="button" class="sn-design-notice-close" aria-label="סגירת ההודעה">×</button>' +
+      '<div class="sn-design-notice-label">StratNinja · עדכון האתר</div>' +
+      '<h2 id="snDesignNoticeTitle">אנחנו משדרגים את חוויית השימוש</h2>' +
+      '<p id="snDesignNoticeText">אנחנו מבצעים כעת עדכונים ושינויים עיצוביים באתר. במהלך העבודה ייתכנו שינויים במראה ובממשק.<br><br>מתנצלים על אי הנוחות הזמנית ותודה על הסבלנות!</p>' +
+      '<button type="button" class="btn primary sn-design-notice-confirm" autofocus>הבנתי, המשך לאתר</button>';
+    dialog.querySelectorAll("button").forEach(button => button.addEventListener("click", () => dialog.close()));
+    dialog.addEventListener("close", () => {
+      designNoticeSeen = true;
+      try { sessionStorage.setItem(key, "1"); } catch (_) {}
+      dialog.remove();
+      afterClose();
+    }, { once: true });
+    document.body.appendChild(dialog);
+    dialog.showModal();
+  }
   function showApp() {
     $("#landing").classList.add("hidden");
     $("#appRoot").classList.remove("hidden");
     document.body.classList.add("in-app");
     // first-time users get the guided tour once (the 📖 button re-opens it anytime)
-    if (window.SNGuide && window.SNGuide.autoStartIfNew) window.SNGuide.autoStartIfNew();
+    showDesignNotice(() => {
+      if (window.SNGuide && window.SNGuide.autoStartIfNew) window.SNGuide.autoStartIfNew();
+    });
   }
   function showLanding() {
     $("#appRoot").classList.add("hidden");

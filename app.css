@@ -2287,3 +2287,14 @@ html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; backgr
 .scan-table tbody tr:hover:has(.badge-ftfc.bear) { box-shadow: inset 2px 0 0 var(--red), 0 0 16px rgba(224,82,79,.12); }
 .badge-ftfc { box-shadow: 0 0 7px rgba(22,184,119,.28); }
 .badge-ftfc.bear { box-shadow: 0 0 7px rgba(224,82,79,.28); }
+
+/* Temporary, dismissible design-update notice. Native dialog handles focus/Escape. */
+.sn-design-notice{box-sizing:border-box;position:fixed;inset:0;margin:auto;width:min(480px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;padding:36px 28px 28px;border:1px solid var(--line);border-radius:20px;background:var(--panel);color:var(--ink);box-shadow:var(--panelsh);font-family:inherit;text-align:start}
+.sn-design-notice::backdrop{background:rgb(0 0 0 / .65)}
+.sn-design-notice-label{color:var(--accent);font-size:13px;font-weight:700;margin-block-end:14px}
+.sn-design-notice h2{font-size:24px;line-height:1.4;margin:0 0 14px;padding-inline-end:8px}
+.sn-design-notice p{font-size:16px;line-height:1.8;color:var(--muted);margin:0 0 24px}
+.sn-design-notice-close{position:absolute;inset-block-start:8px;inset-inline-end:8px;width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:28px/1 sans-serif;cursor:pointer}
+.sn-design-notice-close:hover{background:var(--soft);color:var(--ink)}
+.sn-design-notice-confirm{width:100%;min-height:44px}
+.sn-design-notice button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
