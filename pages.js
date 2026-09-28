@@ -1272,7 +1272,13 @@
   let _presetWheelTs = 0;   // throttle for wheel-cycling presets (module scope so it survives reRender)
   // optional result columns the user can add/remove. key undefined = never touched (a filter may auto-add it);
   // true/false = explicit user choice (so removal always sticks, even for filter columns).
+  // Persisted per-device so each trader keeps their own table layout across visits.
   const colState = {};
+  try { const _cs = JSON.parse(localStorage.getItem("sn_cols") || "{}"); if (_cs && typeof _cs === "object") Object.assign(colState, _cs); } catch (e) {}
+  function saveCols() { try { localStorage.setItem("sn_cols", JSON.stringify(colState)); } catch (e) {} }
+  // base (default-on) table columns that are now also toggleable, keyed by their sort id
+  const BASE_COLS = [["sec", "סקטור"], ["etf", 'ת"ס'], ["price", "מחיר"], ["mc", "שווי"], ["chg", "%"], ["Y", "Y"], ["Q", "Q"], ["M", "M"], ["W", "W"], ["D", "D"], ["ftfc", "FTFC"]];
+  const showCol = k => colState[k] !== false;   // base cols default ON (undefined = shown)
   // multi-timeframe per-TF conditions: {D:{t,c}, W:{t,c}, ...}  (t = bar type "1/2U/2D/3", c = color "up/down", "" = any)
   const MTF_TFS = ["D", "W", "M", "Q", "Y"];
   const MTF_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
@@ -4026,14 +4032,18 @@
       const k = t.tech || {};
       const dma = (k[dmapKey] || {})[techState.maPeriod];
       const techCells = visCols.map(c => c.cell(k, dma, t)).join("");
+      const s = t.sym;
+      const tfCellsSel = ["Y", "Q", "M", "W", "D"].map(k => showCol(k) ? "<td>" + tf(t[k], s, k) + "</td>" : "").join("");
       return "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
-        '<td class="tname" style="text-align:start">' + t.sector + "</td>" +
-        "<td>" + (etfFor(t.sector) ? '<span class="tsym clickable etf-chip" data-chart="' + etfFor(t.sector) + '" data-tf="D">' + etfFor(t.sector) + "</span>" : '<span class="muted">—</span>') + "</td>" +
-        '<td data-flick="scp-' + t.sym + '">' + money(t.price) + "</td><td>" + fmtCap(t.mc) + '</td><td data-flick="scc-' + t.sym + '">' + pct(t.chg) + "</td>" +
-        tfCells(t) +
-        "<td>" + ftfcBadge(t) + "</td>" +
+        (showCol("sec") ? '<td class="tname" style="text-align:start">' + t.sector + "</td>" : "") +
+        (showCol("etf") ? "<td>" + (etfFor(t.sector) ? '<span class="tsym clickable etf-chip" data-chart="' + etfFor(t.sector) + '" data-tf="D">' + etfFor(t.sector) + "</span>" : '<span class="muted">—</span>') + "</td>" : "") +
+        (showCol("price") ? '<td data-flick="scp-' + t.sym + '">' + money(t.price) + "</td>" : "") +
+        (showCol("mc") ? "<td>" + fmtCap(t.mc) + "</td>" : "") +
+        (showCol("chg") ? '<td data-flick="scc-' + t.sym + '">' + pct(t.chg) + "</td>" : "") +
+        tfCellsSel +
+        (showCol("ftfc") ? "<td>" + ftfcBadge(t) + "</td>" : "") +
         seqCells(t) +
         techCells +
         '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td>' +
@@ -4049,13 +4059,25 @@
         : '<div class="ins-empty">סַנֵּן לפי תבנית, טיימפריים, סקטור או פילטר טכני — ואציג לך עובדות מעניינות על מה שיצא. 🔍</div>') +
       "</div>";
 
+    const baseTh = {
+      sec: sortableTh("סקטור", "sec", ' title="הסקטור של המניה"'),
+      etf: sortableTh("ת\"ס", "etf", ' title="תעודת הסל (ETF) שמייצגת את הסקטור"'),
+      price: sortableTh("מחיר", "price", ' title="המחיר הנוכחי"'),
+      mc: sortableTh("שווי", "mc", ' title="שווי שוק (מחיר × מספר מניות)"'),
+      chg: sortableTh("%", "chg", ' title="שינוי במחיר היום באחוזים"'),
+      Y: sortableTh("Y", "Y", ' title="נר Strat בטיימפריים השנתי"'), Q: sortableTh("Q", "Q", ' title="נר Strat בטיימפריים הרבעוני"'),
+      M: sortableTh("M", "M", ' title="נר Strat בטיימפריים החודשי"'), W: sortableTh("W", "W", ' title="נר Strat בטיימפריים השבועי"'),
+      D: sortableTh("D", "D", ' title="נר Strat בטיימפריים היומי"'),
+      ftfc: sortableTh("FTFC", "ftfc", ' title="FTFC — המשכיות טיימפריימים מלאה: כל הטיימפריימים באותו כיוון (ירוק=עולה, אדום=יורד)"'),
+    };
+    const baseOrder = ["sec", "etf", "price", "mc", "chg", "Y", "Q", "M", "W", "D", "ftfc"];
     const head =
-      '<th class="fav-th"><button class="fav-toptgl' + (scanState.favTop ? " on" : "") + '" id="favTopTgl" title="' + (scanState.favTop ? "בטל — הצג לפי המיון הרגיל" : "הצג את המועדפים (⭐) בראש הרשימה") + '">★</button></th>' + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') + sortableTh("סקטור", "sec", ' title="הסקטור של המניה"') + sortableTh("ת\"ס", "etf", ' title="תעודת הסל (ETF) שמייצגת את הסקטור"') + sortableTh("מחיר", "price", ' title="המחיר הנוכחי"') + sortableTh("שווי", "mc", ' title="שווי שוק (מחיר × מספר מניות)"') + sortableTh("%", "chg", ' title="שינוי במחיר היום באחוזים"') +
-      sortableTh("Y", "Y", ' title="נר Strat בטיימפריים השנתי"') + sortableTh("Q", "Q", ' title="נר Strat בטיימפריים הרבעוני"') + sortableTh("M", "M", ' title="נר Strat בטיימפריים החודשי"') + sortableTh("W", "W", ' title="נר Strat בטיימפריים השבועי"') + sortableTh("D", "D", ' title="נר Strat בטיימפריים היומי"') + sortableTh("FTFC", "ftfc", ' title="FTFC — המשכיות טיימפריימים מלאה: כל הטיימפריימים באותו כיוון (ירוק=עולה, אדום=יורד)"') +
+      '<th class="fav-th"><button class="fav-toptgl' + (scanState.favTop ? " on" : "") + '" id="favTopTgl" title="' + (scanState.favTop ? "בטל — הצג לפי המיון הרגיל" : "הצג את המועדפים (⭐) בראש הרשימה") + '">★</button></th>' + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') +
+      baseOrder.filter(showCol).map(k => baseTh[k]).join("") +
       (seqActive() ? '<th title="C2 — 2 נרות אחורה (הנר הראשון ברצף)">C2</th><th title="C1 — 1 נר אחורה">C1</th><th title="CC — הנר הנוכחי">CC</th>' : "") +
       visCols.map(c => sortableTh(c.th, c.key, c.tip ? ' title="' + escAttr(c.tip) + '"' : "")).join("") +
       "<th></th>";
-    const nCols = 14 + (seqActive() ? 3 : 0) + visCols.length;
+    const nCols = 2 + baseOrder.filter(showCol).length + (seqActive() ? 3 : 0) + visCols.length + 1;
     // the period-open filter needs each cell's .o (period open) — older "אתמול" snapshots (saved before
     // 2026-08-27) lack it, so explain instead of showing a silent "0 results".
     const _popenNoData = _popenActive() && all.length && !all.some(t => (t.Y && t.Y.o != null) || (t.Q && t.Q.o != null) || (t.M && t.M.o != null));
@@ -4063,6 +4085,9 @@
       ? 'מבחן הפתיחה התקופתית לא זמין בתצוגה הזו (הנתון נוסף ב-27/08) — עברו ל🔴 לייב, או המתינו לסנאפשוט "אתמול" הבא.'
       : "אין תוצאות לפילטרים האלה";
     const colChips = '<div class="col-picker"><span class="muted" style="font-size:12px">➕ עמודות:</span>' +
+      '<span class="muted col-grp-lbl">בסיס:</span>' +
+      BASE_COLS.map(([k, lbl]) => '<button class="chip col-chip' + (showCol(k) ? " on" : "") + '" data-col="' + k + '" title="הצג/הסתר את עמודת ' + escAttr(lbl) + '">' + lbl + "</button>").join("") +
+      '<span class="col-sep"></span><span class="muted col-grp-lbl">נוספות:</span>' +
       optCols.map(c => '<button class="chip col-chip' + (colState[c.key] ? " on" : "") + '" data-col="' + c.key + '" title="' + escAttr((c.tip ? c.tip : c.th) + (c.active ? " · פילטר פעיל" : "")) + '">' + c.th + (c.active ? " •" : "") + "</button>").join("") + "</div>";
     const resultsPanel =
       '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " מתוך " + all.length + (rows.length > CAP ? " · מוצגות " + CAP + " הראשונות" : "") + "</span></span>" + (rows.length ? '<span style="display:flex;gap:8px"><button class="btn ghost" id="scanGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button><button class="btn ghost" id="scanCopy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + " טיקרים</button></span>" : "") + "</h3>" + colChips +
@@ -4480,7 +4505,12 @@
     bind("tFibLevel", "onchange", e => { techState.fibLevel = e.target.value; reRender(); });
     bind("tFibDir", "onchange", e => { techState.fibDir = e.target.value; reRender(); });
     bind("tFibTol", "onchange", e => { techState.fibTol = parseFloat(e.target.value) || 0; reRender(); });
-    document.querySelectorAll("[data-col]").forEach(b => b.onclick = () => { colState[b.dataset.col] = !colState[b.dataset.col]; reRender(); });
+    document.querySelectorAll("[data-col]").forEach(b => b.onclick = () => {
+      const col = b.dataset.col, isBase = BASE_COLS.some(x => x[0] === col);
+      const shown = isBase ? (colState[col] !== false) : !!colState[col];   // base cols default ON
+      colState[col] = !shown;   // store the new visibility explicitly
+      saveCols(); reRender();
+    });
     const grid = $("#scanGrid");
     if (grid) grid.onclick = () => openScannerGrid();
     const copy = $("#scanCopy");

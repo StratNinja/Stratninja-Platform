@@ -97,6 +97,10 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
   .filters.fbar .fpop.fpop-panel .fpop-body { max-width: none; }
 }
 
+/* ---------- column picker: base + optional groups ---------- */
+.col-picker .col-grp-lbl { font-size: 11px; font-weight: 700; opacity: .7; margin-inline-start: 4px; }
+.col-picker .col-sep { display: inline-block; width: 1px; height: 18px; background: var(--line); margin: 0 6px; vertical-align: middle; }
+
 /* ---------- Koyfin-style tick flash: a value flashes green/red then fades (~1s) ---------- */
 @keyframes snFlickUp { 0% { background: rgba(22,184,119,.5); } 100% { background: transparent; } }
 @keyframes snFlickDn { 0% { background: rgba(224,82,79,.5); } 100% { background: transparent; } }
