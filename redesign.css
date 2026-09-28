@@ -119,6 +119,13 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .fav-alert-multi:hover .fav-alert-pop, .fav-alert-multi:focus-within .fav-alert-pop { display: flex; flex-direction: column; gap: 5px; }
 .fav-alert-pop .fav-alert-chip { max-width: none; }
 
+/* ---------- alerts center: wider modal, two columns (scans right · recent alerts left) ---------- */
+.al-modal { max-width: min(96vw, 1100px); width: min(96vw, 1100px); }
+.al-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+.al-cols .al-col { min-width: 0; }
+.al-cols .al-plist, .al-cols .al-flist { max-height: 46vh; overflow: auto; padding-inline-end: 4px; }
+@media (max-width: 760px) { .al-cols { grid-template-columns: 1fr; } .al-cols .al-plist, .al-cols .al-flist { max-height: 32vh; } }
+
 /* ---------- movers widget: proportional green/red bar per row ---------- */
 .gm-row { display: flex; align-items: center; gap: 8px; }
 .gm-row .tsym { flex: none; }

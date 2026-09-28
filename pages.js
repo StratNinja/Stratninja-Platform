@@ -1855,9 +1855,11 @@
         '<button class="btn ghost al-style' + (_alertStyle() === "visual" ? " on" : "") + '" data-style="visual" style="font-size:12px">👁️ ויזואלי (שקט)</button>' +
         '<button class="btn ghost al-style' + (_alertStyle() === "sound" ? " on" : "") + '" data-style="sound" style="font-size:12px">🔔 צליל בלבד</button>' +
         '<button class="btn ghost" id="alTestAlert" style="font-size:12px;font-weight:600">🧪 בדוק התראה</button></div>' +
-      '<h3 style="margin:12px 0 6px;font-size:14px">הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div>" +
-      '<h3 style="margin:16px 0 6px;font-size:14px">התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div>";
-    modal("🔔 מרכז ההתראות", body);
+      '<div class="al-cols">' +
+        '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px">🎯 הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div></div>" +
+        '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px">🔔 התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div></div>" +
+      "</div>";
+    modal("🔔 מרכז ההתראות", body, "al-modal");
     document.querySelectorAll("[data-alp]").forEach(b => b.onchange = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); });
     { const pm = $("#alNotifyPerm"); if (pm) pm.onclick = () => { requestNotifyPerm(); setTimeout(openAlertsFeed, 400); }; }
     { const ps = $("#alPushSub"); if (ps) ps.onclick = () => subscribeToPush(); }
