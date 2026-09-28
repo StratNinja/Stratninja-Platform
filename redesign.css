@@ -175,11 +175,23 @@ body[data-page="sectors"] .bc-chg { font-size: 13px; }
 .tvfallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
 @media (max-width: 900px) { .idx-charts { grid-template-columns: 1fr; } .tvchart { height: 340px; } }
 
-/* ---------- market breadth page: grid of % above MA charts ---------- */
-.brd-charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-top: 8px; }
-.brd-charts .idx-chart { min-width: 0; }
-.brd-charts .tvchart { height: 360px; }
-@media (max-width: 720px) { .brd-charts { grid-template-columns: 1fr; } .brd-charts .tvchart { height: 300px; } }
+/* ---------- market breadth page: 5 % -above-MA charts across the width ---------- */
+.brd-charts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 10px; }
+.brd-chart { min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 6px; }
+.brd-chart .idx-chart-lbl { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 6px; }
+.brd-chart .idx-chart-sym { color: var(--ink); font-weight: 800; }
+.brd-cur { margin-inline-start: auto; font-weight: 800; font-size: 14px; }
+.brd-cur.pos { color: var(--green); } .brd-cur.neg { color: var(--red); } .brd-cur.zero { color: #e6b800; }
+.brd-svg { width: 100%; height: 170px; display: block; }
+.brd-chart .tvchart { height: 300px; }   /* TradingView fallback */
+.brd-top { align-items: center; flex-wrap: wrap; }
+.brd-state { margin-inline-start: 12px; font-weight: 800; font-size: 13px; padding: 5px 13px; border-radius: 10px;
+  background: var(--panel2); border: 1px solid var(--line); }
+.brd-state.pos { color: var(--green); border-color: var(--greenbd); }
+.brd-state.neg { color: var(--red); border-color: var(--redbd); }
+.brd-state.zero { color: #e6b800; border-color: rgba(230,184,0,.5); }
+@media (max-width: 1200px) { .brd-charts { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 760px) { .brd-charts { grid-template-columns: 1fr; } .brd-chart .tvchart { height: 260px; } }
 
 /* ---------- broadcast mode (larger, for live streaming / screen-share) ---------- */
 body.sn-broadcast .scan-table { font-size: 20px; }

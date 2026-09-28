@@ -954,7 +954,6 @@
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
         marketCockpit() +
         indexCards() +
-        indexChartsPanel() +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-rank-grid">' +
           '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + mkLead(LIVE ? (mktU().sectorLeaders || []).slice(0, 5) : dSecUp, "up", true) + "</div>" +
@@ -967,7 +966,6 @@
     );
   }
   function wireMarket() {
-    mountIndexCharts();   // embed the live SPY/QQQ TradingView charts
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
@@ -993,40 +991,118 @@
     }
   }
 
-  // ========== MARKET BREADTH — % of stocks above their moving averages (oversold radar) ==========
-  // Low readings = many stocks BELOW their MAs = washed-out / oversold → historically a buy zone.
-  // Symbols are TradingView breadth indices (verified): S5xx = S&P 500, NDxx = Nasdaq 100.
+  // ========== MARKET BREADTH — % of stocks ABOVE their moving averages (oversold radar) ==========
+  // LOW reading = few stocks above their MAs = washed-out / oversold → historically a BUY zone.
+  // Charts are OUR own (computed server-side from the universe, id='breadth') so they update intraday;
+  // if that data isn't there yet we fall back to TradingView breadth indices (S5xx / NDxx).
   let breadthUni = "sp";
-  const BREADTH_SETS = {
-    sp:  { name: "S&P 500",    syms: [["S5TW", "20"], ["S5FI", "50"], ["S5OH", "100"], ["S5OF", "150"], ["S5TH", "200"]] },
-    ndx: { name: "Nasdaq 100", syms: [["NDTW", "20"], ["NDFI", "50"], ["NDOH", "100"], ["NDOF", "150"], ["NDTH", "200"]] },
+  let BREADTH_DATA = null;   // { sp:{"20":[{d,v}],…}, ndx:{…}, updated }
+  const BRD_MAS = ["20", "50", "100", "150", "200"];
+  const BRD_W = { "20": 1, "50": 2, "100": 3, "150": 4, "200": 5 };   // heavier weight to the longer MAs
+  const BREADTH_TV = {
+    sp:  [["S5TW", "20"], ["S5FI", "50"], ["S5OH", "100"], ["S5OF", "150"], ["S5TH", "200"]],
+    ndx: [["NDTW", "20"], ["NDFI", "50"], ["NDOH", "100"], ["NDOF", "150"], ["NDTH", "200"]],
   };
+  async function loadBreadth() {
+    try {
+      const cfg = window.SN_CONFIG;
+      if (!cfg || !cfg.SUPABASE_URL) return;
+      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.breadth&select=data",
+        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!r.ok) return;
+      const j = await r.json();
+      const d = j && j[0] && j[0].data;
+      if (d && (d.sp || d.ndx)) { BREADTH_DATA = d; if (state.page === "breadth") reRender(); }
+    } catch (e) { /* keep last / fall back to TV */ }
+  }
+  // current reading per MA. S&P: computed LIVE from the scanner (updates intraday). Else: server last point.
+  function _brdReadings(uni) {
+    if (uni === "sp" && SCAN && SCAN.rows && SCAN.rows.length) {
+      const acc = {}; BRD_MAS.forEach(n => acc[n] = [0, 0]);
+      SCAN.rows.forEach(r => {
+        if (!r.sp) return; const dm = r.tech && r.tech.dsma; if (!dm) return;
+        BRD_MAS.forEach(n => { const v = dm[n]; if (v != null) { acc[n][1]++; if (v > 0) acc[n][0]++; } });
+      });
+      if (acc["50"][1] > 50) { const o = {}; BRD_MAS.forEach(n => o[n] = acc[n][1] ? acc[n][0] / acc[n][1] * 100 : null); return o; }
+    }
+    const d = BREADTH_DATA && BREADTH_DATA[uni]; if (!d) return null;
+    const o = {}; BRD_MAS.forEach(n => { const s = d[n] || []; o[n] = s.length ? s[s.length - 1].v : null; }); return o;
+  }
+  // weighted market-state summary (longer MAs weigh more)
+  function _brdState(readings) {
+    if (!readings) return null;
+    let sw = 0, sv = 0;
+    BRD_MAS.forEach(n => { if (readings[n] != null) { sw += BRD_W[n]; sv += readings[n] * BRD_W[n]; } });
+    if (!sw) return null;
+    const score = sv / sw;
+    let lbl, cls;
+    if (score <= 20) { lbl = "🟢 Oversold עמוק · אזור קנייה"; cls = "pos"; }
+    else if (score <= 40) { lbl = "🟢 חלש · מתקרב ל-oversold"; cls = "pos"; }
+    else if (score <= 60) { lbl = "🟡 ניטרלי"; cls = "zero"; }
+    else if (score <= 80) { lbl = "🔴 רחב · מתקרב ל-overbought"; cls = "neg"; }
+    else { lbl = "🔴 Overbought"; cls = "neg"; }
+    return { score: Math.round(score), lbl, cls };
+  }
+  function _brdZoneCls(v) { return v <= 25 ? "pos" : v >= 75 ? "neg" : (v >= 45 && v <= 55 ? "zero" : ""); }
+  function _brdChartSvg(series, cur) {
+    const W = 300, H = 150, padT = 6, padB = 4, padL = 2, padR = 2;
+    const iw = W - padL - padR, ih = H - padT - padB;
+    const y = v => padT + (1 - v / 100) * ih;
+    const n = series.length;
+    const x = i => padL + (n <= 1 ? iw : (i / (n - 1)) * iw);
+    let d = ""; series.forEach((p, i) => d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.v).toFixed(1) + " ");
+    const zone = (a, b, c) => '<rect x="' + padL + '" y="' + y(b).toFixed(1) + '" width="' + iw + '" height="' + (y(a) - y(b)).toFixed(1) + '" fill="' + c + '"/>';
+    const gl = (v, c, dash) => '<line x1="' + padL + '" y1="' + y(v).toFixed(1) + '" x2="' + (padL + iw) + '" y2="' + y(v).toFixed(1) + '" stroke="' + c + '" stroke-width="1" vector-effect="non-scaling-stroke"' + (dash ? ' stroke-dasharray="3 3"' : "") + ' opacity="0.5"/>';
+    const col = cur != null ? (cur <= 25 ? "#17c08a" : cur >= 75 ? "#e0524f" : (cur >= 45 && cur <= 55 ? "#e6b800" : "var(--ink)")) : "var(--ink)";
+    return '<svg class="brd-svg" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
+      zone(0, 25, "rgba(23,192,138,.13)") + zone(75, 100, "rgba(224,82,79,.13)") +
+      gl(0, "rgba(255,255,255,.28)") + gl(25, "#17c08a") + gl(50, "#e6b800", 1) + gl(75, "#e0524f") + gl(100, "rgba(255,255,255,.28)") +
+      '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
+      (n ? '<circle cx="' + x(n - 1).toFixed(1) + '" cy="' + y(series[n - 1].v).toFixed(1) + '" r="2.6" fill="' + col + '" vector-effect="non-scaling-stroke"/>' : "") +
+      "</svg>";
+  }
   function renderBreadth() {
-    const set = BREADTH_SETS[breadthUni] || BREADTH_SETS.sp;
-    const uniSwitch = '<div class="uni-switch"><span class="uni-lbl">מדד:</span>' +
-      '<button class="uni-btn' + (breadthUni === "sp" ? " on" : "") + '" data-brduni="sp">S&P 500</button>' +
-      '<button class="uni-btn' + (breadthUni === "ndx" ? " on" : "") + '" data-brduni="ndx">Nasdaq 100</button></div>';
-    const cells = set.syms.map(([sym, lbl], i) =>
-      '<div class="idx-chart"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + lbl + ' ימים</span> <span class="muted" style="font-weight:600;font-size:11px">· ' + sym + "</span></div>" +
-      '<div id="bw' + i + '" class="tvchart"><div class="muted tvfallback">טוען גרף…</div></div></div>').join("");
+    const uni = breadthUni, name = uni === "sp" ? "S&P 500" : "Nasdaq 100";
+    const readings = _brdReadings(uni), st = _brdState(readings);
+    const stateBadge = st ? '<span class="brd-state ' + st.cls + '" title="שקלול כל 5 הממוצעים, משקל כבד יותר לארוכים (200/150)">מצב ' + name + ": " + st.lbl + " · " + st.score + "%</span>" : "";
+    const uniSwitch = '<div class="uni-switch brd-top"><span class="uni-lbl">מדד:</span>' +
+      '<button class="uni-btn' + (uni === "sp" ? " on" : "") + '" data-brduni="sp">S&P 500</button>' +
+      '<button class="uni-btn' + (uni === "ndx" ? " on" : "") + '" data-brduni="ndx">Nasdaq 100</button>' + stateBadge + "</div>";
+    const data = BREADTH_DATA && BREADTH_DATA[uni];
+    const haveOurs = data && BRD_MAS.some(n => (data[n] || []).length > 2);
+    let charts, foot;
+    if (haveOurs) {
+      charts = '<div class="brd-charts">' + BRD_MAS.map(n => {
+        let s = (data[n] || []).slice();
+        if (readings && readings[n] != null && s.length) s[s.length - 1] = { d: s[s.length - 1].d, v: readings[n] };   // live last point
+        const cur = readings && readings[n] != null ? readings[n] : (s.length ? s[s.length - 1].v : null);
+        return '<div class="brd-chart"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + n + " ימים</span>" +
+          (cur != null ? '<span class="brd-cur ' + _brdZoneCls(cur) + '">' + cur.toFixed(0) + "%</span>" : "") + "</div>" +
+          _brdChartSvg(s, cur) + "</div>";
+      }).join("") + "</div>";
+      foot = '<div class="note" style="margin-top:10px;font-size:11px">💡 <b>ירוק (≤25%)</b> = מעט מניות מעל הממוצע = oversold/אזור קנייה · <b>צהוב (~50%)</b> ניטרלי · <b>אדום (≥75%)</b> overbought. הגרפים שלנו — מתעדכנים תוך-יומי (S&P חי מהסורק). אינו ייעוץ השקעות.</div>';
+    } else {
+      charts = '<div class="brd-charts">' + BREADTH_TV[uni].map(([sym, lbl], i) =>
+        '<div class="brd-chart"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + lbl + ' ימים</span></div><div id="bw' + i + '" class="tvchart"><div class="muted tvfallback">טוען…</div></div></div>').join("") + "</div>";
+      foot = '<div class="note" style="margin-top:10px;font-size:11px">⏳ מוצגים גרפי TradingView זמנית — <b>הגרסה החיה שלנו</b> (מתעדכנת תוך-יומי) תופיע אחרי עדכון השרת הבא.</div>';
+    }
     return (
-      '<div class="page-head"><h1>רוחב שוק · מתחת לממוצעים</h1><div class="sub">כמה מהמניות ב-<b>' + set.name + '</b> נמצאות <b>מעל</b> הממוצע הנע שלהן (20 / 50 / 100 / 150 / 200 יום). ' +
-        '<b class="pos">קריאה נמוכה</b> = הרבה מניות <b>מתחת</b> לממוצעים = אזור <b>oversold</b> — שלפי הבדיקות שלנו נוטה להיות <b>אזור קנייה</b>. ' +
+      '<div class="page-head"><h1>רוחב שוק · מעל הממוצעים</h1><div class="sub">כמה מהמניות ב-<b>' + name + '</b> נמצאות <b>מעל</b> הממוצע הנע שלהן (20 / 50 / 100 / 150 / 200 יום). ' +
+        '<b class="pos">קריאה נמוכה</b> = <b>מעט</b> מניות מעל הממוצעים = אזור <b>oversold</b> — שלפי הבדיקות שלנו נוטה להיות <b>אזור קנייה</b>. ' +
         'ככל שיותר מדדים (קצר <u>וגם</u> ארוך טווח) נמוכים יחד — הרחיצה עמוקה יותר.</div></div>' +
-      uniSwitch +
-      '<div class="brd-charts">' + cells + "</div>" +
-      '<div class="note" style="margin-top:10px;font-size:11px">💡 המדדים מוצגים כ<b>אחוז המניות מעל הממוצע</b> (0–100). קריאות קיצון נמוכות (למשל מתחת ל-15–20 ברוב הטווחים) הן היסטורית אזורי תחתית/קנייה, וקריאות גבוהות (מעל 80) הן overbought. אינו ייעוץ השקעות.</div>'
+      uniSwitch + charts + foot
     );
   }
   function wireBreadth() {
     document.querySelectorAll("[data-brduni]").forEach(b => b.onclick = () => { if (breadthUni === b.dataset.brduni) return; breadthUni = b.dataset.brduni; reRender(); });
-    mountBreadthCharts();
+    if (!BREADTH_DATA) loadBreadth();
+    if (document.getElementById("bw0")) mountBreadthCharts();   // TV fallback only
   }
   function mountBreadthCharts() {
     if (!document.getElementById("bw0")) return;
     _loadTV().then(() => {
       const theme = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
-      (BREADTH_SETS[breadthUni] || BREADTH_SETS.sp).syms.forEach(([sym], i) => {
+      (BREADTH_TV[breadthUni] || BREADTH_TV.sp).forEach(([sym], i) => {
         const el = document.getElementById("bw" + i);
         if (!el) return;
         el.innerHTML = "";
@@ -1040,7 +1116,7 @@
         } catch (e) { el.innerHTML = '<div class="muted tvfallback">הגרף לא זמין כרגע</div>'; }
       });
     }).catch(() => {
-      (BREADTH_SETS[breadthUni] || BREADTH_SETS.sp).syms.forEach((_, i) => { const el = document.getElementById("bw" + i); if (el) el.innerHTML = '<div class="muted tvfallback">הגרף לא זמין כרגע</div>'; });
+      (BREADTH_TV[breadthUni] || BREADTH_TV.sp).forEach((_, i) => { const el = document.getElementById("bw" + i); if (el) el.innerHTML = '<div class="muted tvfallback">הגרף לא זמין כרגע</div>'; });
     });
   }
 
@@ -6589,7 +6665,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
-    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") { loadScanner(); if (state.page === "today") { loadLive(); loadFlow(); } }
+    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "breadth") { loadScanner(); if (state.page === "today") { loadLive(); loadFlow(); } if (state.page === "breadth") loadBreadth(); }
     // on any chart-capable page, warm the TradingView library in the background so grids open fast
     if (["scanner", "sectors", "sp500", "today", "gappers", "favorites", "breadth", "market"].indexOf(state.page) >= 0) warmTradingView();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
