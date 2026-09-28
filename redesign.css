@@ -119,6 +119,15 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .fav-alert-multi:hover .fav-alert-pop, .fav-alert-multi:focus-within .fav-alert-pop { display: flex; flex-direction: column; gap: 5px; }
 .fav-alert-pop .fav-alert-chip { max-width: none; }
 
+/* ---------- movers widget: proportional green/red bar per row ---------- */
+.gm-row { display: flex; align-items: center; gap: 8px; }
+.gm-row .tsym { flex: none; }
+.gm-row .pct, .gm-row .pos, .gm-row .neg, .gm-row .zero { flex: none; font-variant-numeric: tabular-nums; }
+.gm-bar { flex: 1 1 auto; min-width: 30px; height: 8px; border-radius: 5px; background: var(--line); overflow: hidden; }
+.gm-bar > span { display: block; height: 100%; border-radius: 5px; }
+.gm-bar.up > span { background: var(--green); margin-inline-start: auto; }
+.gm-bar.down > span { background: var(--red); }
+
 /* ---------- floating action dock (theme / share / draw), bottom-left near accessibility ---------- */
 .sn-dock { position: fixed; bottom: 16px; left: 66px; z-index: 40; display: flex; align-items: center; gap: 8px; direction: ltr; }
 .sn-dock .snd-icons { display: flex; align-items: center; gap: 8px; overflow: hidden; max-width: 220px; opacity: 1;

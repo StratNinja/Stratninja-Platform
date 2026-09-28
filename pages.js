@@ -800,12 +800,19 @@
       upLbl = "🟢 עולות אחרי סגירת המסחר"; dnLbl = "🔴 יורדות אחרי סגירת המסחר";
       note = "תנועה ביחס למחיר הסגירה של היום";
     }
-    const row = arr => arr.length ? arr.slice(0, 5).map(x =>
-      '<div class="gm-row"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span>" + pct(x.gp) + "</div>").join("")
-      : '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
+    const row = (arr, cls) => {
+      if (!arr.length) return '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
+      const top = arr.slice(0, 5);
+      const max = Math.max(0.01, ...top.map(x => Math.abs(x.gp || 0)));
+      return top.map(x => {
+        const w = Math.max(6, Math.round(Math.abs(x.gp || 0) / max * 100));
+        return '<div class="gm-row"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span>" +
+          '<span class="gm-bar ' + cls + '"><span style="width:' + w + '%"></span></span>' + pct(x.gp) + "</div>";
+      }).join("");
+    };
     const sub = note ? '<div class="muted" style="font-size:11px;margin:-2px 0 6px">' + note + "</div>" : "";
     return '<div class="panel gappers-mini"><h3 class="gm-head"><span>' + head + "</span>" + seeAll + "</h3>" + sub +
-      '<div class="gm-grid"><div><div class="td-h pos">' + upLbl + "</div>" + row(data.up) + '</div><div><div class="td-h neg">' + dnLbl + "</div>" + row(data.down) + "</div></div></div>";
+      '<div class="gm-grid"><div><div class="td-h pos">' + upLbl + "</div>" + row(data.up, "up") + '</div><div><div class="td-h neg">' + dnLbl + "</div>" + row(data.down, "down") + "</div></div></div>";
   }
   // ---- market-page mini chart of an index (30-day, candles or line) ----
   let _idxChartMode = "candle";
