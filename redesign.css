@@ -86,9 +86,32 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .filters.fbar .fpop-body > .fgrp > label { display: block; font-size: 12.5px; color: var(--muted); font-weight: 700; margin-bottom: 9px; }
 /* the seq builder details, inside its popover, is already expanded — hide its redundant summary caret hint */
 .filters.fbar .fpop-body .seq-summary { list-style: none; }
+/* wide popovers that hold whole panels (MTF / technical / indicators) */
+.filters.fbar .fpop.fpop-panel .fpop-body { max-width: min(94vw, 660px); max-height: min(74vh, 600px); overflow: auto; }
+.filters.fbar .fpop-panel .fpop-body .frow.tech-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.filters.fbar .fpop-panel .fpop-body .frow.tech-row > .fgrp { min-width: 150px; }
+.filters.fbar .fpop-panel .fpop-body .mtf-rows { display: flex; flex-direction: column; gap: 8px; }
+.filters.fbar .fpop-panel .fpop-body .note { margin-top: 10px; }
 @media (max-width: 700px) {
   .filters.fbar .fpop-body { position: fixed; inset-inline: 12px auto; left: 12px; right: 12px; min-width: 0; max-width: none; }
+  .filters.fbar .fpop.fpop-panel .fpop-body { max-width: none; }
 }
+
+/* ---------- המשכיות זמנית: proportion bar + daily move (no net %) ---------- */
+.bc-cell.ftfc-cell { background: var(--cell) !important; color: var(--ink); border: 1px solid var(--line); gap: 12px; }
+.bc-cell.ftfc-cell:hover { filter: none; border-color: var(--muted); }
+.bc-cell.ftfc-cell .bc-left { flex: 0 0 auto; min-width: 168px; max-width: 168px; }
+.bc-cell.ftfc-cell .bc-name { color: var(--ink); }
+.bc-cell.ftfc-cell .bc-etf { background: var(--accentbg); color: var(--accent); }
+.bc-cell.ftfc-cell .bc-etf:hover { filter: brightness(1.15); }
+.ftfc-bar { position: relative; flex: 1 1 auto; height: 12px; min-width: 70px; border-radius: 7px;
+  background: var(--line); overflow: hidden; }
+.ftfc-bar-up { position: absolute; inset-block: 0; inset-inline-start: 0; background: var(--green); }
+.ftfc-bar-dn { position: absolute; inset-block: 0; inset-inline-end: 0; background: var(--red); }
+.bc-cell.ftfc-cell .bc-right { flex: 0 0 auto; min-width: 66px; justify-content: flex-end; }
+.bc-chg { font-size: 15.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bc-chg.pos { color: var(--green); } .bc-chg.neg { color: var(--red); } .bc-chg.zero { color: var(--muted); }
+@media (max-width: 560px) { .bc-cell.ftfc-cell .bc-left { min-width: 128px; max-width: 128px; } }
 
 /* ---------- market page: SPY vs QQQ live charts (side by side) ---------- */
 .idx-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }

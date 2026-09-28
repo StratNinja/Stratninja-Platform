@@ -3871,7 +3871,7 @@
     const onChip = (on, id, lbl) => '<button class="chip' + (on ? " on" : "") + '" id="' + id + '">' + lbl + "</button>";
     const cnt = techActiveCount();
     let techInner = "";
-    if (techState.techOpen) {
+    if (true) {   // always render inner — the panel now lives inside a dropdown chip in the filter bar
       techInner = !hasTech
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
         : '<div class="frow tech-row">' +
@@ -3938,7 +3938,7 @@
     const mtfTypeSel = tf => multiComboHtml("mtft_" + tf, MTF_TYPE_OPTS, scanState.mtf[tf].t, "— כל —");
     const mtfColorSel = tf => '<select data-mtfc="' + tf + '">' + [["", "— כל"], ["up", "🟢 ירוק"], ["down", "🔴 אדום"]].map(o => '<option value="' + o[0] + '"' + (scanState.mtf[tf].c === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") + "</select>";
     let mtfInner = "";
-    if (scanState.mtfOpen) {
+    if (true) {   // always render inner — folded into a dropdown chip in the filter bar
       mtfInner = '<div class="mtf-rows">' + MTF_TFS.map(tf =>
         '<div class="mtf-cond"><span class="mtf-tf-lbl">' + MTF_TF_HE[tf] + "</span>" + mtfTypeSel(tf) + mtfColorSel(tf) + "</div>").join("") + "</div>" +
         '<div class="note" style="margin-top:8px;font-size:11px">💡 בחר סוג נר וצבע לכל טיימפריים בנפרד — <b>כולם צריכים להתקיים יחד</b>. לדוגמה: חודשי = <b>2U</b>, יומי = <b>2D + 🟢</b> (2D בקונפליקט). קונפליקט = 2D ירוק / 2U אדום. תנאים אלה מצטרפים לשאר הפילטרים.</div>';
@@ -3949,7 +3949,7 @@
     // ---- indicator scanners (compression / Bollinger / swing) — collapsible, stack AND on top of everything ----
     const indCnt = indActiveCount();
     let indInner = "";
-    if (scanState.indOpen) {
+    if (true) {   // always render inner — folded into a dropdown chip in the filter bar
       indInner = !hasTech
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
         : '<div class="frow tech-row">' +
@@ -4301,6 +4301,36 @@
       });
     });
     if (reopened) { const d = reopened.querySelector("details"); if (d) d.open = true; }
+    // ── fold the MTF / technical / indicator accordions into the SAME bar as wide dropdown chips ──
+    [["mtfToggle", "🔀 MTF"], ["techToggle", "📈 פילטרים טכניים"], ["indToggle", "🎯 אינדיקטורים"]].forEach(([id, fallbackName]) => {
+      const h3 = document.getElementById(id);
+      const p = h3 ? h3.closest(".panel.filters") : null;
+      if (!p || p === panel) return;
+      const titleSpan = h3.querySelector("span");
+      let name = fallbackName;
+      if (titleSpan) { const c = titleSpan.cloneNode(true); c.querySelectorAll(".badge-ftfc, .muted").forEach(s => s.remove()); name = (c.textContent || "").trim() || fallbackName; }
+      const active = !!h3.querySelector(".badge-ftfc");
+      const pop = document.createElement("div");
+      pop.className = "fpop fpop-wide fpop-panel";
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "fpop-btn";
+      btn.innerHTML = '<span class="fpop-dot"></span><span class="fpop-name"></span><span class="fpop-caret">▾</span>';
+      btn.querySelector(".fpop-name").textContent = name;
+      const body = document.createElement("div");
+      body.className = "fpop-body";
+      [...p.children].forEach(ch => { if (ch !== h3) body.appendChild(ch); });   // move inner (keep the h3 out)
+      frow.appendChild(pop); pop.appendChild(btn); pop.appendChild(body);
+      pop.dataset.fname = name;
+      if (active) pop.classList.add("active");
+      if (_fbarOpen === name) pop.classList.add("open");
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const wasOpen = pop.classList.contains("open");
+        frow.querySelectorAll(".fpop.open").forEach(x => x.classList.remove("open"));
+        if (wasOpen) { _fbarOpen = null; } else { pop.classList.add("open"); _fbarOpen = name; }
+      });
+      p.remove();   // drop the now-empty panel shell
+    });
     if (!document._fbarDocBound) {
       document._fbarDocBound = true;
       document.addEventListener("click", e => {
@@ -4871,13 +4901,18 @@
       '<span class="secftfc-sep muted">·</span>' +
       Object.keys(SEC_FTFC_SETS).map(k => { const tfs = SEC_FTFC_SETS[k], lbl = (k === "REALM" ? "NINJA REALM" : tfs.join("·"));
         return '<button class="secftfc-btn secftfc-preset' + (k === "REALM" ? " secftfc-realm" : "") + (_presetOn(tfs) ? " on" : "") + '" data-secftfset="' + k + '" title="בחירה מהירה · ' + tfs.join("·") + '">' + lbl + "</button>"; }).join("") + "</div>";
-    const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. הבר בכל כרטיס = הרכב ה-<b>FTFC</b> (המשכיות <b>' + TFLBL + '</b>): <span class="pos">🟢 המשכיות מעלה</span> · <span class="muted">⚪ ללא המשכיות</span> · <span class="neg">🔴 המשכיות מטה</span>. לחץ על סקטור לפירוט.</div></div>' + ftfcSwitch;
+    const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. <b>הפס</b> בכל כרטיס = יחס המניות בהמשכיות (<b>' + TFLBL + '</b>): <span class="pos">🟢 מעלה</span> · <span class="muted">אפור = ללא המשכיות</span> · <span class="neg">🔴 מטה</span>. <b>האחוז מימין</b> = תנועת הסקטור היום (לאן נכנס הכסף). לחץ על סקטור לפירוט.</div></div>' + ftfcSwitch;
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
     const bySec = {};
     SCAN.rows.forEach(r => { const s = r.sec || "אחר"; (bySec[s] = bySec[s] || []).push(r); });
     const liveMap = {}; if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => liveMap[s.name] = s);
+    // daily % move per sector / sub-sector ("why money went in"): real ETF move when live, else member average
+    const secChgLive = {}, subChgLive = {};
+    if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => { secChgLive[s.name] = s.chg; });
+    if (LIVE && LIVE.subsectors) LIVE.subsectors.forEach(s => { subChgLive[s.name] = s.chg; });
+    const _avgChg = members => { let cs = 0, cn = 0; members.forEach(m => { const c = (m.c != null ? m.c : (m.tech && m.tech.chg != null ? m.tech.chg : null)); if (c != null) { cs += c; cn++; } }); return cn ? cs / cn : null; };
     const names = Object.keys(bySec).filter(s => s !== "מדדים" && s !== "אחר").sort((a, b) => bySec[b].length - bySec[a].length);   // מדדים/אחר aren't real sectors — hide them
     // classify each main sector by its FTFC directional bias (of its FTFC stocks, more green or red?)
     const secInfo = names.map(name => {
@@ -4886,27 +4921,37 @@
       const fr = members.filter(m => secFtfcDir(m, TFS) === "down").length;
       const tot = members.length, ft = fg + fr;
       const bucket = ft === 0 ? "mid" : (fg / ft > 0.6 ? "bull" : (fg / ft < 0.4 ? "bear" : "mid"));
-      return { name, members, bucket, fg, fr, tot };
+      return { name, members, bucket, fg, fr, tot, avgChg: _avgChg(members) };
     });
     // ── strength ladder (battery-cell style) — like the money-flow / breadth pages ──
     // Metric = NET continuity of the WHOLE group: (🟢 up-aligned − 🔴 down-aligned) / total stocks.
     // This only reaches ±100% when EVERY stock is fully aligned — honest. (The old bias fg/(fg+fr) hid the
     // non-aligned stocks, so a group with 16🟢 0🔴 out of 27 showed a misleading "100%".)
-    const _ftfcColor = net => net >= 35 ? "#10b981" : net >= 15 ? "#2e6f4e" : net > -15 ? "#565d69" : net > -35 ? "#8f3b42" : "#e5384a";
     const _ftfcRow = o => {
-      const net = o.tot ? Math.round((o.fg - o.fr) / o.tot * 100) : 0;
+      const tot = o.tot || 0, fg = o.fg || 0, fr = o.fr || 0;
+      const upW = tot ? (fg / tot * 100) : 0, dnW = tot ? (fr / tot * 100) : 0;
       const chip = '<span class="bc-etf flow-etf' + (o.etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(o.etf || "") +
         '" data-secname="' + escAttr(o.rawname) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (o.etf ? o.etf + " ▾" : "▾") + "</span>";
-      return '<div class="bc-cell bc-clickable" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '" style="background:' + _ftfcColor(net) + '">' +
+      // proportion bar: 🟢 מניות בהמשכיות מעלה · אפור ניטרלי · 🔴 מטה
+      const bar = '<span class="ftfc-bar" title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
+        '<span class="ftfc-bar-up" style="width:' + upW.toFixed(1) + '%"></span>' +
+        '<span class="ftfc-bar-dn" style="width:' + dnW.toFixed(1) + '%"></span></span>';
+      // daily % move of the ASSET ("why money went in")
+      const c = o.chg;
+      const chgHtml = (c == null)
+        ? '<span class="bc-chg zero">—</span>'
+        : '<span class="bc-chg ' + (c > 0.05 ? "pos" : c < -0.05 ? "neg" : "zero") + '">' + (c >= 0 ? "+" : "") + c.toFixed(2) + "%</span>";
+      return '<div class="bc-cell ftfc-cell bc-clickable" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '">' +
         '<span class="bc-left">' + chip + '<span class="bc-name">' + o.name + "</span></span>" +
-        '<span class="bc-right"><span class="bc-pct">' + (net >= 0 ? "+" : "−") + Math.abs(net) + '%</span><span class="bc-usd">' + o.fg + "🟢 " + o.fr + "🔴 /" + o.tot + "</span></span></div>";
+        bar +
+        '<span class="bc-right">' + chgHtml + "</span></div>";
     };
     const _ftfcLadder = arr => {
       const key = o => o.tot ? (o.fg - o.fr) / o.tot : 0;
       const rows = arr.slice().sort((a, c) => key(c) - key(a) || (c.fg - c.fr) - (a.fg - a.fr));
       return rows.length ? rows.map(_ftfcRow).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
-    const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false }));
+    const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false, chg: (secChgLive[o.name] != null ? secChgLive[o.name] : o.avgChg) }));
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
@@ -4922,17 +4967,17 @@
       const bear = mem.filter(m => secFtfcDir(m, TFS) === "down").length; // FTFC aligned DOWN
       const bullPct = tot ? bull / tot * 100 : 0, bearPct = tot ? bear / tot * 100 : 0;
       const bucket = bullPct > 50 ? "bull" : (bearPct >= 50 ? "bear" : "mid");
-      return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "" };
+      return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "", avgChg: _avgChg(mem) };
     });
-    let subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true }));
+    let subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true, chg: (subChgLive[o.name] != null ? subChgLive[o.name] : o.avgChg) }));
     // keep the sub panel compact: the 16 with the most decisive FTFC lean (furthest from neutral)
     if (subArr.length > 16) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 16); }
     const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
-      '<div class="muted tdf-sub">אחוז נטו מכלל המניות בהמשכיות מלאה (' + TFLBL + '): 🟢 עולה − 🔴 יורדת · לחץ שורה למניות</div>' +
+      '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הסקטור היום · לחץ שורה למניות</div>' +
       '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArr) + "</div></div>";
     const subLadder = indNames.length
       ? '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · המשכיות</span></h3>' +
-        '<div class="muted tdf-sub">אחוז נטו מכלל המניות בהמשכיות מלאה (' + TFLBL + ') · לחץ ענף למניות</div>' +
+        '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הענף היום · לחץ ענף למניות</div>' +
         '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArr) + "</div></div>"
       : "";
     return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>";
