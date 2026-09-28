@@ -252,12 +252,38 @@ body[data-page="today"] .page-head .sub { font-size: 12px; line-height: 1.5; max
 body[data-page="today"] .panel { padding: 11px 14px; }
 body[data-page="today"] .panel h3 { margin: 0 0 5px; }
 body[data-page="today"] .td-flow .bcell-list, body[data-page="today"] .bcell-list { gap: 3px; margin-top: 6px; }
-body[data-page="today"] .bc-cell { min-height: 28px; padding: 0 11px; }
-body[data-page="today"] .flow-mode, body[data-page="today"] .flow-controls, body[data-page="today"] .sec-ftfc-switch { margin-bottom: 6px; }
-body[data-page="today"] .td-ixc { padding: 6px 10px; }
+body[data-page="today"] .bc-cell { min-height: 25px; padding: 0 11px; }   /* tightened to absorb the always-on Discord banner */
+body[data-page="today"] .bc-cell .bc-name { font-size: 13px; }
+body[data-page="today"] .bc-cell .bc-pct { font-size: 14px; }
+body[data-page="today"] .flow-mode, body[data-page="today"] .flow-controls, body[data-page="today"] .sec-ftfc-switch, body[data-page="today"] .flow-ctrl { margin-bottom: 6px; }
+body[data-page="today"] .flow-ctrl { padding: 7px 12px; }
+body[data-page="today"] .td-ixc, body[data-page="today"] .td-indices { padding: 6px 10px; }
+body[data-page="today"] .td-flow2 { gap: 10px; margin-bottom: 8px; }
+body[data-page="today"] .td-market-row { padding: 8px 14px; }
 @media (max-width: 900px) {
   body[data-page="sectors"] .guide-sec, body[data-page="today"] .guide-sec { display: block; }
 }
+
+/* ---------- S&P 500 map ('מפת מניות'): fit the sectors ladder + heat map in one screen ---------- */
+body[data-page="sp500"] .guide-sec { display: none; }
+body[data-page="sp500"] .page-head { margin: 2px 0 6px; }
+body[data-page="sp500"] .page-head h1 { font-size: 24px; }
+body[data-page="sp500"] .page-head .sub { font-size: 12px; line-height: 1.5; max-width: none; }
+body[data-page="sp500"] .sp-view-row, body[data-page="sp500"] .sp-view-switch { margin-bottom: 6px; }
+body[data-page="sp500"] .cm-insight { margin: 6px 0; padding: 7px 10px; }
+body[data-page="sp500"] .panel { padding: 10px 14px; }
+body[data-page="sp500"] .panel h3 { margin: 0 0 5px; }
+body[data-page="sp500"] .breadth-panel { padding: 9px 14px; }
+body[data-page="sp500"] .td-flow { padding: 10px 14px; }
+body[data-page="sp500"] .td-flow .tdf-head { margin: 0 0 2px; }
+body[data-page="sp500"] .td-flow .tdf-sub { font-size: 10.5px; margin-bottom: 4px; }
+body[data-page="sp500"] .td-flow2 { gap: 10px; margin-bottom: 8px; }
+body[data-page="sp500"] .bcell-list { gap: 3px; margin-top: 6px; }
+body[data-page="sp500"] .bc-cell { min-height: 26px; padding: 0 11px; }
+body[data-page="sp500"] .bc-cell .bc-name { font-size: 13px; }
+body[data-page="sp500"] .bc-cell .bc-pct { font-size: 14px; }
+body[data-page="sp500"] .bc-cell .bc-usd { font-size: 11px; }
+@media (max-width: 900px) { body[data-page="sp500"] .guide-sec { display: block; } }
 
 /* ---------- 'סקירת שוק' (market): compact so the whole cockpit fits one screen ---------- */
 body[data-page="market"] .guide-sec { display: none; }
@@ -282,8 +308,11 @@ body[data-page="market"] .idx-row { margin: 2px 0; }
 
 /* ---------- S&P 500 HEAT MAP (finviz-style sector treemap) ---------- */
 .sp-heat-panel { padding: 8px; }
-.sp-heat { position: relative; width: 100%; aspect-ratio: 1000 / 600; background: #0a0d12; border-radius: 10px; overflow: hidden; }
-@media (max-width: 720px) { .sp-heat { aspect-ratio: 3 / 4; } }
+/* height fitted to the viewport so the map never forces a scroll on wide screens; the squarified
+   treemap adapts tile aspect to whatever box it gets, so a fixed height keeps tiles near-square. */
+.sp-heat { position: relative; width: 100%; height: clamp(360px, calc(100vh - 250px), 940px);
+  background: #0a0d12; border-radius: 10px; overflow: hidden; }
+@media (max-width: 720px) { .sp-heat { height: 78vh; } }
 .hm-sec { position: absolute; display: flex; flex-direction: column; box-sizing: border-box; border: 2px solid #fff; overflow: hidden; }
 .hm-sec-tab { flex: 0 0 auto; background: #000; color: #fff; font-size: 11px; font-weight: 800; line-height: 1.45;
   padding: 1px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .2px; }

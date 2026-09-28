@@ -1328,7 +1328,7 @@
     const subMap = {};
     secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
     let subArr = Object.keys(subMap).map(k => subMap[k]).filter(o => o.total >= 4);
-    if (subArr.length > 16) subArr = subArr.slice().sort((a, c) => Math.abs(c.above / c.total * 100 - 50) - Math.abs(a.above / a.total * 100 - 50)).slice(0, 16);   // keep it compact: most extreme breadth
+    if (subArr.length > 11) subArr = subArr.slice().sort((a, c) => Math.abs(c.above / c.total * 100 - 50) - Math.abs(a.above / a.total * 100 - 50)).slice(0, 11);   // keep it compact (no-scroll): most extreme breadth
     const secGridBtn = '<button class="btn ghost" id="spSectorGrid" style="font-size:12px;font-weight:600" title="פתח את כל תעודות-הסל של הסקטורים בתצוגת גרפים">📊 כל הסקטורים בגרפים</button>';
     const sectorsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי אחוז המניות מעל הפתיחה · לחץ שורה לכל המניות</div>' +
