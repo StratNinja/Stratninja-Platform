@@ -3,43 +3,34 @@
   "use strict";
   const $ = s => document.querySelector(s);
 
-  // Versioned per-tab notice: closing it survives refreshes during this visit.
-  let designNoticeSeen = false;
-  function showDesignNotice(afterClose) {
-    const key = "sn-design-notice-2026-09";
-    let seen = designNoticeSeen;
-    try { seen = seen || sessionStorage.getItem(key) === "1"; } catch (_) {}
-    if (seen) { afterClose(); return; }
-    if (document.getElementById("snDesignNotice")) return;
-    const dialog = document.createElement("dialog");
-    dialog.id = "snDesignNotice";
-    dialog.className = "sn-design-notice";
-    dialog.dir = "rtl";
-    dialog.setAttribute("aria-labelledby", "snDesignNoticeTitle");
-    dialog.setAttribute("aria-describedby", "snDesignNoticeText");
-    dialog.innerHTML = '<button type="button" class="sn-design-notice-close" aria-label="סגירת ההודעה">×</button>' +
-      '<div class="sn-design-notice-label">StratNinja · עדכון האתר</div>' +
-      '<h2 id="snDesignNoticeTitle">אנחנו משדרגים את חוויית השימוש</h2>' +
-      '<p id="snDesignNoticeText">אנחנו מבצעים כעת עדכונים ושינויים עיצוביים באתר. במהלך העבודה ייתכנו שינויים במראה ובממשק.<br><br>מתנצלים על אי הנוחות הזמנית ותודה על הסבלנות!</p>' +
-      '<button type="button" class="btn primary sn-design-notice-confirm" autofocus>הבנתי, המשך לאתר</button>';
-    dialog.querySelectorAll("button").forEach(button => button.addEventListener("click", () => dialog.close()));
-    dialog.addEventListener("close", () => {
-      designNoticeSeen = true;
+  // Temporary "under renovation" ticker at the very top of every page (landing + app).
+  // Dismissible; the dismissal survives refreshes within this visit (sessionStorage).
+  function showRenovationBar() {
+    const key = "sn-reno-2026-09";
+    try { if (sessionStorage.getItem(key) === "1") return; } catch (_) {}
+    if (document.getElementById("snRenoBar")) return;
+    const msg = "🚧 האתר בשיפוצים — אנחנו משדרגים את חוויית השימוש · סליחה על אי הנוחות ותודה על הסבלנות 🚧";
+    const bar = document.createElement("div");
+    bar.id = "snRenoBar";
+    bar.className = "sn-reno-bar";
+    bar.dir = "rtl";
+    bar.setAttribute("role", "status");
+    bar.innerHTML =
+      '<div class="sn-reno-track"><span class="sn-reno-msg">' + msg + "</span>" +
+      '<span class="sn-reno-msg" aria-hidden="true">' + msg + "</span></div>" +
+      '<button type="button" class="sn-reno-x" aria-label="סגירת ההודעה">×</button>';
+    bar.querySelector(".sn-reno-x").addEventListener("click", () => {
+      bar.remove();
       try { sessionStorage.setItem(key, "1"); } catch (_) {}
-      dialog.remove();
-      afterClose();
-    }, { once: true });
-    document.body.appendChild(dialog);
-    dialog.showModal();
+    });
+    document.body.insertBefore(bar, document.body.firstChild);
   }
   function showApp() {
     $("#landing").classList.add("hidden");
     $("#appRoot").classList.remove("hidden");
     document.body.classList.add("in-app");
     // first-time users get the guided tour once (the 📖 button re-opens it anytime)
-    showDesignNotice(() => {
-      if (window.SNGuide && window.SNGuide.autoStartIfNew) window.SNGuide.autoStartIfNew();
-    });
+    if (window.SNGuide && window.SNGuide.autoStartIfNew) window.SNGuide.autoStartIfNew();
   }
   function showLanding() {
     $("#appRoot").classList.add("hidden");
@@ -92,6 +83,8 @@
 
     if (SNAuth.isCloud() && SNAuth.user()) { showApp(); renderUserArea(SNAuth.user()); }
     else { showLanding(); renderUserArea(null); }
+
+    showRenovationBar();   // temporary "under renovation" top ticker, site-wide
 
     SNAuth.onChange(user => {
       if (user) { showApp(); renderUserArea(user); }
