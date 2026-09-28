@@ -993,6 +993,57 @@
     }
   }
 
+  // ========== MARKET BREADTH — % of stocks above their moving averages (oversold radar) ==========
+  // Low readings = many stocks BELOW their MAs = washed-out / oversold → historically a buy zone.
+  // Symbols are TradingView breadth indices (verified): S5xx = S&P 500, NDxx = Nasdaq 100.
+  let breadthUni = "sp";
+  const BREADTH_SETS = {
+    sp:  { name: "S&P 500",    syms: [["S5TW", "20"], ["S5FI", "50"], ["S5OH", "100"], ["S5OF", "150"], ["S5TH", "200"]] },
+    ndx: { name: "Nasdaq 100", syms: [["NDTW", "20"], ["NDFI", "50"], ["NDOH", "100"], ["NDOF", "150"], ["NDTH", "200"]] },
+  };
+  function renderBreadth() {
+    const set = BREADTH_SETS[breadthUni] || BREADTH_SETS.sp;
+    const uniSwitch = '<div class="uni-switch"><span class="uni-lbl">מדד:</span>' +
+      '<button class="uni-btn' + (breadthUni === "sp" ? " on" : "") + '" data-brduni="sp">S&P 500</button>' +
+      '<button class="uni-btn' + (breadthUni === "ndx" ? " on" : "") + '" data-brduni="ndx">Nasdaq 100</button></div>';
+    const cells = set.syms.map(([sym, lbl], i) =>
+      '<div class="idx-chart"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + lbl + ' ימים</span> <span class="muted" style="font-weight:600;font-size:11px">· ' + sym + "</span></div>" +
+      '<div id="bw' + i + '" class="tvchart"><div class="muted tvfallback">טוען גרף…</div></div></div>').join("");
+    return (
+      '<div class="page-head"><h1>רוחב שוק · מתחת לממוצעים</h1><div class="sub">כמה מהמניות ב-<b>' + set.name + '</b> נמצאות <b>מעל</b> הממוצע הנע שלהן (20 / 50 / 100 / 150 / 200 יום). ' +
+        '<b class="pos">קריאה נמוכה</b> = הרבה מניות <b>מתחת</b> לממוצעים = אזור <b>oversold</b> — שלפי הבדיקות שלנו נוטה להיות <b>אזור קנייה</b>. ' +
+        'ככל שיותר מדדים (קצר <u>וגם</u> ארוך טווח) נמוכים יחד — הרחיצה עמוקה יותר.</div></div>' +
+      uniSwitch +
+      '<div class="brd-charts">' + cells + "</div>" +
+      '<div class="note" style="margin-top:10px;font-size:11px">💡 המדדים מוצגים כ<b>אחוז המניות מעל הממוצע</b> (0–100). קריאות קיצון נמוכות (למשל מתחת ל-15–20 ברוב הטווחים) הן היסטורית אזורי תחתית/קנייה, וקריאות גבוהות (מעל 80) הן overbought. אינו ייעוץ השקעות.</div>'
+    );
+  }
+  function wireBreadth() {
+    document.querySelectorAll("[data-brduni]").forEach(b => b.onclick = () => { if (breadthUni === b.dataset.brduni) return; breadthUni = b.dataset.brduni; reRender(); });
+    mountBreadthCharts();
+  }
+  function mountBreadthCharts() {
+    if (!document.getElementById("bw0")) return;
+    _loadTV().then(() => {
+      const theme = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+      (BREADTH_SETS[breadthUni] || BREADTH_SETS.sp).syms.forEach(([sym], i) => {
+        const el = document.getElementById("bw" + i);
+        if (!el) return;
+        el.innerHTML = "";
+        try {
+          new TradingView.widget({
+            container_id: "bw" + i, symbol: sym, interval: "D", timezone: "America/New_York",
+            theme: theme, style: "1", locale: "he_IL", autosize: true,
+            hide_side_toolbar: true, allow_symbol_change: false, save_image: false, withdateranges: true,
+            backgroundColor: theme === "light" ? "#ffffff" : "#12171f",
+          });
+        } catch (e) { el.innerHTML = '<div class="muted tvfallback">הגרף לא זמין כרגע</div>'; }
+      });
+    }).catch(() => {
+      (BREADTH_SETS[breadthUni] || BREADTH_SETS.sp).syms.forEach((_, i) => { const el = document.getElementById("bw" + i); if (el) el.innerHTML = '<div class="muted tvfallback">הגרף לא זמין כרגע</div>'; });
+    });
+  }
+
   // ========== S&P 500 BREADTH ==========
   // color a tile by daily % move: neutral → green (up) / red (down); darker = stronger move
   function chgColor(c) {
@@ -6491,6 +6542,7 @@
     sp500: { render: renderSp500, wire: wireSp500 },
     scanner: { render: renderScanner, wire: wireScanner },
     sectors: { render: renderSectors, wire: wireSectors },
+    breadth: { render: renderBreadth, wire: wireBreadth },
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
     learn: { render: renderLearn, wire: wireLearn },
@@ -6539,7 +6591,7 @@
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); }
     if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today") { loadScanner(); if (state.page === "today") { loadLive(); loadFlow(); } }
     // on any chart-capable page, warm the TradingView library in the background so grids open fast
-    if (["scanner", "sectors", "sp500", "today", "gappers", "favorites"].indexOf(state.page) >= 0) warmTradingView();
+    if (["scanner", "sectors", "sp500", "today", "gappers", "favorites", "breadth", "market"].indexOf(state.page) >= 0) warmTradingView();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
     snTrack("page:" + state.page);   // usage analytics — which pages get visited
   }

@@ -175,6 +175,12 @@ body[data-page="sectors"] .bc-chg { font-size: 13px; }
 .tvfallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
 @media (max-width: 900px) { .idx-charts { grid-template-columns: 1fr; } .tvchart { height: 340px; } }
 
+/* ---------- market breadth page: grid of % above MA charts ---------- */
+.brd-charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-top: 8px; }
+.brd-charts .idx-chart { min-width: 0; }
+.brd-charts .tvchart { height: 360px; }
+@media (max-width: 720px) { .brd-charts { grid-template-columns: 1fr; } .brd-charts .tvchart { height: 300px; } }
+
 /* ---------- broadcast mode (larger, for live streaming / screen-share) ---------- */
 body.sn-broadcast .scan-table { font-size: 20px; }
 body.sn-broadcast .scan-table td { padding: 19px 12px; }
