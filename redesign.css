@@ -64,6 +64,32 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
   border-color: transparent; color: #fff;
 }
 
+/* ---------- compact filter bar: each filter group collapses into a dropdown chip ---------- */
+.filters.fbar > .frow { display: flex; flex-wrap: wrap; gap: 9px; align-items: flex-start; }
+.filters.fbar .fpop { position: relative; }
+.filters.fbar .fpop-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px;
+  padding: 8px 14px; border-radius: 11px; background: var(--panel2); border: 1px solid var(--line);
+  color: var(--ink); font-size: 13.5px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: .15s; }
+.filters.fbar .fpop-btn:hover { border-color: var(--muted); }
+.filters.fbar .fpop-caret { color: var(--muted); font-size: 10px; margin-inline-start: 2px; }
+.filters.fbar .fpop-dot { width: 7px; height: 7px; border-radius: 50%; background: transparent; }
+.filters.fbar .fpop.active .fpop-dot { background: var(--lux-g2); box-shadow: 0 0 0 3px rgba(23,192,138,.18); }
+.filters.fbar .fpop.active .fpop-btn { border-color: var(--lux-g2); color: var(--ink); }
+.filters.fbar .fpop.open .fpop-btn { border-color: var(--lux-g2); box-shadow: 0 0 0 2px rgba(23,192,138,.22); }
+.filters.fbar .fpop.open .fpop-caret { transform: rotate(180deg); }
+.filters.fbar .fpop-body { position: absolute; z-index: 70; top: calc(100% + 7px); inset-inline-start: 0;
+  min-width: 240px; max-width: min(94vw, 380px); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 14px; padding: 15px; box-shadow: 0 12px 40px rgba(0,0,0,.5); display: none; }
+.filters.fbar .fpop.fpop-wide .fpop-body { max-width: min(94vw, 620px); }
+.filters.fbar .fpop.open .fpop-body { display: block; }
+.filters.fbar .fpop-body > .fgrp { min-width: 0; margin: 0; }
+.filters.fbar .fpop-body > .fgrp > label { display: block; font-size: 12.5px; color: var(--muted); font-weight: 700; margin-bottom: 9px; }
+/* the seq builder details, inside its popover, is already expanded — hide its redundant summary caret hint */
+.filters.fbar .fpop-body .seq-summary { list-style: none; }
+@media (max-width: 700px) {
+  .filters.fbar .fpop-body { position: fixed; inset-inline: 12px auto; left: 12px; right: 12px; min-width: 0; max-width: none; }
+}
+
 /* ---------- market page: SPY vs QQQ live charts (side by side) ---------- */
 .idx-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }
 .idx-chart { display: flex; flex-direction: column; gap: 8px; min-width: 0; }

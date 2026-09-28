@@ -77,7 +77,7 @@
         const note = $("#modeNote");
         if (note) {
           note.classList.remove("hidden");
-          note.innerHTML = 'מצב ענן פעיל · <a href="#" id="devEnter" style="color:#b3a9e8">כניסה למצב פיתוח (ללא התחברות)</a>';
+          note.innerHTML = 'מצב ענן פעיל · <a href="#" id="devEnter" style="color:#cfd6e2">כניסה למצב פיתוח (ללא התחברות)</a>';
           const dev = note.querySelector("#devEnter");
           if (dev) dev.onclick = e => { e.preventDefault(); showApp(); };
         }

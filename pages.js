@@ -3105,7 +3105,7 @@
       ctx.fillStyle = "#0f1420"; ctx.fillRect(0, 0, out.width, out.height);
       ctx.drawImage(cv, 0, 0);
       ctx.fillStyle = "#131a2b"; ctx.fillRect(0, cv.height, w, fh);
-      ctx.fillStyle = "#7c6cf0"; ctx.fillRect(0, cv.height, Math.round(6 * k), fh);
+      ctx.fillStyle = "#17c08a"; ctx.fillRect(0, cv.height, Math.round(6 * k), fh);
       ctx.textBaseline = "middle"; ctx.textAlign = "right"; ctx.direction = "rtl";
       ctx.fillStyle = "#ffffff"; ctx.font = "800 " + Math.round(36 * k) + "px Rubik, Arial";
       ctx.fillText("StratNinja Scanner", w - 40 * k, cv.height + fh / 2 - 20 * k);
@@ -4251,6 +4251,65 @@
       return true;
     });
   }
+  // ---- compact filter bar: collapse the main filters panel's groups into dropdown chips ----
+  // Keeps every existing control + its wiring (nodes are MOVED, never re-created), so no logic changes.
+  let _fbarOpen = null;          // label of the group whose popover is open (persists across re-renders)
+  function _fgrpActive(fgrp) {
+    // a "selected" chip counts as active UNLESS it's a neutral "all/off" default (צבע נר=הכל, יקום=הכל)
+    if (fgrp.querySelector('.chip.on:not([data-dir="all"]):not([data-scanuni="all"]), .seq-cc.on, .seq-col.on')) return true;
+    if ([...fgrp.querySelectorAll("input")].some(i => (i.value || "").trim() !== "")) return true;
+    if ([...fgrp.querySelectorAll("select")].some(s => s.selectedIndex > 0)) return true;
+    if (fgrp.querySelector(".combo-opt-m.on")) return true;   // active multi-combo selection
+    return false;
+  }
+  function enhanceFilterBar() {
+    // the MAIN filters panel is the .panel.filters that holds the timeframe buttons ([data-tff])
+    const tff = document.querySelector("#page [data-tff]");
+    const panel = tff ? tff.closest(".panel.filters") : null;
+    const frow = panel ? panel.querySelector(":scope > .frow") : null;
+    if (!frow || panel.classList.contains("fbar")) return;
+    panel.classList.add("fbar");
+    let reopened = null;
+    [...frow.children].forEach(fgrp => {
+      if (!fgrp.classList || !fgrp.classList.contains("fgrp")) return;
+      const label = fgrp.querySelector(":scope > label, :scope > details > summary");
+      let name = "סינון";
+      if (label) {
+        const lc = label.cloneNode(true);
+        lc.querySelectorAll(".muted, .seq-sumname").forEach(s => s.remove());
+        name = (lc.textContent || "").replace(/·.*$/, "").trim() || "סינון";
+      }
+      const pop = document.createElement("div");
+      pop.className = "fpop" + (fgrp.classList.contains("fgrp-seq") ? " fpop-wide" : "");
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "fpop-btn";
+      btn.innerHTML = '<span class="fpop-dot"></span><span class="fpop-name"></span><span class="fpop-caret">▾</span>';
+      btn.querySelector(".fpop-name").textContent = name;
+      const body = document.createElement("div");
+      body.className = "fpop-body";
+      frow.insertBefore(pop, fgrp);
+      pop.appendChild(btn); pop.appendChild(body); body.appendChild(fgrp);
+      if (_fgrpActive(fgrp)) pop.classList.add("active");
+      pop.dataset.fname = name;
+      if (_fbarOpen === name) { pop.classList.add("open"); reopened = pop; }
+      btn.addEventListener("click", e => {
+        e.stopPropagation();
+        const wasOpen = pop.classList.contains("open");
+        frow.querySelectorAll(".fpop.open").forEach(p => p.classList.remove("open"));
+        if (wasOpen) { _fbarOpen = null; }
+        else { pop.classList.add("open"); _fbarOpen = name; const d = pop.querySelector("details"); if (d) d.open = true; }
+      });
+    });
+    if (reopened) { const d = reopened.querySelector("details"); if (d) d.open = true; }
+    if (!document._fbarDocBound) {
+      document._fbarDocBound = true;
+      document.addEventListener("click", e => {
+        if (e.target.closest(".fpop") || e.target.closest(".combo-list")) return;
+        document.querySelectorAll(".fpop.open").forEach(p => p.classList.remove("open"));
+        _fbarOpen = null;
+      });
+    }
+  }
   function wireScanner() {
     document.querySelectorAll("[data-tff]").forEach(b => b.onclick = e => { if (e.target && e.target.dataset && e.target.dataset.rmtf) return; const f = b.dataset.tff, i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); else scanState.tfs.push(f); reRender(); });
     document.querySelectorAll("[data-rmtf]").forEach(x => x.onclick = e => { e.stopPropagation(); const f = x.dataset.rmtf; scanState.tfsExtra = scanState.tfsExtra.filter(t => t !== f); const i = scanState.tfs.indexOf(f); if (i >= 0) scanState.tfs.splice(i, 1); reRender(); });
@@ -4402,6 +4461,7 @@
       copyToClipboard(syms, () => { copy.textContent = "✓ הועתקו " + rows.length; setTimeout(() => copy.textContent = orig, 1600); });
     };
     markActiveFilters();
+    enhanceFilterBar();   // collapse the main filters panel into a compact bar of dropdown chips
   }
 
   // Green halo around every control whose value is non-neutral (i.e. actually filtering).
