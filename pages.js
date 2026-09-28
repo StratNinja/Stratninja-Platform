@@ -5151,7 +5151,7 @@
     });
     let subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true, chg: (subChgLive[o.name] != null ? subChgLive[o.name] : o.avgChg) }));
     // keep the sub panel compact: the 16 with the most decisive FTFC lean (furthest from neutral)
-    if (subArr.length > 16) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 16); }
+    if (subArr.length > 12) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 12); }
     const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
       '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הסקטור היום · לחץ שורה למניות</div>' +
       '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArr) + "</div></div>";
@@ -5699,7 +5699,7 @@
 
     // "where the money flows" — sectors + sub-sectors ladders, both driven by the ONE control above.
     const sectorsPanel = _flowPanelHtml({ title: "🗂️ לאן הכסף זורם — סקטורים", tf: flowTf, data: todaySectors(rows), isSub: false, mode: flowSecMode });
-    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTf, data: todaySubsectors(rows), isSub: true, mode: flowSecMode, limit: 14 });
+    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTf, data: todaySubsectors(rows), isSub: true, mode: flowSecMode, limit: 11 });
 
     return head + (isLive ? liveBanner() : DEMO) +
       indicesPanel + marketPanel + flowControls +
