@@ -1065,29 +1065,26 @@
     const zone = (a, b, c) => '<rect x="' + padL + '" y="' + y(b).toFixed(1) + '" width="' + iw + '" height="' + (y(a) - y(b)).toFixed(1) + '" fill="' + c + '"/>';
     const gl = (v, c, dash) => '<line x1="' + padL + '" y1="' + y(v).toFixed(1) + '" x2="' + (padL + iw) + '" y2="' + y(v).toFixed(1) + '" stroke="' + c + '" stroke-width="1" vector-effect="non-scaling-stroke"' + (dash ? ' stroke-dasharray="3 3"' : "") + ' opacity="0.5"/>';
     const col = cur != null ? (cur <= 25 ? "#17c08a" : cur >= 75 ? "#e0524f" : (cur >= 45 && cur <= 55 ? "#e6b800" : "var(--ink)")) : "var(--ink)";
-    return '<svg class="brd-svg" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
+    const svg = '<svg class="brd-svg" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none">' +
       zone(0, 25, "rgba(23,192,138,.13)") + zone(75, 100, "rgba(224,82,79,.13)") +
       gl(0, "rgba(255,255,255,.28)") + gl(25, "#17c08a") + gl(50, "#e6b800", 1) + gl(75, "#e0524f") + gl(100, "rgba(255,255,255,.28)") +
       '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>' +
       (n ? '<circle cx="' + x(n - 1).toFixed(1) + '" cy="' + y(series[n - 1].v).toFixed(1) + '" r="2.6" fill="' + col + '" vector-effect="non-scaling-stroke"/>' : "") +
       "</svg>";
+    // hover overlay: highlight a zone + show its range (0~25% green / 50% yellow / 75~100% red)
+    const hz = '<span class="brd-hz brd-hz-red" data-r="75~100%"></span>' +
+      '<span class="brd-hz brd-hz-yel" data-r="50%"></span>' +
+      '<span class="brd-hz brd-hz-grn" data-r="0~25%"></span>';
+    return '<div class="brd-plot">' + svg + hz + "</div>";
   }
-  function renderBreadth() {
-    const uni = breadthUni, name = uni === "sp" ? "S&P 500" : "Nasdaq 100";
+  function _brdSection(uni, name) {
     const readings = _brdReadings(uni), st = _brdState(readings);
-    const stateBadge = st ? '<span class="brd-state ' + st.cls + '" title="שקלול כל 5 הממוצעים, משקל כבד יותר לארוכים (200/150)">מצב ' + name + ": " + st.lbl + " · " + st.score + "%</span>" : "";
-    const uniSwitch = '<div class="uni-switch brd-top"><span class="uni-lbl">מדד:</span>' +
-      '<button class="uni-btn' + (uni === "sp" ? " on" : "") + '" data-brduni="sp">S&P 500</button>' +
-      '<button class="uni-btn' + (uni === "ndx" ? " on" : "") + '" data-brduni="ndx">Nasdaq 100</button>' + stateBadge + "</div>";
+    const stateBadge = st ? '<span class="brd-state ' + st.cls + '" title="שקלול 5 הממוצעים, משקל כבד יותר לארוכים (200/150)">' + st.lbl + ' · ' + st.score + "%</span>" : "";
     const ex = _brd52wCounts(uni);
-    const exStrip = ex
-      ? '<div class="brd-extremes"><span class="be-hi">📈 <b>' + ex.hi + '</b> מניות בשיא 52 שבועות</span>' +
-        '<span class="be-lo">📉 <b>' + ex.lo + '</b> בשפל 52 שבועות</span>' +
-        '<span class="muted" style="font-weight:600">מתוך ' + ex.tot + ' · S&P 500 · חי</span></div>'
-      : "";
+    const exStrip = ex ? '<span class="brd-extremes"><span class="be-hi">📈 <b>' + ex.hi + '</b> בשיא 52ש׳</span><span class="be-lo">📉 <b>' + ex.lo + '</b> בשפל 52ש׳</span></span>' : "";
     const data = BREADTH_DATA && BREADTH_DATA[uni];
     const haveOurs = data && BRD_MAS.some(n => (data[n] || []).length > 2);
-    let charts, foot;
+    let charts;
     if (haveOurs) {
       charts = '<div class="brd-charts">' + BRD_MAS.map(n => {
         let s = (data[n] || []).slice();
@@ -1097,23 +1094,20 @@
           (cur != null ? '<span class="brd-cur ' + _brdZoneCls(cur) + '">' + cur.toFixed(0) + "%</span>" : "") + "</div>" +
           _brdChartSvg(s, cur) + "</div>";
       }).join("") + "</div>";
-      foot = '<div class="note" style="margin-top:10px;font-size:11px">💡 <b>ירוק (≤25%)</b> = מעט מניות מעל הממוצע = oversold/אזור קנייה · <b>צהוב (~50%)</b> ניטרלי · <b>אדום (≥75%)</b> overbought. הגרפים שלנו — מתעדכנים תוך-יומי (S&P חי מהסורק). אינו ייעוץ השקעות.</div>';
     } else {
-      charts = '<div class="brd-charts">' + BREADTH_TV[uni].map(([sym, lbl], i) =>
-        '<div class="brd-chart"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + lbl + ' ימים</span></div><div id="bw' + i + '" class="tvchart"><div class="muted tvfallback">טוען…</div></div></div>').join("") + "</div>";
-      foot = '<div class="note" style="margin-top:10px;font-size:11px">⏳ מוצגים גרפי TradingView זמנית — <b>הגרסה החיה שלנו</b> (מתעדכנת תוך-יומי) תופיע אחרי עדכון השרת הבא.</div>';
+      charts = '<div class="note" style="margin:6px 0 4px">טוען נתונים… (יופיע אחרי הסריקה הבאה בשרת)</div>';
     }
-    return (
-      '<div class="page-head"><h1>רוחב שוק · מעל הממוצעים</h1><div class="sub">כמה מהמניות ב-<b>' + name + '</b> נמצאות <b>מעל</b> הממוצע הנע שלהן (20 / 50 / 100 / 150 / 200 יום). ' +
-        '<b class="pos">קריאה נמוכה</b> = <b>מעט</b> מניות מעל הממוצעים = אזור <b>oversold</b> — שלפי הבדיקות שלנו נוטה להיות <b>אזור קנייה</b>. ' +
-        'ככל שיותר מדדים (קצר <u>וגם</u> ארוך טווח) נמוכים יחד — הרחיצה עמוקה יותר.</div></div>' +
-      uniSwitch + exStrip + charts + foot
-    );
+    return '<div class="brd-section"><div class="brd-sec-head"><h2>' + name + "</h2>" + stateBadge + exStrip + "</div>" + charts + "</div>";
+  }
+  function renderBreadth() {
+    const header = '<div class="page-head"><h1>רוחב שוק · מעל הממוצעים</h1><div class="sub">כמה מהמניות בכל מדד נמצאות <b>מעל</b> הממוצע הנע שלהן (20 / 50 / 100 / 150 / 200 יום). ' +
+      '<b class="pos">קריאה נמוכה</b> = <b>מעט</b> מניות מעל הממוצעים = אזור <b>oversold</b> (נוטה להיות אזור קנייה). <b class="pos">ירוק ≤25%</b> · צהוב ~50% · <b class="neg">אדום ≥75%</b>.</div></div>';
+    const sections = _brdSection("sp", "S&P 500") + _brdSection("ndx", "Nasdaq 100");
+    const foot = '<div class="note" style="margin-top:6px;font-size:11px">💡 הגרפים שלנו — 180 יום, מתעדכנים תוך-יומי (S&P חי מהסורק). אינו ייעוץ השקעות.</div>';
+    return header + sections + foot;
   }
   function wireBreadth() {
-    document.querySelectorAll("[data-brduni]").forEach(b => b.onclick = () => { if (breadthUni === b.dataset.brduni) return; breadthUni = b.dataset.brduni; reRender(); });
     if (!BREADTH_DATA) loadBreadth();
-    if (document.getElementById("bw0")) mountBreadthCharts();   // TV fallback only
   }
   function mountBreadthCharts() {
     if (!document.getElementById("bw0")) return;
