@@ -888,6 +888,56 @@
         (dt ? '<span class="ic-cndl ' + dCls + '">' + dt + "</span>" : "") + "</div>";
     }).join("") + "</div>";
   }
+  // ---- Index charts (SPY vs QQQ) — embedded TradingView, live & interactive ----
+  let _tvLoading = null;
+  function _loadTV() {
+    if (window.TradingView && window.TradingView.widget) return Promise.resolve();
+    if (_tvLoading) return _tvLoading;
+    _tvLoading = new Promise((res, rej) => {
+      const s = document.createElement("script");
+      s.src = "https://s3.tradingview.com/tv.js"; s.async = true;
+      s.onload = () => res(); s.onerror = () => { _tvLoading = null; rej(new Error("tv")); };
+      document.head.appendChild(s);
+    });
+    return _tvLoading;
+  }
+  function indexChartsPanel() {
+    const cell = (id, sub, sym) =>
+      '<div class="idx-chart"><div class="idx-chart-lbl">' + sub +
+      ' <span class="idx-chart-sym">' + sym + '</span></div>' +
+      '<div id="' + id + '" class="tvchart"><div class="muted tvfallback">טוען גרף…</div></div></div>';
+    return '<div class="panel idx-charts-panel"><h3>📈 מדדים מובילים · SPY מול QQQ</h3>' +
+      '<div class="idx-charts">' +
+        cell("tvSpy", "S&amp;P 500", "SPY") +
+        cell("tvQqq", "Nasdaq 100", "QQQ") +
+      "</div></div>";
+  }
+  function mountIndexCharts() {
+    if (!document.getElementById("tvSpy")) return;
+    _loadTV().then(() => {
+      const theme = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+      const specs = [["tvSpy", "AMEX:SPY"], ["tvQqq", "NASDAQ:QQQ"]];
+      specs.forEach(([id, sym]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = "";
+        try {
+          new TradingView.widget({
+            container_id: id, symbol: sym, interval: "D", timezone: "America/New_York",
+            theme: theme, style: "1", locale: "he_IL", autosize: true,
+            hide_side_toolbar: true, allow_symbol_change: false, save_image: false,
+            withdateranges: true, hide_volume: false,
+            backgroundColor: theme === "light" ? "#ffffff" : "#12171f"
+          });
+        } catch (e) { el.innerHTML = '<div class="muted tvfallback">הגרף לא זמין כרגע</div>'; }
+      });
+    }).catch(() => {
+      ["tvSpy", "tvQqq"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '<div class="muted tvfallback">הגרף לא זמין כרגע</div>';
+      });
+    });
+  }
   function renderMarket() {
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
@@ -904,7 +954,7 @@
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
         marketCockpit() +
         indexCards() +
-        candleMapPanel() +
+        indexChartsPanel() +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-rank-grid">' +
           '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + mkLead(LIVE ? (mktU().sectorLeaders || []).slice(0, 5) : dSecUp, "up", true) + "</div>" +
@@ -917,6 +967,7 @@
     );
   }
   function wireMarket() {
+    mountIndexCharts();   // embed the live SPY/QQQ TradingView charts
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }

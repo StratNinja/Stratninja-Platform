@@ -39,6 +39,42 @@ body { font-family: 'Heebo', 'Rubik', 'Segoe UI', 'Assistant', Arial, sans-serif
 #page .chip { border-radius: 9px; padding: 9px 13px; font-size: 13.5px; }
 .filters select, .filters input { min-height: 42px; font-size: 14px; }
 
+/* ---------- luxury emerald replaces the old Discord-violet on active toggles ---------- */
+/* one brand green for every "on" accent button, so the UI reads uniform + premium (no purple). */
+:root { --lux-g1:#0c9160; --lux-g2:#17c08a; --lux-gsoft:rgba(23,192,138,.5); }
+html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(18,176,125,.5); }
+.uni-btn.on,
+.secftfc-btn.on,
+.flow-tf-btn.on {
+  background: linear-gradient(90deg, var(--lux-g1), var(--lux-g2));
+  border-color: transparent; color: #fff;
+}
+/* filled "selected/active" states were graphite (looked like a washed light-gray pill) → emerald */
+#page .chip.on, .chip.on,
+.btn.primary {
+  background: linear-gradient(90deg, var(--lux-g1), var(--lux-g2));
+  border-color: transparent; color: #fff;
+}
+.btn.primary:hover { filter: brightness(1.06); }
+
+/* NINJA REALM stays a touch richer/brighter so it still feels special */
+.secftfc-btn.secftfc-realm { border-color: var(--lux-gsoft); color: #8fe3c1; }
+.secftfc-btn.secftfc-realm.on {
+  background: linear-gradient(90deg, #0a7d52, #16c893);
+  border-color: transparent; color: #fff;
+}
+
+/* ---------- market page: SPY vs QQQ live charts (side by side) ---------- */
+.idx-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }
+.idx-chart { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.idx-chart-lbl { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .3px; }
+.idx-chart-lbl .idx-chart-sym { color: var(--ink); font-weight: 800; margin-inline-start: 4px; }
+.tvchart { position: relative; height: 430px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--line); background: var(--panel2); }
+.tvchart iframe { border-radius: 12px; }
+.tvfallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+@media (max-width: 900px) { .idx-charts { grid-template-columns: 1fr; } .tvchart { height: 340px; } }
+
 /* ---------- broadcast mode (larger, for live streaming / screen-share) ---------- */
 body.sn-broadcast .scan-table { font-size: 20px; }
 body.sn-broadcast .scan-table td { padding: 19px 12px; }
