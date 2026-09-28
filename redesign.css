@@ -97,6 +97,20 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
   .filters.fbar .fpop.fpop-panel .fpop-body { max-width: none; }
 }
 
+/* ---------- favorites alert cell: truncate long preset names + collapse many into 🔔 N ---------- */
+.fav-alert-chip { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-flex; align-items: center; vertical-align: middle; }
+.fav-alert-multi { position: relative; display: inline-block; vertical-align: middle; cursor: default; outline: none; }
+.fav-alert-count { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700;
+  padding: 3px 10px; border-radius: 8px; white-space: nowrap;
+  background: rgba(23,192,138,.16); color: var(--ink); border: 1px solid rgba(23,192,138,.4); }
+.fav-alert-multi:hover .fav-alert-count, .fav-alert-multi:focus-within .fav-alert-count { border-color: var(--lux-g2); }
+.fav-alert-pop { display: none; position: absolute; z-index: 60; top: calc(100% + 5px); inset-inline-start: 0;
+  min-width: 170px; max-width: 280px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 11px; padding: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.fav-alert-multi:hover .fav-alert-pop, .fav-alert-multi:focus-within .fav-alert-pop { display: flex; flex-direction: column; gap: 5px; }
+.fav-alert-pop .fav-alert-chip { max-width: none; }
+
 /* ---------- column picker: base + optional groups ---------- */
 .col-picker .col-grp-lbl { font-size: 11px; font-weight: 700; opacity: .7; margin-inline-start: 4px; }
 .col-picker .col-sep { display: inline-block; width: 1px; height: 18px; background: var(--line); margin: 0 6px; vertical-align: middle; }

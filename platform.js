@@ -92,7 +92,7 @@
     if (SNAuth.isCloud() && SNAuth.user()) { showApp(); renderUserArea(SNAuth.user()); }
     else { showLanding(); renderUserArea(null); }
 
-    showRenovationBar();   // temporary "under renovation" top ticker, site-wide
+    // showRenovationBar();   // removed — the redesign is now live, so the "under renovation" notice is retired
     stripNavEmojis();      // clean, icon-free sidebar for the premium look
 
     SNAuth.onChange(user => {

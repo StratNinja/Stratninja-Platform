@@ -5554,8 +5554,7 @@
     return head + (isLive ? liveBanner() : DEMO) +
       indicesPanel + marketPanel + flowControls +
       '<div class="td-flow2">' + sectorsPanel + subsPanel + "</div>" +
-      flowAnalysisPanel() +
-      '<div class="note" style="margin-top:6px;font-size:11px">💡 הכפתור למעלה שולט בשתי הטבלאות: <u>תעודת סל</u> = תנועת ה-ETF (משוקלל שווי) · <u>ממוצע ענף</u> = ממוצע המניות (רוחב) · והטווח 1D/5D/20D. הניתוח למטה נוצר אוטומטית ע"י AI — לא ייעוץ השקעות.</div>';
+      '<div class="note" style="margin-top:6px;font-size:11px">💡 הכפתור למעלה שולט בשתי הטבלאות: <u>תעודת סל</u> = תנועת ה-ETF (משוקלל שווי) · <u>ממוצע ענף</u> = ממוצע המניות (רוחב) · והטווח 1D/5D/20D.</div>';
   }
   // AI narrative: where money is flowing OUT / IN and whether the reason is known (from market_snapshot id='flow')
   function flowAnalysisPanel() {
@@ -5809,7 +5808,12 @@
         // alert info as a real COLUMN. LIVE match → active chips + share. Fired-earlier-but-out-of-range →
         // a faded "נורתה HH:MM · לא בטווח כעת" note (honest history, not a live signal). Dismissible either way.
         const alertCell = pm.length
-          ? '<td class="fav-alert-cell" style="text-align:start">' + pm.map(n => '<span class="fav-alert-chip">🔔 ' + escHtml(n) + "</span>").join("") + pmChip +
+          ? '<td class="fav-alert-cell" style="text-align:start">' +
+            (pm.length === 1
+              ? '<span class="fav-alert-chip" title="' + escAttr(pm[0]) + '">🔔 ' + escHtml(pm[0]) + "</span>"
+              : '<span class="fav-alert-multi" tabindex="0" title="' + escAttr(pm.length + " התראות · " + pm.join(" · ")) + '"><span class="fav-alert-count">🔔 ' + pm.length + ' התראות</span>' +
+                '<span class="fav-alert-pop">' + pm.map(n => '<span class="fav-alert-chip" title="' + escAttr(n) + '">🔔 ' + escHtml(n) + "</span>").join("") + "</span></span>") +
+            pmChip +
             ' <button class="fac-share" data-shalert="' + escAttr(t.sym) + '" title="שתף כרטיס התראה מעוצב (עד 3 סריקות)">📤 שתף</button>' +
             ' <span class="fav-alert-x" data-favdismiss="' + escAttr(t.sym) + '" title="הסר את סימון ההתראה">✕</span></td>'
           : stale
