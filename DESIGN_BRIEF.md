@@ -83,7 +83,14 @@ Also: the **sidebar/nav**, the **filter panels**, **data tables** (`.scan-table`
 mobile + desktop, all main pages, a share-card export, and that the scanner/journal still work.
 4. Open a PR with before/after screenshots for review. **Do not merge to `main` yourself.**
 
-## 8. Design direction (fill in with Adi's preferences)
-- Vibe: modern, clean, premium, data-dense but breathable. Dark-first.
-- Keep the violet↔green brand accent. Modernize typography, spacing, cards, tables, and the sidebar.
-- <Adi to add: reference sites he likes, specific pages, any element he wants changed/kept.>
+## 8. Design direction
+**Goal: make the whole site look significantly more BUSINESS / PROFESSIONAL — like a premium
+fintech/trading terminal (think Bloomberg / a top-tier SaaS analytics product), not a hobby tool.**
+- Vibe: serious, polished, trustworthy, institutional-grade. Dark-first, high information density but
+  clean and breathable — clear hierarchy, generous but disciplined spacing, refined typography.
+- Elevate: consistent card/panel system, crisp data tables, a refined sidebar, cohesive iconography,
+  purposeful use of the violet↔green brand accent (accent for emphasis, not everywhere).
+- Modernize typography (a professional sans; numbers in the mono/tabular font), spacing scale, radii,
+  shadows/elevation, hover/focus states, empty states, and loading states.
+- Keep it fast and buildless. Keep RTL Hebrew. Keep both themes working.
+- <Adi to add: reference sites/products he likes, and any specific page/element to prioritize or keep.>
