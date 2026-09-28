@@ -97,6 +97,13 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
   .filters.fbar .fpop.fpop-panel .fpop-body { max-width: none; }
 }
 
+/* ---------- Koyfin-style tick flash: a value flashes green/red then fades (~1s) ---------- */
+@keyframes snFlickUp { 0% { background: rgba(22,184,119,.5); } 100% { background: transparent; } }
+@keyframes snFlickDn { 0% { background: rgba(224,82,79,.5); } 100% { background: transparent; } }
+.flick-up { animation: snFlickUp 1s ease-out; border-radius: 5px; }
+.flick-dn { animation: snFlickDn 1s ease-out; border-radius: 5px; }
+@media (prefers-reduced-motion: reduce) { .flick-up, .flick-dn { animation: none; } }
+
 /* ---------- המשכיות זמנית: proportion bar + daily move (no net %) ---------- */
 .bc-cell.ftfc-cell { background: var(--cell) !important; color: var(--ink); border: 1px solid var(--line); gap: 12px; }
 .bc-cell.ftfc-cell:hover { filter: none; border-color: var(--muted); }

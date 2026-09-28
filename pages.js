@@ -883,8 +883,8 @@
       const dCls = (r.D && r.D.c) ? (r.D.c === "up" ? "pos" : r.D.c === "down" ? "neg" : "") : "";
       return '<div class="idx-card ' + ((v || 0) >= 0 ? "up" : "dn") + '">' +
         '<span class="sym tsym clickable" data-chart="' + r.sym + '" data-tf="D">' + r.sym + "</span>" +
-        '<span class="ic-px">' + (r.price != null ? Number(r.price).toFixed(2) : "") + "</span>" +
-        '<span class="ic-chg" style="color:' + col + '"><span class="arrow">' + _arrow(v) + "</span>" + (v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%") + "</span>" +
+        '<span class="ic-px" data-flick="idxp-' + r.sym + '">' + (r.price != null ? Number(r.price).toFixed(2) : "") + "</span>" +
+        '<span class="ic-chg" data-flick="idxc-' + r.sym + '" style="color:' + col + '"><span class="arrow">' + _arrow(v) + "</span>" + (v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(2) + "%") + "</span>" +
         (dt ? '<span class="ic-cndl ' + dCls + '">' + dt + "</span>" : "") + "</div>";
     }).join("") + "</div>";
   }
@@ -4031,7 +4031,7 @@
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
         '<td class="tname" style="text-align:start">' + t.sector + "</td>" +
         "<td>" + (etfFor(t.sector) ? '<span class="tsym clickable etf-chip" data-chart="' + etfFor(t.sector) + '" data-tf="D">' + etfFor(t.sector) + "</span>" : '<span class="muted">—</span>') + "</td>" +
-        "<td>" + money(t.price) + "</td><td>" + fmtCap(t.mc) + "</td><td>" + pct(t.chg) + "</td>" +
+        '<td data-flick="scp-' + t.sym + '">' + money(t.price) + "</td><td>" + fmtCap(t.mc) + '</td><td data-flick="scc-' + t.sym + '">' + pct(t.chg) + "</td>" +
         tfCells(t) +
         "<td>" + ftfcBadge(t) + "</td>" +
         seqCells(t) +
@@ -4940,7 +4940,7 @@
       const c = o.chg;
       const chgHtml = (c == null)
         ? '<span class="bc-chg zero">—</span>'
-        : '<span class="bc-chg ' + (c > 0.05 ? "pos" : c < -0.05 ? "neg" : "zero") + '">' + (c >= 0 ? "+" : "") + c.toFixed(2) + "%</span>";
+        : '<span class="bc-chg ' + (c > 0.05 ? "pos" : c < -0.05 ? "neg" : "zero") + '" data-flick="secc-' + escAttr(o.rawname) + '">' + (c >= 0 ? "+" : "") + c.toFixed(2) + "%</span>";
       return '<div class="bc-cell ftfc-cell bc-clickable" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '">' +
         '<span class="bc-left">' + chip + '<span class="bc-name">' + o.name + "</span></span>" +
         bar +
@@ -6465,6 +6465,30 @@
     wireStars($("#page"));
     wireCharts($("#page"));
     wireNinja($("#page"));
+    runFlicker();   // Koyfin-style subtle flash on any value that changed since the last render
+  }
+
+  // Koyfin-style tick flash: after a render, any [data-flick] cell whose value changed vs the last
+  // render gets a brief green/red background that fades over ~1s. Keys are stable per logical cell, so
+  // the value map survives full re-renders; first sighting never flashes (no phantom flash on page load).
+  const _flickLast = Object.create(null);
+  let _flickReady = false;   // don't flash on the very first paint after (re)load
+  function runFlicker() {
+    const nodes = document.querySelectorAll("#page [data-flick]");
+    nodes.forEach(el => {
+      const key = el.getAttribute("data-flick");
+      const txt = (el.textContent || "").trim();
+      const prev = _flickLast[key];
+      if (_flickReady && prev !== undefined && prev !== txt) {
+        const nv = parseFloat(txt.replace(/[^0-9.\-]/g, "")), pv = parseFloat(prev.replace(/[^0-9.\-]/g, ""));
+        const dir = (!isNaN(nv) && !isNaN(pv) && nv !== pv) ? (nv > pv ? "up" : "dn") : "up";
+        el.classList.remove("flick-up", "flick-dn");
+        void el.offsetWidth;   // restart the animation on a reused node
+        el.classList.add(dir === "dn" ? "flick-dn" : "flick-up");
+      }
+      _flickLast[key] = txt;
+    });
+    _flickReady = true;
   }
 
   function setPage(name) {
