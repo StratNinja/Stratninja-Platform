@@ -242,7 +242,8 @@ body[data-page="sectors"] .bc-chg { font-size: 13px; }
 @media (max-width: 900px) { .idx-charts { grid-template-columns: 1fr; } .tvchart { height: 340px; } }
 
 /* ---------- dense overview pages (market / sectors / money-flow): reclaim vertical space ---------- */
-body[data-page="market"] .community-cta, body[data-page="sectors"] .community-cta, body[data-page="today"] .community-cta,
+/* NOTE: the community-cta (Discord join banner) stays visible on EVERY page — Adi wants it always
+   pinned at the top to keep pulling traders into the community. Only the guide bar is folded here. */
 body[data-page="sectors"] .guide-sec, body[data-page="today"] .guide-sec { display: none; }
 /* money-flow ('לאן הכסף הולך') compaction */
 body[data-page="today"] .page-head { margin: 2px 0 6px; }
@@ -255,7 +256,6 @@ body[data-page="today"] .bc-cell { min-height: 28px; padding: 0 11px; }
 body[data-page="today"] .flow-mode, body[data-page="today"] .flow-controls, body[data-page="today"] .sec-ftfc-switch { margin-bottom: 6px; }
 body[data-page="today"] .td-ixc { padding: 6px 10px; }
 @media (max-width: 900px) {
-  body[data-page="market"] .community-cta, body[data-page="sectors"] .community-cta, body[data-page="today"] .community-cta,
   body[data-page="sectors"] .guide-sec, body[data-page="today"] .guide-sec { display: block; }
 }
 
@@ -275,11 +275,35 @@ body[data-page="market"] .rank .rk { padding: 2px 0; font-size: 13px; min-height
 body[data-page="market"] .gm-row { padding: 2px 0; font-size: 13px; }
 body[data-page="market"] .cockpit { padding: 9px 14px; }
 body[data-page="market"] .mkt-dash { gap: 8px; }
-body[data-page="market"] .community-cta { display: none; }   /* redundant on the compact cockpit */
 body[data-page="market"] .breadth-panel { padding: 9px 14px; }
 body[data-page="market"] .breadth-panel h3 { margin-bottom: 4px; }
 body[data-page="market"] .idx-row { margin: 2px 0; }
-@media (max-width: 900px) { body[data-page="market"] .guide-sec, body[data-page="market"] .community-cta { display: block; } }
+@media (max-width: 900px) { body[data-page="market"] .guide-sec { display: block; } }
+
+/* ---------- S&P 500 HEAT MAP (finviz-style sector treemap) ---------- */
+.sp-heat-panel { padding: 8px; }
+.sp-heat { position: relative; width: 100%; aspect-ratio: 1000 / 600; background: #0a0d12; border-radius: 10px; overflow: hidden; }
+@media (max-width: 720px) { .sp-heat { aspect-ratio: 3 / 4; } }
+.hm-sec { position: absolute; display: flex; flex-direction: column; box-sizing: border-box; border: 2px solid #fff; overflow: hidden; }
+.hm-sec-tab { flex: 0 0 auto; background: #000; color: #fff; font-size: 11px; font-weight: 800; line-height: 1.45;
+  padding: 1px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .2px; }
+.hm-sec-zoom { cursor: pointer; }
+.hm-sec-zoom:hover { background: #14181f; }
+.hm-sec-pct { color: #9fb0c0; font-weight: 700; font-size: 10px; }
+.hm-sec-body { position: relative; flex: 1 1 auto; min-height: 0; }
+.hm-tile { position: absolute; box-sizing: border-box; border: 1px solid rgba(0,0,0,.4); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; overflow: hidden; cursor: pointer; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+.hm-tile:hover { filter: brightness(1.2); outline: 1px solid #fff; z-index: 4; }
+.hm-t-sym { font-size: 11px; font-weight: 800; line-height: 1.05; }
+.hm-t-chg { font-size: 9px; font-weight: 600; opacity: .92; }
+.hm-tile-sm .hm-t-sm { font-size: 8px; font-weight: 700; line-height: 1; letter-spacing: -.2px; }
+.hm-counts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 8px 0 10px; font-size: 13px; }
+.hm-counts .be-hi b { color: var(--green); } .hm-counts .be-lo b { color: var(--red); }
+.hm-legend { color: var(--muted); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hml { display: inline-block; width: 14px; height: 10px; border-radius: 2px; vertical-align: middle; margin-inline-start: 4px; }
+.hml.pos { background: rgb(20,168,110); } .hml.neg { background: rgb(222,55,55); } .hml.zero { background: rgb(40,46,58); }
+.hm-zoom-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.hm-zoom-title { font-size: 13px; color: var(--muted); font-weight: 600; }
 
 /* ---------- market breadth page: 5 % -above-MA charts across the width ---------- */
 .brd-charts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 10px; }

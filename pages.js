@@ -1201,7 +1201,7 @@
   function sp500ViewSwitch() {
     return '<div class="sp-view-switch">' +
       '<button class="uni-btn' + (sp500View === "sectors" ? " on" : "") + '" data-spview="sectors">📊 לפי סקטור</button>' +
-      '<button class="uni-btn' + (sp500View === "grid" ? " on" : "") + '" data-spview="grid">🟩 מפת 500 ריבועים</button></div>';
+      '<button class="uni-btn' + (sp500View === "heat" ? " on" : "") + '" data-spview="heat">🔥 HEAT MAP</button></div>';
   }
   // the 500-square heatmap: every S&P 500 stock = one square, green (up) / red (down), sorted so
   // the up/down proportion is visible at a glance. Each square is clickable → its chart.
@@ -1223,6 +1223,60 @@
       ' · <span class="muted">' + all.length + " מניות · " + upPct + "% ירוקות</span></div>" +
       '<div class="sp-grid">' + squares + "</div>";
   }
+  // ── HEAT MAP (finviz-style sector treemap) ──────────────────────────────────
+  // every stock = a tile sized by market cap, colored by today's move; each sector gets a
+  // WHITE frame + a BLACK name tab; click a sector tab (🔍) to ZOOM into its sub-sectors.
+  let spHeatSector = null;                       // when set → zoomed into this sector
+  // EQUAL squares (RSP-style) — Adi prefers a clean, readable grid over cap-weighted tiles.
+  // Every tile has the same weight, so each sector's area just reflects its number of stocks.
+  function _hmValue() { return 1; }
+  function _hmTiles(stocks) {
+    const items = (stocks || []).map(x => ({ value: 1, stk: x }));
+    return squarify(items, 0, 0, 1000, 600).map(c => {
+      const x = c.item.stk;
+      const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
+      const cs = (x.c >= 0 ? "+" : "") + (x.c == null ? 0 : x.c).toFixed(2) + "%";
+      // tiered labels: big tiles show ticker + move, mid tiles show just the ticker, tiny → tooltip only
+      let lbl = "", cls = "hm-tile clickable";
+      if (c.w > 66 && c.h > 40) { lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>"; }
+      else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
+      return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + (x.mc ? " · " + fmtCap(x.mc) : "") +
+        '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;background:" + chgColor(x.c) + '">' + lbl + "</span>";
+    }).join("");
+  }
+  function _hmFrame(name, stocks, opts) {
+    opts = opts || {};
+    const tab = opts.zoom
+      ? '<div class="hm-sec-tab hm-sec-zoom clickable" data-hmsector="' + encodeURIComponent(opts.key || name) + '" title="לחץ לזום לתתי-הסקטורים">' + name + (opts.pct != null ? ' <span class="hm-sec-pct">' + opts.pct + "%</span>" : "") + " 🔍</div>"
+      : '<div class="hm-sec-tab" title="' + escAttr(name) + '">' + name + "</div>";
+    return '<div class="hm-sec" style="left:' + opts.left.toFixed(3) + "%;top:" + opts.top.toFixed(3) + "%;width:" + opts.w.toFixed(3) + "%;height:" + opts.h.toFixed(3) + '%">' +
+      tab + '<div class="hm-sec-body">' + _hmTiles(stocks) + "</div></div>";
+  }
+  function spHeatmap() {
+    const secs = (LIVE && LIVE.sectors) || [];
+    // ZOOM view: one sector broken into its sub-sectors (.ind)
+    if (spHeatSector) {
+      const sec = secs.find(s => s.name === spHeatSector);
+      if (sec) {
+        const subMap = {};
+        (sec.stocks || []).forEach(x => { const k = (x.ind && x.ind !== "אחר" && x.ind !== "מדדים") ? x.ind : "אחר"; (subMap[k] = subMap[k] || []).push(x); });
+        const subs = Object.keys(subMap).map(k => ({ name: k, stocks: subMap[k], value: subMap[k].reduce((a, b) => a + _hmValue(b), 0) }));
+        const frames = squarify(subs, 0, 0, 1000, 600).map(r =>
+          _hmFrame(r.item.name, r.item.stocks, { left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 })).join("");
+        return '<div class="hm-zoom-bar"><button class="btn ghost" id="hmBack">← חזרה למפה המלאה</button>' +
+          '<span class="hm-zoom-title">' + secHe(sec.name) + " · " + (sec.stocks || []).length + " מניות · חלוקה לתתי-סקטורים</span></div>" +
+          '<div class="sp-heat">' + frames + "</div>";
+      }
+      spHeatSector = null;
+    }
+    // FULL view: all sectors framed, stocks inside
+    const list = secs.filter(s => (s.stocks || []).length && s.name !== "מדדים").map(s => ({ sec: s, value: (s.stocks || []).reduce((a, b) => a + _hmValue(b), 0) }));
+    const frames = squarify(list, 0, 0, 1000, 600).map(r => {
+      const s = r.item.sec, p = s.total ? Math.round(s.above / s.total * 100) : null;
+      return _hmFrame(secHe(s.name), s.stocks, { zoom: true, key: s.name, pct: p, left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
+    }).join("");
+    return '<div class="sp-heat">' + frames + "</div>";
+  }
   function renderSp500() {
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
     if (!secs || !secs.length) {
@@ -1241,12 +1295,17 @@
         '<div class="bigbreadth"><span class="bseg up" style="width:' + apTop.toFixed(1) + '%"></span><span class="bseg down" style="width:' + (100 - apTop).toFixed(1) + '%"></span></div>' +
         '<div class="bkey" style="margin-top:10px;font-size:13px"><span class="pos">🟢 ' + b.above + ' מעל פתיחה</span><span class="neg">🔴 ' + b.below + ' מתחת</span><span class="muted">' + apTop.toFixed(0) + '% ירוקים</span></div></div>'
       : "";
-    // ── GRID VIEW: 500 squares (toggle) ──
-    if (sp500View === "grid") {
-      return '<div class="page-head"><h1>S&P 500 · מפת 500 ריבועים</h1><div class="sub">כל ריבוע = מניה במדד. 🟢 עולה · 🔴 יורדת · ככל שהצבע חזק יותר, התנועה גדולה יותר. ממוין מהעולה לנופל — כך רואים מיד את היחס בין עולות ליורדות.</div></div>' +
-        sp500ViewSwitch() + liveBanner() + breadthTopBar +
-        '<div class="panel sp-grid-panel">' + sp500Grid() + "</div>" +
-        (insightBox ? '<div class="sp-grid-did"><span class="sp-did-lbl">🧠 הידעת?</span>' + insightBox + "</div>" : "");
+    // ── HEAT MAP VIEW: sector-framed treemap (toggle) ──
+    if (sp500View === "heat") {
+      const ex = _brd52wCounts("sp");
+      const countsStrip = '<div class="hm-counts">' +
+        (ex
+          ? '<span class="be-hi">📈 <b>' + ex.hi + "</b> בשיא 52 שבועות</span><span class=\"be-lo\">📉 <b>" + ex.lo + "</b> בשפל 52 שבועות</span>"
+          : '<span class="muted">נתוני שיא/שפל נטענים…</span>') +
+        '<span class="hm-legend"><span class="hml neg"></span> ירידה<span class="hml zero"></span> ללא שינוי<span class="hml pos"></span> עלייה · הצבע = התנועה היום</span></div>';
+      return '<div class="page-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">מפת חום לפי סקטורים — כל ריבוע = מניה בגודל שווה, הצבע לפי התנועה היום. מסגרת לבנה לכל סקטור · לחץ על שם סקטור (🔍) לזום לתתי-סקטורים · לחץ מניה לגרף.</div></div>' +
+        sp500ViewSwitch() + liveBanner() + countsStrip +
+        '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
     // ranked by breadth = % of the sector's stocks above their open. Leaders/laggards moved into the click.
@@ -1335,8 +1394,11 @@
     wireCharts(document);
     document.querySelectorAll("[data-spview]").forEach(b => b.onclick = () => {
       if (sp500View === b.dataset.spview) return;
-      sp500View = b.dataset.spview; reRender();
+      sp500View = b.dataset.spview; spHeatSector = null; reRender();
     });
+    // HEAT MAP: zoom into a sector's sub-sectors / back to the full map
+    document.querySelectorAll("[data-hmsector]").forEach(el => el.onclick = e => { e.stopPropagation(); spHeatSector = decodeURIComponent(el.dataset.hmsector); reRender(); });
+    { const hb = $("#hmBack"); if (hb) hb.onclick = () => { spHeatSector = null; reRender(); }; }
     document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill), c.dataset.spsub === "1"));
     // ETF chip inside a ladder cell → the sector menu (analyze ETF · charts · scanner · table), not the row drill
     document.querySelectorAll(".bcell-list .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
