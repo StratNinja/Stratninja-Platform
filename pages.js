@@ -800,19 +800,12 @@
       upLbl = "🟢 עולות אחרי סגירת המסחר"; dnLbl = "🔴 יורדות אחרי סגירת המסחר";
       note = "תנועה ביחס למחיר הסגירה של היום";
     }
-    const row = (arr, cls) => {
-      if (!arr.length) return '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
-      const top = arr.slice(0, 5);
-      const max = Math.max(0.01, ...top.map(x => Math.abs(x.gp || 0)));
-      return top.map(x => {
-        const w = Math.max(6, Math.round(Math.abs(x.gp || 0) / max * 100));
-        return '<div class="gm-row"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span>" +
-          '<span class="gm-bar ' + cls + '"><span style="width:' + w + '%"></span></span>' + pct(x.gp) + "</div>";
-      }).join("");
-    };
+    // use the SAME row style as the leaders/laggards panels above (mkLead → .rank/.rk bars) for one unified language
+    const row = arr => arr.length ? mkLead(arr.slice(0, 5).map(x => ({ s: x.s, c: x.gp })), "", false)
+      : '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
     const sub = note ? '<div class="muted" style="font-size:11px;margin:-2px 0 6px">' + note + "</div>" : "";
     return '<div class="panel gappers-mini"><h3 class="gm-head"><span>' + head + "</span>" + seeAll + "</h3>" + sub +
-      '<div class="gm-grid"><div><div class="td-h pos">' + upLbl + "</div>" + row(data.up, "up") + '</div><div><div class="td-h neg">' + dnLbl + "</div>" + row(data.down, "down") + "</div></div></div>";
+      '<div class="gm-grid"><div><div class="td-h pos">' + upLbl + "</div>" + row(data.up) + '</div><div><div class="td-h neg">' + dnLbl + "</div>" + row(data.down) + "</div></div></div>";
   }
   // ---- market-page mini chart of an index (30-day, candles or line) ----
   let _idxChartMode = "candle";
@@ -6644,8 +6637,25 @@
     setTxt("anaUsers", _anaBars(users, k => emailMap[k] || ("…" + String(k).slice(0, 8)), 15));   // show email when known, else short id
   }
 
+  // ===== "דופק השוק" — one channel, four internal tabs (stock map / sector flow / continuity / breadth) =====
+  let pulseTab = "today";
+  const PULSE_TABS = [["sp500", "🗺️ מפת מניות"], ["today", "💸 תזרים סקטורים"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
+  const _pulseRender = { sp500: () => renderSp500(), today: () => renderToday(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
+  const _pulseWire = { sp500: () => wireSp500(), today: () => wireToday(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
+  function renderPulse() {
+    const tab = _pulseRender[pulseTab] ? pulseTab : "today";
+    const bar = '<div class="pulse-tabs">' + PULSE_TABS.map(([k, l]) =>
+      '<button class="pulse-tab' + (tab === k ? " on" : "") + '" data-pulsetab="' + k + '">' + l + "</button>").join("") + "</div>";
+    return bar + _pulseRender[tab]();
+  }
+  function wirePulse() {
+    document.querySelectorAll("[data-pulsetab]").forEach(b => b.onclick = () => { if (pulseTab === b.dataset.pulsetab) return; pulseTab = b.dataset.pulsetab; reRender(); try { window.scrollTo(0, 0); } catch (e) {} });
+    const tab = _pulseRender[pulseTab] ? pulseTab : "today";
+    if (_pulseWire[tab]) _pulseWire[tab]();
+  }
   const PAGES = {
     market: { render: renderMarket, wire: wireMarket },
+    pulse: { render: renderPulse, wire: wirePulse },
     analytics: { render: renderAnalytics, wire: wireAnalytics },
     draw: { render: renderDrawBoard, wire: wireDrawBoard },
     today: { render: renderToday, wire: wireToday },
@@ -6663,7 +6673,7 @@
   function reRender() {
     const p = PAGES[state.page]; if (!p) return;
     const _sy = window.scrollY || window.pageYOffset || 0;   // preserve scroll across in-place re-renders (e.g. changing a filter)
-    try { document.body.setAttribute("data-page", state.page); } catch (e) {}   // lets CSS target a specific page (e.g. compact 'sectors')
+    try { document.body.setAttribute("data-page", state.page === "pulse" ? (pulseTab || "today") : state.page); } catch (e) {}   // pulse → expose the active sub-tab so per-page CSS (compaction) still applies
     $("#page").innerHTML = guideSection(state.page) + p.render();   // guide-video area at the TOP (most viewers don't scroll down)
     if (p.wire) p.wire();
     wireStars($("#page"));
@@ -6697,13 +6707,18 @@
   }
 
   function setPage(name) {
+    // the four market-internals views live inside one 'pulse' channel as tabs — route their old names there
+    if (name === "sp500" || name === "today" || name === "sectors" || name === "breadth") { pulseTab = name; name = "pulse"; }
     document.querySelectorAll(".side-nav a").forEach(a => a.classList.toggle("active", a.dataset.page === name));
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); try { window.scrollTo(0, 0); } catch (e) {} }   // navigating to a page starts at the top
-    if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "breadth") { loadScanner(); if (state.page === "today") { loadLive(); loadFlow(); } if (state.page === "breadth") loadBreadth(); }
+    if (state.page === "scanner" || state.page === "market" || state.page === "pulse") {
+      loadScanner();
+      if (state.page === "pulse") { loadLive(); loadFlow(); loadBreadth(); }   // whichever tab is active may need these
+    }
     // on any chart-capable page, warm the TradingView library in the background so grids open fast
-    if (["scanner", "sectors", "sp500", "today", "gappers", "favorites", "breadth", "market"].indexOf(state.page) >= 0) warmTradingView();
+    if (["scanner", "pulse", "gappers", "favorites", "market"].indexOf(state.page) >= 0) warmTradingView();
     try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
     snTrack("page:" + state.page);   // usage analytics — which pages get visited
   }

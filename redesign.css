@@ -119,6 +119,14 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .fav-alert-multi:hover .fav-alert-pop, .fav-alert-multi:focus-within .fav-alert-pop { display: flex; flex-direction: column; gap: 5px; }
 .fav-alert-pop .fav-alert-chip { max-width: none; }
 
+/* ---------- 'דופק השוק' internal tabs (stock map / sector flow / continuity / breadth) ---------- */
+.pulse-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.pulse-tab { font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 10px 10px 0 0; cursor: pointer;
+  background: transparent; color: var(--muted); border: 1px solid transparent; border-bottom: none; transition: .15s; }
+.pulse-tab:hover { color: var(--ink); background: var(--panel2); }
+.pulse-tab.on { color: var(--ink); background: var(--panel2); border-color: var(--line); box-shadow: inset 0 -3px 0 var(--lux-g2); }
+body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
+
 /* ---------- alerts center: wider modal, two columns (scans right · recent alerts left) ---------- */
 .al-modal { max-width: min(96vw, 1100px); width: min(96vw, 1100px); }
 .al-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
