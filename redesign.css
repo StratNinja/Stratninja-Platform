@@ -128,11 +128,18 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 
 /* ---------- alerts center: wider modal, two columns (scans right · recent alerts left) ---------- */
-.al-modal { max-width: min(96vw, 1100px); width: min(96vw, 1100px); }
-.al-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+.al-modal { max-width: min(96vw, 1180px); width: min(96vw, 1180px); }
+/* recent-alerts column is wider than the presets column so each alert fits on ONE compact line */
+.al-cols { display: grid; grid-template-columns: minmax(230px, .82fr) 1.4fr; gap: 16px; margin-top: 6px; }
 .al-cols .al-col { min-width: 0; }
-.al-cols .al-plist, .al-cols .al-flist { max-height: 46vh; overflow: auto; padding-inline-end: 4px; }
-@media (max-width: 760px) { .al-cols { grid-template-columns: 1fr; } .al-cols .al-plist, .al-cols .al-flist { max-height: 32vh; } }
+.al-cols .al-plist { max-height: 46vh; overflow: auto; padding-inline-end: 4px; }
+.al-cols .al-flist { max-height: 58vh; overflow: auto; padding-inline-end: 4px; }
+/* single-line alert rows: [ticker] [scan name … ellipsis] [date time] */
+.al-frow { padding: 4px 10px; margin: 3px 0; gap: 8px; flex-wrap: nowrap; }
+.al-frow .tsym { flex: none; font-weight: 800; }
+.al-frow .al-fname { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.al-frow .al-time { flex: none; white-space: nowrap; font-size: 10.5px; opacity: .85; margin-inline-start: auto; }
+@media (max-width: 760px) { .al-cols { grid-template-columns: 1fr; } .al-cols .al-plist { max-height: 30vh; } .al-cols .al-flist { max-height: 42vh; } }
 
 /* ---------- movers widget: proportional green/red bar per row ---------- */
 .gm-row { display: flex; align-items: center; gap: 8px; }

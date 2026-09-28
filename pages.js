@@ -1888,9 +1888,11 @@
       '<div class="al-prow"><span>' + escAttr(p.name) + '</span><label class="ios-switch"><input type="checkbox" data-alp="' + escAttr(p.id) + '"' + (p.alert ? " checked" : "") + '><span class="ios-slider"></span></label></div>').join("")
       : '<div class="muted">אין עדיין סריקות שמורות. שמור פריסט בסורק העסקאות כדי להפעיל עליו התראה.</div>';
     const feedById = {}; presets.forEach(p => { feedById[p.id] = p; });
+    const _p2 = n => String(n).padStart(2, "0");
     const flistRows = feed.map(e => { const p = feedById[e.pid]; if (!p) return ""; /* preset gone → hide stale alert */
-      return '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted">נכנסה ל־"' + escHtml(p.name) + '"</span><span class="muted al-time">' + new Date(e.ts).toLocaleString("he-IL") + "</span></div>";
-    }).filter(Boolean).slice(0, 50).join("");
+      const d = new Date(e.ts), when = d.getDate() + "." + (d.getMonth() + 1) + " " + _p2(d.getHours()) + ":" + _p2(d.getMinutes());   // compact date+time, one line
+      return '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted al-fname" title="' + escAttr(p.name) + '">' + escHtml(p.name) + '</span><span class="muted al-time">' + when + "</span></div>";
+    }).filter(Boolean).slice(0, 80).join("");
     const flist = flistRows || '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>';
     const pushOn = !!(window.Prefs && Prefs.pushSubs().length);
     const pushBtn = pushOn ? '<span class="pos" style="font-weight:600">✓ התראות פלאפון פעילות</span>'
