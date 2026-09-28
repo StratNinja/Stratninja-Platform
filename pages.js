@@ -1995,7 +1995,7 @@
       (r.reason ? '<span class="ca-reason muted" title="' + escAttr(r.reason) + '">· ' + escHtml(r.reason).slice(0, 40) + "</span>" : "") +
       '<span class="ca-acts">' + acts.map(a => '<button class="btn ghost ca-btn" data-ca="' + a.act + '" data-id="' + r.id + '">' + a.lbl + "</button>").join("") + "</span></div>";
     let html = "";
-    html += '<div class="ca-privacy"><button class="btn ghost" id="caReveal">' + (_caReveal ? "🙈 הסתר מיילים" : "👁️ הצג מיילים") + '</button><span class="muted" style="font-size:12px">' + (_caReveal ? "המיילים גלויים כרגע" : "המיילים מוסתרים — בטוח להצגה בלייב") + "</span></div>";
+    html += '<div class="ca-privacy"><button class="btn ghost" id="caReveal">' + (_caReveal ? "🙈 הסתר מיילים" : "👁️ הצג מיילים") + '</button><span class="muted" style="font-size:12px">' + (_caReveal ? "המיילים גלויים כרגע" : "המיילים מוסתרים — בטוח להצגה בלייב") + '</span><button class="btn ghost" id="caAnalytics" style="font-size:13px;margin-inline-start:auto">📈 מטריצת שימוש</button></div>';
     html += '<div class="ca-sec-h">🟢 ממתין לאישור שלך (' + awaiting.length + ")</div>";
     html += awaiting.length ? awaiting.map(r => chip(r, [{ act: "approve", lbl: "✅ אשר" }, { act: "reject", lbl: "❌ דחה" }])).join("") : '<div class="muted" style="padding:4px 0">אין ממתינות ✨</div>';
     if (checking.length) { html += '<div class="ca-sec-h">⏳ בבדיקת השרת (' + checking.length + ")</div>"; html += checking.map(r => chip(r, [{ act: "del", lbl: "🗑️" }])).join(""); }
@@ -2004,6 +2004,7 @@
     if (rejected.length) { html += '<div class="ca-sec-h">❌ נדחו (' + rejected.length + ")</div>"; html += rejected.map(r => chip(r, [{ act: "approve", lbl: "↩️ שחזר" }, { act: "del", lbl: "🗑️" }])).join(""); }
     box.innerHTML = html;
     { const rv = box.querySelector("#caReveal"); if (rv) rv.onclick = () => { _caReveal = !_caReveal; renderCommunityAdmin(client); }; }
+    { const an = box.querySelector("#caAnalytics"); if (an) an.onclick = () => { closeModal(); setPage("analytics"); }; }
     box.querySelectorAll("[data-ca]").forEach(b => b.onclick = async () => {
       const id = b.dataset.id, act = b.dataset.ca;
       b.disabled = true; b.textContent = "…";
@@ -6613,22 +6614,25 @@
     const since = new Date(Date.now() - _anaDays * 86400000).toISOString();
     let rows = [];
     try {
-      const { data, error } = await client.from("usage_events").select("event,page,user_id,ts").gte("ts", since).order("ts", { ascending: false }).limit(20000);
+      const { data, error } = await client.from("usage_events").select("event,page,user_id,ts,meta").gte("ts", since).order("ts", { ascending: false }).limit(20000);
       if (error) throw error;
       rows = data || [];
     } catch (e) { setTxt("anaSummary", "שגיאה בטעינה: " + (e.message || e) + " — ודא שהרצת את usage_events.sql."); return; }
     if (!rows.length) { setTxt("anaSummary", "אין עדיין נתונים בטווח הזה. הנתונים מצטברים ככל שמשתמשים מחוברים גולשים באתר."); ["anaPages", "anaClicks", "anaUsers"].forEach(i => setTxt(i, '<div class="muted" style="font-size:12px">—</div>')); return; }
-    const pages = {}, clicks = {}, users = {};
+    const pages = {}, clicks = {}, users = {}, emailMap = {};
     rows.forEach(r => {
       const ev = r.event || "";
       if (ev.indexOf("page:") === 0) pages[ev.slice(5)] = (pages[ev.slice(5)] || 0) + 1;
       else if (ev.indexOf("click:") === 0) clicks[ev.slice(6)] = (clicks[ev.slice(6)] || 0) + 1;
-      if (r.user_id) users[r.user_id] = (users[r.user_id] || 0) + 1;
+      if (r.user_id) {
+        users[r.user_id] = (users[r.user_id] || 0) + 1;
+        if (!emailMap[r.user_id] && r.meta && r.meta.email) emailMap[r.user_id] = r.meta.email;   // newest-first → keep the latest email
+      }
     });
     setTxt("anaSummary", "<b>" + rows.length + "</b> אירועים · <b>" + Object.keys(users).length + "</b> משתמשים פעילים · טווח " + _anaDays + " ימים");
     setTxt("anaPages", _anaBars(pages, k => _ANA_PAGE_HE[k] || k));
     setTxt("anaClicks", _anaBars(clicks, k => _ANA_CLICK_HE[k] || k));
-    setTxt("anaUsers", _anaBars(users, k => "…" + String(k).slice(0, 8), 15));
+    setTxt("anaUsers", _anaBars(users, k => emailMap[k] || ("…" + String(k).slice(0, 8)), 15));   // show email when known, else short id
   }
 
   const PAGES = {
@@ -6866,10 +6870,11 @@
   async function _flushTrack() {
     clearTimeout(_trackTimer); _trackTimer = null;
     if (!_trackQ.length) return;
-    let client = null, uid = null;
-    try { client = window.SNAuth && SNAuth.getClient && SNAuth.getClient(); uid = SNAuth.user() && SNAuth.user().id; } catch (e) {}
+    let client = null, uid = null, email = null;
+    try { client = window.SNAuth && SNAuth.getClient && SNAuth.getClient(); const u = SNAuth.user(); uid = u && u.id; email = (u && u.email) || null; } catch (e) {}
     if (!client || !uid) { _trackQ.length = 0; return; }
-    const batch = _trackQ.splice(0, _trackQ.length).map(e => ({ user_id: uid, event: e.event, page: e.page, ts: e.ts, meta: e.meta }));
+    // stash the email in meta (jsonb) so the admin usage matrix can show names instead of raw ids — no schema change
+    const batch = _trackQ.splice(0, _trackQ.length).map(e => ({ user_id: uid, event: e.event, page: e.page, ts: e.ts, meta: Object.assign({}, e.meta || {}, email ? { email: email } : {}) }));
     try { await client.from("usage_events").insert(batch); } catch (e) { /* table missing / offline → drop silently */ }
   }
   window.snTrack = snTrack;                                          // so other modules (journal) can log too
@@ -7226,7 +7231,7 @@
     // ── floating action dock (theme / share / draw) + collapse ──
     initFloatDock();
     // reveal the admin-only bits for Adi (and whenever auth state changes). Draw is now the DOCK pencil.
-    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "navAnalytics", "snDockDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };
+    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "snDockDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };   // מטריצת שימוש עברה לתוך פאנל הניהול
     _revealAdmin();
     try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(_revealAdmin); } catch (e) {}
     updateAlertBell();
