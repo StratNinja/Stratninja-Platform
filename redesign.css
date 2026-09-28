@@ -135,10 +135,10 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 .al-cols .al-plist { max-height: 46vh; overflow: auto; padding-inline-end: 4px; }
 .al-cols .al-flist { max-height: 58vh; overflow: auto; padding-inline-end: 4px; }
 /* single-line alert rows: [ticker] [scan name … ellipsis] [date time] */
-.al-frow { padding: 4px 10px; margin: 3px 0; gap: 8px; flex-wrap: nowrap; }
-.al-frow .tsym { flex: none; font-weight: 800; }
-.al-frow .al-fname { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
-.al-frow .al-time { flex: none; white-space: nowrap; font-size: 10.5px; opacity: .85; margin-inline-start: auto; }
+.al-frow { padding: 5px 11px; margin: 4px 0; gap: 10px; flex-wrap: nowrap; align-items: center; }
+.al-frow .tsym { flex: none; font-weight: 800; font-size: 13px; min-width: 44px; }
+.al-frow .al-fname { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; }
+.al-frow .al-time { flex: none; white-space: nowrap; font-size: 11px; opacity: .8; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
 @media (max-width: 760px) { .al-cols { grid-template-columns: 1fr; } .al-cols .al-plist { max-height: 30vh; } .al-cols .al-flist { max-height: 42vh; } }
 
 /* ---------- movers widget: proportional green/red bar per row ---------- */
