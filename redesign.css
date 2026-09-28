@@ -146,6 +146,24 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .bc-chg.pos { color: var(--green); } .bc-chg.neg { color: var(--red); } .bc-chg.zero { color: var(--muted); }
 @media (max-width: 560px) { .bc-cell.ftfc-cell .bc-left { min-width: 128px; max-width: 128px; } }
 
+/* ---------- 'המשכיות זמנית' (sectors): compact so both columns fit one screen, no scroll ---------- */
+body[data-page="sectors"] .guide-sec { display: none; }                      /* free the vertical space */
+body[data-page="sectors"] .page-head { margin: 2px 0 10px; }
+body[data-page="sectors"] .page-head h1 { font-size: 24px; }
+body[data-page="sectors"] .page-head .sub { font-size: 11.5px; line-height: 1.5; max-width: none; }
+body[data-page="sectors"] .sec-ftfc-switch { margin: 0 0 8px; }
+body[data-page="sectors"] .td-flow { padding: 12px 14px; }
+body[data-page="sectors"] .td-flow .tdf-head { margin: 0 0 2px; }
+body[data-page="sectors"] .td-flow .tdf-sub { font-size: 10.5px; margin-bottom: 4px; }
+body[data-page="sectors"] .td-flow .bcell-list { gap: 3px; margin-top: 6px; }
+body[data-page="sectors"] .bc-cell.ftfc-cell { min-height: 30px; padding: 0 10px; gap: 10px; }
+body[data-page="sectors"] .bc-cell.ftfc-cell .bc-left { min-width: 150px; max-width: 150px; }
+body[data-page="sectors"] .bc-cell.ftfc-cell .bc-name { font-size: 12.5px; }
+body[data-page="sectors"] .bc-cell.ftfc-cell .bc-etf { font-size: 10.5px; padding: 2px 6px; }
+body[data-page="sectors"] .ftfc-bar { height: 9px; }
+body[data-page="sectors"] .bc-chg { font-size: 13px; }
+@media (max-width: 900px) { body[data-page="sectors"] .guide-sec { display: block; } }  /* on mobile it scrolls anyway */
+
 /* ---------- market page: SPY vs QQQ live charts (side by side) ---------- */
 .idx-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 4px; }
 .idx-chart { display: flex; flex-direction: column; gap: 8px; min-width: 0; }

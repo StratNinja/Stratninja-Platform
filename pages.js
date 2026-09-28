@@ -6494,6 +6494,7 @@
 
   function reRender() {
     const p = PAGES[state.page]; if (!p) return;
+    try { document.body.setAttribute("data-page", state.page); } catch (e) {}   // lets CSS target a specific page (e.g. compact 'sectors')
     $("#page").innerHTML = guideSection(state.page) + p.render();   // guide-video area at the TOP (most viewers don't scroll down)
     if (p.wire) p.wire();
     wireStars($("#page"));
