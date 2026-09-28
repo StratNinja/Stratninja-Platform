@@ -969,7 +969,7 @@
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
-    { const ga = $("#gapAll"); if (ga) ga.onclick = () => setPage("gappers"); }
+    { const ga = $("#gapAll"); if (ga) ga.onclick = () => { techState.gapDir = "any"; if (!(parseFloat(techState.gapPct) > 0)) techState.gapPct = 3; setPage("scanner"); }; }   // gappers page retired → open the scanner with the gap filter on
     document.querySelectorAll("[data-idxmode]").forEach(b => b.onclick = () => { _idxChartMode = b.dataset.idxmode; reRender(); });
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
     document.querySelectorAll("[data-uni]").forEach(el => el.onclick = () => {
@@ -4060,7 +4060,8 @@
               (_mfiTrendActive() ? '<span class="muted">≥</span><input id="tMfiTrendDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _mfiTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>🔄 היפוך MFI <span class="muted" style="font-size:10px">(מקיצוניות)</span></label><div class="chips" style="align-items:center"><select id="tMfiTurn">' +
               opt("off", techState.mfiTurn, "— הכל") + opt("up", techState.mfiTurn, "📈 מלמטה (מתחת 20 ↑)") + opt("down", techState.mfiTurn, "📉 מלמעלה (מעל 80 ↓)") + opt("any", techState.mfiTurn, "⚡ שניהם") + "</select></div></div>" +
-            '<div class="fgrp"><label>🛡️ בלי דיווח תוצאות קרוב <span class="muted" style="font-size:10px">(רחוק לפחות N ימים)</span></label><div class="chips" style="align-items:center"><span class="muted">הדיווח רחוק ≥</span>' +
+            '<div class="fgrp"><label>🗓️ דיווח תוצאות <span class="muted" style="font-size:10px">(קרבה לדוח הבא)</span></label><div class="chips" style="align-items:center"><select id="tEarnDir">' +
+              opt("far", techState.earnDir, "מעל (רחוק — בטוח למסחר)") + opt("near", techState.earnDir, "עד (קרוב — לקראת דוח)") + "</select>" +
               '<input id="tEarnMin" type="number" min="1" max="95" step="1" placeholder="—" style="width:64px" value="' + (techState.earnMin === "" ? "" : techState.earnMin) + '"><span class="muted">ימים</span></div></div>' +
             '<div class="fgrp"><label>ממוצע ≥ (נזילות)</label><div class="chips" style="align-items:center"><select id="tAvgVolMin">' +
               opt("0", techState.avgVolMin, "— הכל") + opt("300000", techState.avgVolMin, "300K") + opt("500000", techState.avgVolMin, "500K") + opt("1000000", techState.avgVolMin, "1M") +
@@ -4072,7 +4073,7 @@
             '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
             '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
             '<div class="fgrp"><label>גאפ (פתיחה מול אתמול)</label><div class="chips" style="align-items:center"><select id="tGapDir">' +
-              opt("off", techState.gapDir, "— הכל") + opt("up", techState.gapDir, "גאפ אפ ↑") + opt("down", techState.gapDir, "גאפ דאון ↓") +
+              opt("off", techState.gapDir, "— הכל") + opt("up", techState.gapDir, "גאפ אפ ↑") + opt("down", techState.gapDir, "גאפ דאון ↓") + opt("any", techState.gapDir, "⚡ שניהם") +
               "</select>" + (_gapActive() ? '<span class="muted">≥</span><input id="tGapPct" type="number" step="0.5" min="0" style="width:56px" value="' + techState.gapPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
           "</div>";
     }
@@ -4382,7 +4383,11 @@
         if (!_volAvgPass(k)) return false;
         if (!_mfiTrendPass(k)) return false;
         if (!_mfiTurnPass(k)) return false;
-        if (techState.earnMin !== "" && k.earn != null && k.earn < +techState.earnMin) return false;   // exclude near-term earnings (null = no report ≤95d → safe, passes)
+        if (techState.earnMin !== "") {
+          const _em = +techState.earnMin;
+          if (techState.earnDir === "near") { if (k.earn == null || k.earn > _em) return false; }   // earnings WITHIN N days (lead-up to a report)
+          else if (k.earn != null && k.earn < _em) return false;                                     // earnings at least N days away (null = no report ≤95d → safe)
+        }
         if (techState.avgVolMin > 0) {
           const av = techState.avgVolPeriod === "90" ? k.avol90 : k.avol30;
           if (av == null || av < techState.avgVolMin) return false;
@@ -4392,6 +4397,7 @@
         if (_atrp() > 0) { const av2 = _techVal(k, "atrp"); if (av2 == null || av2 < _atrp()) return false; }
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
+        if (techState.gapDir === "any" && (k.gap == null || Math.abs(k.gap) < (parseFloat(techState.gapPct) || 0))) return false;   // gap up OR down beyond the threshold
         if (_popenActive() && !_popenTest(t)) return false;   // price must be within N×ATR of a Y/Q/M open (support/resistance)
         if (_pextActive() && !_pextTest(t)) return false;     // price must be within pextPct% of a Y/Q/M high/low
       }
@@ -4597,6 +4603,7 @@
     bind("tMfiTrendDays", "onchange", e => { techState.mfiTrendDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTurn", "onchange", e => { techState.mfiTurn = e.target.value; reRender(); });
     bind("tEarnMin", "onchange", e => { const v = e.target.value.trim(); techState.earnMin = v === "" ? "" : Math.max(1, Math.min(95, parseInt(v, 10) || 1)); reRender(); });
+    bind("tEarnDir", "onchange", e => { techState.earnDir = e.target.value; reRender(); });
     bind("tAvgVolMin", "onchange", e => { techState.avgVolMin = parseInt(e.target.value, 10) || 0; reRender(); });
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
@@ -4740,7 +4747,8 @@
     mfiTrendDir: "off",          // MFI trend direction: off / up (rising) / down (falling)
     mfiTrendDays: 3,             // min consecutive MFI days in the streak (1–7)
     mfiTurn: "off",              // MFI reversal at extremes: off / up (<20 turning up) / down (>80 turning down) / any
-    earnMin: "",                 // NO earnings for at least N days (safe to trade; empty = off). earn==null (no report ≤95d) always passes
+    earnMin: "",                 // earnings filter threshold in days (empty = off)
+    earnDir: "far",              // "far" = report ≥N days away (safe) · "near" = report within N days (lead-up)
     avgVolPeriod: "30", avgVolMin: 0,
     ext52: "off", ext52Pct: 3,
     atrpMin: "",                 // ATR as % of price ≥
@@ -4970,7 +4978,7 @@
     techState.rsiMin = 0; techState.rsiMax = 100; techState.mfiMin = 0; techState.mfiMax = 100;
     techState.rvolMin = ""; techState.volMin = 0; techState.volTrendDir = "off"; techState.volTrendDays = 3; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
     techState.volAvgDir = "off"; techState.volAvgDays = 3;
-    techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = "";
+    techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = ""; techState.earnDir = "far";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
     techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2;
@@ -5969,7 +5977,7 @@
         const atimeCell = t._alertTmStr
           ? '<td class="fav-atime muted" style="text-align:start;white-space:nowrap">🕐 ' + escHtml(t._alertTmStr) + "</td>"
           : '<td class="muted">—</td>';
-        const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">📓</span>' : "";
+        const jtag = hasTrade ? ' <span class="fav-jtag" title="יש לך פוזיציה פעילה על המניה הזו ביומן המסחר">💼</span>' : "";
         const cls = [];
         if (pm.length) cls.push("fav-inpreset");
         else if (stale) cls.push("fav-stale");
@@ -5979,7 +5987,7 @@
           alertCell + atimeCell +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
-          '<td style="text-align:start">' + (hasTrade ? '<span class="fav-jtag" title="פוזיציה פעילה ביומן">📓</span>' : '<span class="muted">—</span>') + "</td>" +
+          '<td style="text-align:start">' + (hasTrade ? '<span class="fav-jtag" title="פוזיציה פעילה ביומן">💼</span>' : '<span class="muted">—</span>') + "</td>" +
           '<td data-flick="fvp-' + t.sym + '">' + money(t.price) + '</td><td data-flick="fvc-' + t.sym + '">' + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       };
       // annotate each row for sorting (alert count / names / open-position) + the default grouping
@@ -6020,7 +6028,7 @@
         const others = [...(inter || new Set())].filter(s => !favsSet[s]);
         otherPanel = favOtherMatchesPanel(favPresetFilter.join(" + "), others);
       }
-      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל המניות ברשימה — לפי סדר הטבלה הנוכחי">📋 העתק הכל</button><button class="btn ghost" id="favCopyAlerts" style="font-size:12px;font-weight:600" title="העתק רק מניות עם התראה פעילה — לפי סדר הטבלה">🔔 העתק עם התראה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("📓 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
+      body = favPresetBar(presetNames) + '<div class="panel"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + ' מניות</span></span><span style="display:flex;gap:6px"><button class="btn ghost" id="favCopy" style="font-size:12px;font-weight:600" title="העתק את כל המניות ברשימה — לפי סדר הטבלה הנוכחי">📋 העתק הכל</button><button class="btn ghost" id="favCopyAlerts" style="font-size:12px;font-weight:600" title="העתק רק מניות עם התראה פעילה — לפי סדר הטבלה">🔔 העתק עם התראה</button><button class="btn ghost" id="favRefresh" style="font-size:12px;font-weight:600" title="שלוף סריקה עדכנית ובדוק אילו מהמועדפים חופפים לסריקות שלך">🔄 רענן התראות</button><button class="btn ghost" id="favGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></span></h3><div class=\'tablewrap\'><table class=\'scan-table\'><thead><tr><th></th>' + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("💼 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
