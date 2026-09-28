@@ -25,6 +25,14 @@
     });
     document.body.insertBefore(bar, document.body.firstChild);
   }
+  // luxury/uniform look: strip the colorful emoji icons from the sidebar nav (labels stay).
+  function stripNavEmojis() {
+    document.querySelectorAll(".side-nav a").forEach(a => {
+      [...a.childNodes].forEach(n => {
+        if (n.nodeType === 3) n.textContent = n.textContent.replace(/[\p{Extended_Pictographic}️‍]/gu, "");
+      });
+    });
+  }
   function showApp() {
     $("#landing").classList.add("hidden");
     $("#appRoot").classList.remove("hidden");
@@ -85,6 +93,7 @@
     else { showLanding(); renderUserArea(null); }
 
     showRenovationBar();   // temporary "under renovation" top ticker, site-wide
+    stripNavEmojis();      // clean, icon-free sidebar for the premium look
 
     SNAuth.onChange(user => {
       if (user) { showApp(); renderUserArea(user); }
