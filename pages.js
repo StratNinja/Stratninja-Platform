@@ -5120,7 +5120,7 @@
       const gapTable = (arr, cls, title) => {
         const sorted = arr.slice().sort((a, b) => { const va = gapVal(a, gapSort.col), vb = gapVal(b, gapSort.col); if (typeof va === "string") return gapSort.dir * va.localeCompare(vb); return gapSort.dir * (va - vb); });
         const rows = sorted.map(x =>
-          "<tr><td>" + star(x.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + "</span></td><td>" + money(x.price) + "</td><td class='" + cls + "'>" + (x.gd >= 0 ? "+" : "") + money(x.gd) + "</td><td>" + pct(x.gp) + "</td></tr>").join("");
+          "<tr><td>" + star(x.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + x.s + '" data-tf="D">' + x.s + '</span></td><td data-flick="gpp-' + x.s + '">' + money(x.price) + "</td><td class='" + cls + "'>" + (x.gd >= 0 ? "+" : "") + money(x.gd) + '</td><td data-flick="gpg-' + x.s + '">' + pct(x.gp) + "</td></tr>").join("");
         return '<div class="panel"><h3>' + title + ' <span class="muted" style="font-size:12px">' + arr.length + " מניות</span> <button class=\"btn ghost\" data-gapcopy=\"" + encodeURIComponent(arr.map(x => x.s).join(", ")) + "\" style=\"font-size:12px;font-weight:600\">📋 העתק " + arr.length + "</button></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th>" + gapTh("סימבול", "sym", true) + gapTh("מחיר", "price") + gapTh("$Gap", "gd") + gapTh("%Gap", "gp") + "</tr></thead><tbody>" + (rows || '<tr><td colspan="5" class="muted">—</td></tr>') + "</tbody></table></div></div>";
       };
       return head + liveBanner() +
@@ -5495,7 +5495,7 @@
     return "<tr><td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
       '<td>' + star(t.sym) + '</td>' +
       '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
-      '<td class="tname" style="text-align:start">' + secHe(t.sector) + "</td><td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" +
+      '<td class="tname" style="text-align:start">' + secHe(t.sector) + '</td><td data-flick="tdp-' + t.sym + '">' + money(t.price) + '</td><td data-flick="tdc-' + t.sym + '">' + pct(t.chg) + "</td>" +
       "<td>" + ftfcBadge(t) + "</td>" +
       '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
   }
@@ -5830,7 +5830,7 @@
           alertCell + atimeCell +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
-          "<td>" + money(t.price) + "</td><td>" + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
+          '<td data-flick="fvp-' + t.sym + '">' + money(t.price) + '</td><td data-flick="fvc-' + t.sym + '">' + pct(t.chg) + "</td>" + tfCells(t) + '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
       };
       // annotate each row for sorting (alert count / names / open-position) + the default grouping
       list.forEach(t => { t._alertNames = pmatch[t.sym] || []; t._alertN = t._alertNames.length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); const f = _favFireMap[t.sym]; t._alertTs = f ? f.ts : null; t._alertTmStr = f ? f.tm : ""; });
@@ -6504,7 +6504,7 @@
   const _flickLast = Object.create(null);
   let _flickReady = false;   // don't flash on the very first paint after (re)load
   function runFlicker() {
-    const nodes = document.querySelectorAll("#page [data-flick]");
+    const nodes = document.querySelectorAll("[data-flick]");   // #page tables + the persistent top ticker
     nodes.forEach(el => {
       const key = el.getAttribute("data-flick");
       const txt = (el.textContent || "").trim();
@@ -6823,7 +6823,7 @@
     const cls = noDollar ? (c > 0 ? "neg" : c < 0 ? "pos" : "zero") : (c > 0 ? "pos" : c < 0 ? "neg" : "zero");
     const cs = (c >= 0 ? "+" : "") + c.toFixed(2) + "%";
     const pxTxt = price == null ? "—" : (noDollar ? "" : "$") + Number(price).toLocaleString("en-US", { maximumFractionDigits: price >= 1000 ? 0 : 2 });
-    return '<span class="lt-item tsym clickable" data-chart="' + (chartSym || sym) + '" data-tf="D" title="' + name + '"><b class="lt-sym">' + sym + "</b><span class=\"lt-px\">" + pxTxt + '</span><span class="' + cls + '">' + cs + "</span></span>";
+    return '<span class="lt-item tsym clickable" data-chart="' + (chartSym || sym) + '" data-tf="D" title="' + name + '"><b class="lt-sym">' + sym + '</b><span class="lt-px" data-flick="ltp-' + sym + '">' + pxTxt + '</span><span class="' + cls + '" data-flick="ltc-' + sym + '">' + cs + "</span></span>";
   }
   async function updateTicker() {
     const el = document.getElementById("liveTicker");
@@ -6843,6 +6843,7 @@
     el.innerHTML = html || '<span class="muted" style="font-size:12px;padding-inline-start:4px">טוען מחירים…</span>';
     updateSync();
     wireCharts(el);
+    runFlicker();   // flash the top-strip prices when they move
   }
   // freshness + next-scan countdown at the end of the ticker (updated every second).
   // Reflects the SERVER scan cadence — market snapshot every 3 min, ticker prices refreshed with it.

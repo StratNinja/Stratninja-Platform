@@ -152,7 +152,7 @@
   }
 
   // ---- live prices for Unrealized P&L (from the scanner_data snapshot) ----
-  let livePrices = null, livePricesTs = 0, _openPriceTimer = null, _feedUpdated = "";
+  let livePrices = null, liveChg = {}, livePricesTs = 0, _openPriceTimer = null, _feedUpdated = "";
   async function ensureLivePrices() {
     if (livePrices && Date.now() - livePricesTs < 30000) return livePrices;
     const cfg = window.SN_CONFIG;
@@ -165,9 +165,9 @@
       if (!r.ok) return livePrices || {};
       const j = await r.json();
       const prices = (j && j[0] && j[0].data && j[0].data.prices) || {};
-      const map = {};
-      Object.keys(prices).forEach(sym => { const v = prices[sym]; const p = Array.isArray(v) ? v[0] : v; if (p) map[sym] = p; });
-      if (Object.keys(map).length) { livePrices = map; livePricesTs = Date.now(); _feedUpdated = (j[0].data && j[0].data.updated) || _feedUpdated; }
+      const map = {}, chgMap = {};
+      Object.keys(prices).forEach(sym => { const v = prices[sym]; const p = Array.isArray(v) ? v[0] : v; if (p) map[sym] = p; if (Array.isArray(v) && v[1] != null) chgMap[sym] = v[1]; });
+      if (Object.keys(map).length) { livePrices = map; liveChg = chgMap; livePricesTs = Date.now(); _feedUpdated = (j[0].data && j[0].data.updated) || _feedUpdated; }
       return livePrices || {};
     } catch (e) { return livePrices || {}; }
   }
@@ -368,6 +368,7 @@
           case "stop": return (it.t.sl != null && it.t.sl !== "" && (it.t._n || 1) === 1) ? +it.t.sl : -Infinity;
           case "risk": { const r = riskValOf(it.t); return r == null ? -Infinity : r; }
           case "cp": return it.cp == null ? -Infinity : it.cp;
+          case "daychg": { const d = it.isOpt ? null : (liveChg ? liveChg[String(it.t.symbol || "").split(" ")[0]] : null); return d == null ? -Infinity : d; }
           case "un": return it.un == null ? -Infinity : it.un;
           case "unpct": { const pv = posValOf(it.t); return (it.un != null && pv > 0) ? it.un / pv * 100 : -Infinity; }
           default: return 0;
@@ -428,6 +429,12 @@
         pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>";
         cpHtml = money(cp, 2); pctHtml = pctCell(it.un, posVal);
       } else { haveAll = false; pnlHtml = '<span class="muted">' + (livePrices ? "אין מחיר" : "טוען…") + "</span>"; cpHtml = "—"; pctHtml = '<td class="muted">—</td>'; }
+      // today's move of the STOCK (from the live feed) — separate from the position's unrealized P&L,
+      // so a position bought low still shows GREEN P&L even on a red day, without confusion.
+      const dayChg = isOpt ? null : (liveChg ? liveChg[String(t.symbol || "").split(" ")[0]] : null);
+      const dayChgHtml = (dayChg != null)
+        ? "<td class='" + cls(dayChg) + "' style='white-space:nowrap'>" + (dayChg >= 0 ? "+" : "") + dayChg.toFixed(2) + "%</td>"
+        : "<td class='muted'>—</td>";
       const nBadge = merged ? ' <span class="agg-badge" title="' + t._n + ' לוטים מאוגדים · מחיר כניסה = ממוצע משוקלל — כבה \'אגד\' כדי לנהל/לסגור כל לוט בנפרד">×' + t._n + "</span>" : "";
       const actions = merged
         ? '<span class="muted" style="font-size:11px" title="כבה \'אגד טיקרים\' כדי לסגור/למחוק לוט בודד">🧬 מאוגד</span>'
@@ -439,12 +446,12 @@
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + chartSym(t.symbol) + nBadge +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + "</td>" +
-        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td>" + stopHtml + riskHtml + "<td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td><td>" + pnlHtml + "</td>" + pctHtml +
+        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td>" + stopHtml + riskHtml + "<td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td>" + dayChgHtml + "<td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + actions + "</td></tr>";
     }).join("");
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
-    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("stop", "סטופ") + _sh("risk", "סיכון") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
+    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("stop", "סטופ") + _sh("risk", "סיכון") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + _sh("daychg", "תנועת היום") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
     const labelSpan = 5 + (showAcct ? 1 : 0);   // entryDate..entryPrice (before the חשיפה column)
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
@@ -477,6 +484,7 @@
           "<td style='padding-top:10px'></td>" +
           "<td class='risk-cell' style='font-weight:800;padding-top:10px' title='סך הסיכון בכל הפוזיציות · באחוזים משווי התיק הפתוח כרגע'>" + totRiskHtml + "</td>" +
           "<td style='font-weight:800;padding-top:10px' title='סך שווי הפוזיציות הפתוחות'>" + money(totPosVal, 0) + "</td>" +
+          "<td style='padding-top:10px'></td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totHtml + "</td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totPct + "</td>" +
