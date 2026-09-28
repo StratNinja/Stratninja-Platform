@@ -1227,6 +1227,8 @@
   // every stock = a tile sized by market cap, colored by today's move; each sector gets a
   // WHITE frame + a BLACK name tab; click a sector tab (🔍) to ZOOM into its sub-sectors.
   let spHeatSector = null;                       // when set → zoomed into this sector
+  let spHeatAvg = false;                          // "מיצוע" mode → one color per sector (avg move)
+  try { spHeatAvg = localStorage.getItem("sn_hm_avg") === "1"; } catch (e) {}
   // EQUAL squares (RSP-style) — Adi prefers a clean, readable grid over cap-weighted tiles.
   // Every tile has the same weight, so each sector's area just reflects its number of stocks.
   function _hmValue() { return 1; }
@@ -1249,8 +1251,18 @@
     const tab = opts.zoom
       ? '<div class="hm-sec-tab hm-sec-zoom clickable" data-hmsector="' + encodeURIComponent(opts.key || name) + '" title="לחץ לזום לתתי-הסקטורים">' + name + (opts.pct != null ? ' <span class="hm-sec-pct">' + opts.pct + "%</span>" : "") + " 🔍</div>"
       : '<div class="hm-sec-tab" title="' + escAttr(name) + '">' + name + "</div>";
+    let body;
+    if (spHeatAvg) {
+      // "מיצוע" — one color for the whole sector = its average daily move (money-flow at a glance)
+      const arr = (stocks || []).map(x => x.c).filter(v => v != null);
+      const avg = arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const cs = (avg >= 0 ? "+" : "") + avg.toFixed(2) + "%";
+      body = '<div class="hm-sec-body hm-avg" style="background:' + chgColor(avg * 2.2) + '"><span class="hm-avg-pct">' + cs + "</span></div>";   // ×2.2: sector avgs are small, boost saturation for a clearer money-flow read
+    } else {
+      body = '<div class="hm-sec-body">' + _hmTiles(stocks) + "</div>";
+    }
     return '<div class="hm-sec" style="left:' + opts.left.toFixed(3) + "%;top:" + opts.top.toFixed(3) + "%;width:" + opts.w.toFixed(3) + "%;height:" + opts.h.toFixed(3) + '%">' +
-      tab + '<div class="hm-sec-body">' + _hmTiles(stocks) + "</div></div>";
+      tab + body + "</div>";
   }
   function spHeatmap() {
     const secs = (LIVE && LIVE.sectors) || [];
@@ -1303,8 +1315,9 @@
           ? '<span class="be-hi">📈 <b>' + ex.hi + "</b> בשיא 52 שבועות</span><span class=\"be-lo\">📉 <b>" + ex.lo + "</b> בשפל 52 שבועות</span>"
           : '<span class="muted">נתוני שיא/שפל נטענים…</span>') +
         '<span class="hm-legend"><span class="hml neg"></span> ירידה<span class="hml zero"></span> ללא שינוי<span class="hml pos"></span> עלייה · הצבע = התנועה היום</span></div>';
+      const avgBtn = '<button class="uni-btn hm-avg-toggle' + (spHeatAvg ? " on" : "") + '" id="hmAvgToggle" title="צבע אחד לכל סקטור לפי התנועה הממוצעת — לראות מיד לאן הכסף נכנס">🌡️ מיצוע סקטור</button>';
       return '<div class="page-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">מפת חום לפי סקטורים — כל ריבוע = מניה בגודל שווה, הצבע לפי התנועה היום. מסגרת לבנה לכל סקטור · לחץ על שם סקטור (🔍) לזום לתתי-סקטורים · לחץ מניה לגרף.</div></div>' +
-        sp500ViewSwitch() + liveBanner() + countsStrip +
+        '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" + liveBanner() + countsStrip +
         '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
@@ -1399,6 +1412,7 @@
     // HEAT MAP: zoom into a sector's sub-sectors / back to the full map
     document.querySelectorAll("[data-hmsector]").forEach(el => el.onclick = e => { e.stopPropagation(); spHeatSector = decodeURIComponent(el.dataset.hmsector); reRender(); });
     { const hb = $("#hmBack"); if (hb) hb.onclick = () => { spHeatSector = null; reRender(); }; }
+    { const av = $("#hmAvgToggle"); if (av) av.onclick = () => { spHeatAvg = !spHeatAvg; try { localStorage.setItem("sn_hm_avg", spHeatAvg ? "1" : "0"); } catch (e) {} reRender(); }; }
     document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill), c.dataset.spsub === "1"));
     // ETF chip inside a ladder cell → the sector menu (analyze ETF · charts · scanner · table), not the row drill
     document.querySelectorAll(".bcell-list .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
@@ -7284,7 +7298,7 @@
     applyDens();
     { const db = document.getElementById("snDockDensity"); if (db) db.onclick = () => { dens = DENS[(DENS.indexOf(dens) + 1) % DENS.length]; applyDens(); try { localStorage.setItem("sn_density", dens); } catch (e) {} try { if (window.snToast || snToast) snToast("תצוגה: " + DENS_HE[dens]); } catch (e) {} }; }
     const tg = document.getElementById("snDockToggle");
-    const apply = col => { dock.classList.toggle("collapsed", col); if (tg) tg.textContent = col ? "›" : "‹"; };
+    const apply = col => { dock.classList.toggle("collapsed", col); document.body.classList.toggle("dock-collapsed", col); if (tg) tg.textContent = col ? "›" : "‹"; };   // collapsing the dock also hides the floating 52w-high badge
     let col = false; try { col = localStorage.getItem("sn_dock_col") === "1"; } catch (e) {}
     apply(col);
     if (tg) tg.onclick = () => { col = !col; apply(col); try { localStorage.setItem("sn_dock_col", col ? "1" : "0"); } catch (e) {} };

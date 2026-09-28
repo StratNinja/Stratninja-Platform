@@ -128,12 +128,16 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 
 /* ---------- alerts center: wider modal, two columns (scans right · recent alerts left) ---------- */
-.al-modal { max-width: min(96vw, 1180px); width: min(96vw, 1180px); }
-/* recent-alerts column is wider than the presets column so each alert fits on ONE compact line */
-.al-cols { display: grid; grid-template-columns: minmax(230px, .82fr) 1.4fr; gap: 16px; margin-top: 6px; }
+.al-modal { max-width: min(97vw, 1480px); width: min(97vw, 1480px); }
+/* two roomy columns — presets ("הסריקות שלי") and recent alerts both get real width */
+.al-cols { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(0, 1.25fr); gap: 22px; margin-top: 6px; }
 .al-cols .al-col { min-width: 0; }
-.al-cols .al-plist { max-height: 46vh; overflow: auto; padding-inline-end: 4px; }
-.al-cols .al-flist { max-height: 58vh; overflow: auto; padding-inline-end: 4px; }
+.al-cols .al-plist { max-height: 58vh; overflow: auto; padding-inline-end: 6px; }
+.al-cols .al-flist { max-height: 58vh; overflow: auto; padding-inline-end: 6px; }
+/* preset rows ("my scans"): comfortable, name on the start, toggle pinned to the end */
+.al-prow { padding: 8px 13px; gap: 12px; align-items: center; }
+.al-prow > span:first-child { flex: 1 1 auto; min-width: 0; font-weight: 700; line-height: 1.35; }
+.al-prow > .ios-switch, .al-prow > label { flex: none; margin-inline-start: auto; }
 /* single-line alert rows: [ticker] [scan name … ellipsis] [date time] */
 .al-frow { padding: 5px 11px; margin: 4px 0; gap: 10px; flex-wrap: nowrap; align-items: center; }
 .al-frow .tsym { flex: none; font-weight: 800; font-size: 13px; min-width: 44px; }
@@ -333,6 +337,12 @@ body[data-page="market"] .idx-row { margin: 2px 0; }
 .hm-t-sym { font-size: 11px; font-weight: 800; line-height: 1.05; }
 .hm-t-chg { font-size: 9px; font-weight: 600; opacity: .92; }
 .hm-tile-sm .hm-t-sm { font-size: 8px; font-weight: 700; line-height: 1; letter-spacing: -.2px; }
+/* "מיצוע" mode: whole-sector single color + big average % */
+.hm-sec-body.hm-avg { display: flex; align-items: center; justify-content: center; }
+.hm-avg-pct { color: #fff; font-weight: 800; font-size: clamp(13px, 1.8vw, 30px); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.hm-avg-toggle { display: inline-flex; align-items: center; gap: 4px; }
+/* collapsing the floating dock also hides the 52-week-high celebration badge */
+body.dock-collapsed #athCeleb { display: none !important; }
 .hm-counts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 8px 0 10px; font-size: 13px; }
 .hm-counts .be-hi b { color: var(--green); } .hm-counts .be-lo b { color: var(--red); }
 .hm-legend { color: var(--muted); font-size: 12px; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
