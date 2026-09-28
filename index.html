@@ -118,18 +118,15 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
         <a data-page="favorites">⭐ <span class="lbl">מועדפים</span></a>
         <a data-page="journal">📅 <span class="lbl">יומן מסחר</span></a>
         <a data-page="learn">📚 <span class="lbl">לימוד</span> <span class="nav-newbie">התחל כאן 👋</span></a>
-        <a data-page="draw" id="navDraw" style="display:none">✏️ <span class="lbl">שרטוט נרות</span></a>
+        <a data-page="draw" id="navDraw" style="display:none">✏️ <span class="lbl">שרטוט נרות</span></a><!-- kept for routing; hidden from sidebar, opened via the floating dock -->
         <a data-page="analytics" id="navAnalytics" style="display:none">📈 <span class="lbl">מטריצת שימוש</span></a>
         <a class="side-act" id="sideAlerts">🔔 <span class="lbl">מרכז התראות</span><span class="al-badge" id="alBadgeSide"></span></a>
       </nav>
       <div class="side-foot">
         <nav class="side-nav side-nav-sec">
-          <a class="side-act" onclick="snToggleTheme()" title="החלף בין מצב כהה לבהיר">🌗 <span class="lbl" id="themeLbl">מצב בהיר</span></a>
           <a class="side-about" onclick="openLegal('about')">👤 <span class="lbl">עלי</span></a>
           <a class="side-act" id="sideNews">🗞️ <span class="lbl">חדשות</span></a>
-          <a class="side-act" id="sideCam">📷 <span class="lbl">שתף מסך</span></a>
-          <a class="side-act" id="sideRequest">💬 <span class="lbl">בקשות מהקהל</span></a>
-          <a class="side-act" id="sideSuggest">⭐ <span class="lbl">הצע מניה לסורק</span></a>
+          <a class="side-act" id="sideRequest">💬 <span class="lbl">בקשות והצעות מהקהל</span></a>
           <a class="side-act" id="sideCommAdmin" style="display:none">🛠️ <span class="lbl">מניות קהילה · ניהול</span></a>
         </nav>
         <div class="social-row">
@@ -145,6 +142,15 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
     <main class="main">
       <!-- persistent live price ticker (SPY / QQQ / BTC) -->
       <div id="liveTicker" class="live-ticker" aria-label="מחירים חיים"></div>
+      <!-- floating action dock (bottom-left, near accessibility): theme / share / draw · collapsible -->
+      <div id="snDock" class="sn-dock" dir="rtl">
+        <button class="snd-btn snd-toggle" id="snDockToggle" title="הסתר/הצג כלים" aria-label="הסתר/הצג">‹</button>
+        <div class="snd-icons" id="sndIcons">
+          <button class="snd-btn" id="snDockTheme" title="מצב בהיר / כהה" aria-label="מצב בהיר / כהה">🌙</button>
+          <button class="snd-btn" id="snDockCam" title="שתף מסך" aria-label="שתף מסך">📷</button>
+          <button class="snd-btn" id="snDockDraw" title="שרטוט נרות" aria-label="שרטוט נרות" style="display:none">✏️</button>
+        </div>
+      </div>
       <a class="community-cta" href="https://www.patreon.com/14520383/join" target="_blank" rel="noopener">
         <span class="confetti"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
         <span class="cta-text" id="ctaText"><span class="cta-trophy">🏆</span> הצטרף לקהילת הדיסקורד של StratNinja</span>

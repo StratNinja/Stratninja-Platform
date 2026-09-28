@@ -119,6 +119,22 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .fav-alert-multi:hover .fav-alert-pop, .fav-alert-multi:focus-within .fav-alert-pop { display: flex; flex-direction: column; gap: 5px; }
 .fav-alert-pop .fav-alert-chip { max-width: none; }
 
+/* ---------- floating action dock (theme / share / draw), bottom-left near accessibility ---------- */
+.sn-dock { position: fixed; bottom: 16px; left: 66px; z-index: 40; display: flex; align-items: center; gap: 8px; direction: ltr; }
+.sn-dock .snd-icons { display: flex; align-items: center; gap: 8px; overflow: hidden; max-width: 220px; opacity: 1;
+  transition: max-width .25s ease, opacity .18s ease; }
+.sn-dock.collapsed .snd-icons { max-width: 0; opacity: 0; pointer-events: none; }
+.snd-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel);
+  color: var(--ink); font-size: 18px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .12s, border-color .12s; flex: none; line-height: 1; }
+.snd-btn:hover { transform: translateY(-2px); border-color: var(--lux-g2); }
+.snd-toggle { width: 26px; height: 26px; font-size: 15px; opacity: .75; box-shadow: none; }
+.snd-toggle:hover { opacity: 1; }
+@media (max-width: 640px) { .sn-dock { left: 60px; bottom: 12px; } .snd-btn { width: 36px; height: 36px; font-size: 16px; } }
+/* merged request/suggest chooser */
+.req-chooser { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
+.req-chooser .btn { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
+
 /* ---------- column picker: base + optional groups ---------- */
 .col-picker .col-grp-lbl { font-size: 11px; font-weight: 700; opacity: .7; margin-inline-start: 4px; }
 .col-picker .col-sep { display: inline-block; width: 1px; height: 18px; background: var(--line); margin: 0 6px; vertical-align: middle; }

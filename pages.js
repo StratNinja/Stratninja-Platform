@@ -7149,6 +7149,36 @@
     if (!document.getElementById("athCeleb")) { _athIdx = 0; _athShow(0); }   // (re)start rotation if not already running
   }
 
+  // merged "בקשות והצעות" — pick feature-request OR suggest-a-ticker
+  function openRequestChooser() {
+    modal("💬 בקשות והצעות מהקהל",
+      '<div class="req-chooser">' +
+      '<p class="muted" style="margin:0 0 4px">מה תרצה לשלוח?</p>' +
+      '<button class="btn primary" id="rqFeature">💬 בקשת פיצ\'ר / שיפור לאתר</button>' +
+      '<button class="btn ghost" id="rqTicker">⭐ הצעת מניה לסורק</button>' +
+      "</div>");
+    { const f = document.getElementById("rqFeature"); if (f) f.onclick = () => { closeModal(); openRequestForm(); }; }
+    { const t = document.getElementById("rqTicker"); if (t) t.onclick = () => { closeModal(); openSuggestTicker(); }; }
+  }
+  // floating action dock (theme / share / draw) with a collapse toggle
+  function initFloatDock() {
+    const dock = document.getElementById("snDock"); if (!dock) return;
+    const setThemeIcon = () => {
+      const b = document.getElementById("snDockTheme"); if (!b) return;
+      const light = document.documentElement.getAttribute("data-theme") === "light";
+      b.textContent = light ? "☀️" : "🌙"; b.title = light ? "עבור למצב כהה" : "עבור למצב בהיר";
+    };
+    setThemeIcon();
+    { const t = document.getElementById("snDockTheme"); if (t) t.onclick = () => { try { if (window.snToggleTheme) snToggleTheme(); } catch (e) {} setThemeIcon(); }; }
+    { const c = document.getElementById("snDockCam"); if (c) c.onclick = () => captureShare(); }
+    { const d = document.getElementById("snDockDraw"); if (d) d.onclick = () => setPage("draw"); }
+    const tg = document.getElementById("snDockToggle");
+    const apply = col => { dock.classList.toggle("collapsed", col); if (tg) tg.textContent = col ? "›" : "‹"; };
+    let col = false; try { col = localStorage.getItem("sn_dock_col") === "1"; } catch (e) {}
+    apply(col);
+    if (tg) tg.onclick = () => { col = !col; apply(col); try { localStorage.setItem("sn_dock_col", col ? "1" : "0"); } catch (e) {} };
+    try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(setThemeIcon); } catch (e) {}
+  }
   function initNav() {
     document.querySelectorAll(".side-nav a[data-page]").forEach(a => a.onclick = () => setPage(a.dataset.page));
     applyNewbieBadge();   // remove the "התחל כאן" badge on load if the user already dismissed it
@@ -7171,11 +7201,14 @@
     { const cam = document.getElementById("sideCam"); if (cam) cam.onclick = () => captureShare(); }
     { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
     { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed(); }
-    { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestForm(); }
+    // merged "בקשות והצעות" — one entry that offers both the feature-request form and the suggest-ticker flow
+    { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestChooser(); }
     { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
-    // reveal the admin-only community panel link for Adi (and whenever auth state changes)
-    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "navDraw", "navAnalytics"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };
+    // ── floating action dock (theme / share / draw) + collapse ──
+    initFloatDock();
+    // reveal the admin-only bits for Adi (and whenever auth state changes). Draw is now the DOCK pencil.
+    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "navAnalytics", "snDockDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };
     _revealAdmin();
     try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(_revealAdmin); } catch (e) {}
     updateAlertBell();
