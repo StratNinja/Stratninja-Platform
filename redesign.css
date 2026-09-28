@@ -190,6 +190,9 @@ body[data-page="sectors"] .bc-chg { font-size: 13px; }
 .brd-state.pos { color: var(--green); border-color: var(--greenbd); }
 .brd-state.neg { color: var(--red); border-color: var(--redbd); }
 .brd-state.zero { color: #e6b800; border-color: rgba(230,184,0,.5); }
+.brd-extremes { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 8px 0 2px; font-size: 13.5px; font-weight: 600; }
+.brd-extremes .be-hi b { color: var(--green); font-size: 15px; }
+.brd-extremes .be-lo b { color: var(--red); font-size: 15px; }
 @media (max-width: 1200px) { .brd-charts { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 760px) { .brd-charts { grid-template-columns: 1fr; } .brd-chart .tvchart { height: 260px; } }
 

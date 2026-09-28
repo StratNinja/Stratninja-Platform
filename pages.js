@@ -1043,6 +1043,17 @@
     else { lbl = "🔴 Overbought"; cls = "neg"; }
     return { score: Math.round(score), lbl, cls };
   }
+  // live count of S&P stocks at their 52-week HIGH / LOW (extreme radar). From the scanner's dhi52/dlo52.
+  function _brd52wCounts(uni) {
+    if (uni !== "sp" || !(SCAN && SCAN.rows && SCAN.rows.length)) return null;
+    let hi = 0, lo = 0, tot = 0;
+    SCAN.rows.forEach(r => {
+      if (!r.sp) return; const t = r.tech; if (!t) return; tot++;
+      if (t.dhi52 != null && t.dhi52 >= -0.5) hi++;       // within 0.5% of the 52-week high
+      if (t.dlo52 != null && t.dlo52 <= 0.5) lo++;        // within 0.5% of the 52-week low
+    });
+    return tot ? { hi, lo, tot } : null;
+  }
   function _brdZoneCls(v) { return v <= 25 ? "pos" : v >= 75 ? "neg" : (v >= 45 && v <= 55 ? "zero" : ""); }
   function _brdChartSvg(series, cur) {
     const W = 300, H = 150, padT = 6, padB = 4, padL = 2, padR = 2;
@@ -1068,6 +1079,12 @@
     const uniSwitch = '<div class="uni-switch brd-top"><span class="uni-lbl">מדד:</span>' +
       '<button class="uni-btn' + (uni === "sp" ? " on" : "") + '" data-brduni="sp">S&P 500</button>' +
       '<button class="uni-btn' + (uni === "ndx" ? " on" : "") + '" data-brduni="ndx">Nasdaq 100</button>' + stateBadge + "</div>";
+    const ex = _brd52wCounts(uni);
+    const exStrip = ex
+      ? '<div class="brd-extremes"><span class="be-hi">📈 <b>' + ex.hi + '</b> מניות בשיא 52 שבועות</span>' +
+        '<span class="be-lo">📉 <b>' + ex.lo + '</b> בשפל 52 שבועות</span>' +
+        '<span class="muted" style="font-weight:600">מתוך ' + ex.tot + ' · S&P 500 · חי</span></div>'
+      : "";
     const data = BREADTH_DATA && BREADTH_DATA[uni];
     const haveOurs = data && BRD_MAS.some(n => (data[n] || []).length > 2);
     let charts, foot;
@@ -1090,7 +1107,7 @@
       '<div class="page-head"><h1>רוחב שוק · מעל הממוצעים</h1><div class="sub">כמה מהמניות ב-<b>' + name + '</b> נמצאות <b>מעל</b> הממוצע הנע שלהן (20 / 50 / 100 / 150 / 200 יום). ' +
         '<b class="pos">קריאה נמוכה</b> = <b>מעט</b> מניות מעל הממוצעים = אזור <b>oversold</b> — שלפי הבדיקות שלנו נוטה להיות <b>אזור קנייה</b>. ' +
         'ככל שיותר מדדים (קצר <u>וגם</u> ארוך טווח) נמוכים יחד — הרחיצה עמוקה יותר.</div></div>' +
-      uniSwitch + charts + foot
+      uniSwitch + exStrip + charts + foot
     );
   }
   function wireBreadth() {
