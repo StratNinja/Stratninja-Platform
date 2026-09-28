@@ -1486,7 +1486,10 @@
   // ---- preset × favorites ALERTS (client-side; reuses the real filter, no server duplication) ----
   function evalPreset(preset) {
     if (!preset || !preset.cfg) return [];
-    const snapS = JSON.parse(JSON.stringify(scanState)), snapT = JSON.parse(JSON.stringify(techState));
+    // SHALLOW snapshot keeps the ORIGINAL array references (applyScanConfig/resetScan only ever REASSIGN
+    // state arrays, never mutate them in place) — so restoring them below hands back the exact same arrays
+    // the filter UI (multi-combos like tBbPos) are wired to. A deep copy here would orphan those refs.
+    const snapS = Object.assign({}, scanState), snapT = Object.assign({}, techState);
     let syms = [];
     try { applyScanConfig(preset.cfg); syms = filterRows(scanSource()).map(t => t.sym); } catch (e) { syms = []; }
     Object.keys(snapS).forEach(k => { scanState[k] = snapS[k]; });
@@ -3963,11 +3966,14 @@
             '<div class="fgrp"><label>🎈 תקופת בולינגר</label><select id="tBbPeriod">' + opt("20", techState.bbPeriod, "20 (קלאסי)") + opt("50", techState.bbPeriod, "50 (ארוך)") + "</select></div>" +
             '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100, יחסי למניה)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
             '<div class="fgrp"><label>🎈 רוחב בולינגר ≤ <span class="muted" style="font-size:10px">(% אבסולוטי — צר ממש)</span></label><input id="tBbwMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.bbwMax + '"></div>' +
-            '<div class="fgrp"><label>🎈 בולינגר · מיקום ברצועות <span class="muted" style="font-size:10px">(%B · חזרה לממוצע)</span></label><select id="tBbPos">' +
-              opt("off", techState.bbPos, "— הכל") +
-              opt("lowerZone", techState.bbPos, "בחלק התחתון · נוגעת מבפנים (%B≤20)") + opt("upperZone", techState.bbPos, "בחלק העליון · נוגעת מבפנים (%B≥80)") +
-              opt("below", techState.bbPos, "מתחת לרצועה · LONG (%B≤0)") + opt("above", techState.bbPos, "מעל הרצועה · SHORT (%B≥100)") + opt("rev", techState.bbPos, "שני הקצוות · חזרה לממוצע") +
-              "</select></div>" +
+            '<div class="fgrp"><label>🎈 בולינגר · מיקום ברצועות <span class="muted" style="font-size:10px">(%B · חזרה לממוצע · בחירה מרובה)</span></label>' +
+              multiComboHtml("tBbPos", [
+                { val: "lowerZone", label: "בחלק התחתון · נוגעת מבפנים (%B≤20)" },
+                { val: "upperZone", label: "בחלק העליון · נוגעת מבפנים (%B≥80)" },
+                { val: "below", label: "מתחת לרצועה · LONG (%B≤0)" },
+                { val: "above", label: "מעל הרצועה · SHORT (%B≥100)" },
+                { val: "rev", label: "שני הקצוות · חזרה לממוצע" },
+              ], _bbPosArr(), "— הכל") + "</div>" +
             '<div class="fgrp"><label>〽️ סווינג <span class="muted" style="font-size:10px">(שיא/שפל אופקי · קרבה או בדיקת פריצה)</span></label><div class="chips" style="align-items:center"><select id="tSwSide">' +
               opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
               opt("breakHi", techState.swSide, "🚀 פריצת שיא + בדיקה") + opt("breakLo", techState.swSide, "🔻 שבירת שפל + בדיקה") +
@@ -4259,11 +4265,9 @@
         if (_bbActive()) { const v = _bbVal(k, "bbsq"); if (v == null || v > parseFloat(techState.bbSqMax)) return false; }
         if (_bbwActive()) { const v = _bbVal(k, "bbw"); if (v == null || v > parseFloat(techState.bbwMax)) return false; }
         if (_bbPosActive()) { const b = _bbVal(k, "bbp"); if (b == null) return false;
-          if (techState.bbPos === "above" && b < 100) return false;
-          if (techState.bbPos === "below" && b > 0) return false;
-          if (techState.bbPos === "upperZone" && b < 80) return false;   // inside, hugging the upper band (or beyond)
-          if (techState.bbPos === "lowerZone" && b > 20) return false;   // inside, hugging the lower band (or below)
-          if (techState.bbPos === "rev" && !(b <= 0 || b >= 100)) return false; }
+          // multi-select: a stock passes if it matches ANY of the chosen band positions (OR)
+          const _bpTest = m => m === "above" ? b >= 100 : m === "below" ? b <= 0 : m === "upperZone" ? b >= 80 : m === "lowerZone" ? b <= 20 : m === "rev" ? (b <= 0 || b >= 100) : false;
+          if (!_bbPosArr().some(_bpTest)) return false; }
         if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
         if (techState.swSide === "low" && (k.swlo_d == null || Math.abs(k.swlo_d) > techState.swPct)) return false;
         // breakout retest = broke ABOVE the swing high and pulled back to it (still above, within pct)
@@ -4497,7 +4501,7 @@
     bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
     bind("tBbwMax", "onchange", e => { techState.bbwMax = e.target.value; reRender(); });
     bind("tBbPeriod", "onchange", e => { techState.bbPeriod = e.target.value; reRender(); });
-    bind("tBbPos", "onchange", e => { techState.bbPos = e.target.value; reRender(); });
+    wireMultiCombo("tBbPos", _bbPosArr(), reRender);   // multi-select Bollinger band position
     bind("tSwSide", "onchange", e => { techState.swSide = e.target.value; reRender(); });
     bind("tSwPct", "onchange", e => { techState.swPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tTrendMode", "onchange", e => { techState.trendMode = e.target.value; reRender(); });
@@ -4608,7 +4612,7 @@
     bbSqMax: "",                 // Bollinger squeeze percentile ≤ (relative to the stock's own history)
     bbwMax: "",                  // Bollinger bandwidth % ≤ (absolute — objectively narrow bands)
     bbPeriod: "20",              // Bollinger MA period: "20" (classic) or "50"
-    bbPos: "off",                // Bollinger %B position: off / below (≤0, LONG rev) / above (≥100, SHORT rev) / rev (both extremes)
+    bbPos: [],                   // Bollinger %B position (multi-select): below/above/upperZone/lowerZone/rev
     swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
     fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
@@ -4643,7 +4647,9 @@
   // Bollinger period selector (20 classic / 50 longer) — picks which precomputed field to read
   function _bbP() { return techState.bbPeriod === "50" ? "50" : ""; }
   function _bbVal(k, base) { return k ? k[base + _bbP()] : null; }
-  function _bbPosActive() { return techState.bbPos && techState.bbPos !== "off"; }
+  // normalize bbPos to an array (multi-select). Migrates old string presets ("off"/"below"/…) in place.
+  function _bbPosArr() { if (!Array.isArray(techState.bbPos)) techState.bbPos = (techState.bbPos && techState.bbPos !== "off") ? [techState.bbPos] : []; return techState.bbPos; }
+  function _bbPosActive() { return _bbPosArr().length > 0; }
   function _swActive() { return !!techState.swSide && techState.swSide !== "off"; }
   function _trendActive() { return ["touchsup", "touchres", "breakup", "breakdn"].indexOf(techState.trendMode) >= 0; }
   function _trendThr() { const v = parseFloat(techState.trendPct); return isNaN(v) ? 1.5 : v; }
@@ -4829,7 +4835,7 @@
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = "";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
-    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = "off"; techState.swSide = "off"; techState.swPct = 2;
+    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2;
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
