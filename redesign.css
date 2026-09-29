@@ -268,9 +268,13 @@ body[data-page="today"] .bc-cell .bc-name { font-size: 13px; }
 body[data-page="today"] .bc-cell .bc-pct { font-size: 14px; }
 body[data-page="today"] .flow-mode, body[data-page="today"] .flow-controls, body[data-page="today"] .sec-ftfc-switch, body[data-page="today"] .flow-ctrl { margin-bottom: 6px; }
 body[data-page="today"] .flow-ctrl { padding: 7px 12px; }
-body[data-page="today"] .td-ixc, body[data-page="today"] .td-indices { padding: 6px 10px; }
-body[data-page="today"] .td-flow2 { gap: 10px; margin-bottom: 8px; }
-body[data-page="today"] .td-market-row { padding: 8px 14px; }
+body[data-page="today"] .td-ixc, body[data-page="today"] .td-indices { padding: 5px 10px; }
+body[data-page="today"] .td-flow2 { gap: 10px; margin-bottom: 6px; }
+body[data-page="today"] .td-market-row { padding: 7px 14px; }
+body[data-page="today"] .bc-cell { min-height: 23px; }
+body[data-page="today"] .page-head h1 { font-size: 23px; }
+body[data-page="today"] .note { font-size: 11px; margin: 4px 0 !important; padding: 6px 10px; }
+body[data-page="today"] .td-breadth { margin: 2px 0; }
 @media (max-width: 900px) {
   body[data-page="sectors"] .guide-sec, body[data-page="today"] .guide-sec { display: block; }
 }
@@ -341,6 +345,12 @@ body[data-page="market"] .idx-row { margin: 2px 0; }
 .hm-sec-body.hm-avg { display: flex; align-items: center; justify-content: center; }
 .hm-avg-pct { color: #fff; font-weight: 800; font-size: clamp(13px, 1.8vw, 30px); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .hm-avg-toggle { display: inline-flex; align-items: center; gap: 4px; }
+/* heat-map timeframe bar */
+.hm-tfbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.hm-tf { font-size: 12px; font-weight: 700; }
+.hm-tf-soon { opacity: .38; cursor: not-allowed; }
+.hm-counts .clickable { cursor: pointer; border-radius: 7px; padding: 2px 8px; transition: background .12s; }
+.hm-counts .clickable:hover { background: rgba(255,255,255,.08); }
 /* collapsing the floating dock also hides the 52-week-high celebration badge */
 body.dock-collapsed #athCeleb { display: none !important; }
 .hm-counts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 8px 0 10px; font-size: 13px; }
