@@ -24,8 +24,8 @@
 /* equity curve: clearly bounded to the viewport height (no scroll) */
 #journalContainer .chartbox { padding: 10px 14px; margin-bottom: 8px; }
 #journalContainer .chartbox h3 { margin: 0 0 6px; }
-#journalContainer .eqsvg { max-height: calc(100vh - 470px); min-height: 170px; }
-@media (max-width: 820px) { #journalContainer .eqsvg { max-height: 46vh; } #journalContainer .cell { min-height: 46px; } }
+#journalContainer .eqsvg { max-height: 30vh; min-height: 150px; }
+@media (max-width: 820px) { #journalContainer .eqsvg { max-height: 34vh; } #journalContainer .cell { min-height: 46px; } }
 
 /* ---------- typography: larger, refined ---------- */
 body { font-family: 'Heebo', 'Rubik', 'Segoe UI', 'Assistant', Arial, sans-serif; letter-spacing: -0.1px; }
