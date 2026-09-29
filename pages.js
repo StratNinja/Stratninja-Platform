@@ -4317,6 +4317,10 @@
             '<div class="fgrp"><label>גאפ (פתיחה מול אתמול)</label><div class="chips" style="align-items:center"><select id="tGapDir">' +
               opt("off", techState.gapDir, "— הכל") + opt("up", techState.gapDir, "גאפ אפ ↑") + opt("down", techState.gapDir, "גאפ דאון ↓") + opt("any", techState.gapDir, "⚡ שניהם") +
               "</select>" + (_gapActive() ? '<span class="muted">≥</span><input id="tGapPct" type="number" step="0.5" min="0" style="width:56px" value="' + techState.gapPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+            '<div class="fgrp"><label>🌙 תנועת פרה/אפטר <span class="muted" style="font-size:10px">(מחוץ למסחר)</span></label><div class="chips" style="align-items:center"><select id="tExtMove">' +
+              opt("off", techState.extMove, "— הכל") + opt("up", techState.extMove, "🟢 עולה ↑") + opt("down", techState.extMove, "🔴 יורדת ↓") + opt("any", techState.extMove, "⚡ שניהם") +
+              "</select>" + (_extActive() ? '<span class="muted">≥</span><input id="tExtPct" type="number" step="0.5" min="0" style="width:56px" value="' + techState.extPct + '"><span class="muted">%</span>' : "") +
+              ((LIVE && LIVE.extWin) ? ' <span class="pos" style="font-size:10px">· ' + (LIVE.extWin === "pre" ? "פרה-מרקט פעיל" : "אפטר-מרקט פעיל") + "</span>" : ' <span class="muted" style="font-size:10px">· פעיל רק בשעות פרה/אפטר-מרקט</span>') + "</div></div>" +
           "</div>";
     }
     const techBadge = cnt ? ' <span class="badge-ftfc">' + cnt + ' פעילים</span>' : ' <span class="muted" style="font-size:12px">נטרלי · שנה ערך כדי לסנן</span>';
@@ -4406,6 +4410,7 @@
       { key: "earn", th: "דיווח", tip: "ימים עד דוח התוצאות הקרוב (מקור: Finnhub). '95+' = אין דיווח ידוע ב-95 הימים הקרובים (רחוק/בטוח)", cell: k => { const v = k.earn; return v == null ? '<td class="pos">🟢 95+ ימים</td>' : "<td class='" + (v <= 7 ? "neg" : "") + "'>📅 " + (v === 0 ? "היום" : "בעוד " + v + " ימים") + "</td>"; }, active: techState.earnMin !== "" },
       { key: "atrp", th: "ATR%" + _tfSuf(), tip: "ATR%: טווח התנועה הממוצע כאחוז מהמחיר — מדד תנודתיות" + _tfTip(), cell: k => { const v = _techVal(k, "atrp"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "%") + "</td>"; }, active: _atrp() > 0 },
       { key: "gap", th: "גאפ", tip: "גאפ: פער הפתיחה של היום מול סגירת אתמול (%)", cell: k => "<td>" + dPct(k.gap) + "</td>", active: _gapActive() },
+      { key: "ext", th: "🌙 פרה/אפטר", tip: "תנועת המחיר מחוץ לשעות המסחר (פרה-מרקט לפני הפתיחה · אפטר-מרקט אחרי הסגירה). מוצג רק כשחלון כזה פעיל.", cell: (k, dma, t) => { const e = _extOf(t.sym); return "<td>" + (e == null ? '<span class="muted">—</span>' : dPct(e)) + "</td>"; }, active: _extActive() },
       { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", tip: "מרחק המחיר משיא 52 השבועות (0% = בשיא)", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
       { key: "comp", th: "דחיסת MA", tip: "דחיסת ממוצעים: כמה הממוצעים הנעים צפופים זה לזה — נמוך = קפיץ דחוס לפני פריצה", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
@@ -4648,6 +4653,12 @@
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "any" && (k.gap == null || Math.abs(k.gap) < (parseFloat(techState.gapPct) || 0))) return false;   // gap up OR down beyond the threshold
+        if (_extActive()) {   // extended-hours (pre/post market) move ≥ % — only matches while an extended window is live (LIVE.ext populated)
+          const e = _extOf(t.sym), p = parseFloat(techState.extPct) || 0;
+          if (techState.extMove === "up" && (e == null || e < p)) return false;
+          if (techState.extMove === "down" && (e == null || e > -p)) return false;
+          if (techState.extMove === "any" && (e == null || Math.abs(e) < p)) return false;
+        }
         if (_popenActive() && !_popenTest(t)) return false;   // price must be within N×ATR of a Y/Q/M open (support/resistance)
         if (_pextActive() && !_pextTest(t)) return false;     // price must be within pextPct% of a Y/Q/M high/low
       }
@@ -4913,6 +4924,8 @@
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
     bind("tGapDir", "onchange", e => { techState.gapDir = e.target.value; reRender(); });
     bind("tGapPct", "onchange", e => { techState.gapPct = parseFloat(e.target.value) || 0; reRender(); });
+    bind("tExtMove", "onchange", e => { techState.extMove = e.target.value; reRender(); });
+    bind("tExtPct", "onchange", e => { techState.extPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tCompMax", "onchange", e => { techState.compMax = e.target.value; reRender(); });
     bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
     bind("tBbwMax", "onchange", e => { techState.bbwMax = e.target.value; reRender(); });
@@ -4990,6 +5003,7 @@
     gid("tChgMin", techState.chgMin !== "");
     gid("tChgMax", techState.chgMax !== "");
     gid("tGapDir", techState.gapDir !== "off");
+    gid("tExtMove", _extActive());
     // ---- indicator panel ----
     gid("tCompMax", _compActive());
     gid("tBbSqMax", _bbActive());
@@ -5027,6 +5041,7 @@
     atrpMin: "",                 // ATR as % of price ≥
     chgMin: "", chgMax: "",      // daily % move, from–to (signed)
     gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
+    extMove: "off", extPct: 3,   // extended-hours (pre/post market) move ≥ % — reads LIVE.ext (fresh during off-hours)
     compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
     bbSqMax: "",                 // Bollinger squeeze percentile ≤ (relative to the stock's own history)
     bbwMax: "",                  // Bollinger bandwidth % ≤ (absolute — objectively narrow bands)
@@ -5183,6 +5198,9 @@
   }
   function _chgActive() { return techState.chgMin !== "" || techState.chgMax !== ""; }
   function _gapActive() { return techState.gapDir === "up" || techState.gapDir === "down"; }
+  // extended-hours (pre/post market) move for a symbol — from the LIVE snapshot (fresh during off-hours), null otherwise
+  function _extOf(sym) { return (LIVE && LIVE.ext && LIVE.ext[sym] != null) ? LIVE.ext[sym] : null; }
+  function _extActive() { return techState.extMove === "up" || techState.extMove === "down" || techState.extMove === "any"; }
   function _volTrendActive() { return techState.volTrendDir === "up" || techState.volTrendDir === "down"; }
   function _volTrendDays() { const d = parseInt(techState.volTrendDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(7, d)); }
   function _volTrendPass(k) {
@@ -5228,7 +5246,7 @@
     return techState.maRel !== "off" || _maExtraActive() > 0 || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || _volTrendActive() || _volAvgActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMin !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
-      _atrp() > 0 || _chgActive() || _gapActive() || _popenActive() || _pextActive();
+      _atrp() > 0 || _chgActive() || _gapActive() || _extActive() || _popenActive() || _pextActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -5248,6 +5266,7 @@
     if (_atrp() > 0) n++;
     if (_chgActive()) n++;
     if (_gapActive()) n++;
+    if (_extActive()) n++;
     if (_popenActive()) n++;
     if (_pextActive()) n++;
     return n;
@@ -5259,7 +5278,7 @@
     techState.volAvgDir = "off"; techState.volAvgDays = 3;
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = ""; techState.earnDir = "far";
     techState.ext52 = "off"; techState.ext52Pct = 3;
-    techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
+    techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3; techState.extMove = "off"; techState.extPct = 3;
     techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2; techState.swK = "5";
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
