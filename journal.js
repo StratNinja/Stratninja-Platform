@@ -448,9 +448,10 @@
         ? "<td class='" + cls(dayChg) + "' style='white-space:nowrap'>" + (dayChg >= 0 ? "+" : "") + dayChg.toFixed(2) + "%</td>"
         : "<td class='muted'>—</td>";
       const nBadge = merged ? ' <span class="agg-badge" title="' + t._n + ' לוטים מאוגדים · מחיר כניסה = ממוצע משוקלל — כבה \'אגד\' כדי לנהל/לסגור כל לוט בנפרד">×' + t._n + "</span>" : "";
-      // 📸 share THIS live position as a ninja card (needs a live price → stocks with a quote)
+      // 📸 share THIS live position as a ninja card. Stocks use the live quote; options use the
+      // current premium the trader typed (cp) — so an option is shareable ONCE a current price is entered.
       const _sBase = String(t.symbol || "").split(" ")[0];
-      const shareBtn = (!merged && cp != null && !isOpt)
+      const shareBtn = (!merged && cp != null)
         ? "<button class='btn ghost' data-sharepos='1' data-sp-sym='" + _sBase + "' data-sp-dir='" + (t.direction || "long") +
           "' data-sp-qty='" + (t.qty || "") + "' data-sp-atype='" + (t.assetType === "option" ? "Options" : "Stock") +
           "' data-sp-entry='" + (t.entryPrice || 0) + "' data-sp-cp='" + cp + "' title='שתף פוזיציה ככרטיס נינג׳ה' style='padding:4px 8px'>📸</button> "
