@@ -1036,6 +1036,7 @@
 
   // ---- Equity curve ------------------------------------------------------
   let eqMode = "abs";   // "abs" ($) | "pct" (% of portfolio size)
+  let eqPivots = false; try { eqPivots = localStorage.getItem("sn_eq_pivots") === "1"; } catch (e) {}   // PIVOT HIGH/LOW markers
   function eqBaseKey(acct) { return "sn_eq_base_" + (acct || "_"); }
   function getEqBase(acct) { try { const v = parseFloat(localStorage.getItem(eqBaseKey(acct))); return v > 0 ? v : null; } catch (e) { return null; } }
   function setEqBase(acct, v) { try { localStorage.setItem(eqBaseKey(acct), String(v)); } catch (e) {} }
@@ -1059,12 +1060,15 @@
     // header: title + $/% toggle
     const head = el("div", "eq-head");
     head.innerHTML = '<h3>עקומת הון (רווח/הפסד מצטבר)</h3>' +
-      '<span class="eq-modes"><button class="eq-mode-btn' + (eqMode === "abs" ? " on" : "") + '" data-eqmode="abs">$</button>' +
-      '<button class="eq-mode-btn' + (eqMode === "pct" ? " on" : "") + '" data-eqmode="pct">%</button></span>';
+      '<span class="eq-modes">' +
+        '<button class="eq-mode-btn eq-piv-btn' + (eqPivots ? " on" : "") + '" data-eqpiv="1" title="סמן שיאים ושפלים מקומיים (Pivot High/Low) לאורך העקומה">◆ פיבוטים</button>' +
+        '<button class="eq-mode-btn' + (eqMode === "abs" ? " on" : "") + '" data-eqmode="abs">$</button>' +
+        '<button class="eq-mode-btn' + (eqMode === "pct" ? " on" : "") + '" data-eqmode="pct">%</button></span>';
     box.appendChild(head);
     head.querySelectorAll("[data-eqmode]").forEach(b => b.onclick = () => {
       if (eqMode === b.dataset.eqmode) return; eqMode = b.dataset.eqmode; render();
     });
+    { const pb = head.querySelector("[data-eqpiv]"); if (pb) pb.onclick = () => { eqPivots = !eqPivots; try { localStorage.setItem("sn_eq_pivots", eqPivots ? "1" : "0"); } catch (e) {} render(); }; }
     // in % mode: editable portfolio-size base (the % denominator)
     if (eqMode === "pct") {
       const baseRow = el("div", "eq-base-row");
@@ -1079,70 +1083,102 @@
     const pctMode = eqMode === "pct" && base > 0;
     const toVal = eq => pctMode ? eq / base * 100 : eq;                       // $ → % of portfolio
     const fmtVal = v => pctMode ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : money(v, 0);
-    const W = 1500, H = 420, pad = 46;   // ~3.6:1 aspect (not squished); scaled with "meet" → no distortion
     const eq = pts.map(p => toVal(p.equity));
+    const n = pts.length;
     const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
     const rng = (maxY - minY) || 1;
-    const X = i => pad + (i / (pts.length - 1)) * (W - pad * 2);
-    const Y = v => H - pad - ((v - minY) / rng) * (H - pad * 2);
-    let dpath = "", apath = "";
-    pts.forEach((p, i) => { const x = X(i), y = Y(eq[i]); dpath += (i ? "L" : "M") + x + " " + y + " "; });
-    apath = dpath + "L" + X(pts.length - 1) + " " + Y(minY) + " L" + X(0) + " " + Y(minY) + " Z";
-    const zeroY = Y(0);
-    const last = eq[eq.length - 1];
-    const svg =
-      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="none">' +
-      '<defs><linearGradient id="eqgrad" x1="0" y1="0" x2="0" y2="1">' +
-      '<stop offset="0" stop-color="#17c08a" stop-opacity=".35"/><stop offset="1" stop-color="#17c08a" stop-opacity="0"/></linearGradient></defs>' +
-      '<line class="axis" x1="' + pad + '" y1="' + zeroY + '" x2="' + (W - pad) + '" y2="' + zeroY + '"/>' +
-      '<path class="eqarea" d="' + apath + '"/>' +
-      '<path class="eqline" d="' + dpath + '"/>' +
-      '<text x="' + (W - pad) + '" y="' + (Y(last) - 8) + '" text-anchor="end" fill="' + (last >= 0 ? "#16b877" : "#e0524f") +
-      '" font-size="15" font-weight="700">' + fmtVal(last) + "</text>" +
-      // hover crosshair: vertical line + dot on the curve, P&L label on top, date label at bottom
-      '<g class="eqhover" style="opacity:0">' +
-        '<line class="eqcross" x1="0" y1="' + pad + '" x2="0" y2="' + (H - pad) + '"/>' +
-        '<circle class="eqdot" cx="0" cy="0" r="5"/>' +
-        '<rect class="eqtipbg eqtop" x="0" y="4" width="120" height="26" rx="7"/>' +
-        '<text class="eqtiptext eqtoptext" x="0" y="22" text-anchor="middle">—</text>' +
-        '<rect class="eqtipbg eqbot" x="0" y="' + (H - 27) + '" width="100" height="23" rx="7"/>' +
-        '<text class="eqtiptext eqbottext" x="0" y="' + (H - 11) + '" text-anchor="middle">—</text>' +
-      "</g>" +
-      "</svg>";
-    box.insertAdjacentHTML("beforeend", svg);   // append WITHOUT reserializing box (keeps toggle/input handlers)
-    // ---- hover interaction ----
-    const svgEl = box.querySelector(".eqsvg");
-    const g = svgEl.querySelector(".eqhover");
-    const cross = svgEl.querySelector(".eqcross"), dot = svgEl.querySelector(".eqdot");
-    const tTxt = svgEl.querySelector(".eqtoptext"), bTxt = svgEl.querySelector(".eqbottext");
-    const tBg = svgEl.querySelector(".eqtop"), bBg = svgEl.querySelector(".eqbot");
-    const clampX = (cx, w) => Math.max(w / 2 + 2, Math.min(W - w / 2 - 2, cx));
-    function moveTo(clientX) {
-      const rect = svgEl.getBoundingClientRect();
-      if (!rect.width) return;
-      const sx = (clientX - rect.left) / rect.width * W;
-      let i = Math.round((sx - pad) / (W - pad * 2) * (pts.length - 1));
-      i = Math.max(0, Math.min(pts.length - 1, i));
-      const x = X(i), val = eq[i], y = Y(val);
-      const posCol = val >= 0 ? "#16b877" : "#e0524f";
-      cross.setAttribute("x1", x); cross.setAttribute("x2", x);
-      dot.setAttribute("cx", x); dot.setAttribute("cy", y); dot.setAttribute("fill", posCol);
-      // top label = cumulative P&L at this point ($ or % of portfolio)
-      const topStr = fmtVal(val);
-      tTxt.textContent = topStr;
-      const wT = Math.max(70, topStr.length * 11 + 20);
-      tBg.setAttribute("width", wT); tBg.setAttribute("x", clampX(x, wT) - wT / 2); tBg.setAttribute("fill", posCol);
-      tTxt.setAttribute("x", clampX(x, wT));
-      // bottom label = date
-      bTxt.textContent = pts[i].date;
-      const wB = Math.max(84, pts[i].date.length * 9 + 16);
-      bBg.setAttribute("width", wB); bBg.setAttribute("x", clampX(x, wB) - wB / 2);
-      bTxt.setAttribute("x", clampX(x, wB));
-      g.style.opacity = "1";
+    // PIVOT HIGH/LOW: local extremes over a ±L window (~5 points), like pivot points on a chart
+    const L = 5, pivHi = [], pivLo = [];
+    for (let i = 1; i < n - 1; i++) {
+      let hi = true, lo = true;
+      for (let j = Math.max(0, i - L); j <= Math.min(n - 1, i + L); j++) {
+        if (j === i) continue;
+        if (eq[j] >= eq[i]) hi = false;
+        if (eq[j] <= eq[i]) lo = false;
+      }
+      if (hi) pivHi.push(i); else if (lo) pivLo.push(i);
     }
-    svgEl.addEventListener("mousemove", e => moveTo(e.clientX));
-    svgEl.addEventListener("mouseleave", () => { g.style.opacity = "0"; });
-    svgEl.addEventListener("touchmove", e => { if (e.touches && e.touches[0]) moveTo(e.touches[0].clientX); }, { passive: true });
+    // Catmull-Rom → cubic-bezier smoothing so the line flows instead of jumping between points
+    const smooth = P => {
+      if (P.length < 2) return "";
+      let d = "M" + P[0][0].toFixed(1) + " " + P[0][1].toFixed(1);
+      for (let i = 0; i < P.length - 1; i++) {
+        const p0 = P[i - 1] || P[i], p1 = P[i], p2 = P[i + 1], p3 = P[i + 2] || P[i + 1];
+        const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+        const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+        d += "C" + c1x.toFixed(1) + " " + c1y.toFixed(1) + " " + c2x.toFixed(1) + " " + c2y.toFixed(1) + " " + p2[0].toFixed(1) + " " + p2[1].toFixed(1);
+      }
+      return d;
+    };
+    const chartWrap = el("div", "eq-wrap");
+    box.appendChild(chartWrap);
+    // draw at the container's REAL pixel size (viewBox == box → no text/shape distortion, exact hover mapping)
+    function drawEq() {
+      const w = Math.max(320, Math.round(chartWrap.clientWidth || box.clientWidth || 900));
+      const h = Math.max(150, Math.round(Math.min(window.innerHeight * 0.30, 460)));
+      const padX = 10, padTop = 26, padBot = 26;
+      const X = i => padX + (i / (n - 1)) * (w - padX * 2);
+      const Y = v => padTop + (1 - (v - minY) / rng) * (h - padTop - padBot);
+      const P = eq.map((v, i) => [X(i), Y(v)]);
+      const dpath = smooth(P);
+      const apath = dpath + " L" + X(n - 1).toFixed(1) + " " + Y(minY).toFixed(1) + " L" + X(0).toFixed(1) + " " + Y(minY).toFixed(1) + " Z";
+      const zeroY = Y(0), last = eq[n - 1];
+      const pivMark = (arr, cls, dy) => arr.map(i =>
+        '<g class="eq-piv ' + cls + '"><circle cx="' + X(i).toFixed(1) + '" cy="' + Y(eq[i]).toFixed(1) + '" r="4"/>' +
+        '<text x="' + X(i).toFixed(1) + '" y="' + (Y(eq[i]) + dy).toFixed(1) + '" text-anchor="middle">' + fmtVal(eq[i]) + "</text></g>").join("");
+      const pivMarks = eqPivots ? (pivMark(pivHi, "hi", -10) + pivMark(pivLo, "lo", 18)) : "";
+      chartWrap.innerHTML =
+        '<svg class="eqsvg" viewBox="0 0 ' + w + " " + h + '" width="100%" height="' + h + '" preserveAspectRatio="none">' +
+        '<defs><linearGradient id="eqgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#17c08a" stop-opacity=".35"/><stop offset="1" stop-color="#17c08a" stop-opacity="0"/></linearGradient></defs>' +
+        '<line class="axis" x1="' + padX + '" y1="' + zeroY.toFixed(1) + '" x2="' + (w - padX) + '" y2="' + zeroY.toFixed(1) + '"/>' +
+        '<path class="eqarea" d="' + apath + '"/>' +
+        '<path class="eqline" d="' + dpath + '"/>' + pivMarks +
+        '<text x="' + (w - padX) + '" y="' + (Y(last) - 8).toFixed(1) + '" text-anchor="end" fill="' + (last >= 0 ? "#16b877" : "#e0524f") + '" font-size="15" font-weight="700">' + fmtVal(last) + "</text>" +
+        '<g class="eqhover" style="opacity:0">' +
+          '<line class="eqcross" x1="0" y1="' + padTop + '" x2="0" y2="' + (h - padBot) + '"/>' +
+          '<circle class="eqdot" cx="0" cy="0" r="5"/>' +
+          '<rect class="eqtipbg eqtop" x="0" y="2" width="120" height="24" rx="7"/>' +
+          '<text class="eqtiptext eqtoptext" x="0" y="19" text-anchor="middle">—</text>' +
+          '<rect class="eqtipbg eqbot" x="0" y="' + (h - 24) + '" width="100" height="22" rx="7"/>' +
+          '<text class="eqtiptext eqbottext" x="0" y="' + (h - 9) + '" text-anchor="middle">—</text>' +
+        "</g></svg>";
+      const svgEl = chartWrap.querySelector(".eqsvg");
+      const line = svgEl.querySelector(".eqline");
+      const g = svgEl.querySelector(".eqhover");
+      const cross = svgEl.querySelector(".eqcross"), dot = svgEl.querySelector(".eqdot");
+      const tTxt = svgEl.querySelector(".eqtoptext"), bTxt = svgEl.querySelector(".eqbottext");
+      const tBg = svgEl.querySelector(".eqtop"), bBg = svgEl.querySelector(".eqbot");
+      const clampX = (cx, wd) => Math.max(wd / 2 + 2, Math.min(w - wd / 2 - 2, cx));
+      const ptOnLine = tx => {   // exact point on the SMOOTH curve at x=tx → dot flows along the line
+        const len = line.getTotalLength(); if (!len) return { x: tx, y: Y(last) };
+        let lo = 0, hi = len;
+        for (let k = 0; k < 20; k++) { const mid = (lo + hi) / 2; const p = line.getPointAtLength(mid); if (p.x < tx) lo = mid; else hi = mid; }
+        return line.getPointAtLength((lo + hi) / 2);
+      };
+      function moveTo(clientX) {
+        const rect = svgEl.getBoundingClientRect(); if (!rect.width) return;
+        const cx = Math.max(padX, Math.min(w - padX, (clientX - rect.left) / rect.width * w));
+        const p = ptOnLine(cx);
+        let i = Math.round((cx - padX) / (w - padX * 2) * (n - 1)); i = Math.max(0, Math.min(n - 1, i));
+        const val = eq[i], posCol = val >= 0 ? "#16b877" : "#e0524f";
+        cross.setAttribute("x1", p.x); cross.setAttribute("x2", p.x);
+        dot.setAttribute("cx", p.x); dot.setAttribute("cy", p.y); dot.setAttribute("fill", posCol);
+        const topStr = fmtVal(val); tTxt.textContent = topStr;
+        const wT = Math.max(70, topStr.length * 11 + 20);
+        tBg.setAttribute("width", wT); tBg.setAttribute("x", clampX(p.x, wT) - wT / 2); tBg.setAttribute("fill", posCol);
+        tTxt.setAttribute("x", clampX(p.x, wT));
+        bTxt.textContent = pts[i].date;
+        const wB = Math.max(84, pts[i].date.length * 9 + 16);
+        bBg.setAttribute("width", wB); bBg.setAttribute("x", clampX(p.x, wB) - wB / 2);
+        bTxt.setAttribute("x", clampX(p.x, wB));
+        g.style.opacity = "1";
+      }
+      svgEl.addEventListener("mousemove", e => moveTo(e.clientX));
+      svgEl.addEventListener("mouseleave", () => { g.style.opacity = "0"; });
+      svgEl.addEventListener("touchmove", e => { if (e.touches && e.touches[0]) moveTo(e.touches[0].clientX); }, { passive: true });
+    }
+    drawEq();
+    try { const ro = new ResizeObserver(() => drawEq()); ro.observe(chartWrap); } catch (e) {}
     return box;
   }
 
