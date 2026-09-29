@@ -65,7 +65,7 @@
       '<h2>📧 יצירת קשר</h2>' +
       '<p>נשמח לשמוע ממך — שאלות, הצעות, שיתופי פעולה או דיווח על תקלה:</p>' +
       '<p><b>דוא"ל:</b> <a href="mailto:' + EMAIL + '">' + EMAIL + "</a></p>" +
-      '<p style="margin-top:14px"><b>🥷 שאל בקהילה:</b> הדרך הכי מהירה לקבל תשובה — הצטרף לקהילת הדיסקורד של StratNinja ושאל שם את הצוות ושאר הסוחרים.</p>' +
+      '<p style="margin-top:14px"><b>💬 שאל בקהילה:</b> הדרך הכי מהירה לקבל תשובה — הצטרף לקהילת הדיסקורד של StratNinja ושאל שם את הצוות ושאר הסוחרים.</p>' +
       '<a href="https://www.patreon.com/14520383/join" target="_blank" rel="noopener" class="about-cta">🏆 הצטרפו לקהילת הדיסקורד</a>' +
       '<p style="margin-top:16px">וברשתות החברתיות:</p>' +
       '<div class="legal-social">' + SOCIAL + "</div>",

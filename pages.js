@@ -2030,7 +2030,7 @@
   //      Discord channel — the webhook stays server-side, never in this client code) ----
   function openRequestForm() {
     const body =
-      '<div class="note" style="margin-bottom:12px">💬 יש לך רעיון, בקשה לפיצ׳ר או משהו שתרצה לראות באתר? ספר לנו — זה מגיע ישירות לצוות StratNinja. קוראים הכל 🥷</div>' +
+      '<div class="note" style="margin-bottom:12px">💬 יש לך רעיון, בקשה לפיצ׳ר או משהו שתרצה לראות באתר? ספר לנו — זה מגיע ישירות לצוות StratNinja. קוראים הכל 🙏</div>' +
       '<div class="fgrp"><label>השם שלך <span class="muted">(רשות)</span></label><input id="reqName" type="text" maxlength="60" placeholder="איך קוראים לך?"></div>' +
       '<div class="fgrp"><label>ליצירת קשר <span class="muted">(רשות)</span></label><input id="reqContact" type="text" maxlength="80" placeholder="דיסקורד / אימייל / טלגרם"></div>' +
       '<div class="fgrp"><label>הבקשה שלך</label><textarea id="reqMsg" rows="5" maxlength="1000" placeholder="מה תרצה שנוסיף או נשפר?" style="width:100%;box-sizing:border-box;resize:vertical;padding:9px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-family:inherit;font-size:14px"></textarea></div>' +
@@ -2058,7 +2058,7 @@
         });
         if (res.ok) {
           try { localStorage.setItem("sn_req_last", String(Date.now())); } catch (e) {}
-          st.style.display = "block"; st.style.color = "var(--green)"; st.innerHTML = "✅ נשלח! תודה רבה — נעבור על זה. 🥷";
+          st.style.display = "block"; st.style.color = "var(--green)"; st.innerHTML = "✅ נשלח! תודה רבה — נעבור על זה. 🙏";
           document.getElementById("reqMsg").value = ""; btn.style.display = "none";
         } else { throw new Error("http " + res.status); }
       } catch (e) {
@@ -2081,14 +2081,14 @@
     const loggedIn = !!(window.SNAuth && SNAuth.user && SNAuth.user());
     if (cloud && !loggedIn) {
       modal("⭐ הצע מניה לסורק",
-        '<div class="note" style="margin-bottom:14px">⭐ כדי להציע מניה לסורק צריך <b>להתחבר עם Google</b> — כך נדע מי הציע ונוכל לעדכן אותך.<br>הגלישה באתר חופשית לגמרי; רק הצעת מניה דורשת התחברות. 🥷</div>' +
+        '<div class="note" style="margin-bottom:14px">⭐ כדי להציע מניה לסורק צריך <b>להתחבר עם Google</b> — כך נדע מי הציע ונוכל לעדכן אותך.<br>הגלישה באתר חופשית לגמרי; רק הצעת מניה דורשת התחברות. 🙏</div>' +
         '<button class="btn primary" id="sugLogin" style="width:100%;box-sizing:border-box">🔓 התחבר עם Google</button>');
       const lb = document.getElementById("sugLogin");
       if (lb) lb.onclick = () => { try { SNAuth.signInWithGoogle(); } catch (e) {} };
       return;
     }
     const body =
-      '<div class="note" style="margin-bottom:12px">⭐ יש מניה אמריקאית שתרצה שתופיע בסורק? הצע אותה!<br>השרת בודק אוטומטית שהיא אמיתית ונזילה, ואז היא עוברת אישור קצר — ואז נכנסת ל<b>רשימת הקהילה</b> בסורק. 🥷</div>' +
+      '<div class="note" style="margin-bottom:12px">⭐ יש מניה אמריקאית שתרצה שתופיע בסורק? הצע אותה!<br>השרת בודק אוטומטית שהיא אמיתית ונזילה, ואז היא עוברת אישור קצר — ואז נכנסת ל<b>רשימת הקהילה</b> בסורק. 🙏</div>' +
       '<div class="fgrp"><label>סימבול המניה</label><input id="sugTk" type="text" maxlength="8" placeholder="AAPL" autocomplete="off" style="text-transform:uppercase;letter-spacing:1px;font-weight:700"></div>' +
       '<input id="sugHp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;opacity:0">' +
       '<button class="btn primary" id="sugSend" style="margin-top:4px">📤 הצע מניה</button>' +
@@ -2115,7 +2115,7 @@
         });
         if (res.ok) {
           try { localStorage.setItem("sn_sug_last", String(Date.now())); } catch (e) {}
-          show("var(--green)", "✅ <b>$" + tk + "</b> נשלחה! נבדוק אותה ונוסיף לרשימת הקהילה אם היא מתאימה. תודה 🥷");
+          show("var(--green)", "✅ <b>$" + tk + "</b> נשלחה! נבדוק אותה ונוסיף לרשימת הקהילה אם היא מתאימה. תודה 🙏");
           document.getElementById("sugTk").value = ""; btn.style.display = "none";
         } else if (res.status === 409) {
           show("var(--muted)", "ℹ️ <b>$" + tk + "</b> כבר הוצעה — היא בתהליך.");
@@ -3334,7 +3334,7 @@
     document.body.appendChild(el);
     return el;
   }
-  // ── 🥷 Ninja trade/position share card (premium 1080×1350) ──
+  // ── 🙏 Ninja trade/position share card (premium 1080×1350) ──
   function buildNinjaTradeCardEl(t) {
     const el = document.createElement("div");
     el.className = "ninja-card";   // background = the ninja-card.png template; we overlay only the data
@@ -3370,13 +3370,13 @@
       '<button class="btn ghost" data-nj="' + i + '" style="text-align:start;padding:11px 13px;display:flex;justify-content:space-between;gap:10px;align-items:center">' +
         '<span style="font-weight:800">' + t.sym + ' <span style="opacity:.6;font-weight:500;font-size:12px">' + t.dateStr + " · " + (t.dir === "long" ? "לונג" : "שורט") + "</span></span>" +
         '<span class="' + (t.roi >= 0 ? "pos" : "neg") + '" style="font-weight:800">' + (t.roi >= 0 ? "+" : "−") + Math.abs(t.roi).toFixed(2) + "%</span></button>").join("");
-    modal("🥷 בחר עסקה לכרטיס", '<div style="display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow:auto">' + rows + "</div>");
+    modal("💼 בחר עסקה לכרטיס", '<div style="display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow:auto">' + rows + "</div>");
     document.querySelectorAll("[data-nj]").forEach(b => b.onclick = () => { const t = list[+b.dataset.nj]; closeModal(); _captureRedesignCard(() => buildNinjaTradeCardEl(t)); });
   }
   function openJournalShareChooser() {
     modal("📤 שיתוף מהיומן",
       '<div style="display:flex;flex-direction:column;gap:10px">' +
-        '<button class="btn primary" id="jshNinja" style="text-align:start;padding:13px">🥷 כרטיס עסקה בודדת (נינג\'ה)' +
+        '<button class="btn primary" id="jshNinja" style="text-align:start;padding:13px">💼 כרטיס עסקה בודדת (נינג\'ה)' +
           '<div style="font-size:11px;font-weight:400;opacity:.85;margin-top:3px">כרטיס פרימיום לעסקה — טיקר, כיוון, ROI, כניסה/יציאה</div></button>' +
         '<button class="btn ghost" id="jshSummary" style="text-align:start;padding:13px">📊 כרטיס סיכום תקופה' +
           '<div style="font-size:11px;font-weight:400;opacity:.7;margin-top:3px">סיכום יום/תקופה עם סטטיסטיקות</div></button>' +
@@ -3426,7 +3426,7 @@
     // market-page "After/Pre-Market" share during the gappers window → the new square gappers card (not the legacy landscape one)
     if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } _captureRedesignCard(buildMoversCardEl); return; }
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
-    if (state.page === "journal") { openJournalShareChooser(); return; }   // choose: 🥷 single-trade ninja card OR period summary
+    if (state.page === "journal") { openJournalShareChooser(); return; }   // choose: 🙏 single-trade ninja card OR period summary
     if (state.page === "gappers") { _captureRedesignCard(buildGappersCardEl); return; }   // redesigned gappers pre-market card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {
