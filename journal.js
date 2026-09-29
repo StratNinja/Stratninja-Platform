@@ -1091,7 +1091,7 @@
     const zeroY = Y(0);
     const last = eq[eq.length - 1];
     const svg =
-      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="xMidYMid meet">' +
+      '<svg class="eqsvg" viewBox="0 0 ' + W + " " + H + '" width="100%" preserveAspectRatio="none">' +
       '<defs><linearGradient id="eqgrad" x1="0" y1="0" x2="0" y2="1">' +
       '<stop offset="0" stop-color="#17c08a" stop-opacity=".35"/><stop offset="1" stop-color="#17c08a" stop-opacity="0"/></linearGradient></defs>' +
       '<line class="axis" x1="' + pad + '" y1="' + zeroY + '" x2="' + (W - pad) + '" y2="' + zeroY + '"/>' +
