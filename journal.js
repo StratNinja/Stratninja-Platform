@@ -1009,7 +1009,10 @@
         const t = byId[b.dataset.sharetrade]; if (!t) return;
         if (t.exitPrice == null || !t.entryPrice) { toast("אין נתוני כניסה/יציאה לעסקה זו"); return; }
         const dir = t.direction === "short" ? "short" : "long";
-        const roi = dir === "short" ? (t.entryPrice - t.exitPrice) / t.entryPrice * 100 : (t.exitPrice - t.entryPrice) / t.entryPrice * 100;
+        // NET return on capital (P&L after fees ÷ cost) — matches the table's % column
+        const pv = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
+        const roi = (pv && t.pnl != null) ? (t.pnl / pv * 100)
+          : (dir === "short" ? (t.entryPrice - t.exitPrice) : (t.exitPrice - t.entryPrice)) / t.entryPrice * 100;
         if (window.snShareTradeCard) window.snShareTradeCard({ sym: String(t.symbol || "").split(" ")[0], dir: dir, entry: t.entryPrice, exit: t.exitPrice, roi: roi, dateStr: t.exitDate || "", live: false });
         else toast("כלי השיתוף עדיין נטען — נסה שוב");
       };

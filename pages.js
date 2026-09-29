@@ -3358,7 +3358,10 @@
     const cl = _journalClosedTrades() || [];
     const norm = cl.filter(t => t.exitPrice != null && t.entryPrice).map(t => {
       const dir = t.direction === "short" ? "short" : "long";
-      const roi = dir === "short" ? (t.entryPrice - t.exitPrice) / t.entryPrice * 100 : (t.exitPrice - t.entryPrice) / t.entryPrice * 100;
+      // NET return on capital (P&L after fees ÷ cost) — matches the journal table's % exactly
+      const pv = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
+      const roi = (pv && t.pnl != null) ? (t.pnl / pv * 100)
+        : (dir === "short" ? (t.entryPrice - t.exitPrice) : (t.exitPrice - t.entryPrice)) / t.entryPrice * 100;
       return { sym: String(t.symbol || "").split(" ")[0], atype: t.assetType === "option" ? "Options" : "", dir,
         entry: t.entryPrice, exit: t.exitPrice, roi: roi, pnl: t.pnl, dateStr: t.exitDate || "", live: false, _ts: t.exitDate || "" };
     });
