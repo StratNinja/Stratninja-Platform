@@ -322,12 +322,18 @@ body[data-page="market"] .idx-row { margin: 2px 0; }
 @media (max-width: 900px) { body[data-page="market"] .guide-sec { display: block; } }
 
 /* ---------- S&P 500 HEAT MAP (finviz-style sector treemap) ---------- */
-.sp-heat-panel { padding: 8px; }
-/* height fitted to the viewport so the map never forces a scroll on wide screens; the squarified
+.sp-heat-panel { padding: 6px; margin-bottom: 0; }
+/* height fitted to the viewport so the WHOLE heat-map page fits with NO scroll; the squarified
    treemap adapts tile aspect to whatever box it gets, so a fixed height keeps tiles near-square. */
-.sp-heat { position: relative; width: 100%; height: clamp(360px, calc(100vh - 250px), 940px);
+.sp-heat { position: relative; width: 100%; height: calc(100vh - 292px); min-height: 300px; max-height: 1000px;
   background: #0a0d12; border-radius: 10px; overflow: hidden; }
-@media (max-width: 720px) { .sp-heat { height: 78vh; } }
+@media (max-width: 720px) { .sp-heat { height: 74vh; } }
+/* trim the heat-map chrome so the map gets maximum height without pushing the page into a scroll */
+body[data-page="sp500"] .hm-head { margin: 0 0 4px; }
+body[data-page="sp500"] .hm-head h1 { font-size: 22px; }
+body[data-page="sp500"] .hm-tfbar { margin: 4px 0; }
+body[data-page="sp500"] .hm-counts { margin: 5px 0 6px; }
+body[data-page="sp500"] .live-banner, body[data-page="sp500"] .livebanner { margin: 3px 0; }
 .hm-sec { position: absolute; display: flex; flex-direction: column; box-sizing: border-box; border: 2px solid #fff; overflow: hidden; }
 .hm-sec-tab { flex: 0 0 auto; background: #000; color: #fff; font-size: 11px; font-weight: 800; line-height: 1.45;
   padding: 1px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .2px; }

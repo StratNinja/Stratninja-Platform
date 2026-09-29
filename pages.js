@@ -1058,11 +1058,25 @@
     const tot = SCAN.rows.filter(r => r.sp && r.tech).length;
     return tot ? { hi: _ext52Rows("high").length, lo: _ext52Rows("low").length, tot } : null;
   }
-  // clickable table of the stocks at the 52-week high / low
+  // clickable table of the stocks at the 52-week high / low — sortable by any header
+  let _ext52Sort = { col: "dist", dir: 1 };
+  function _ext52Val(r, col, isHi) {
+    if (col === "sym") return r.s;
+    if (col === "chg") return r.c == null ? -999 : r.c;
+    if (col === "price") return r.p || (r.tech ? r.tech.px : 0) || 0;
+    return (isHi ? r.tech.dhi52 : r.tech.dlo52);   // dist
+  }
   function _ext52Modal(kind) {
     const isHi = kind === "high";
-    const rows = _ext52Rows(kind).slice().sort((a, b) => isHi ? (b.tech.dhi52 - a.tech.dhi52) : (a.tech.dlo52 - b.tech.dlo52));
-    if (!rows.length) { snToast && snToast("אין כרגע מניות " + (isHi ? "בשיא" : "בשפל") + " 52 שבועות"); return; }
+    const all = _ext52Rows(kind);
+    if (!all.length) { snToast && snToast("אין כרגע מניות " + (isHi ? "בשיא" : "בשפל") + " 52 שבועות"); return; }
+    const col = _ext52Sort.col, dir = _ext52Sort.dir;
+    const rows = all.slice().sort((a, b) => {
+      const va = _ext52Val(a, col, isHi), vb = _ext52Val(b, col, isHi);
+      if (typeof va === "string") return dir * va.localeCompare(vb);
+      return dir * ((va == null ? -999 : va) - (vb == null ? -999 : vb));
+    });
+    const th = (label, c, start) => { const ar = _ext52Sort.col === c ? (_ext52Sort.dir < 0 ? " ▼" : " ▲") : ""; return '<th class="sortable" data-ext52sort="' + c + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + ar + "</th>"; };
     const body = rows.map(r => {
       const dist = isHi ? r.tech.dhi52 : r.tech.dlo52;
       const cs = (r.c >= 0 ? "+" : "") + (r.c == null ? 0 : r.c).toFixed(2) + "%";
@@ -1074,9 +1088,14 @@
     }).join("");
     const syms = rows.map(r => r.s).join(", ");
     modal((isHi ? "📈 מניות בשיא 52 שבועות" : "📉 מניות בשפל 52 שבועות") + " · " + rows.length,
-      '<div class="drill-bar"><button class="btn ghost" id="ext52Copy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + ' טיקרים</button><span class="muted" style="font-size:12px">מרחק ' + (isHi ? "מהשיא" : "מהשפל") + ' · לחץ סימבול לגרף</span></div>' +
-      "<div class='tablewrap'><table class='scan-table'><thead><tr><th style='text-align:start'>סימבול</th><th>תנועה</th><th>מחיר</th><th>" + (isHi ? "Δ שיא" : "Δ שפל") + "</th></tr></thead><tbody>" + body + "</tbody></table></div>");
+      '<div class="drill-bar"><button class="btn ghost" id="ext52Copy" style="font-size:12px;font-weight:600">📋 העתק ' + rows.length + ' טיקרים</button><span class="muted" style="font-size:12px">לחץ כותרת למיון · סימבול לגרף</span></div>' +
+      "<div class='tablewrap'><table class='scan-table'><thead><tr>" + th("סימבול", "sym", true) + th("תנועה", "chg") + th("מחיר", "price") + th(isHi ? "Δ שיא" : "Δ שפל", "dist") + "</tr></thead><tbody>" + body + "</tbody></table></div>");
     wireCharts(document);
+    document.querySelectorAll("[data-ext52sort]").forEach(h => h.onclick = () => {
+      const c = h.dataset.ext52sort;
+      if (_ext52Sort.col === c) _ext52Sort.dir *= -1; else { _ext52Sort.col = c; _ext52Sort.dir = c === "sym" ? 1 : -1; }
+      _ext52Modal(kind);
+    });
     const cp = $("#ext52Copy");
     if (cp) cp.onclick = () => copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + rows.length; setTimeout(() => cp.textContent = "📋 העתק " + rows.length + " טיקרים", 1600); });
   }
@@ -1257,10 +1276,11 @@
   try { spHeatAvg = localStorage.getItem("sn_hm_avg") === "1"; } catch (e) {}
   // heat-map timeframe (color period). 1D/1W/1M are live client-side; Q/Y/MTD/QTD/YTD need server returns.
   let spHeatTf = "1d"; try { spHeatTf = localStorage.getItem("sn_hm_tf") || "1d"; } catch (e) {}
-  const HM_TFS = ["1d", "1w", "1m"], HM_TFS_SOON = ["1Q", "1Y", "MTD", "QTD", "YTD"];
-  const HM_TFL = { "1d": "1D", "1w": "1W", "1m": "1M" };
+  const HM_TFS = ["1d", "1w", "WTD", "1m", "MTD", "1Q", "QTD", "1Y", "YTD"], HM_TFS_SOON = [];
+  const HM_TFL = { "1d": "1D", "1w": "1W", "WTD": "WTD", "1m": "1M", "MTD": "MTD", "1Q": "1Q", "QTD": "QTD", "1Y": "1Y", "YTD": "YTD" };
+  const HM_TF_KEY = { "1w": "c5", "WTD": "cwtd", "1m": "c20", "MTD": "cmtd", "1Q": "c63", "QTD": "cqtd", "1Y": "c252", "YTD": "cytd" };   // scanner tech field per TF
   if (HM_TFS.indexOf(spHeatTf) < 0) spHeatTf = "1d";
-  // per-stock change over the selected TF. 1W/1M are joined from the scanner rows (tech.c5/c20) by symbol.
+  // per-stock change over the selected TF. Everything except 1D is joined from the scanner rows (tech.*) by symbol.
   let _hmScanMap = null, _hmScanKey = null;
   function _hmSMap() {
     const key = (SCAN && SCAN.rows) ? SCAN.rows.length : 0;
@@ -1271,13 +1291,23 @@
   function _hmChg(x) {
     if (spHeatTf === "1d") return x.c;
     const t = _hmSMap()[x.s]; if (!t) return null;
-    return spHeatTf === "1w" ? t.c5 : t.c20;
+    const v = t[HM_TF_KEY[spHeatTf]];
+    return v == null ? null : v;
   }
   // EQUAL squares (RSP-style) — Adi prefers a clean, readable grid over cap-weighted tiles.
   // Every tile has the same weight, so each sector's area just reflects its number of stocks.
   function _hmValue() { return 1; }
   function _hmTiles(stocks) {
-    const items = (stocks || []).map(x => ({ value: 1, stk: x }));
+    // sort by the ACTIVE timeframe's move (gainers → losers) so each sector shows a clean green→red
+    // gradient at every timeframe, not just 1D. nulls (no data for this TF) sink to the end.
+    const sorted = (stocks || []).slice().sort((a, b) => {
+      const va = _hmChg(a), vb = _hmChg(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return vb - va;
+    });
+    const items = sorted.map(x => ({ value: 1, stk: x }));
     return squarify(items, 0, 0, 1000, 600).map(c => {
       const x = c.item.stk;
       const cv = _hmChg(x);                          // change over the selected timeframe (1D/1W/1M)
@@ -1364,7 +1394,7 @@
       const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
         '<button class="flow-tf-btn hm-tf' + (k === spHeatTf ? " on" : "") + '" data-hmtf="' + k + '">' + HM_TFL[k] + "</button>").join("") +
         HM_TFS_SOON.map(k => '<button class="flow-tf-btn hm-tf hm-tf-soon" disabled title="בקרוב — דורש עדכון שרת">' + k + "</button>").join("") + "</div>";
-      return '<div class="page-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">מפת חום לפי סקטורים — כל ריבוע = מניה בגודל שווה, הצבע לפי התנועה. מסגרת לבנה לכל סקטור · לחץ על שם סקטור (🔍) לזום · לחץ מניה לגרף · לחץ על מונה השיא/שפל לרשימה.</div></div>' +
+      return '<div class="page-head hm-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">כל ריבוע = מניה, הצבע לפי התנועה בטווח הנבחר · לחץ שם סקטור (🔍) לזום · מניה לגרף · מונה שיא/שפל לרשימה.</div></div>' +
         '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" + tfBtns + liveBanner() + countsStrip +
         '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
     }
