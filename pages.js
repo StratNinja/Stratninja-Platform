@@ -4202,9 +4202,12 @@
           scanState.tfsExtra.map(f => '<button class="chip tf-extra' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + '<span class="tf-x" data-rmtf="' + f + '" title="הסר">✕</span></button>').join("") +
           '<button class="chip tf-addbtn" id="tfAdd" title="הוסף טיימפריים סטראט מותאם">➕</button>' +
         "</div></div>" +
-        '<div class="fgrp"><label>סוג נר</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
-        '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
-        '<div class="fgrp"><label>צורת נר <span class="muted" style="font-size:10px">· הנר הנוכחי · רב-בחירה</span></label>' + multiComboHtml("scanShape", SHAPE_MULTI, scanState.shape, "כל צורות הנר") + "</div>" +
+        // נר — סוג (1/2U/2D/3) · צבע (ירוק/אדום) · צורה (פטיש/דוג׳י…) merged into ONE popover chip
+        '<div class="fgrp"><label>🕯️ נר <span class="muted" style="font-size:10px">· סוג · צבע · צורה</span></label>' +
+          '<div class="nrf-row"><span class="nrf-lbl">סוג</span><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
+          '<div class="nrf-row"><span class="nrf-lbl">צבע</span><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
+          '<div class="nrf-row"><span class="nrf-lbl">צורה</span>' + multiComboHtml("scanShape", SHAPE_MULTI, scanState.shape, "כל צורות הנר") + "</div>" +
+        "</div>" +
         seqBuilder() +
         // IN FORCE — standalone (works WITHOUT a sequence pattern): the close is holding beyond the prior bar's extreme.
         // 🔼 = above the prior high (2U in force / long trigger) · 🔽 = below the prior low. Optionally require the
