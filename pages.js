@@ -3347,6 +3347,8 @@
       '<div class="njt njt-sym">' + escHtml(t.sym || "") + "</div>" +
       '<div class="njt njt-side ' + dir + '">' + (isLong ? "▲ Long" : "▼ Short") + "</div>" +
       '<div class="njt njt-roi ' + (roi >= 0 ? "pos" : "neg") + '">' + roiStr + "</div>" +
+      '<div class="njt njt-elbl">מחיר כניסה</div>' +
+      '<div class="njt njt-xlbl">' + (t.live ? "מחיר נוכחי" : "מחיר יציאה") + "</div>" +
       '<div class="njt njt-entry">' + money2(t.entry) + "</div>" +
       '<div class="njt njt-exit">' + money2(t.exit) + "</div>";
     document.body.appendChild(el);
