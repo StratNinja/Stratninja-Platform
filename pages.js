@@ -5398,6 +5398,14 @@
       return rows.length ? rows.map(_ftfcRow).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
     const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false, chg: (secChgLive[o.name] != null ? secChgLive[o.name] : o.avgChg) }));
+    // MAGS — mega-caps over $1T (cross-sector; the Magnificent-7 style basket, ETF: MAGS). Its own strength card.
+    const magMembers = SCAN.rows.filter(r => (r.mc || 0) >= 1e12);
+    if (magMembers.length) {
+      const mfg = magMembers.filter(m => secFtfcDir(m, TFS) === "up").length;
+      const mfr = magMembers.filter(m => secFtfcDir(m, TFS) === "down").length;
+      const magChg = (subChgLive["MAGS"] != null ? subChgLive["MAGS"] : (secChgLive["MAGS"] != null ? secChgLive["MAGS"] : _avgChg(magMembers)));
+      secArr.push({ name: "MAGS · מעל 1T", rawname: "MAGS", etf: "MAGS", fg: mfg, fr: mfr, tot: magMembers.length, isSub: false, chg: magChg });
+    }
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
@@ -5416,8 +5424,8 @@
       return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "", avgChg: _avgChg(mem) };
     });
     let subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true, chg: (subChgLive[o.name] != null ? subChgLive[o.name] : o.avgChg) }));
-    // keep the sub panel compact: the 16 with the most decisive FTFC lean (furthest from neutral)
-    if (subArr.length > 12) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 12); }
+    // keep the sub panel compact: the 18 with the most decisive FTFC lean (furthest from neutral)
+    if (subArr.length > 18) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 18); }
     const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
       '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הסקטור היום · לחץ שורה למניות</div>' +
       '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArr) + "</div></div>";
@@ -5467,8 +5475,9 @@
   function openSubDrillLive(subName) { secSort = { col: null, dir: -1 }; renderSecDrill(null, subName); }
   function renderSecDrill(secName, indFilter) {
     const isSub = !!indFilter;
-    const displayName = isSub ? indFilter : secName;
-    const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => isSub ? r.ind === indFilter : r.sec === secName) : [];
+    const isMags = !isSub && secName === "MAGS";
+    const displayName = isMags ? "MAGS · מניות מעל 1T" : (isSub ? indFilter : secName);
+    const members = (SCAN && SCAN.rows) ? SCAN.rows.filter(r => isMags ? (r.mc || 0) >= 1e12 : (isSub ? r.ind === indFilter : r.sec === secName)) : [];
     if (!members.length) { modal(displayName, '<div class="muted" style="padding:20px">נתוני הטיימפריימים עדיין נטענים או שהשוק סגור.</div>'); return; }
     // FTFC column follows the timeframe set the user picked on the המשכיות-זמנית page (default M·Q·Y),
     // so the badge matches the selector instead of always showing the server's fixed D·W·M flag.
