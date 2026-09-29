@@ -335,6 +335,8 @@ window.Engine = (function () {
       symbol: (m.symbol || "").toUpperCase().trim(),
       assetType: m.assetType || "stock",
       optType: m.assetType === "option" ? (m.optType || "call") : null,   // call/put label (P&L is identical for a long option either way)
+      strike: (m.assetType === "option" && m.strike !== "" && m.strike != null && !isNaN(parseFloat(m.strike))) ? parseFloat(m.strike) : null,   // option strike (for the OCC symbol → auto price)
+      expiry: (m.assetType === "option" && m.expiry) ? m.expiry : null,     // option expiry YYYY-MM-DD (for the OCC symbol → auto price)
       sl: (m.sl !== "" && m.sl != null && !isNaN(parseFloat(m.sl))) ? parseFloat(m.sl) : null,   // stop-loss price
       tp: (m.tp !== "" && m.tp != null && !isNaN(parseFloat(m.tp))) ? parseFloat(m.tp) : null,   // take-profit price
       direction: m.direction || "long",

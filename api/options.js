@@ -19,9 +19,10 @@ export default async function handler(req, res) {
     const j = await r.json();
     const data = (j && j.data) || {};
     const opts = (data.options || []).map((o) => ({ o: o.option, b: o.bid, a: o.ask, l: o.last_trade_price }));
-    // cache at Vercel's edge so ALL viewers of the same ticker share ONE upstream CBOE hit per window
-    // (quotes are ~15-min delayed anyway, so a 5-min edge cache costs no freshness and slashes upstream calls)
-    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate=900");
+    // cache at Vercel's edge so ALL viewers of the same ticker share ONE upstream CBOE hit per window.
+    // CBOE quotes are ~15-min delayed, so a 15-min edge cache costs ZERO freshness and caps upstream
+    // hits at ~4/hour per ticker no matter how many users/refreshes — the strongest guard against blocks.
+    res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=1800");
     res.status(200).json({ sym, px: data.current_price != null ? data.current_price : null, ts: data.last_trade_time || null, opts });
   } catch (e) {
     res.status(500).json({ error: "fetch_failed", detail: String(e && e.message || e), sym });

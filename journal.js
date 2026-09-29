@@ -195,6 +195,58 @@
     d.optCur = m;
     Store._write(d);   // synced blob → cloudsync pushes to user_journal → appears on other devices
   }
+  // ---- automatic option premiums (FREE CBOE delayed quotes via the /api/options proxy) ----
+  // keyed by the OCC contract symbol (stable across id/aggregation changes), stored in the synced blob.
+  function _optAuto() { const d = Store._read(); return (d && d.optAuto) || {}; }
+  function _setOptAuto(occ, px) {
+    const d = Store._read(); const m = d.optAuto || {};
+    if (px == null || isNaN(+px)) delete m[occ]; else m[occ] = +px;
+    d.optAuto = m; Store._write(d);
+  }
+  // OCC option symbol: UNDERLYING + YYMMDD + C/P + strike×1000 (8 digits). null when strike/expiry missing.
+  function _occSymbol(t) {
+    if (!t || t.assetType !== "option" || t.strike == null || !t.expiry) return null;
+    const u = String(t.symbol || "").split(" ")[0].toUpperCase();
+    const m = String(t.expiry).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!u || !m) return null;
+    return u + m[1].slice(2) + m[2] + m[3] + (t.optType === "put" ? "P" : "C") + String(Math.round((+t.strike) * 1000)).padStart(8, "0");
+  }
+  // fetch delayed premiums from the CBOE proxy and fill every open option position that has strike+expiry.
+  // One fetch per underlying (edge-cached), price = bid/ask midpoint (else last). Re-renders when done.
+  let _optFetchBusy = false;
+  async function refreshOptionPrices(silent) {
+    if (_optFetchBusy) return;
+    const all = tradesForAccount();
+    const opens = (all.manualOpen || []).concat(all.openPositions || []);
+    const optPos = opens.filter(t => t.assetType === "option");
+    if (!optPos.length) { if (!silent) toast("אין פוזיציות אופציה פתוחות"); return; }
+    const withOcc = optPos.map(t => ({ t: t, occ: _occSymbol(t) })).filter(x => x.occ);
+    if (!withOcc.length) { if (!silent) toast("הוסף סטרייק + תאריך פקיעה לאופציות כדי למשוך מחיר אוטומטי"); return; }
+    _optFetchBusy = true;
+    const btn = document.getElementById("optRefreshBtn"); if (btn) { btn.disabled = true; btn.textContent = "🔄 מושך…"; }
+    try {
+      const unders = Array.from(new Set(withOcc.map(x => String(x.t.symbol || "").split(" ")[0].toUpperCase())));
+      const chains = {};
+      await Promise.all(unders.map(async function (u) {
+        try { const r = await fetch("/api/options?sym=" + encodeURIComponent(u)); if (r.ok) { const j = await r.json(); const map = {}; (j.opts || []).forEach(o => { map[o.o] = o; }); chains[u] = map; } else chains[u] = null; }
+        catch (e) { chains[u] = null; }
+      }));
+      let filled = 0, missing = 0;
+      withOcc.forEach(function (x) {
+        const u = String(x.t.symbol || "").split(" ")[0].toUpperCase();
+        const c = chains[u] && chains[u][x.occ];
+        if (c) {
+          const b = +c.b, a = +c.a, l = +c.l;
+          const px = (b > 0 && a > 0) ? (b + a) / 2 : (l > 0 ? l : (a > 0 ? a : (b > 0 ? b : null)));
+          if (px != null) { _setOptAuto(x.occ, Math.round(px * 100) / 100); filled++; } else missing++;
+        } else missing++;
+      });
+      const noOcc = optPos.length - withOcc.length;
+      if (!silent) toast("🔄 עודכנו " + filled + " מחירי אופציות" + (missing ? " · " + missing + " לא נמצאו" : "") + (noOcc ? " · " + noOcc + " חסרי סטרייק/פקיעה" : ""));
+      render();
+    } finally { _optFetchBusy = false; }
+  }
+  window.snRefreshOptionPrices = refreshOptionPrices;
 
   // ---- Rendering ---------------------------------------------------------
   // clickable ticker → opens the same multi-timeframe chart used across the site (pages.js exposes it)
@@ -337,7 +389,7 @@
       const un = g.every(x => x.un != null) ? g.reduce((s, x) => s + x.un, 0) : null;
       const mt = {
         id: "aggopen|" + k, symbol: f.symbol, account: f.account, direction: f.direction,
-        assetType: f.assetType, optType: f.optType, mult: f.mult, qty: qty, entryPrice: wavgEntry,
+        assetType: f.assetType, optType: f.optType, strike: f.strike, expiry: f.expiry, mult: f.mult, qty: qty, entryPrice: wavgEntry,
         entryDate: entryDate, _n: g.length,
       };
       return { t: mt, isOpt: f.assetType === "option", cp: cp, un: un };
@@ -355,11 +407,12 @@
     };
     // derive per-position values first (live prices are STOCK prices — not an option's premium,
     // so Unrealized P&L is only computable for stocks). Needed for both display AND sorting.
-    const optPx = _optPrices();
+    const optPx = _optPrices(), autoPx = _optAuto();
     let items = openTrades.map(t => {
       const isOpt = t.assetType === "option";
       // stocks → live feed price · options → the price the trader typed in (if any)
-      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+      const _occ = isOpt ? _occSymbol(t) : null;
+      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : (_occ && autoPx[_occ] != null ? autoPx[_occ] : null)) : (livePrices ? livePrices[t.symbol] : null);
       const un = (cp != null) ? unrealizedPnl(t, cp) : null;
       return { t: t, isOpt: isOpt, cp: cp, un: un };
     });
@@ -481,7 +534,7 @@
     const totRiskPct = totCurVal > 0 ? (totRisk / totCurVal * 100).toFixed(1) : "0.0";
     const totRiskHtml = "🛑 " + money(totRisk, 0) + ' <span class="muted" style="font-weight:600">(' + totRiskPct + "% מהתיק)</span>"
       + (noStopCount ? " <span class='jsl none' style='font-size:11px' title='" + noStopCount + " פוזיציות ללא סטופ — לא נכללות בסיכום הסיכון'>· " + noStopCount + " ללא SL</span>" : "");
-    const optNote = hasOpt ? ' · <span style="color:#e0b341">אופציות: אין מחיר חי — הזן מחיר נוכחי ידנית לחישוב P&L</span>' : "";
+    const optNote = hasOpt ? ' · <span style="color:#7ee2b8">אופציות: מחיר אוטומטי מ-CBOE (מושהה ~15 דק׳) בלחיצה על 🔄 מחירי אופציות — או הזן ידנית</span>' : "";
     const count = openTrades.length;
     // live-price freshness: show WHEN the market feed last updated + a manual refresh button, so it's
     // obvious the Unrealized P&L is tracking the market (not frozen at whatever loaded on open).
@@ -491,6 +544,7 @@
       ? "<span class='muted' style='font-size:11px;font-weight:400' title='זמן עדכון מחירי השוק מהשרת'>🕐 מחירים: " + pxTimeTxt + "</span>"
       : "";
     const refreshBtn = "<button class='btn ghost' id='openPxRefresh' style='font-size:12px;padding:4px 10px' title='רענן מחירים עכשיו'>🔄 רענן</button>";
+    const optRefreshBtn = hasOpt ? "<button class='btn ghost' id='optRefreshBtn' style='font-size:12px;padding:4px 10px' title='משוך מחירי אופציות אוטומטית מ-CBOE (מושהה ~15 דק׳) — צריך סטרייק + תאריך פקיעה'>🔄 מחירי אופציות</button>" : "";
     const gridBtn = "<button class='btn ghost' id='openPosGrid' style='font-size:12px;padding:4px 12px' title='ראה גרפים של כל הפוזיציות הפתוחות'>📊 גרפים</button>" +
       "<button class='btn ghost' id='openPosCopy' style='font-size:12px;padding:4px 12px' title='העתק את רשימת הפוזיציות הפתוחות ללוח'>📋 העתק</button>" +
       "<button class='btn ghost" + (_openAgg ? " on" : "") + "' id='openPosAgg' style='font-size:12px;padding:4px 12px' title='אחד לוטים כפולים של אותו טיקר לשורה אחת עם מחיר כניסה ממוצע משוקלל'>🧬 " + (_openAgg ? "מאוגד" : "אגד טיקרים") + "</button>";
@@ -498,7 +552,7 @@
     const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · שווי " + money(totPosVal, 0) + " · סיכון 🛑 " + money(totRisk, 0) + " (" + totRiskPct + "%) · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
       "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
-        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : (pxTimeHtml + refreshBtn + gridBtn)) + toggleBtn + "</h3>" +
+        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : (pxTimeHtml + refreshBtn + optRefreshBtn + gridBtn)) + toggleBtn + "</h3>" +
       (openPosMin ? "" :
         "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
         "<tbody>" + rows + "</tbody><tfoot><tr>" +
@@ -516,6 +570,7 @@
         livePricesTs = 0;                                // bypass cache → pull the freshest feed now
         ensureLivePrices().then(() => render());
       }; }
+    { const ob = wrap.querySelector("#optRefreshBtn"); if (ob) ob.onclick = () => refreshOptionPrices(false); }
     { const gb = wrap.querySelector("#openPosGrid"); if (gb) gb.onclick = () => {
         const seen = {};
         const grows = openTrades.map(t => {
@@ -618,11 +673,12 @@
   // total unrealized P&L across ALL open positions — manual AND FIFO/CSV-derived. Stocks priced from
   // the live feed; options only when a current price was typed in. Returns {un, missing}.
   function totalUnrealized(manualOpen, fifoOpen) {
-    const optPx = _optPrices();
+    const optPx = _optPrices(), autoPx = _optAuto();
     let un = 0, missing = 0;
     (manualOpen || []).forEach(t => {
       const isOpt = t.assetType === "option";
-      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+      const _occ = isOpt ? _occSymbol(t) : null;
+      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : (_occ && autoPx[_occ] != null ? autoPx[_occ] : null)) : (livePrices ? livePrices[t.symbol] : null);
       if (cp != null) un += unrealizedPnl(t, cp); else missing++;
     });
     (fifoOpen || []).forEach(p => {
@@ -1438,6 +1494,8 @@
       symbol: existing ? existing.symbol : "",
       assetType: existing ? existing.assetType : "stock",
       optType: existing && existing.optType ? existing.optType : "call",   // call/put — only meaningful for options
+      strike: existing && existing.strike != null ? existing.strike : "",   // option strike (for auto price via CBOE)
+      expiry: existing && existing.expiry ? existing.expiry : "",           // option expiry YYYY-MM-DD (for auto price)
       direction: existing ? existing.direction : "long",
       qty: existing && existing.qty != null ? existing.qty : "",
       entryPrice: existing && existing.entryPrice != null ? existing.entryPrice : "",
@@ -1463,7 +1521,7 @@
     const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
     const set = (k, id) => { const v = g(id); if (v !== undefined) _mData[k] = v; };
     set("entryDate", "m_ed"); set("account", "m_acct"); set("symbol", "m_sym"); set("assetType", "m_asset");
-    set("optType", "m_optt"); set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("sl", "m_sl"); set("tp", "m_tp"); set("notes", "m_notes");
+    set("optType", "m_optt"); set("strike", "m_strike"); set("expiry", "m_expiry"); set("direction", "m_dir"); set("qty", "m_qty"); set("entryPrice", "m_ep"); set("sl", "m_sl"); set("tp", "m_tp"); set("notes", "m_notes");
     set("exitDate", "m_xd"); set("exitPrice", "m_xp"); set("fees", "m_fee");
     set("closeType", "m_closetype"); set("closeQty", "m_closeqty");
     set("exitReason", "m_exitreason"); set("managedWell", "m_managed"); set("feeling", "m_feeling");
@@ -1486,7 +1544,12 @@
         field("חשבון", acctField, true) +
         field("סימבול", '<input id="m_sym" placeholder="AAPL" style="text-transform:uppercase" value="' + (d.symbol || "") + '">') +
         field("סוג נכס", '<select id="m_asset">' + opt("stock", d.assetType, "מניה") + opt("option", d.assetType, "אופציה (×100)") + "</select>") +
-        '<div id="m_optt_row" class="field" style="' + (d.assetType === "option" ? "" : "display:none") + '"><label>סוג אופציה</label><select id="m_optt">' + opt("call", d.optType, "📈 CALL (קול)") + opt("put", d.optType, "📉 PUT (פוט)") + "</select></div>" +
+        '<div id="m_opt_fields" style="' + (d.assetType === "option" ? "" : "display:none") + '">' +
+          '<div class="field"><label>סוג אופציה</label><select id="m_optt">' + opt("call", d.optType, "📈 CALL (קול)") + opt("put", d.optType, "📉 PUT (פוט)") + "</select></div>" +
+          field("סטרייק (Strike)", '<input id="m_strike" type="number" step="any" placeholder="245" value="' + (d.strike === "" ? "" : d.strike) + '">') +
+          field("תאריך פקיעה (Expiry)", '<input id="m_expiry" type="date" value="' + (d.expiry || "") + '">') +
+          '<div class="muted" style="font-size:11px;margin:-2px 0 8px">💡 סטרייק + פקיעה מאפשרים <b>משיכת מחיר אוטומטית</b> (CBOE · מושהה ~15 דק׳)</div>' +
+        "</div>" +
         field("כיוון", '<select id="m_dir">' + opt("long", d.direction, "קנייה (לונג)") + opt("short", d.direction, "מכירה (שורט)") + "</select>") +
         field("כמות", '<input id="m_qty" type="number" step="any" placeholder="100" value="' + (d.qty === "" ? "" : d.qty) + '">') +
         field("מחיר כניסה", '<input id="m_ep" type="number" step="any" value="' + (d.entryPrice === "" ? "" : d.entryPrice) + '">') +
@@ -1541,8 +1604,8 @@
     });
     // SL field turns red while empty (missing risk management) — live feedback as they type
     { const sl = document.getElementById("m_sl"); if (sl) sl.oninput = () => { sl.classList.toggle("sl-missing", !sl.value.trim()); updatePreview(); }; }
-    // show the CALL/PUT selector only when the asset is an option
-    { const a = document.getElementById("m_asset"), row = document.getElementById("m_optt_row");
+    // show the option fields (type / strike / expiry) only when the asset is an option
+    { const a = document.getElementById("m_asset"), row = document.getElementById("m_opt_fields");
       if (a && row) a.addEventListener("change", () => { row.style.display = a.value === "option" ? "" : "none"; }); }
     ["m_sym", "m_ed", "m_ep", "m_xd", "m_xp"].forEach(id => {
       const e = document.getElementById(id);
@@ -1696,7 +1759,7 @@
     }
     const hasExit = d.exitPrice !== "" && d.exitPrice != null && !isNaN(parseFloat(d.exitPrice));
     try { localStorage.setItem("sn_last_fee", String(d.fees == null ? 0 : d.fees)); } catch (e) {}
-    const base = { account: account, symbol: d.symbol, assetType: d.assetType, optType: d.optType, direction: d.direction, entryPrice: d.entryPrice, sl: d.sl, tp: d.tp, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined,
+    const base = { account: account, symbol: d.symbol, assetType: d.assetType, optType: d.optType, strike: d.strike, expiry: d.expiry, direction: d.direction, entryPrice: d.entryPrice, sl: d.sl, tp: d.tp, entryDate: d.entryDate, notes: d.notes, img: manualImg || undefined,
       exitReason: hasExit ? d.exitReason : "", managedWell: hasExit ? d.managedWell : "", feeling: hasExit ? d.feeling : "" };
     // partial close → a closed record for the sold qty + a remaining OPEN record
     if (isClose && hasExit && d.closeType === "partial") {
@@ -1816,11 +1879,12 @@
         const r = tradesForAccount();
         const s = E.stats(r.trades || []);
         // total Unrealized P&L across open positions (stocks: live feed · options: manually-typed price)
-        const optPx = _optPrices();
+        const optPx = _optPrices(), autoPx = _optAuto();
         let un = 0, unHave = false;
         (r.manualOpen || []).forEach(t => {
           const isOpt = t.assetType === "option";
-          const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+          const _occ = isOpt ? _occSymbol(t) : null;
+      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : (_occ && autoPx[_occ] != null ? autoPx[_occ] : null)) : (livePrices ? livePrices[t.symbol] : null);
           if (cp != null) { un += unrealizedPnl(t, cp); unHave = true; }
         });
         return { net: s.net, winRate: s.winRate, profitFactor: s.profitFactor, count: s.count,
@@ -1833,10 +1897,11 @@
     openList: function () {
       try {
         const r = tradesForAccount();
-        const optPx = _optPrices();
+        const optPx = _optPrices(), autoPx = _optAuto();
         const enrich = t => {
           const isOpt = t.assetType === "option";
-          const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : null) : (livePrices ? livePrices[t.symbol] : null);
+          const _occ = isOpt ? _occSymbol(t) : null;
+      const cp = isOpt ? (optPx[t.id] != null ? optPx[t.id] : (_occ && autoPx[_occ] != null ? autoPx[_occ] : null)) : (livePrices ? livePrices[t.symbol] : null);
           const cost = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
           return { symbol: t.symbol, direction: t.direction || (t.qty > 0 ? "long" : "short"), qty: t.qty,
             entryPrice: t.entryPrice, mult: t.mult || 1, cp: cp, un: (cp != null) ? unrealizedPnl(t, cp) : null, cost: cost, isOption: isOpt };
