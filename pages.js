@@ -5746,20 +5746,33 @@
     if (v > -0.5) return "#8f3b42";
     return "#e5384a";
   }
+  // 5 tiers → a class that colors the card's % text + progress bar (dark card bg, not a red/green wall)
+  function _bcellTier(v) {
+    if (v == null) return "t-n";
+    if (v >= 0.5) return "t-vg";
+    if (v >= 0.1) return "t-mg";
+    if (v > -0.1) return "t-n";
+    if (v > -0.5) return "t-mr";
+    return "t-vr";
+  }
+  // sector-strength "card" (dashboard grid): ETF+name on top, big % (colored by tier), a progress bar, $ move.
   function _bcellRowHtml(s, tf, isSub) {
     const v = _bcellVal(s, tf);
     const etf = isSub ? (s.etf || subEtfFor(s.name)) : etfFor(s.name);
     const name = isSub ? s.name : secHe(s.name);
     // $ move of the sector ETF for this timeframe, derived from its current price: px - px/(1+v/100)
     const usd = (s.px != null && v != null) ? s.px * v / (100 + v) : null;
+    const tier = _bcellTier(v);
     // ETF ticker → menu. Sectors without an ETF (אחר/קריפטו) still get a bare ▾ with the same menu.
     const chip = '<span class="bc-etf flow-etf' + (etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(etf || "") +
       '" data-secname="' + escAttr(s.name) + '" data-secsub="' + (isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (etf ? etf + " ▾" : "▾") + "</span>";
     const pctTxt = v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
-    const usdTxt = usd == null ? "" : '<span class="bc-usd">' + (usd >= 0 ? "+" : "−") + "$" + Math.abs(usd).toFixed(2) + "</span>";
-    return '<div class="bc-cell" data-bckey="' + escAttr(s.name) + '" style="background:' + _bcellColor(v) + '">' +
-      '<span class="bc-left">' + chip + '<span class="bc-name">' + name + "</span></span>" +
-      '<span class="bc-right"><span class="bc-pct">' + pctTxt + "</span>" + usdTxt + "</span></div>";
+    const usdTxt = usd == null ? "" : '<span class="bcc-usd">' + (usd >= 0 ? "+" : "−") + "$" + Math.abs(usd).toFixed(2) + "</span>";
+    const w = v == null ? 0 : Math.max(6, Math.min(100, Math.abs(v) / 2.5 * 100));   // bar width ∝ |move| (cap 2.5%)
+    return '<div class="bc-card ' + tier + '" data-bckey="' + escAttr(s.name) + '">' +
+      '<div class="bcc-head">' + chip + '<span class="bcc-name">' + name + "</span></div>" +
+      '<div class="bcc-mid"><span class="bcc-pct">' + pctTxt + "</span>" + usdTxt + "</div>" +
+      '<div class="bcc-bar"><span class="bcc-fill" style="width:' + w.toFixed(0) + '%"></span></div></div>';
   }
   function _bcellSorted(data, tf, limit) {
     const v = s => _bcellVal(s, tf), byV = (a, b) => (v(b) == null ? -Infinity : v(b)) - (v(a) == null ? -Infinity : v(a));
@@ -5774,11 +5787,11 @@
   // FLIP: re-render a battery list in place with a slide animation when the timeframe changes
   function _bcellFlip(listEl, data, tf, isSub, limit) {
     const olds = {};
-    listEl.querySelectorAll(".bc-cell").forEach(el => olds[el.dataset.bckey] = el.getBoundingClientRect());
+    listEl.querySelectorAll(".bc-card").forEach(el => olds[el.dataset.bckey] = el.getBoundingClientRect());
     listEl.setAttribute("data-tf", tf);
     listEl.innerHTML = _bcellListHtml(data, tf, isSub, limit);
     requestAnimationFrame(() => {
-      listEl.querySelectorAll(".bc-cell").forEach(el => {
+      listEl.querySelectorAll(".bc-card").forEach(el => {
         const o = olds[el.dataset.bckey]; if (!o) return;
         const n = el.getBoundingClientRect(), dy = o.top - n.top;
         if (dy) {
