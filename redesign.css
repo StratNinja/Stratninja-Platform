@@ -406,7 +406,7 @@ body.dock-collapsed #athCeleb { display: none !important; }
 /* ================= NINJA TRADE SHARE CARD (1080×1350) ================= */
 .ninja-card { position: fixed; left: -9999px; top: 0; width: 1122px; height: 1402px; z-index: -1;
   box-sizing: border-box; overflow: hidden; font-family: 'Heebo','Rubik',Arial,sans-serif; color: #eafff3;
-  background: #05100b url("ninja-card.png?v=2") center center / 1122px 1402px no-repeat; }
+  background: #05100b url("ninja-card.png?v=3") center center / 1122px 1402px no-repeat; }
 .ninja-card * { box-sizing: border-box; }
 /* data overlays positioned into the template's empty slots (calibrated to the 1122×1402 art) */
 .njt { position: absolute; direction: ltr; font-family: 'Rubik','Heebo',Arial,sans-serif; }
