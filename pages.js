@@ -3342,12 +3342,10 @@
     const roi = t.roi == null ? 0 : t.roi;
     const roiStr = (roi >= 0 ? "+" : "−") + Math.abs(roi).toFixed(2) + "%";
     const money2 = v => (v == null ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-    const rightMetric = (t.qty != null && t.qty !== "") ? String(t.qty) : "";   // template's leverage slot → trade size (qty)
     el.innerHTML =
-      (t.dateStr ? '<div class="njt njt-date">' + escHtml(t.dateStr) + "</div>" : "") +
       '<div class="njt njt-sym">' + escHtml(t.sym || "") + (t.atype ? ' <span class="njt-atype">' + escHtml(t.atype) + "</span>" : "") + "</div>" +
-      '<div class="njt njt-side ' + dir + '">' + (isLong ? "↗ Long" : "↘ Short") + "</div>" +
-      (rightMetric ? '<div class="njt njt-lev">' + escHtml(rightMetric) + "</div>" : "") +
+      '<div class="njt njt-side ' + dir + '">' + (isLong ? "▲ Long" : "▼ Short") + "</div>" +
+      (t.dateStr ? '<div class="njt njt-date">' + escHtml(t.dateStr) + "</div>" : "") +   // date sits in the right slot (where qty was)
       '<div class="njt njt-roi ' + (roi >= 0 ? "pos" : "neg") + '">' + roiStr + "</div>" +
       '<div class="njt njt-elbl">ENTRY PRICE</div>' +
       '<div class="njt njt-xlbl">' + (t.live ? "CURRENT PRICE" : "EXIT PRICE") + "</div>" +
