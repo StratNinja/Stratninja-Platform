@@ -3902,7 +3902,7 @@
     if (col === "bbsq") return _bbVal(k, "bbsq");
     if (col === "bbw") return _bbVal(k, "bbw");
     if (col === "bbp") return _bbVal(k, "bbp");
-    if (col === "swd") return (techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d;
+    if (col === "swd") return (techState.swSide === "low" || techState.swSide === "breakLo" || techState.swSide === "holdLo") ? k.swlo_d : k.swhi_d;
     if (col === "trend") return _trendVal(k);
     if (col === "fib") return k.fibr;
     return null;
@@ -4348,8 +4348,10 @@
                 { val: "above", label: "מעל הרצועה · SHORT (%B≥100)" },
                 { val: "rev", label: "שני הקצוות · חזרה לממוצע" },
               ], _bbPosArr(), "— הכל") + "</div>" +
-            '<div class="fgrp"><label>〽️ סווינג <span class="muted" style="font-size:10px">(שיא/שפל אופקי · קרבה או בדיקת פריצה)</span></label><div class="chips" style="align-items:center"><select id="tSwSide">' +
-              opt("off", techState.swSide, "— הכל") + opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
+            '<div class="fgrp"><label>〽️ סווינג <span class="muted" style="font-size:10px">(שיא/שפל אופקי · קרבה · בדיקת פריצה · היפוך פיבוט)</span></label><div class="chips" style="align-items:center"><select id="tSwSide">' +
+              opt("off", techState.swSide, "— הכל") +
+              opt("holdLo", techState.swSide, "🎯 היפוך שורי · נשמרה מעל השפל") + opt("holdHi", techState.swSide, "🎯 היפוך דובי · נדחתה מתחת לשיא") +
+              opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
               opt("breakHi", techState.swSide, "🚀 פריצת שיא + בדיקה") + opt("breakLo", techState.swSide, "🔻 שבירת שפל + בדיקה") +
               "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>📐 קווי מגמה אלכסוניים</label><div class="chips" style="align-items:center"><select id="tTrendMode">' +
@@ -4401,7 +4403,7 @@
       { key: "bbsq", th: "BB דחיסה" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "דחיסת בולינגר (יחסי): אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = הכי דחוס שהמניה הייתה. תופס גם מניות תנודתיות בקפיץ יחסי", cell: k => { const v = _bbVal(k, "bbsq"); return "<td>" + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: _bbActive() },
       { key: "bbw", th: "רוחב BB" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "רוחב רצועות בולינגר כאחוז מהמחיר (אבסולוטי): נמוך = רצועות צרות ממש עכשיו. p25 של השוק ≈ 10%", cell: k => { const v = _bbVal(k, "bbw"); return "<td>" + (v == null ? "—" : v.toFixed(1) + "%") + "</td>"; }, active: _bbwActive() },
       { key: "bbp", th: "%B" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => { const v = _bbVal(k, "bbp"); return "<td>" + (v == null ? "—" : v <= 0 ? '<b class="pos">' + v.toFixed(0) + " ▲</b>" : v >= 100 ? '<b class="neg">' + v.toFixed(0) + " ▼</b>" : v.toFixed(0)) + "</td>"; }, active: _bbPosActive() },
-      { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct((techState.swSide === "low" || techState.swSide === "breakLo") ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
+      { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct((techState.swSide === "low" || techState.swSide === "breakLo" || techState.swSide === "holdLo") ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
       { key: "fib", th: "פיבו %", tip: "אחוז הריטרייסמנט של המחיר מה-swing האחרון (0% = בשיא/שפל האחרון · 100% = חזרה לנקודת ההתחלה). ↗ = פולבק בטרנד עולה · ↘ = תיקון בטרנד יורד", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
     ];
@@ -4653,6 +4655,10 @@
         if (techState.swSide === "breakHi" && (k.swhi_d == null || k.swhi_d < 0 || k.swhi_d > techState.swPct)) return false;
         // breakdown retest = broke BELOW the swing low and pulled back to it (still below, within pct)
         if (techState.swSide === "breakLo" && (k.swlo_d == null || k.swlo_d > 0 || k.swlo_d < -techState.swPct)) return false;
+        // 🎯 bullish pivot reversal = came down to the last pivot LOW and is HOLDING ABOVE it (0 ≤ swlo_d ≤ pct) — ACAD held 19.89, sits above. BBAR/LAC broke below → excluded (swlo_d < 0)
+        if (techState.swSide === "holdLo" && (k.swlo_d == null || k.swlo_d < 0 || k.swlo_d > techState.swPct)) return false;
+        // 🎯 bearish pivot reversal = rallied up to the last pivot HIGH and is being REJECTED below it (-pct ≤ swhi_d ≤ 0)
+        if (techState.swSide === "holdHi" && (k.swhi_d == null || k.swhi_d > 0 || k.swhi_d < -techState.swPct)) return false;
         if (_trendActive() && !_trendPass(k)) return false;
         if (_fibActive() && !_fibPass(k)) return false;
       }
