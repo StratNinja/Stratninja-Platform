@@ -4205,6 +4205,9 @@
         '<div class="fgrp"><label>סוג נר</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר <span class="muted" style="font-size:10px">· הנר הנוכחי · רב-בחירה</span></label>' + multiComboHtml("scanShape", SHAPE_MULTI, scanState.shape, "כל צורות הנר") + "</div>" +
+        '<div class="fgrp"><label>🔄 היפוך <span class="muted" style="font-size:10px">· Reversal</span></label><div class="chips">' +
+          [["any", "⚡ כל היפוך"], ["up", "🔼 היפוך שורי"], ["down", "🔽 היפוך דובי"]].map(o => '<button class="chip' + (scanState.broad === o[0] ? " on" : "") + '" data-broad="' + o[0] + '" title="נר היפוך לפי Strat (2D שנרקלם / 2U שנדחה)">' + o[1] + "</button>").join("") + "</div></div>" +
+        seqBuilder() +
         // IN FORCE — standalone (works WITHOUT a sequence pattern): the close is holding beyond the prior bar's extreme.
         // 🔼 = above the prior high (2U in force / long trigger) · 🔽 = below the prior low. Optionally require the
         // prior "signal" bar to be a given shape → e.g. 🔼 + פטיש = "we're above the high of a prior hammer".
@@ -4218,14 +4221,6 @@
                 '<button class="chip' + (scanState.ifcType.indexOf(x) >= 0 ? " on" : "") + '" data-ifctype="' + x + '" title="פרצנו מעבר לקצה של נר קודם מסוג ' + x + ' (1 = נר פנימי · 3 = נר חיצוני)">' + x + "</button>").join("") + "</span>"
             : "") +
         "</div></div>" +
-        seqBuilder() +
-        '<div class="fgrp"><label>🔄 היפוך <span class="muted" style="font-size:10px">· Reversal</span></label><div class="chips">' +
-          [["any", "⚡ כל היפוך"], ["up", "🔼 היפוך שורי"], ["down", "🔽 היפוך דובי"]].map(o => '<button class="chip' + (scanState.broad === o[0] ? " on" : "") + '" data-broad="' + o[0] + '" title="נר היפוך לפי Strat (2D שנרקלם / 2U שנדחה)">' + o[1] + "</button>").join("") + "</div></div>" +
-        '<div class="fgrp"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
-        '<div class="fgrp"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
-        '<div class="fgrp"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
-        '<div class="fgrp"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
-        '<div class="fgrp"><label>שווי שוק <span class="muted" style="font-size:10px">(B=מיליארד · M=מיליון)</span></label><div class="chips" style="align-items:center"><input id="scanCapMin" type="text" placeholder="מ- 2B" style="width:72px" value="' + escAttr(scanState.capMin) + '"><span class="muted">–</span><input id="scanCapMax" type="text" placeholder="עד 100B" style="width:72px" value="' + escAttr(scanState.capMax) + '"></div></div>' +
         '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
         '<div class="fgrp"><label>🎯 מבחן פתיחה תקופתית <span class="muted" style="font-size:10px">(תמיכה/התנגדות על פתיחת Y/Q/M)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPopenTest">' +
           [["off", "— כבוי"], ["support", "🟢 תמיכה (לונג)"], ["resistance", "🔴 התנגדות (שורט)"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.popenTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
@@ -4249,7 +4244,13 @@
                 '<option value="current"' + (techState.pextRange === "current" ? " selected" : "") + ">תקופה נוכחית (נסחרת)</option>" +
               "</select>"
             : "") + "</div></div>" +
-        '<div class="fgrp"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
+        // ── universe / identity row (Adi's row 2): forced onto its own line by enhanceFilterBar via .fgrp-uni ──
+        '<div class="fgrp fgrp-uni"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
+        '<div class="fgrp fgrp-uni"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
+        '<div class="fgrp fgrp-uni"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
+        '<div class="fgrp fgrp-uni"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
+        '<div class="fgrp fgrp-uni"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
+        '<div class="fgrp fgrp-uni"><label>שווי שוק <span class="muted" style="font-size:10px">(B=מיליארד · M=מיליון)</span></label><div class="chips" style="align-items:center"><input id="scanCapMin" type="text" placeholder="מ- 2B" style="width:72px" value="' + escAttr(scanState.capMin) + '"><span class="muted">–</span><input id="scanCapMax" type="text" placeholder="עד 100B" style="width:72px" value="' + escAttr(scanState.capMax) + '"></div></div>' +
       "</div></div>";
 
     // ---- technical filters (collapsible) ----
@@ -4707,7 +4708,7 @@
         name = (lc.textContent || "").replace(/·.*$/, "").trim() || "סינון";
       }
       const pop = document.createElement("div");
-      pop.className = "fpop" + (fgrp.classList.contains("fgrp-seq") ? " fpop-wide" : "");
+      pop.className = "fpop" + (fgrp.classList.contains("fgrp-seq") ? " fpop-wide" : "") + (fgrp.classList.contains("fgrp-uni") ? " fpop-uni" : "");
       const btn = document.createElement("button");
       btn.type = "button"; btn.className = "fpop-btn";
       btn.innerHTML = '<span class="fpop-dot"></span><span class="fpop-name"></span><span class="fpop-caret">▾</span>';
@@ -4728,8 +4729,14 @@
       });
     });
     if (reopened) { const d = reopened.querySelector("details"); if (d) d.open = true; }
-    // ── fold the MTF / technical / indicator accordions into the SAME bar as wide dropdown chips ──
-    [["mtfToggle", "🔀 MTF"], ["techToggle", "📈 פילטרים טכניים"], ["indToggle", "🎯 אינדיקטורים"]].forEach(([id, fallbackName]) => {
+    // Force the universe/identity filters (יקום · סימבול · סקטור · תת-סקטור · מחיר · שווי שוק) onto
+    // their OWN row (Adi's row 2): a full-width flex break sits right before the first .fpop-uni chip,
+    // and the tech/indicator/MTF group chips are inserted BEFORE that break so they stay on row 1.
+    const _uniAnchor = frow.querySelector(".fpop-uni");
+    let _uniBreak = null;
+    if (_uniAnchor) { _uniBreak = document.createElement("div"); _uniBreak.className = "fbar-break"; frow.insertBefore(_uniBreak, _uniAnchor); }
+    // ── fold the technical / indicator / MTF accordions into the SAME bar as wide dropdown chips ──
+    [["techToggle", "📈 פילטרים טכניים"], ["indToggle", "🎯 אינדיקטורים"], ["mtfToggle", "🔀 MTF"]].forEach(([id, fallbackName]) => {
       const h3 = document.getElementById(id);
       const p = h3 ? h3.closest(".panel.filters") : null;
       if (!p || p === panel) return;
@@ -4746,7 +4753,8 @@
       const body = document.createElement("div");
       body.className = "fpop-body";
       [...p.children].forEach(ch => { if (ch !== h3) body.appendChild(ch); });   // move inner (keep the h3 out)
-      frow.appendChild(pop); pop.appendChild(btn); pop.appendChild(body);
+      if (_uniBreak) frow.insertBefore(pop, _uniBreak); else frow.appendChild(pop);   // groups sit on row 1, before the universe row
+      pop.appendChild(btn); pop.appendChild(body);
       pop.dataset.fname = name;
       if (active) pop.classList.add("active");
       if (_fbarOpen === name) pop.classList.add("open");

@@ -110,6 +110,8 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 
 /* ---------- compact filter bar: each filter group collapses into a dropdown chip ---------- */
 .filters.fbar > .frow { display: flex; flex-wrap: wrap; gap: 9px; align-items: flex-start; }
+/* full-width flex break — pushes the universe/identity chips (יקום · סימבול · סקטור · תת-סקטור · מחיר · שווי שוק) onto their own row */
+.filters.fbar > .frow > .fbar-break { flex-basis: 100%; width: 100%; height: 0; margin: 0; padding: 0; border: 0; }
 .filters.fbar .fpop { position: relative; }
 .filters.fbar .fpop-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px;
   padding: 8px 14px; border-radius: 11px; background: var(--panel2); border: 1px solid var(--line);
