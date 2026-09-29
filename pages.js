@@ -155,7 +155,13 @@
     // prefer the server's authoritative sub-sector→ETF map (LIVE.subsectors carries the real ETF, e.g. XOP);
     // the keyword heuristic below is only a fallback and can mis-match a sub-sector to its parent sector ETF.
     if (LIVE && LIVE.subsectors) { const k = _normInd(ind), m = LIVE.subsectors.find(s => _normInd(s.ind) === k); if (m && m.etf) return m.etf; }
-    const e = indEtf(ind); return (e && SECTOR_ETF_VALS.indexOf(e) < 0) ? e : "";
+    const e = indEtf(ind);
+    if (!e || SECTOR_ETF_VALS.indexOf(e) >= 0) return "";
+    // never let the keyword heuristic BORROW a thematic ETF that authoritatively belongs to ANOTHER
+    // sub-sector (e.g. "רכב"→DRIV when DRIV is really "רכב אוטונומי", or plain "ליתיום"→LIT owned by
+    // "ליתיום וסוללות") — that produced duplicate ETF cards in the continuity view.
+    if (LIVE && LIVE.subsectors && LIVE.subsectors.some(s => s.etf === e)) return "";
+    return e;
   }
   function cell(t, c) { return { t: t, c: c }; }
   function tf(x, sym, tfl) {
@@ -5454,6 +5460,9 @@
       return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "", avgChg: _avgChg(mem) };
     });
     let subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true, chg: (subChgLive[o.name] != null ? subChgLive[o.name] : o.avgChg) }));
+    // safety net: never show the SAME ETF on two cards (subEtfFor already prevents heuristic borrowing,
+    // but guard here too) — keep the sub-sector with the most stocks per ETF. Empty-ETF cards stay distinct.
+    { const seen = {}; subArr = subArr.filter(o => { if (!o.etf) return true; if (seen[o.etf]) { if (o.tot > seen[o.etf].tot) { seen[o.etf].drop = true; seen[o.etf] = o; return true; } return false; } seen[o.etf] = o; return true; }).filter(o => !o.drop); }
     // keep the sub panel compact: the 18 with the most decisive FTFC lean (furthest from neutral)
     if (subArr.length > 18) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 18); }
     const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
