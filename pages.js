@@ -3361,6 +3361,7 @@
       '<div class="njt njt-sym">' + escHtml(t.sym || "") + (t.atype ? ' <span class="njt-atype">' + escHtml(t.atype) + "</span>" : "") + "</div>" +
       '<div class="njt njt-side ' + dir + '">' + (isLong ? "▲ Long" : "▼ Short") + "</div>" +
       (t.dateStr ? '<div class="njt njt-date">' + escHtml(t.dateStr) + "</div>" : "") +   // date sits in the right slot (where qty was)
+      '<div class="njt njt-status ' + (t.live ? "open" : "closed") + '">' + (t.live ? "● פוזיציה פתוחה · Unrealized P&L" : "✓ עסקה סגורה · Realized P&L") + "</div>" +
       '<div class="njt njt-roi ' + (roi >= 0 ? "pos" : "neg") + '">' + roiStr + "</div>" +
       '<div class="njt njt-elbl">ENTRY PRICE</div>' +
       '<div class="njt njt-xlbl">' + (t.live ? "CURRENT PRICE" : "EXIT PRICE") + "</div>" +
