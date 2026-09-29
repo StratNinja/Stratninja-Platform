@@ -228,9 +228,11 @@
 
     const { trades, openPositions, manualOpen } = tradesForAccount();
 
-    // discipline nudge — too many concurrent open positions
+    // discipline nudge — too many concurrent open positions.
+    // The inline banner shows ONLY on the open-positions tab (so it never pushes the calendar/equity
+    // into a scroll); the popup still fires once when the count first crosses the threshold.
     const openCount = (openPositions ? openPositions.length : 0) + (manualOpen ? manualOpen.length : 0);
-    if (openCount >= OPEN_WARN) root.appendChild(disciplineBanner(openCount));
+    if (openCount >= OPEN_WARN && state.tab === "positions") root.appendChild(disciplineBanner(openCount));
     if (openCount >= OPEN_WARN && _lastOpenCount < OPEN_WARN) setTimeout(() => disciplineModal(openCount), 350);
     _lastOpenCount = openCount;
 
