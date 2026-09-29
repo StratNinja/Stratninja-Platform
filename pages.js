@@ -3386,6 +3386,14 @@
     { const a = document.getElementById("jshNinja"); if (a) a.onclick = () => { closeModal(); openNinjaCardPicker(); }; }
     { const b = document.getElementById("jshSummary"); if (b) b.onclick = () => { closeModal(); openJournalSharePicker(); }; }
   }
+  // exposed so the journal (journal.js) can share ONE specific trade/position as a ninja card.
+  // t = { sym, dir:"long"|"short", entry, exit, roi, dateStr, live:bool }
+  window.snShareTradeCard = function (t) {
+    try {
+      if (!t || t.entry == null) { snToast && snToast("אין מספיק נתונים לכרטיס"); return; }
+      _captureRedesignCard(() => buildNinjaTradeCardEl(t));
+    } catch (e) {}
+  };
   function captureShare() {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     const body = '<div style="display:flex;flex-direction:column;gap:10px">' +

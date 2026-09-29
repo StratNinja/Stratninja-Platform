@@ -436,9 +436,15 @@
         ? "<td class='" + cls(dayChg) + "' style='white-space:nowrap'>" + (dayChg >= 0 ? "+" : "") + dayChg.toFixed(2) + "%</td>"
         : "<td class='muted'>—</td>";
       const nBadge = merged ? ' <span class="agg-badge" title="' + t._n + ' לוטים מאוגדים · מחיר כניסה = ממוצע משוקלל — כבה \'אגד\' כדי לנהל/לסגור כל לוט בנפרד">×' + t._n + "</span>" : "";
+      // 📸 share THIS live position as a ninja card (needs a live price → stocks with a quote)
+      const _sBase = String(t.symbol || "").split(" ")[0];
+      const shareBtn = (!merged && cp != null && !isOpt)
+        ? "<button class='btn ghost' data-sharepos='1' data-sp-sym='" + _sBase + "' data-sp-dir='" + (t.direction || "long") +
+          "' data-sp-entry='" + (t.entryPrice || 0) + "' data-sp-cp='" + cp + "' title='שתף פוזיציה ככרטיס נינג׳ה' style='padding:4px 8px'>📸</button> "
+        : "";
       const actions = merged
         ? '<span class="muted" style="font-size:11px" title="כבה \'אגד טיקרים\' כדי לסגור/למחוק לוט בודד">🧬 מאוגד</span>'
-        : ((t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
+        : (shareBtn + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
            "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
            "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button>");
       return "<tr" + (merged ? "" : " data-editopen='" + t.id + "' style='cursor:pointer'") + ">" +
@@ -532,6 +538,17 @@
       Store.deleteManual(b.dataset.delpos); render();
     });
     wrap.querySelectorAll("[data-img]").forEach(b => b.onclick = e => { e.stopPropagation(); const t = openTrades.find(x => x.id === b.dataset.img); if (t && t.img) viewTradeImg(t); });
+    // 📸 share ONE live position as a ninja card (live=unrealized ROI, "מחיר נוכחי")
+    wrap.querySelectorAll("[data-sharepos]").forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const dir = b.dataset.spDir === "short" ? "short" : "long";
+      const entry = parseFloat(b.dataset.spEntry), cp = parseFloat(b.dataset.spCp);
+      if (!entry || cp == null || isNaN(cp)) { toast("אין מחיר חי לפוזיציה זו"); return; }
+      const roi = dir === "short" ? (entry - cp) / entry * 100 : (cp - entry) / entry * 100;
+      const today = new Date().toISOString().slice(0, 10);
+      if (window.snShareTradeCard) window.snShareTradeCard({ sym: b.dataset.spSym, dir: dir, entry: entry, exit: cp, roi: roi, dateStr: today, live: true });
+      else toast("כלי השיתוף עדיין נטען");
+    });
     return wrap;
   }
   function editOpenTrade(id) {
@@ -907,6 +924,7 @@
     const dstr = d => (d ? d.split("-").reverse().join(".") : "—");
     const rows = list.map(t => {
       const actions =
+        '<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
         (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה">🧠</button> ' : "") +
         (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
         (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
@@ -944,6 +962,7 @@
   }
   function tradeRow(t) {
     const actions =
+      '<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
       (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
       (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
       (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
@@ -970,6 +989,18 @@
     });
     container.querySelectorAll("button[data-reflect]").forEach(b => {
       b.onclick = e => { e.stopPropagation(); const t = byId[b.dataset.reflect]; if (t) viewReflection(t); };
+    });
+    // 📸 share ONE closed trade as a ninja card (realized ROI from entry/exit)
+    container.querySelectorAll("button[data-sharetrade]").forEach(b => {
+      b.onclick = e => {
+        e.stopPropagation();
+        const t = byId[b.dataset.sharetrade]; if (!t) return;
+        if (t.exitPrice == null || !t.entryPrice) { toast("אין נתוני כניסה/יציאה לעסקה זו"); return; }
+        const dir = t.direction === "short" ? "short" : "long";
+        const roi = dir === "short" ? (t.entryPrice - t.exitPrice) / t.entryPrice * 100 : (t.exitPrice - t.entryPrice) / t.entryPrice * 100;
+        if (window.snShareTradeCard) window.snShareTradeCard({ sym: String(t.symbol || "").split(" ")[0], dir: dir, entry: t.entryPrice, exit: t.exitPrice, roi: roi, dateStr: t.exitDate || "", live: false });
+        else toast("כלי השיתוף עדיין נטען — נסה שוב");
+      };
     });
   }
   function viewTradeImg(t) {
@@ -1171,7 +1202,8 @@
         '<td><span class="pill src">' + srcTxt + "</span></td>" +
         "<td>" +
           (t._agg ? '<span class="muted" style="font-size:11px" title="פצל כדי לערוך/למחוק עסקה בודדת">מאוגד</span>' :
-            ((_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
+            ('<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
+             (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
              (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
              (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
              '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>')) +
