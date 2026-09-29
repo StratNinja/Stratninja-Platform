@@ -1135,8 +1135,13 @@
         let s = (data[n] || []).slice();
         if (readings && readings[n] != null && s.length) s[s.length - 1] = { d: s[s.length - 1].d, v: readings[n] };   // live last point
         const cur = readings && readings[n] != null ? readings[n] : (s.length ? s[s.length - 1].v : null);
+        const prev = s.length >= 2 ? s[s.length - 2].v : null;   // yesterday's reading
+        const dchg = (cur != null && prev != null) ? (cur - prev) : null;   // today's move (percentage points)
+        const dchgHtml = dchg != null
+          ? '<span class="brd-dchg ' + (dchg > 0.05 ? "pos" : dchg < -0.05 ? "neg" : "zero") + '" title="שינוי יומי מול אתמול">' + (dchg >= 0 ? "▲ +" : "▼ ") + Math.abs(dchg).toFixed(1) + "</span>"
+          : "";
         return '<div class="brd-chart"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + n + " ימים</span>" +
-          (cur != null ? '<span class="brd-cur ' + _brdZoneCls(cur) + '">' + cur.toFixed(0) + "%</span>" : "") + "</div>" +
+          (cur != null ? '<span class="brd-cur ' + _brdZoneCls(cur) + '">' + cur.toFixed(0) + "%</span>" : "") + dchgHtml + "</div>" +
           _brdChartSvg(s, cur) + "</div>";
       }).join("") + "</div>";
     } else {
