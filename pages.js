@@ -1323,9 +1323,11 @@
   }
   function _hmFrame(name, stocks, opts) {
     opts = opts || {};
+    const en = opts.en ? ' <span class="hm-sec-en">' + escHtml(opts.en) + "</span>" : "";
+    const etf = opts.etf ? ' <span class="hm-sec-etf">' + escHtml(opts.etf) + "</span>" : "";
     const tab = opts.zoom
-      ? '<div class="hm-sec-tab hm-sec-zoom clickable" data-hmsector="' + encodeURIComponent(opts.key || name) + '" title="לחץ לזום לתתי-הסקטורים">' + name + (opts.pct != null ? ' <span class="hm-sec-pct">' + opts.pct + "%</span>" : "") + " 🔍</div>"
-      : '<div class="hm-sec-tab" title="' + escAttr(name) + '">' + name + "</div>";
+      ? '<div class="hm-sec-tab hm-sec-zoom clickable" data-hmsector="' + encodeURIComponent(opts.key || name) + '" title="לחץ לזום לתתי-הסקטורים">' + name + en + etf + (opts.pct != null ? ' <span class="hm-sec-pct">' + opts.pct + "%</span>" : "") + " 🔍</div>"
+      : '<div class="hm-sec-tab" title="' + escAttr(name) + '">' + name + en + etf + "</div>";
     let body;
     if (spHeatAvg) {
       // "מיצוע" — one color for the whole sector = its average move over the selected TF (money-flow at a glance)
@@ -1360,7 +1362,7 @@
     const list = secs.filter(s => (s.stocks || []).length && s.name !== "מדדים").map(s => ({ sec: s, value: (s.stocks || []).reduce((a, b) => a + _hmValue(b), 0) }));
     const frames = squarify(list, 0, 0, 1000, 600).map(r => {
       const s = r.item.sec, p = s.total ? Math.round(s.above / s.total * 100) : null;
-      return _hmFrame(secHe(s.name), s.stocks, { zoom: true, key: s.name, pct: p, left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
+      return _hmFrame(secHe(s.name), s.stocks, { zoom: true, key: s.name, pct: p, en: s.name, etf: etfFor(s.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
     }).join("");
     return '<div class="sp-heat">' + frames + "</div>";
   }
@@ -1395,7 +1397,8 @@
         '<button class="flow-tf-btn hm-tf' + (k === spHeatTf ? " on" : "") + '" data-hmtf="' + k + '">' + HM_TFL[k] + "</button>").join("") +
         HM_TFS_SOON.map(k => '<button class="flow-tf-btn hm-tf hm-tf-soon" disabled title="בקרוב — דורש עדכון שרת">' + k + "</button>").join("") + "</div>";
       return '<div class="page-head hm-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">כל ריבוע = מניה, הצבע לפי התנועה בטווח הנבחר · לחץ שם סקטור (🔍) לזום · מניה לגרף · מונה שיא/שפל לרשימה.</div></div>' +
-        '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" + tfBtns + liveBanner() + countsStrip +
+        '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" +
+        '<div class="hm-controls">' + tfBtns + countsStrip + "</div>" +
         '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──

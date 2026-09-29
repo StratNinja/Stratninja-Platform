@@ -361,18 +361,22 @@ body[data-page="market"] .idx-row { margin: 2px 0; }
 .sp-heat-panel { padding: 6px; margin-bottom: 0; }
 /* height fitted to the viewport so the WHOLE heat-map page fits with NO scroll; the squarified
    treemap adapts tile aspect to whatever box it gets, so a fixed height keeps tiles near-square. */
-.sp-heat { position: relative; width: 100%; height: calc(100vh - 300px); min-height: 260px; max-height: 1000px;
+.sp-heat { position: relative; width: 100%; height: calc(100vh - 248px); min-height: 260px; max-height: 1000px;
   background: #0a0d12; border-radius: 10px; overflow: hidden; }
 @media (max-width: 720px) { .sp-heat { height: 72vh; } }
 /* trim the heat-map chrome so the map gets maximum height without pushing the page into a scroll */
 body[data-page="sp500"] .hm-head { margin: 0 0 2px; }
 body[data-page="sp500"] .hm-head h1 { font-size: 20px; margin: 0; }
 body[data-page="sp500"] .hm-head .sub { display: none; }   /* description not needed every time — reclaim height */
-body[data-page="sp500"] .hm-tfbar { margin: 2px 0; }
-body[data-page="sp500"] .hm-counts { margin: 2px 0 4px; }
 body[data-page="sp500"] .sp-view-row { margin-bottom: 3px; }
-body[data-page="sp500"] .live-banner, body[data-page="sp500"] .livebanner { margin: 2px 0; font-size: 11px; padding: 4px 10px; }
 body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
+/* TF buttons + 52w counts share ONE row (counts pushed to the end) — reclaims a row, kills the scroll */
+.hm-controls { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; margin: 3px 0 5px; }
+.hm-controls .hm-tfbar { margin: 0; }
+.hm-controls .hm-counts { margin: 0; }
+/* sector tab: Hebrew + small English + ETF chip */
+.hm-sec-en { font-size: 10px; font-weight: 600; color: #9fb0c0; }
+.hm-sec-etf { font-size: 10px; font-weight: 800; color: #22e39b; letter-spacing: .3px; }
 .hm-sec { position: absolute; display: flex; flex-direction: column; box-sizing: border-box; border: 2px solid #fff; overflow: hidden; }
 .hm-sec-tab { flex: 0 0 auto; background: #000; color: #fff; font-size: 11px; font-weight: 800; line-height: 1.45;
   padding: 1px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: .2px; }
