@@ -4205,8 +4205,6 @@
         '<div class="fgrp"><label>סוג נר</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר <span class="muted" style="font-size:10px">· הנר הנוכחי · רב-בחירה</span></label>' + multiComboHtml("scanShape", SHAPE_MULTI, scanState.shape, "כל צורות הנר") + "</div>" +
-        '<div class="fgrp"><label>🔄 היפוך <span class="muted" style="font-size:10px">· Reversal</span></label><div class="chips">' +
-          [["any", "⚡ כל היפוך"], ["up", "🔼 היפוך שורי"], ["down", "🔽 היפוך דובי"]].map(o => '<button class="chip' + (scanState.broad === o[0] ? " on" : "") + '" data-broad="' + o[0] + '" title="נר היפוך לפי Strat (2D שנרקלם / 2U שנדחה)">' + o[1] + "</button>").join("") + "</div></div>" +
         seqBuilder() +
         // IN FORCE — standalone (works WITHOUT a sequence pattern): the close is holding beyond the prior bar's extreme.
         // 🔼 = above the prior high (2U in force / long trigger) · 🔽 = below the prior low. Optionally require the
@@ -4221,22 +4219,12 @@
                 '<button class="chip' + (scanState.ifcType.indexOf(x) >= 0 ? " on" : "") + '" data-ifctype="' + x + '" title="פרצנו מעבר לקצה של נר קודם מסוג ' + x + ' (1 = נר פנימי · 3 = נר חיצוני)">' + x + "</button>").join("") + "</span>"
             : "") +
         "</div></div>" +
-        '<div class="fgrp"><label>FTFC בלבד</label><button class="chip' + (scanState.ftfc ? " on" : "") + '" id="scanFtfc">' + (scanState.ftfc ? "כן ✓" : "הכל") + "</button></div>" +
-        '<div class="fgrp"><label>🎯 מבחן פתיחה תקופתית <span class="muted" style="font-size:10px">(תמיכה/התנגדות על פתיחת Y/Q/M)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPopenTest">' +
-          [["off", "— כבוי"], ["support", "🟢 תמיכה (לונג)"], ["resistance", "🔴 התנגדות (שורט)"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.popenTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
-          "</select>" + (_popenActive()
-            ? '<span class="muted">≤</span><input id="tPopenMult" type="number" step="0.1" min="0.1" style="width:52px" value="' + techState.popenMult + '"><span class="muted">×ATR</span>' +
-              '<span class="chips" style="margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
-                '<button class="chip' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " on" : "") + '" data-popentf="' + tf + '">' + (TF_HE_SHORT[tf] || tf) + "</button>").join("") + "</span>" +
-              '<select id="tPopenTouch" title="נגיעה רגילה = הסגירה בטווח הרמה · פתיל = הנר נגע ברמה עם פתיל וסגר בצד השני (דחייה — חזק יותר)" style="margin-inline-start:8px">' +
-                '<option value="price"' + (techState.popenTouch === "price" ? " selected" : "") + ">נגיעה רגילה</option>" +
-                '<option value="wick"' + (techState.popenTouch === "wick" ? " selected" : "") + ">🕯️ פתיל (דחייה)</option>" +
-              "</select>"
-            : "") + "</div></div>" +
+        '<div class="fgrp"><label>🔄 היפוך <span class="muted" style="font-size:10px">· Reversal</span></label><div class="chips">' +
+          [["any", "⚡ כל היפוך"], ["up", "🔼 היפוך שורי"], ["down", "🔽 היפוך דובי"]].map(o => '<button class="chip' + (scanState.broad === o[0] ? " on" : "") + '" data-broad="' + o[0] + '" title="נר היפוך לפי Strat (2D שנרקלם / 2U שנדחה)">' + o[1] + "</button>").join("") + "</div></div>" +
         '<div class="fgrp"><label>📏 קרוב לשיא/שפל תקופתי <span class="muted" style="font-size:10px">(קצה טווח · בחירת כמה מסגרות = קונפלואנס בכולן יחד)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPextTest">' +
           [["off", "— כבוי"], ["high", "🔺 קרוב לשיא"], ["low", "🔻 קרוב לשפל"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.pextTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
           "</select>" + (_pextActive()
-            ? '<span class="muted">±</span><input id="tPextPct" type="number" step="0.5" min="0.1" style="width:52px" value="' + techState.pextPct + '"><span class="muted">%</span>' +
+            ? '<span class="muted">±</span><input id="tPextPct" type="number" step="0.5" min="0" style="width:52px" value="' + techState.pextPct + '"><span class="muted">%</span>' +
               '<span class="chips" style="margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
                 '<button class="chip' + ((techState.pextTfs || []).indexOf(tf) >= 0 ? " on" : "") + '" data-pexttf="' + tf + '">' + (TF_HE_SHORT[tf] || tf) + "</button>").join("") + "</span>" +
               '<select id="tPextRange" title="קודמת = השיא/שפל של התקופה המושלמת הקודמת (למשל יולי בסריקה חודשית — רמת ההדק להתרחבות) · נוכחית = התקופה שעדיין נסחרת (אוגוסט)" style="margin-inline-start:8px">' +
@@ -4251,6 +4239,17 @@
         '<div class="fgrp fgrp-uni"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp fgrp-uni"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
         '<div class="fgrp fgrp-uni"><label>שווי שוק <span class="muted" style="font-size:10px">(B=מיליארד · M=מיליון)</span></label><div class="chips" style="align-items:center"><input id="scanCapMin" type="text" placeholder="מ- 2B" style="width:72px" value="' + escAttr(scanState.capMin) + '"><span class="muted">–</span><input id="scanCapMax" type="text" placeholder="עד 100B" style="width:72px" value="' + escAttr(scanState.capMax) + '"></div></div>' +
+        '<div class="fgrp fgrp-uni"><label>🎯 מבחן פתיחה תקופתית <span class="muted" style="font-size:10px">(תמיכה/התנגדות על פתיחת Y/Q/M)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tPopenTest">' +
+          [["off", "— כבוי"], ["support", "🟢 תמיכה (לונג)"], ["resistance", "🔴 התנגדות (שורט)"], ["any", "⚡ שניהם"]].map(o => '<option value="' + o[0] + '"' + (techState.popenTest === o[0] ? " selected" : "") + ">" + o[1] + "</option>").join("") +
+          "</select>" + (_popenActive()
+            ? '<span class="muted">≤</span><input id="tPopenMult" type="number" step="0.1" min="0" style="width:52px" value="' + techState.popenMult + '"><span class="muted">×ATR</span>' +
+              '<span class="chips" style="margin-inline-start:8px">' + ["Y", "Q", "M"].map(tf =>
+                '<button class="chip' + ((techState.popenTfs || []).indexOf(tf) >= 0 ? " on" : "") + '" data-popentf="' + tf + '">' + (TF_HE_SHORT[tf] || tf) + "</button>").join("") + "</span>" +
+              '<select id="tPopenTouch" title="נגיעה רגילה = הסגירה בטווח הרמה · פתיל = הנר נגע ברמה עם פתיל וסגר בצד השני (דחייה — חזק יותר)" style="margin-inline-start:8px">' +
+                '<option value="price"' + (techState.popenTouch === "price" ? " selected" : "") + ">נגיעה רגילה</option>" +
+                '<option value="wick"' + (techState.popenTouch === "wick" ? " selected" : "") + ">🕯️ פתיל (דחייה)</option>" +
+              "</select>"
+            : "") + "</div></div>" +
       "</div></div>";
 
     // ---- technical filters (collapsible) ----
@@ -4736,7 +4735,8 @@
     let _uniBreak = null;
     if (_uniAnchor) { _uniBreak = document.createElement("div"); _uniBreak.className = "fbar-break"; frow.insertBefore(_uniBreak, _uniAnchor); }
     // ── fold the technical / indicator / MTF accordions into the SAME bar as wide dropdown chips ──
-    [["techToggle", "📈 פילטרים טכניים"], ["indToggle", "🎯 אינדיקטורים"], ["mtfToggle", "🔀 MTF"]].forEach(([id, fallbackName]) => {
+    // row 1 = tech + indicators (before the break); row 2 = MTF (after the break, with the universe filters)
+    [["techToggle", "📈 פילטרים טכניים", 1], ["indToggle", "🎯 אינדיקטורים", 1], ["mtfToggle", "🔀 MTF", 2]].forEach(([id, fallbackName, row]) => {
       const h3 = document.getElementById(id);
       const p = h3 ? h3.closest(".panel.filters") : null;
       if (!p || p === panel) return;
@@ -4753,7 +4753,7 @@
       const body = document.createElement("div");
       body.className = "fpop-body";
       [...p.children].forEach(ch => { if (ch !== h3) body.appendChild(ch); });   // move inner (keep the h3 out)
-      if (_uniBreak) frow.insertBefore(pop, _uniBreak); else frow.appendChild(pop);   // groups sit on row 1, before the universe row
+      if (row === 2 || !_uniBreak) frow.appendChild(pop); else frow.insertBefore(pop, _uniBreak);   // tech/ind → row 1 (before break); MTF → row 2 (after)
       pop.appendChild(btn); pop.appendChild(body);
       pop.dataset.fname = name;
       if (active) pop.classList.add("active");
