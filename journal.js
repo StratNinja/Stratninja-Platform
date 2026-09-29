@@ -232,15 +232,24 @@
         catch (e) { chains[u] = null; }
       }));
       let filled = 0, missing = 0;
+      const dd = Store._read(); dd.optAuto = dd.optAuto || {}; dd.optCur = dd.optCur || {};
       withOcc.forEach(function (x) {
         const u = String(x.t.symbol || "").split(" ")[0].toUpperCase();
         const c = chains[u] && chains[u][x.occ];
         if (c) {
           const b = +c.b, a = +c.a, l = +c.l;
           const px = (b > 0 && a > 0) ? (b + a) / 2 : (l > 0 ? l : (a > 0 ? a : (b > 0 ? b : null)));
-          if (px != null) { _setOptAuto(x.occ, Math.round(px * 100) / 100); filled++; } else missing++;
+          if (px != null) {
+            dd.optAuto[x.occ] = Math.round(px * 100) / 100;
+            // an explicit 🔄 refresh is AUTHORITATIVE → drop any manual override (raw id + aggregated id)
+            // so the fresh CBOE price wins (this fixes: typed 5, refreshed, but it stayed 5 not 5.4).
+            delete dd.optCur[x.t.id];
+            delete dd.optCur["aggopen|" + (x.t.symbol || "") + "|" + (x.t.account || "") + "|" + (x.t.direction || "") + "|" + (x.t.optType || "")];
+            filled++;
+          } else missing++;
         } else missing++;
       });
+      Store._write(dd);
       const noOcc = optPos.length - withOcc.length;
       if (!silent) toast("🔄 עודכנו " + filled + " מחירי אופציות" + (missing ? " · " + missing + " לא נמצאו" : "") + (noOcc ? " · " + noOcc + " חסרי סטרייק/פקיעה" : ""));
       render();
@@ -482,11 +491,18 @@
       let pnlHtml, cpHtml, pctHtml;
       if (isOpt) {
         hasOpt = true;
+        // price SOURCE tag so the trader knows if a premium is the auto CBOE pull or their own typed value.
+        const _occ2 = _occSymbol(t);
+        const _srcAuto = _occ2 && autoPx[_occ2] != null && optPx[t.id] == null;   // auto only when no manual override
+        const _srcManual = optPx[t.id] != null;
+        const _srcTag = _srcAuto ? " <span class='opt-src auto' title='מחיר אוטומטי מ-CBOE · מושהה ~15 דק׳'>🔄 CBOE</span>"
+          : _srcManual ? " <span class='opt-src manual' title='מחיר שהזנת ידנית (גובר על האוטומטי)'>✏️ ידני</span>"
+          : (_occ2 ? " <span class='opt-src none' title='לא נמצא מחיר ב-CBOE — לחץ 🔄 מחירי אופציות, או הזן ידנית'>—</span>" : "");
         // no live option-price feed → let the trader type the current premium; P&L updates live.
         // merged rows can't edit per-lot → show the weighted-avg premium read-only.
         cpHtml = merged
-          ? (cp != null ? money(cp, 2) : "—")
-          : '<input class="opt-px" data-optpx="' + t.id + '" type="number" step="0.01" min="0" placeholder="הזן מחיר" value="' + (cp != null ? cp : "") + '">';
+          ? (cp != null ? money(cp, 2) + _srcTag : "—")
+          : '<input class="opt-px" data-optpx="' + t.id + '" type="number" step="0.01" min="0" placeholder="הזן מחיר" value="' + (cp != null ? cp : "") + '">' + _srcTag;
         if (cp != null && it.un != null) { totUn += it.un; totInv += posVal; pnlHtml = '<span class="' + cls(it.un) + '">' + money(it.un, 2) + "</span>"; pctHtml = pctCell(it.un, posVal); }
         else { pnlHtml = '<span class="muted" title="הזן את מחיר האופציה הנוכחי כדי לחשב רווח/הפסד לא ממומש">הזן מחיר ←</span>'; pctHtml = '<td class="muted">—</td>'; }
       } else if (cp != null) {
