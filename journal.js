@@ -242,14 +242,24 @@
     { const pt = privBar.querySelector("#jrPrivToggle"); if (pt) pt.onclick = () => { _journalPrivate = !_journalPrivate; try { localStorage.setItem("sn_journal_private", _journalPrivate ? "1" : "0"); } catch (e) {} _journalPeek = false; render(); }; }
 
     const content = el("div", "jr-content");
-    content.appendChild(renderStatCards(trades));
-    content.appendChild(renderTotalPnl(trades, manualOpen, openPositions));
-    if (manualOpen && manualOpen.length) content.appendChild(renderOpenPositions(manualOpen));
-    content.appendChild(renderAssetBreakdown(trades));
-    if (state.tab === "calendar") content.appendChild(renderCalendar(trades));
-    else if (state.tab === "equity") content.appendChild(renderEquity(trades));
-    else if (state.tab === "yearly") content.appendChild(renderYearly(trades));
-    else if (state.tab === "trades") content.appendChild(renderTrades(trades, openPositions));
+    // Each tab shows ONLY its own content. Open positions live in their own "positions" tab
+    // (Adi: don't jam the open-positions panel on top of calendar/equity/etc.).
+    if (state.tab === "positions") {
+      content.appendChild(renderTotalPnl(trades, manualOpen, openPositions));
+      if (manualOpen && manualOpen.length) content.appendChild(renderOpenPositions(manualOpen));
+      else { const n = el("div", "note"); n.style.marginTop = "12px"; n.innerHTML = "📌 אין פוזיציות פתוחות כרגע. פוזיציות שתפתח (או תייבא ולא נסגרו) יופיעו כאן עם ה-P&L הלא-ממומש בזמן אמת."; content.appendChild(n); }
+    } else if (state.tab === "trades") {
+      content.appendChild(renderStatCards(trades));
+      content.appendChild(renderTotalPnl(trades, manualOpen, openPositions));
+      content.appendChild(renderAssetBreakdown(trades));
+      content.appendChild(renderTrades(trades, openPositions));
+    } else if (state.tab === "calendar") {
+      content.appendChild(renderCalendar(trades));
+    } else if (state.tab === "equity") {
+      content.appendChild(renderEquity(trades));
+    } else if (state.tab === "yearly") {
+      content.appendChild(renderYearly(trades));
+    }
 
     if (_journalPrivate && !_journalPeek) {
       const shell = el("div", "jr-private-shell");
