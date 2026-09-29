@@ -10,10 +10,21 @@
   "theme_color": "#0f1420",
   "dir": "rtl",
   "lang": "he",
-  "categories": ["finance"],
+  "categories": [
+    "finance"
+  ],
   "icons": [
-    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "favicon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "maskable" },
-    { "src": "favicon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "maskable" }
+    {
+      "src": "ninja-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "ninja-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }

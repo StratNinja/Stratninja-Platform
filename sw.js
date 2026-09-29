@@ -5,7 +5,7 @@
 // Precache the notification icons so they're available from local cache when a push arrives while the
 // device is dozing (no network fetch needed) — otherwise Chrome falls back to a letter avatar + bell.
 const ICON_CACHE = "sn-icons-v4";
-const ICON_URLS = ["/icon-192.png", "/badge-96.png"];
+const ICON_URLS = ["/ninja-icon.png", "/badge-96.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(ICON_CACHE).then((c) => c.addAll(ICON_URLS)).catch(() => {}).then(() => self.skipWaiting()));
 });
@@ -32,7 +32,7 @@ self.addEventListener("push", (e) => {
     body: d.body || "מניה מהמועדפים שלך נכנסה לסריקה",
     // the server may embed the icon/badge as data: URIs so they show even in Doze (no network fetch);
     // fall back to the cached PNG files otherwise.
-    icon: d.icon || "/icon-192.png",     // large logo (candlestick)
+    icon: d.icon || "/ninja-icon.png",     // large logo (candlestick)
     badge: d.badge || "/badge-96.png",   // status-bar candle silhouette (Android tints it white)
     tag: d.tag || "sn-alert",
     dir: "rtl",

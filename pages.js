@@ -1870,9 +1870,9 @@
         // prefer the service worker (shows on the phone even when the app is backgrounded)
         if (navigator.serviceWorker && navigator.serviceWorker.ready) {
           navigator.serviceWorker.ready.then(reg => reg.showNotification("🔔 התראת StratNinja",
-            { body: body, icon: "favicon.svg", badge: "favicon.svg", tag: e.pid + e.sym, dir: "rtl", data: { url: "/" } })).catch(() => {});
+            { body: body, icon: "ninja-icon.png", badge: "ninja-icon.png", tag: e.pid + e.sym, dir: "rtl", data: { url: "/" } })).catch(() => {});
         } else {
-          const n = new Notification("🔔 התראת StratNinja", { body: body, icon: "favicon.svg", tag: e.pid + e.sym });
+          const n = new Notification("🔔 התראת StratNinja", { body: body, icon: "ninja-icon.png", tag: e.pid + e.sym });
           n.onclick = () => { try { window.focus(); } catch (x) {} openAlertsFeed(); n.close(); };
         }
       }
@@ -3321,7 +3321,7 @@
       ? '<img class="sc-photo" src="' + _heroSquare + '">'
       : '<img class="sc-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     el.innerHTML =
-      '<div class="sc-top"><img class="sc-logo" src="favicon.svg" crossorigin="anonymous">' +
+      '<div class="sc-top"><img class="sc-logo" src="ninja-icon.png" crossorigin="anonymous">' +
         '<div><div class="sc-title">StratNinja <span>Scanner</span></div><div class="sc-sub">סריקת שוק בזמן אמת · The Strat</div></div>' +
         photo + "</div>" +
       '<div class="sc-body">' +
@@ -3509,7 +3509,7 @@
     el.style.cssText = "position:fixed;left:-9999px;top:0;width:660px;padding:30px;background:linear-gradient(150deg,#101a2c,#0a0f1c);border:1px solid #223;border-radius:22px;font-family:Rubik,Arial,sans-serif;direction:rtl;color:#eef2f8;box-sizing:border-box";
     el.innerHTML =
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">' +
-        '<img src="favicon.svg" style="width:38px;height:38px" crossorigin="anonymous">' +
+        '<img src="ninja-icon.png" style="width:38px;height:38px;border-radius:8px" crossorigin="anonymous">' +
         '<div><div style="font-weight:800;font-size:20px">StratNinja</div><div style="font-size:12px;color:#8a93a6">כל הטיימפריימים · The Strat</div></div>' +
       "</div>" +
       '<div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px">' +
