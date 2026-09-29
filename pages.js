@@ -1728,9 +1728,9 @@
   }
   function openPresetManager() { modal("↕️ נהל וסדר סריקות", '<div id="pmBody">' + pmBodyHtml() + "</div>"); pmWire(); }
   function panelVis() {
-    const def = { filters: true, mtf: true, tech: true, ind: true };
-    const saved = (window.Prefs && window.Prefs.scanPanels) ? window.Prefs.scanPanels() : null;
-    return saved ? Object.assign(def, saved) : def;
+    // All four filter panels are ALWAYS visible now — the compact filter-bar makes them cheap,
+    // so the show/hide toggles were removed (Adi 2026-09-29). (Ignores any legacy saved scanPanels.)
+    return { filters: true, mtf: true, tech: true, ind: true };
   }
   function togglePanel(k) {
     const v = panelVis(); v[k] = !v[k];
@@ -3902,7 +3902,7 @@
     if (col === "bbsq") return _bbVal(k, "bbsq");
     if (col === "bbw") return _bbVal(k, "bbw");
     if (col === "bbp") return _bbVal(k, "bbp");
-    if (col === "swd") return (techState.swSide === "low" || techState.swSide === "breakLo" || techState.swSide === "holdLo") ? k.swlo_d : k.swhi_d;
+    if (col === "swd") return (techState.swSide === "low" || techState.swSide === "breakLo" || techState.swSide === "holdLo") ? _swLoD(k) : _swHiD(k);
     if (col === "trend") return _trendVal(k);
     if (col === "fib") return k.fibr;
     return null;
@@ -4201,7 +4201,7 @@
           scanState.tfsExtra.map(f => '<button class="chip tf-extra' + (scanState.tfs.indexOf(f) >= 0 ? " on" : "") + '" data-tff="' + f + '">' + f + '<span class="tf-x" data-rmtf="' + f + '" title="הסר">✕</span></button>').join("") +
           '<button class="chip tf-addbtn" id="tfAdd" title="הוסף טיימפריים סטראט מותאם">➕</button>' +
         "</div></div>" +
-        '<div class="fgrp"><label>תבנית</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
+        '<div class="fgrp"><label>סוג נר</label><div class="chips">' + ["1", "2U", "2D", "3"].map(patBtn).join("") + "</div></div>" +
         '<div class="fgrp"><label>צבע נר</label><div class="chips">' + dirBtn("all", "הכל") + dirBtn("up", "🟢 ירוק") + dirBtn("down", "🔴 אדום") + "</div></div>" +
         '<div class="fgrp"><label>צורת נר <span class="muted" style="font-size:10px">· הנר הנוכחי · רב-בחירה</span></label>' + multiComboHtml("scanShape", SHAPE_MULTI, scanState.shape, "כל צורות הנר") + "</div>" +
         // IN FORCE — standalone (works WITHOUT a sequence pattern): the close is holding beyond the prior bar's extreme.
@@ -4353,7 +4353,9 @@
               opt("holdLo", techState.swSide, "🎯 היפוך שורי · נשמרה מעל השפל") + opt("holdHi", techState.swSide, "🎯 היפוך דובי · נדחתה מתחת לשיא") +
               opt("high", techState.swSide, "קרוב לשיא") + opt("low", techState.swSide, "קרוב לתחתית") +
               opt("breakHi", techState.swSide, "🚀 פריצת שיא + בדיקה") + opt("breakLo", techState.swSide, "🔻 שבירת שפל + בדיקה") +
-              "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+              "</select>" + (_swActive() ? '<span class="muted">±</span><input id="tSwPct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.swPct + '"><span class="muted">%</span>' +
+                '<span class="muted" style="margin-inline-start:8px" title="רגישות הפיבוט — כמה נרות מכל צד. יותר פיבוטים = פיבוטים קרובים/קטנים · גדולים = רק סווינגים משמעותיים">〽️</span><select id="tSwK">' +
+                opt("3", techState.swK, "יותר פיבוטים") + opt("5", techState.swK, "רגיל") + opt("10", techState.swK, "פיבוטים גדולים") + "</select>" : "") + "</div></div>" +
             '<div class="fgrp"><label>📐 קווי מגמה אלכסוניים</label><div class="chips" style="align-items:center"><select id="tTrendMode">' +
               opt("off", techState.trendMode, "— הכל") +
               opt("touchsup", techState.trendMode, "נגיעה בתמיכה ⤢") + opt("touchres", techState.trendMode, "נגיעה בהתנגדות ⤡") +
@@ -4403,7 +4405,7 @@
       { key: "bbsq", th: "BB דחיסה" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "דחיסת בולינגר (יחסי): אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = הכי דחוס שהמניה הייתה. תופס גם מניות תנודתיות בקפיץ יחסי", cell: k => { const v = _bbVal(k, "bbsq"); return "<td>" + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: _bbActive() },
       { key: "bbw", th: "רוחב BB" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "רוחב רצועות בולינגר כאחוז מהמחיר (אבסולוטי): נמוך = רצועות צרות ממש עכשיו. p25 של השוק ≈ 10%", cell: k => { const v = _bbVal(k, "bbw"); return "<td>" + (v == null ? "—" : v.toFixed(1) + "%") + "</td>"; }, active: _bbwActive() },
       { key: "bbp", th: "%B" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => { const v = _bbVal(k, "bbp"); return "<td>" + (v == null ? "—" : v <= 0 ? '<b class="pos">' + v.toFixed(0) + " ▲</b>" : v >= 100 ? '<b class="neg">' + v.toFixed(0) + " ▼</b>" : v.toFixed(0)) + "</td>"; }, active: _bbPosActive() },
-      { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct((techState.swSide === "low" || techState.swSide === "breakLo" || techState.swSide === "holdLo") ? k.swlo_d : k.swhi_d) + "</td>", active: _swActive() },
+      { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct((techState.swSide === "low" || techState.swSide === "breakLo" || techState.swSide === "holdLo") ? _swLoD(k) : _swHiD(k)) + "</td>", active: _swActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
       { key: "fib", th: "פיבו %", tip: "אחוז הריטרייסמנט של המחיר מה-swing האחרון (0% = בשיא/שפל האחרון · 100% = חזרה לנקודת ההתחלה). ↗ = פולבק בטרנד עולה · ↘ = תיקון בטרנד יורד", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
     ];
@@ -4477,8 +4479,6 @@
       (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות לפילטרים האלה</td></tr>') +
       "</tbody></table></div>" + colorLegend() + "</div>";
 
-    const pv = panelVis();
-    const panelChips = SCAN_PANELS.map(p => '<button class="chip col-chip' + (pv[p.k] ? " on" : "") + '" data-panel="' + p.k + '">' + (pv[p.k] ? "" : "＋ ") + p.t + "</button>").join("");
     const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
     if (_selPreset && !presets.some(p => p.id === _selPreset)) _selPreset = "";  // stale id (deleted) → clear
     const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '"' + (p.id === _selPreset ? " selected" : "") + ">" + escAttr(p.name) + "</option>").join("");
@@ -4487,7 +4487,7 @@
         '<button class="btn ' + (scanView === "live" ? "primary" : "ghost") + ' sm" data-scanview="live" title="הסריקה החיה — נר הטיימפריים הנוכחי שמתהווה עכשיו">🔴 לייב</button>' +
         '<button class="btn ' + (scanView === "yday" ? "primary" : "ghost") + ' sm" data-scanview="yday" title="הסריקה כפי שנסגרה אתמול — נרות יומיים מושלמים (למצוא פטיש/2U של אתמול)">📅 אתמול' + (scanView === "yday" && SCAN_YDAY && SCAN_YDAY.snapDate ? " · " + SCAN_YDAY.snapDate : "") + "</button>" +
       "</div>" +
-      '<div class="stb-grp"><span class="muted stb-lbl">🧩 פאנלים:</span>' + panelChips +
+      '<div class="stb-grp">' +
         '<button class="btn ghost stb-reset" id="scanReset" title="נקה את כל הפילטרים">↺ איפוס פילטרים</button>' + "</div>" +
       '<div class="stb-grp stb-presets"><span class="muted stb-lbl">⭐ סריקות שמורות:</span>' +
         '<select id="presetSel">' + presetOpts + "</select>" +
@@ -4649,16 +4649,18 @@
           // multi-select: a stock passes if it matches ANY of the chosen band positions (OR)
           const _bpTest = m => m === "above" ? b >= 100 : m === "below" ? b <= 0 : m === "upperZone" ? b >= 80 : m === "lowerZone" ? b <= 20 : m === "rev" ? (b <= 0 || b >= 100) : false;
           if (!_bbPosArr().some(_bpTest)) return false; }
-        if (techState.swSide === "high" && (k.swhi_d == null || Math.abs(k.swhi_d) > techState.swPct)) return false;
-        if (techState.swSide === "low" && (k.swlo_d == null || Math.abs(k.swlo_d) > techState.swPct)) return false;
+        // pivot distance at the active sensitivity (k=3 more pivots / k=5 default / k=10 major)
+        const _shd = _swHiD(k), _sld = _swLoD(k);
+        if (techState.swSide === "high" && (_shd == null || Math.abs(_shd) > techState.swPct)) return false;
+        if (techState.swSide === "low" && (_sld == null || Math.abs(_sld) > techState.swPct)) return false;
         // breakout retest = broke ABOVE the swing high and pulled back to it (still above, within pct)
-        if (techState.swSide === "breakHi" && (k.swhi_d == null || k.swhi_d < 0 || k.swhi_d > techState.swPct)) return false;
+        if (techState.swSide === "breakHi" && (_shd == null || _shd < 0 || _shd > techState.swPct)) return false;
         // breakdown retest = broke BELOW the swing low and pulled back to it (still below, within pct)
-        if (techState.swSide === "breakLo" && (k.swlo_d == null || k.swlo_d > 0 || k.swlo_d < -techState.swPct)) return false;
-        // 🎯 bullish pivot reversal = came down to the last pivot LOW and is HOLDING ABOVE it (0 ≤ swlo_d ≤ pct) — ACAD held 19.89, sits above. BBAR/LAC broke below → excluded (swlo_d < 0)
-        if (techState.swSide === "holdLo" && (k.swlo_d == null || k.swlo_d < 0 || k.swlo_d > techState.swPct)) return false;
-        // 🎯 bearish pivot reversal = rallied up to the last pivot HIGH and is being REJECTED below it (-pct ≤ swhi_d ≤ 0)
-        if (techState.swSide === "holdHi" && (k.swhi_d == null || k.swhi_d > 0 || k.swhi_d < -techState.swPct)) return false;
+        if (techState.swSide === "breakLo" && (_sld == null || _sld > 0 || _sld < -techState.swPct)) return false;
+        // 🎯 bullish pivot reversal = came down to the last pivot LOW and is HOLDING ABOVE it (0 ≤ dist ≤ pct) — ACAD held 19.89, sits above. BBAR/LAC broke below → excluded (dist < 0)
+        if (techState.swSide === "holdLo" && (_sld == null || _sld < 0 || _sld > techState.swPct)) return false;
+        // 🎯 bearish pivot reversal = rallied up to the last pivot HIGH and is being REJECTED below it (-pct ≤ dist ≤ 0)
+        if (techState.swSide === "holdHi" && (_shd == null || _shd > 0 || _shd < -techState.swPct)) return false;
         if (_trendActive() && !_trendPass(k)) return false;
         if (_fibActive() && !_fibPass(k)) return false;
       }
@@ -4896,6 +4898,7 @@
     wireMultiCombo("tBbPos", _bbPosArr(), reRender);   // multi-select Bollinger band position
     bind("tSwSide", "onchange", e => { techState.swSide = e.target.value; reRender(); });
     bind("tSwPct", "onchange", e => { techState.swPct = parseFloat(e.target.value) || 0; reRender(); });
+    bind("tSwK", "onchange", e => { techState.swK = e.target.value; reRender(); });
     bind("tTrendMode", "onchange", e => { techState.trendMode = e.target.value; reRender(); });
     bind("tTrendPct", "onchange", e => { techState.trendPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tFibLevel", "onchange", e => { techState.fibLevel = e.target.value; reRender(); });
@@ -4970,6 +4973,7 @@
     gid("tBbSqMax", _bbActive());
     gid("tBbwMax", _bbwActive());
     gid("tSwSide", _swActive());
+    gid("tSwK", _swActive() && techState.swK !== "5");
     gid("tTrendMode", _trendActive());
     gid("tFibLevel", _fibActive());
   }
@@ -5006,7 +5010,7 @@
     bbwMax: "",                  // Bollinger bandwidth % ≤ (absolute — objectively narrow bands)
     bbPeriod: "20",              // Bollinger MA period: "20" (classic) or "50"
     bbPos: [],                   // Bollinger %B position (multi-select): below/above/upperZone/lowerZone/rev
-    swSide: "off", swPct: 2,     // Swing proximity: within ±% of last swing high/low
+    swSide: "off", swPct: 2, swK: "5",   // Swing proximity/reversal: within ±% of last pivot high/low · swK = pivot sensitivity 3/5/10
     trendMode: "off", trendPct: 1.5,   // Diagonal trend-lines: touch sup/res | break up/down, within ±%
     fibLevel: "off", fibDir: "any", fibTol: 5,   // Fib retracement: level (or gp) + direction + ± retracement %
     popenTest: "off", popenMult: 0.5, popenTfs: ["Y", "Q", "M"], popenTouch: "price",   // period-open test: price within N×ATR of the Yearly/Quarterly/Monthly open (support/resistance). popenTouch: "price"=close in-range | "wick"=today's wick tagged the level and closed away (rejection)
@@ -5044,6 +5048,12 @@
   function _bbPosArr() { if (!Array.isArray(techState.bbPos)) techState.bbPos = (techState.bbPos && techState.bbPos !== "off") ? [techState.bbPos] : []; return techState.bbPos; }
   function _bbPosActive() { return _bbPosArr().length > 0; }
   function _swActive() { return !!techState.swSide && techState.swSide !== "off"; }
+  // pivot sensitivity: "3" (more/tighter pivots) · "5" (default) · "10" (major swings only).
+  // Reads the matching precomputed field, falling back to k=5 when the tighter/major
+  // field is missing (e.g. data from before the server started sending swlo3/swlo10).
+  function _swSuf() { return techState.swK === "3" ? "3" : techState.swK === "10" ? "10" : ""; }
+  function _swHiD(k) { if (!k) return null; const s = _swSuf(); const v = k["swhi" + s + "_d"]; return (v == null && s) ? k.swhi_d : v; }
+  function _swLoD(k) { if (!k) return null; const s = _swSuf(); const v = k["swlo" + s + "_d"]; return (v == null && s) ? k.swlo_d : v; }
   function _trendActive() { return ["touchsup", "touchres", "breakup", "breakdn"].indexOf(techState.trendMode) >= 0; }
   function _trendThr() { const v = parseFloat(techState.trendPct); return isNaN(v) ? 1.5 : v; }
   function _trendVal(k) {   // the line-distance relevant to the active mode (support vs resistance side)
@@ -5228,7 +5238,7 @@
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = ""; techState.earnDir = "far";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3;
-    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2;
+    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2; techState.swK = "5";
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
