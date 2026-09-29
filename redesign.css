@@ -2,24 +2,30 @@
    "luxury / trading-terminal" look. Uses theme tokens (var(--*)) so light + dark both work; RTL-safe. */
 
 /* ---------- Journal: fit the calendar / equity curve on one screen (no scroll) ---------- */
-#journalContainer .page-head { margin: 2px 0 6px; }
-#journalContainer .page-head h1 { font-size: 24px; }
+#journalContainer .page-head { margin: 2px 0 4px; }
+#journalContainer .page-head h1 { font-size: 22px; }
 #journalContainer .page-head .sub { font-size: 12px; }
-#journalContainer .tabs { margin: 6px 0; }
+#journalContainer .tabs { margin: 5px 0; }
+/* trim the chrome above the tab content (CSV/account bar, privacy toggle, guide bar) */
+#journalContainer .bar { margin-bottom: 6px; }
+#journalContainer .jr-privbar { margin: 3px 0; }
+#journalContainer .guide-sec { margin: 3px 0 !important; }
 /* calendar grid: shorter cells + tighter fonts so all week-rows fit the viewport */
-#journalContainer .grid { gap: 6px; }
-#journalContainer .cell { min-height: 64px; padding: 4px 8px; }
-#journalContainer .cell .dnum { top: 4px; left: 8px; font-size: 12px; }
-#journalContainer .pnl { margin-top: 14px; font-size: 15px; }
-#journalContainer .tcount { font-size: 10.5px; margin-top: 1px; }
-#journalContainer .sub { font-size: 9.5px; margin-top: 1px; }
-#journalContainer .wk { min-height: 64px; padding: 6px 12px; }
-#journalContainer .wk .wval { font-size: 16px; margin: 3px 0 5px; }
-#journalContainer .cal-head, #journalContainer .monthnav { margin-bottom: 6px; }
-/* equity curve: bound to the viewport height */
-#journalContainer .chartbox { padding: 12px 14px; margin-bottom: 10px; }
-#journalContainer .eqsvg { max-height: calc(100vh - 215px); }
-@media (max-width: 820px) { #journalContainer .eqsvg { max-height: 62vh; } #journalContainer .cell { min-height: 56px; } }
+#journalContainer .grid { gap: 5px; }
+#journalContainer .cell { min-height: 50px; padding: 3px 7px; }
+#journalContainer .cell .dnum { top: 3px; left: 7px; font-size: 11px; }
+#journalContainer .pnl { margin-top: 12px; font-size: 14px; }
+#journalContainer .tcount { font-size: 10px; margin-top: 0; }
+#journalContainer .sub { font-size: 9px; margin-top: 0; }
+#journalContainer .wk { min-height: 50px; padding: 4px 10px; }
+#journalContainer .wk .wval { font-size: 15px; margin: 2px 0 3px; }
+#journalContainer .wk .wlab, #journalContainer .wk .wdays { font-size: 10px; }
+#journalContainer .cal-head, #journalContainer .monthnav { margin-bottom: 5px; }
+/* equity curve: clearly bounded to the viewport height (no scroll) */
+#journalContainer .chartbox { padding: 10px 14px; margin-bottom: 8px; }
+#journalContainer .chartbox h3 { margin: 0 0 6px; }
+#journalContainer .eqsvg { max-height: calc(100vh - 330px); min-height: 220px; }
+@media (max-width: 820px) { #journalContainer .eqsvg { max-height: 55vh; } #journalContainer .cell { min-height: 46px; } }
 
 /* ---------- typography: larger, refined ---------- */
 body { font-family: 'Heebo', 'Rubik', 'Segoe UI', 'Assistant', Arial, sans-serif; letter-spacing: -0.1px; }
