@@ -3342,13 +3342,15 @@
     const roi = t.roi == null ? 0 : t.roi;
     const roiStr = (roi >= 0 ? "+" : "−") + Math.abs(roi).toFixed(2) + "%";
     const money2 = v => (v == null ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const rightMetric = (t.qty != null && t.qty !== "") ? String(t.qty) : "";   // template's leverage slot → trade size (qty)
     el.innerHTML =
-      '<div class="njt njt-date">' + escHtml(t.dateStr || "") + "</div>" +
-      '<div class="njt njt-sym">' + escHtml(t.sym || "") + "</div>" +
-      '<div class="njt njt-side ' + dir + '">' + (isLong ? "▲ Long" : "▼ Short") + "</div>" +
+      (t.dateStr ? '<div class="njt njt-date">' + escHtml(t.dateStr) + "</div>" : "") +
+      '<div class="njt njt-sym">' + escHtml(t.sym || "") + (t.atype ? ' <span class="njt-atype">' + escHtml(t.atype) + "</span>" : "") + "</div>" +
+      '<div class="njt njt-side ' + dir + '">' + (isLong ? "↗ Long" : "↘ Short") + "</div>" +
+      (rightMetric ? '<div class="njt njt-lev">' + escHtml(rightMetric) + "</div>" : "") +
       '<div class="njt njt-roi ' + (roi >= 0 ? "pos" : "neg") + '">' + roiStr + "</div>" +
-      '<div class="njt njt-elbl">מחיר כניסה</div>' +
-      '<div class="njt njt-xlbl">' + (t.live ? "מחיר נוכחי" : "מחיר יציאה") + "</div>" +
+      '<div class="njt njt-elbl">ENTRY PRICE</div>' +
+      '<div class="njt njt-xlbl">' + (t.live ? "CURRENT PRICE" : "EXIT PRICE") + "</div>" +
       '<div class="njt njt-entry">' + money2(t.entry) + "</div>" +
       '<div class="njt njt-exit">' + money2(t.exit) + "</div>";
     document.body.appendChild(el);
@@ -3362,8 +3364,8 @@
       const pv = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
       const roi = (pv && t.pnl != null) ? (t.pnl / pv * 100)
         : (dir === "short" ? (t.entryPrice - t.exitPrice) : (t.exitPrice - t.entryPrice)) / t.entryPrice * 100;
-      return { sym: String(t.symbol || "").split(" ")[0], atype: t.assetType === "option" ? "Options" : "", dir,
-        entry: t.entryPrice, exit: t.exitPrice, roi: roi, pnl: t.pnl, dateStr: t.exitDate || "", live: false, _ts: t.exitDate || "" };
+      return { sym: String(t.symbol || "").split(" ")[0], atype: t.assetType === "option" ? "Options" : "Stock", dir,
+        qty: t.qty, entry: t.entryPrice, exit: t.exitPrice, roi: roi, pnl: t.pnl, dateStr: t.exitDate || "", live: false, _ts: t.exitDate || "" };
     });
     norm.sort((a, b) => (b._ts < a._ts ? -1 : b._ts > a._ts ? 1 : 0));
     return norm;

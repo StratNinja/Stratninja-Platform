@@ -452,6 +452,7 @@
       const _sBase = String(t.symbol || "").split(" ")[0];
       const shareBtn = (!merged && cp != null && !isOpt)
         ? "<button class='btn ghost' data-sharepos='1' data-sp-sym='" + _sBase + "' data-sp-dir='" + (t.direction || "long") +
+          "' data-sp-qty='" + (t.qty || "") + "' data-sp-atype='" + (t.assetType === "option" ? "Options" : "Stock") +
           "' data-sp-entry='" + (t.entryPrice || 0) + "' data-sp-cp='" + cp + "' title='שתף פוזיציה ככרטיס נינג׳ה' style='padding:4px 8px'>📸</button> "
         : "";
       const actions = merged
@@ -558,7 +559,7 @@
       if (!entry || cp == null || isNaN(cp)) { toast("אין מחיר חי לפוזיציה זו"); return; }
       const roi = dir === "short" ? (entry - cp) / entry * 100 : (cp - entry) / entry * 100;
       const today = new Date().toISOString().slice(0, 10);
-      if (window.snShareTradeCard) window.snShareTradeCard({ sym: b.dataset.spSym, dir: dir, entry: entry, exit: cp, roi: roi, dateStr: today, live: true });
+      if (window.snShareTradeCard) window.snShareTradeCard({ sym: b.dataset.spSym, dir: dir, qty: b.dataset.spQty, atype: b.dataset.spAtype, entry: entry, exit: cp, roi: roi, dateStr: today, live: true });
       else toast("כלי השיתוף עדיין נטען");
     });
     return wrap;
@@ -1013,7 +1014,7 @@
         const pv = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
         const roi = (pv && t.pnl != null) ? (t.pnl / pv * 100)
           : (dir === "short" ? (t.entryPrice - t.exitPrice) : (t.exitPrice - t.entryPrice)) / t.entryPrice * 100;
-        if (window.snShareTradeCard) window.snShareTradeCard({ sym: String(t.symbol || "").split(" ")[0], dir: dir, entry: t.entryPrice, exit: t.exitPrice, roi: roi, dateStr: t.exitDate || "", live: false });
+        if (window.snShareTradeCard) window.snShareTradeCard({ sym: String(t.symbol || "").split(" ")[0], dir: dir, qty: t.qty, atype: t.assetType === "option" ? "Options" : "Stock", entry: t.entryPrice, exit: t.exitPrice, roi: roi, dateStr: t.exitDate || "", live: false });
         else toast("כלי השיתוף עדיין נטען — נסה שוב");
       };
     });
