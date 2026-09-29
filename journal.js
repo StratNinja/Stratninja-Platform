@@ -460,10 +460,12 @@
         : (shareBtn + (t.img ? "<button class='btn ghost' data-img='" + t.id + "' title='צפה בצילום הגרף' style='padding:4px 8px'>📷</button> " : "") +
            "<button class='btn ghost' data-closepos='" + t.id + "' style='font-size:12px;padding:4px 10px'>סגירה ✎</button> " +
            "<button class='btn ghost' data-delpos='" + t.id + "' title='מחק פוזיציה' style='padding:4px 8px'>🗑</button>");
+      const _isFav = !!(window.Prefs && window.Prefs.isFav(_sBase));
+      const favBtn = "<button class='starbtn" + (_isFav ? " on" : "") + "' data-favpos='" + _sBase + "' title='" + (_isFav ? "הסר ממועדפים" : "הוסף למועדפים") + "' style='margin-inline-start:6px'>" + (_isFav ? "★" : "☆") + "</button>";
       return "<tr" + (merged ? "" : " data-editopen='" + t.id + "' style='cursor:pointer'") + ">" +
         (showAcct ? "<td class='muted' style='white-space:nowrap'>" + (t.account || "—") + "</td>" : "") +
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
-        "<td class='sym'>" + chartSym(t.symbol) + nBadge +
+        "<td class='sym'>" + favBtn + chartSym(t.symbol) + nBadge +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + "</td>" +
         "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td>" + stopHtml + riskHtml + "<td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td>" + dayChgHtml + "<td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + actions + "</td></tr>";
@@ -561,6 +563,20 @@
       const today = new Date().toISOString().slice(0, 10);
       if (window.snShareTradeCard) window.snShareTradeCard({ sym: b.dataset.spSym, dir: dir, qty: b.dataset.spQty, atype: b.dataset.spAtype, entry: entry, exit: cp, roi: roi, dateStr: today, live: true });
       else toast("כלי השיתוף עדיין נטען");
+    });
+    // ⭐ add/remove an open-position ticker to the site favorites (⭐ watchlist). Keeps every lot of
+    // the same ticker in sync, and updates in place (no full re-render → no scroll jump).
+    wrap.querySelectorAll("[data-favpos]").forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const sym = b.dataset.favpos;
+      if (window.Prefs) window.Prefs.toggleFav(sym);
+      wrap.querySelectorAll("[data-favpos]").forEach(x => {
+        const on = !!(window.Prefs && window.Prefs.isFav(x.dataset.favpos));
+        x.classList.toggle("on", on); x.textContent = on ? "★" : "☆";
+        x.title = on ? "הסר ממועדפים" : "הוסף למועדפים";
+      });
+      const nowFav = !!(window.Prefs && window.Prefs.isFav(sym));
+      toast(nowFav ? ("★ " + sym + " נוסף למועדפים") : (sym + " הוסר מהמועדפים"));
     });
     return wrap;
   }
