@@ -3337,31 +3337,18 @@
   // ── 🥷 Ninja trade/position share card (premium 1080×1350) ──
   function buildNinjaTradeCardEl(t) {
     const el = document.createElement("div");
-    el.className = "ninja-card";
+    el.className = "ninja-card";   // background = the ninja-card.png template; we overlay only the data
     const dir = t.dir === "short" ? "short" : "long", isLong = dir === "long";
     const roi = t.roi == null ? 0 : t.roi;
     const roiStr = (roi >= 0 ? "+" : "−") + Math.abs(roi).toFixed(2) + "%";
     const money2 = v => (v == null ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
     el.innerHTML =
-      '<div class="nj-kanji">忍</div><div class="nj-glowbar"></div>' +
-      '<div class="nj-inner">' +
-        '<div class="nj-head"><img class="nj-logo" src="favicon.svg" crossorigin="anonymous">' +
-          '<div class="nj-brand"><div class="nj-b1">STRAT</div><div class="nj-b2">NINJA</div>' +
-          '<div class="nj-tagline">Discipline · Strategy · Consistency</div></div></div>' +
-        '<div class="nj-date">📅 ' + escHtml(t.dateStr || "") + "</div>" +
-        '<div class="nj-ticker"><div class="nj-tk-ic">' + (isLong ? "📈" : "📉") + '</div>' +
-          '<div><div class="nj-sym">' + escHtml(t.sym || "") + "</div>" +
-          (t.atype ? '<div class="nj-atype">' + escHtml(t.atype) + "</div>" : "") + "</div></div>" +
-        '<div class="nj-side"><span class="nj-pill ' + dir + '">' + (isLong ? "▲ Long" : "▼ Short") + "</span>" +
-          (t.lev ? '<span class="nj-lev">' + t.lev + "x</span>" : "") + "</div>" +
-        '<div class="nj-roi-lbl">' + (t.live ? "Unrealized ROI" : "ROI") + "</div>" +
-        '<div class="nj-roi ' + (roi >= 0 ? "pos" : "neg") + '">' + roiStr + "</div>" +
-        '<div class="nj-prices">' +
-          '<div class="nj-pbox"><div class="nj-pl">Entry Price</div><div class="nj-pv">' + money2(t.entry) + "</div></div>" +
-          '<div class="nj-pbox"><div class="nj-pl">' + (t.live ? "Current Price" : "Exit Price") + '</div><div class="nj-pv">' + money2(t.exit) + "</div></div>" +
-        "</div>" +
-        '<div class="nj-foot"><span class="nj-slog">Trade smarter like a ninja</span><span class="nj-site">stratninja.win</span></div>' +
-      "</div>";
+      '<div class="njt njt-date">' + escHtml(t.dateStr || "") + "</div>" +
+      '<div class="njt njt-sym">' + escHtml(t.sym || "") + "</div>" +
+      '<div class="njt njt-side ' + dir + '">' + (isLong ? "▲ Long" : "▼ Short") + "</div>" +
+      '<div class="njt njt-roi ' + (roi >= 0 ? "pos" : "neg") + '">' + roiStr + "</div>" +
+      '<div class="njt njt-entry">' + money2(t.entry) + "</div>" +
+      '<div class="njt njt-exit">' + money2(t.exit) + "</div>";
     document.body.appendChild(el);
     return el;
   }
