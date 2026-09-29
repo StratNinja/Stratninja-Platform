@@ -1400,16 +1400,18 @@
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
     // ranked by breadth = % of the sector's stocks above their open. Leaders/laggards moved into the click.
-    const _breadthColor = p => p == null ? "#565d69" : p >= 70 ? "#10b981" : p >= 55 ? "#2e6f4e" : p > 45 ? "#565d69" : p > 30 ? "#8f3b42" : "#e5384a";
+    const _breadthTier = p => p == null ? "t-n" : p >= 70 ? "t-vg" : p >= 55 ? "t-mg" : p > 45 ? "t-n" : p > 30 ? "t-mr" : "t-vr";
     const _breadthRow = (o, isSub) => {
       const p = o.total ? o.above / o.total * 100 : null;
       const etf = isSub ? subEtfFor(o.name) : etfFor(o.name);
       const name = isSub ? o.name : secHe(o.name);
       const chip = '<span class="bc-etf flow-etf' + (etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(etf || "") +
         '" data-secname="' + escAttr(o.name) + '" data-secsub="' + (isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (etf ? etf + " ▾" : "▾") + "</span>";
-      return '<div class="bc-cell bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '" style="background:' + _breadthColor(p) + '">' +
-        '<span class="bc-left">' + chip + '<span class="bc-name">' + name + "</span></span>" +
-        '<span class="bc-right"><span class="bc-pct">' + (p == null ? "—" : p.toFixed(0) + "%") + '</span><span class="bc-usd">' + o.above + "/" + o.total + "</span></span></div>";
+      const w = p == null ? 0 : Math.max(4, Math.min(100, p));
+      return '<div class="bc-card bc-clickable ' + _breadthTier(p) + '" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '">' +
+        '<div class="bcc-head">' + chip + '<span class="bcc-name">' + name + "</span></div>" +
+        '<div class="bcc-mid"><span class="bcc-pct">' + (p == null ? "—" : p.toFixed(0) + "%") + '</span><span class="bcc-usd">' + o.above + "/" + o.total + "</span></div>" +
+        '<div class="bcc-bar"><span class="bcc-fill" style="width:' + w.toFixed(0) + '%"></span></div></div>';
     };
     const _breadthLadder = (arr, isSub) => {
       const rows = arr.slice().sort((a, c) => (c.total ? c.above / c.total : 0) - (a.total ? a.above / a.total : 0));
@@ -5339,19 +5341,15 @@
       const upW = tot ? (fg / tot * 100) : 0, dnW = tot ? (fr / tot * 100) : 0;
       const chip = '<span class="bc-etf flow-etf' + (o.etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(o.etf || "") +
         '" data-secname="' + escAttr(o.rawname) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (o.etf ? o.etf + " ▾" : "▾") + "</span>";
-      // proportion bar: 🟢 מניות בהמשכיות מעלה · אפור ניטרלי · 🔴 מטה
-      const bar = '<span class="ftfc-bar" title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
-        '<span class="ftfc-bar-up" style="width:' + upW.toFixed(1) + '%"></span>' +
-        '<span class="ftfc-bar-dn" style="width:' + dnW.toFixed(1) + '%"></span></span>';
-      // daily % move of the ASSET ("why money went in")
+      // daily % move of the ASSET ("why money went in") → big number, colored by tier
       const c = o.chg;
-      const chgHtml = (c == null)
-        ? '<span class="bc-chg zero">—</span>'
-        : '<span class="bc-chg ' + (c > 0.05 ? "pos" : c < -0.05 ? "neg" : "zero") + '" data-flick="secc-' + escAttr(o.rawname) + '">' + (c >= 0 ? "+" : "") + c.toFixed(2) + "%</span>";
-      return '<div class="bc-cell ftfc-cell bc-clickable" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '">' +
-        '<span class="bc-left">' + chip + '<span class="bc-name">' + o.name + "</span></span>" +
-        bar +
-        '<span class="bc-right">' + chgHtml + "</span></div>";
+      const tier = c == null ? "t-n" : c >= 0.5 ? "t-vg" : c >= 0.1 ? "t-mg" : c > -0.1 ? "t-n" : c > -0.5 ? "t-mr" : "t-vr";
+      const pct = c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
+      // proportion bar: 🟢 מניות בהמשכיות מעלה · אפור ניטרלי · 🔴 מטה
+      return '<div class="bc-card ftfc-card bc-clickable ' + tier + '" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '" title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
+        '<div class="bcc-head">' + chip + '<span class="bcc-name">' + o.name + "</span></div>" +
+        '<div class="bcc-mid"><span class="bcc-pct" data-flick="secc-' + escAttr(o.rawname) + '">' + pct + '</span><span class="bcc-usd">🟢' + fg + " 🔴" + fr + "</span></div>" +
+        '<div class="bcc-bar ftfc"><span class="ftfc-bar-up" style="width:' + upW.toFixed(1) + '%"></span><span class="ftfc-bar-dn" style="width:' + dnW.toFixed(1) + '%"></span></div></div>';
     };
     const _ftfcLadder = arr => {
       const key = o => o.tot ? (o.fg - o.fr) / o.tot : 0;
