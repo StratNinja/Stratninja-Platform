@@ -1351,7 +1351,7 @@
         (sec.stocks || []).forEach(x => { const k = (x.ind && x.ind !== "אחר" && x.ind !== "מדדים") ? x.ind : "אחר"; (subMap[k] = subMap[k] || []).push(x); });
         const subs = Object.keys(subMap).map(k => ({ name: k, stocks: subMap[k], value: subMap[k].reduce((a, b) => a + _hmValue(b), 0) }));
         const frames = squarify(subs, 0, 0, 1000, 600).map(r =>
-          _hmFrame(r.item.name, r.item.stocks, { left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 })).join("");
+          _hmFrame(r.item.name, r.item.stocks, { etf: subEtfFor(r.item.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 })).join("");
         return '<div class="hm-zoom-bar"><button class="btn ghost" id="hmBack">← חזרה למפה המלאה</button>' +
           '<span class="hm-zoom-title">' + secHe(sec.name) + " · " + (sec.stocks || []).length + " מניות · חלוקה לתתי-סקטורים</span></div>" +
           '<div class="sp-heat">' + frames + "</div>";
