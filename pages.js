@@ -4657,6 +4657,7 @@
   // ---- compact filter bar: collapse the main filters panel's groups into dropdown chips ----
   // Keeps every existing control + its wiring (nodes are MOVED, never re-created), so no logic changes.
   let _fbarOpen = null;          // label of the group whose popover is open (persists across re-renders)
+  let _fbarScroll = 0;           // scrollTop of the open popover body — preserved across re-renders (so filtering doesn't jump it to top)
   function _fgrpActive(fgrp) {
     // a "selected" chip counts as active UNLESS it's a neutral "all/off" default (צבע נר=הכל, יקום=הכל)
     if (fgrp.querySelector('.chip.on:not([data-dir="all"]):not([data-scanuni="all"]), .seq-cc.on, .seq-col.on')) return true;
@@ -4741,6 +4742,11 @@
         document.querySelectorAll(".fpop.open").forEach(p => p.classList.remove("open"));
         _fbarOpen = null;
       });
+    }
+    // restore the open popover's inner scroll (so changing a filter value doesn't jump it back to the top)
+    if (_fbarOpen && _fbarScroll) {
+      const ob = frow.querySelector(".fpop.open .fpop-body");
+      if (ob) requestAnimationFrame(() => { try { ob.scrollTop = _fbarScroll; } catch (e) {} });
     }
   }
   function wireScanner() {
@@ -6909,6 +6915,7 @@
   function reRender() {
     const p = PAGES[state.page]; if (!p) return;
     const _sy = window.scrollY || window.pageYOffset || 0;   // preserve scroll across in-place re-renders (e.g. changing a filter)
+    try { const _ob = document.querySelector(".fpop.open .fpop-body"); _fbarScroll = _ob ? _ob.scrollTop : 0; } catch (e) { _fbarScroll = 0; }   // preserve the open filter-popover's inner scroll
     try { document.body.setAttribute("data-page", state.page === "pulse" ? (pulseTab || "today") : state.page); } catch (e) {}   // pulse → expose the active sub-tab so per-page CSS (compaction) still applies
     $("#page").innerHTML = guideSection(state.page) + p.render();   // guide-video area at the TOP (most viewers don't scroll down)
     if (p.wire) p.wire();
