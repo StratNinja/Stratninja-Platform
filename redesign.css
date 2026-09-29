@@ -374,16 +374,16 @@ body.dock-collapsed #athCeleb { display: none !important; }
 .ninja-card * { box-sizing: border-box; }
 /* data overlays positioned into the template's empty slots (calibrated to the 1122×1402 art) */
 .njt { position: absolute; direction: ltr; font-family: 'Rubik','Heebo',Arial,sans-serif; }
-.njt-date { top: 44%;   left: 30%;   transform: translate(0,-50%);   font-size: 34px; font-weight: 800; color: #eafff3; white-space: nowrap; }
+.njt-date { top: 44.7%; left: 30%;   transform: translate(0,-50%);   font-size: 34px; font-weight: 800; color: #eafff3; white-space: nowrap; }
 .njt-sym  { top: 52.2%; left: 30%;   transform: translate(0,-50%);   font-size: 60px; font-weight: 900; color: #ffffff; letter-spacing: 1px; white-space: nowrap; }
-.njt-side { top: 60.2%; left: 41.9%; transform: translate(-50%,-50%); font-size: 38px; font-weight: 900; white-space: nowrap; }
+.njt-side { top: 58.3%; left: 41.9%; transform: translate(-50%,-50%); font-size: 38px; font-weight: 900; white-space: nowrap; }
 .njt-side.long { color: #22e39b; } .njt-side.short { color: #ff5a6a; }
-.njt-roi  { top: 72.3%; left: 49.5%; transform: translate(-50%,-50%); font-size: 140px; font-weight: 900; letter-spacing: -3px; white-space: nowrap; }
+.njt-roi  { top: 72%;   left: 47.5%; transform: translate(-50%,-50%); font-size: 122px; font-weight: 900; letter-spacing: -3px; white-space: nowrap; }
 .njt-roi.pos { color: #2bf29f; text-shadow: 0 0 55px rgba(43,242,159,.6); } .njt-roi.neg { color: #ff5a6a; text-shadow: 0 0 55px rgba(255,90,106,.55); }
-.njt-elbl, .njt-xlbl { top: 84%; transform: translate(-50%,-50%); font-size: 26px; font-weight: 600; color: #8fb9a6; white-space: nowrap; }
-.njt-elbl { left: 32.7%; } .njt-xlbl { left: 66%; }
-.njt-entry { top: 89.2%; left: 32.7%; transform: translate(-50%,-50%); font-size: 54px; font-weight: 900; color: #ffffff; }
-.njt-exit  { top: 89.2%; left: 66%;   transform: translate(-50%,-50%); font-size: 54px; font-weight: 900; color: #ffffff; }
+.njt-elbl, .njt-xlbl { top: 80.7%; transform: translate(-50%,-50%); font-size: 26px; font-weight: 600; color: #8fb9a6; white-space: nowrap; }
+.njt-elbl { left: 36%; } .njt-xlbl { left: 69%; }
+.njt-entry { top: 84.6%; left: 32.7%; transform: translate(-50%,-50%); font-size: 52px; font-weight: 900; color: #ffffff; }
+.njt-exit  { top: 84.6%; left: 66%;   transform: translate(-50%,-50%); font-size: 52px; font-weight: 900; color: #ffffff; }
 .nj-kanji { position: absolute; top: 40px; left: 44px; font-size: 300px; font-weight: 900; line-height: .8;
   color: rgba(34,227,155,.10); font-family: 'Noto Sans Hebrew',serif; pointer-events: none; user-select: none; }
 .nj-glowbar { position: absolute; right: -120px; top: -80px; width: 520px; height: 1500px; transform: rotate(18deg);
