@@ -3332,6 +3332,69 @@
     document.body.appendChild(el);
     return el;
   }
+  // ── 🥷 Ninja trade/position share card (premium 1080×1350) ──
+  function buildNinjaTradeCardEl(t) {
+    const el = document.createElement("div");
+    el.className = "ninja-card";
+    const dir = t.dir === "short" ? "short" : "long", isLong = dir === "long";
+    const roi = t.roi == null ? 0 : t.roi;
+    const roiStr = (roi >= 0 ? "+" : "−") + Math.abs(roi).toFixed(2) + "%";
+    const money2 = v => (v == null ? "—" : Number(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    el.innerHTML =
+      '<div class="nj-kanji">忍</div><div class="nj-glowbar"></div>' +
+      '<div class="nj-inner">' +
+        '<div class="nj-head"><img class="nj-logo" src="favicon.svg" crossorigin="anonymous">' +
+          '<div class="nj-brand"><div class="nj-b1">STRAT</div><div class="nj-b2">NINJA</div>' +
+          '<div class="nj-tagline">Discipline · Strategy · Consistency</div></div></div>' +
+        '<div class="nj-date">📅 ' + escHtml(t.dateStr || "") + "</div>" +
+        '<div class="nj-ticker"><div class="nj-tk-ic">' + (isLong ? "📈" : "📉") + '</div>' +
+          '<div><div class="nj-sym">' + escHtml(t.sym || "") + "</div>" +
+          (t.atype ? '<div class="nj-atype">' + escHtml(t.atype) + "</div>" : "") + "</div></div>" +
+        '<div class="nj-side"><span class="nj-pill ' + dir + '">' + (isLong ? "▲ Long" : "▼ Short") + "</span>" +
+          (t.lev ? '<span class="nj-lev">' + t.lev + "x</span>" : "") + "</div>" +
+        '<div class="nj-roi-lbl">' + (t.live ? "Unrealized ROI" : "ROI") + "</div>" +
+        '<div class="nj-roi ' + (roi >= 0 ? "pos" : "neg") + '">' + roiStr + "</div>" +
+        '<div class="nj-prices">' +
+          '<div class="nj-pbox"><div class="nj-pl">Entry Price</div><div class="nj-pv">' + money2(t.entry) + "</div></div>" +
+          '<div class="nj-pbox"><div class="nj-pl">' + (t.live ? "Current Price" : "Exit Price") + '</div><div class="nj-pv">' + money2(t.exit) + "</div></div>" +
+        "</div>" +
+        '<div class="nj-foot"><span class="nj-slog">Trade smarter like a ninja</span><span class="nj-site">stratninja.win</span></div>' +
+      "</div>";
+    document.body.appendChild(el);
+    return el;
+  }
+  function _ninjaTrades() {
+    const cl = _journalClosedTrades() || [];
+    const norm = cl.filter(t => t.exitPrice != null && t.entryPrice).map(t => {
+      const dir = t.direction === "short" ? "short" : "long";
+      const roi = dir === "short" ? (t.entryPrice - t.exitPrice) / t.entryPrice * 100 : (t.exitPrice - t.entryPrice) / t.entryPrice * 100;
+      return { sym: String(t.symbol || "").split(" ")[0], atype: t.assetType === "option" ? "Options" : "", dir,
+        entry: t.entryPrice, exit: t.exitPrice, roi: roi, pnl: t.pnl, dateStr: t.exitDate || "", live: false, _ts: t.exitDate || "" };
+    });
+    norm.sort((a, b) => (b._ts < a._ts ? -1 : b._ts > a._ts ? 1 : 0));
+    return norm;
+  }
+  function openNinjaCardPicker() {
+    const list = _ninjaTrades();
+    if (!list.length) { snToast("אין עדיין עסקאות סגורות לשיתוף — הוסף/ייבא עסקאות ביומן"); return; }
+    const rows = list.slice(0, 50).map((t, i) =>
+      '<button class="btn ghost" data-nj="' + i + '" style="text-align:start;padding:11px 13px;display:flex;justify-content:space-between;gap:10px;align-items:center">' +
+        '<span style="font-weight:800">' + t.sym + ' <span style="opacity:.6;font-weight:500;font-size:12px">' + t.dateStr + " · " + (t.dir === "long" ? "לונג" : "שורט") + "</span></span>" +
+        '<span class="' + (t.roi >= 0 ? "pos" : "neg") + '" style="font-weight:800">' + (t.roi >= 0 ? "+" : "−") + Math.abs(t.roi).toFixed(2) + "%</span></button>").join("");
+    modal("🥷 בחר עסקה לכרטיס", '<div style="display:flex;flex-direction:column;gap:6px;max-height:62vh;overflow:auto">' + rows + "</div>");
+    document.querySelectorAll("[data-nj]").forEach(b => b.onclick = () => { const t = list[+b.dataset.nj]; closeModal(); _captureRedesignCard(() => buildNinjaTradeCardEl(t)); });
+  }
+  function openJournalShareChooser() {
+    modal("📤 שיתוף מהיומן",
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+        '<button class="btn primary" id="jshNinja" style="text-align:start;padding:13px">🥷 כרטיס עסקה בודדת (נינג\'ה)' +
+          '<div style="font-size:11px;font-weight:400;opacity:.85;margin-top:3px">כרטיס פרימיום לעסקה — טיקר, כיוון, ROI, כניסה/יציאה</div></button>' +
+        '<button class="btn ghost" id="jshSummary" style="text-align:start;padding:13px">📊 כרטיס סיכום תקופה' +
+          '<div style="font-size:11px;font-weight:400;opacity:.7;margin-top:3px">סיכום יום/תקופה עם סטטיסטיקות</div></button>' +
+      "</div>");
+    { const a = document.getElementById("jshNinja"); if (a) a.onclick = () => { closeModal(); openNinjaCardPicker(); }; }
+    { const b = document.getElementById("jshSummary"); if (b) b.onclick = () => { closeModal(); openJournalSharePicker(); }; }
+  }
   function captureShare() {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     const body = '<div style="display:flex;flex-direction:column;gap:10px">' +
@@ -3374,7 +3437,7 @@
     // market-page "After/Pre-Market" share during the gappers window → the new square gappers card (not the legacy landscape one)
     if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } _captureRedesignCard(buildMoversCardEl); return; }
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
-    if (state.page === "journal") { openJournalSharePicker(); return; }   // pick day/period + open-trades, then capture
+    if (state.page === "journal") { openJournalShareChooser(); return; }   // choose: 🥷 single-trade ninja card OR period summary
     if (state.page === "gappers") { _captureRedesignCard(buildGappersCardEl); return; }   // redesigned gappers pre-market card
     snToast("מכין כרטיס סיכום…");
     _prepHeroSquare(() => {

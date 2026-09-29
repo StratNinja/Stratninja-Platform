@@ -367,6 +367,55 @@ body.dock-collapsed #athCeleb { display: none !important; }
 .hm-zoom-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
 .hm-zoom-title { font-size: 13px; color: var(--muted); font-weight: 600; }
 
+/* ================= NINJA TRADE SHARE CARD (1080×1350) ================= */
+.ninja-card { position: fixed; left: -9999px; top: 0; width: 1080px; height: 1350px; z-index: -1;
+  box-sizing: border-box; overflow: hidden; font-family: 'Heebo','Rubik',Arial,sans-serif; color: #eafff3;
+  background:
+    radial-gradient(1200px 900px at 82% 30%, rgba(34,227,155,.20), transparent 60%),
+    radial-gradient(900px 700px at 12% 88%, rgba(12,145,96,.18), transparent 60%),
+    linear-gradient(160deg, #05100b 0%, #071710 45%, #040c08 100%); }
+.ninja-card * { box-sizing: border-box; }
+.nj-kanji { position: absolute; top: 40px; left: 44px; font-size: 300px; font-weight: 900; line-height: .8;
+  color: rgba(34,227,155,.10); font-family: 'Noto Sans Hebrew',serif; pointer-events: none; user-select: none; }
+.nj-glowbar { position: absolute; right: -120px; top: -80px; width: 520px; height: 1500px; transform: rotate(18deg);
+  background: linear-gradient(180deg, rgba(34,227,155,.10), rgba(124,252,0,.05) 50%, transparent);
+  filter: blur(30px); pointer-events: none; }
+.nj-inner { position: relative; z-index: 2; height: 100%; padding: 64px 60px 54px; display: flex; flex-direction: column; }
+.nj-head { display: flex; align-items: center; gap: 22px; }
+.nj-logo { width: 108px; height: 108px; border-radius: 50%; flex: none;
+  box-shadow: 0 0 0 3px rgba(34,227,155,.5), 0 0 42px rgba(34,227,155,.35); }
+.nj-brand { line-height: 1; }
+.nj-brand .nj-b1 { font-family: 'Rubik',sans-serif; font-weight: 900; font-size: 58px; letter-spacing: 1px;
+  background: linear-gradient(90deg,#ffffff, #b7ffdd); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nj-brand .nj-b2 { font-family: 'Rubik',sans-serif; font-weight: 900; font-size: 58px; letter-spacing: 1px; margin-top: 2px;
+  background: linear-gradient(90deg,#22e39b,#7CFC00); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.nj-tagline { margin-top: 12px; font-size: 20px; letter-spacing: 8px; font-weight: 700; color: #7fe8b8; text-transform: uppercase; }
+.nj-date { margin-top: 40px; display: inline-flex; align-items: center; gap: 14px; align-self: flex-start;
+  background: rgba(6,20,14,.72); border: 1px solid rgba(34,227,155,.35); border-radius: 16px; padding: 16px 26px;
+  font-size: 30px; font-weight: 700; color: #d6ffe9; font-variant-numeric: tabular-nums; direction: ltr; }
+.nj-ticker { margin-top: 34px; display: flex; align-items: center; gap: 24px; }
+.nj-ticker .nj-tk-ic { width: 92px; height: 92px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center;
+  font-size: 46px; background: radial-gradient(circle at 35% 30%, #23324a, #0d1320); box-shadow: 0 0 0 2px rgba(34,227,155,.4); }
+.nj-ticker .nj-sym { font-family: 'Rubik',sans-serif; font-weight: 900; font-size: 82px; line-height: .95; letter-spacing: 1px; direction: ltr; }
+.nj-ticker .nj-atype { font-size: 30px; font-weight: 600; color: #8fb9a6; margin-top: 6px; }
+.nj-side { margin-top: 30px; display: flex; align-items: center; gap: 20px; }
+.nj-pill { display: inline-flex; align-items: center; gap: 12px; font-family: 'Rubik',sans-serif; font-weight: 900; font-size: 44px;
+  padding: 14px 34px; border-radius: 18px; direction: ltr; }
+.nj-pill.long { color: #22e39b; background: rgba(34,227,155,.12); border: 2px solid rgba(34,227,155,.6); }
+.nj-pill.short { color: #ff5a6a; background: rgba(229,56,74,.12); border: 2px solid rgba(255,90,106,.6); }
+.nj-lev { font-family: 'Rubik',sans-serif; font-weight: 800; font-size: 40px; color: #d6ffe9; opacity: .9; direction: ltr; }
+.nj-roi { margin: 34px 0 8px; font-family: 'Rubik',sans-serif; font-weight: 900; font-size: 200px; line-height: .9; letter-spacing: -4px; direction: ltr; }
+.nj-roi.pos { color: #2bf29f; text-shadow: 0 0 60px rgba(43,242,159,.55), 0 6px 0 rgba(4,40,25,.4); }
+.nj-roi.neg { color: #ff5a6a; text-shadow: 0 0 60px rgba(255,90,106,.5), 0 6px 0 rgba(40,4,10,.4); }
+.nj-roi-lbl { font-size: 26px; letter-spacing: 6px; font-weight: 700; color: #8fb9a6; text-transform: uppercase; direction: ltr; }
+.nj-prices { margin-top: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; direction: ltr; }
+.nj-pbox { background: rgba(6,20,14,.66); border: 1px solid rgba(34,227,155,.28); border-radius: 20px; padding: 26px 30px; }
+.nj-pbox .nj-pl { font-size: 26px; color: #8fb9a6; font-weight: 600; margin-bottom: 8px; }
+.nj-pbox .nj-pv { font-family: 'Rubik',sans-serif; font-weight: 900; font-size: 56px; direction: ltr; }
+.nj-foot { margin-top: 30px; display: flex; align-items: center; justify-content: space-between; }
+.nj-foot .nj-slog { font-size: 24px; letter-spacing: 5px; font-weight: 700; color: #7fe8b8; text-transform: uppercase; }
+.nj-foot .nj-site { font-size: 26px; font-weight: 800; color: #d6ffe9; direction: ltr; }
+
 /* ---------- money-flow "sector board": dashboard grid of cards (dark bg + colored bar/number) ---------- */
 /* scoped to the money-flow page so the S&P-500 breadth ladders (also .td-flow .bcell-list) stay full-width rows */
 body[data-page="today"] .td-flow .bcell-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
