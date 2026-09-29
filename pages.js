@@ -1560,7 +1560,7 @@
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
   // sector / subsec are MULTI-select: arrays of selected names (empty = "all")
-  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: [], broad: "off", seq: { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" }, inforce: "off", sigShape: [], sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
+  const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: [], broad: "off", seq: { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" }, inforce: "off", sigShape: [], ifcType: [], sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
   // normalize a stored sector/subsec value (old presets held a string "all"/name) to a selection array
   function _toSelArr(v) { return Array.isArray(v) ? v.slice() : (v && v !== "all" ? [v] : []); }
   // parse a market-cap input like "2B" / "60B" / "500M" / "1.5T" → dollars. Bare number = billions.
@@ -1759,7 +1759,7 @@
   function scanConfigSnapshot() {
     const s = scanState;
     return {
-      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape.slice(), broad: s.broad, seq: JSON.parse(JSON.stringify(s.seq)), inforce: s.inforce, sigShape: s.sigShape.slice(),
+      s: { tfs: s.tfs.slice(), tfsExtra: s.tfsExtra.slice(), patterns: s.patterns.slice(), dir: s.dir, shape: s.shape.slice(), broad: s.broad, seq: JSON.parse(JSON.stringify(s.seq)), inforce: s.inforce, sigShape: s.sigShape.slice(), ifcType: s.ifcType.slice(),
         sector: s.sector.slice(), subsec: s.subsec.slice(), sym: s.sym, ftfc: s.ftfc, priceMin: s.priceMin, priceMax: s.priceMax,
         capMin: s.capMin, capMax: s.capMax, mtf: JSON.parse(JSON.stringify(s.mtf)) },
       t: Object.assign({}, techState),
@@ -1780,6 +1780,7 @@
     if (s.subsec !== undefined) scanState.subsec = _toSelArr(s.subsec);
     if (s.shape !== undefined) scanState.shape = _toSelArr(s.shape);      // shape/sigShape: old scalar ("hammer"/"all") → array
     if (s.sigShape !== undefined) scanState.sigShape = _toSelArr(s.sigShape);
+    if (s.ifcType !== undefined) scanState.ifcType = _toSelArr(s.ifcType);   // IN FORCE reference-bar type (1/2U/2D/3)
     scanState.seq = s.seq ? { c2: (s.seq.c2 || []).slice(), c1: (s.seq.c1 || []).slice(), cc: (s.seq.cc || []).slice(), c2col: s.seq.c2col || "", c1col: s.seq.c1col || "", cccol: s.seq.cccol || "" } : { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" };
     if (s.tfs) scanState.tfs = s.tfs.slice();
     scanState.tfsExtra = s.tfsExtra ? s.tfsExtra.slice() : [];
@@ -3930,7 +3931,7 @@
     return '<th class="sortable" data-sortcol="' + col + '" style="cursor:pointer;user-select:none"' + (extra || "") + ">" + label + arrow + "</th>";
   }
   function resetScan() {
-    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = []; scanState.broad = "off"; scanState.seq = { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" }; scanState.inforce = "off"; scanState.sigShape = [];
+    scanState.tfs = ["D"]; scanState.tfsExtra = []; scanState.patterns = []; scanState.dir = "all"; scanState.shape = []; scanState.broad = "off"; scanState.seq = { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" }; scanState.inforce = "off"; scanState.sigShape = []; scanState.ifcType = [];
     scanState.sector = []; scanState.subsec = []; scanState.universe = "all"; scanState.sym = ""; scanState.ftfc = false; scanState.priceMin = ""; scanState.priceMax = ""; scanState.capMin = ""; scanState.capMax = "";
     scanState.mtf = newMtf(); scanState.indOpen = false;
     resetTech(); techState.techOpen = false;
@@ -4211,7 +4212,10 @@
           '<button class="chip' + (scanState.inforce === "up" ? " on" : "") + '" data-inforce="up" title="הסגירה מעל הגבוה של הנר הקודם בטיימפריים הנבחר — טריגר לונג מוחזק (עובד גם בלי תבנית)">🔼 מעל הגבוה</button>' +
           '<button class="chip' + (scanState.inforce === "down" ? " on" : "") + '" data-inforce="down" title="הסגירה מתחת לנמוך של הנר הקודם — טריגר שורט מוחזק">🔽 מתחת לנמוך</button>' +
           ((scanState.inforce === "up" || scanState.inforce === "down")
-            ? multiComboHtml("scanSigShape", SHAPE_MULTI, scanState.sigShape, "כל נר איתות")
+            ? multiComboHtml("scanSigShape", SHAPE_MULTI, scanState.sigShape, "כל נר איתות") +
+              '<span class="muted" style="margin-inline-start:8px;font-size:11px">סוג נר הייחוס:</span>' +
+              '<span class="chips">' + ["1", "2U", "2D", "3"].map(x =>
+                '<button class="chip' + (scanState.ifcType.indexOf(x) >= 0 ? " on" : "") + '" data-ifctype="' + x + '" title="פרצנו מעבר לקצה של נר קודם מסוג ' + x + ' (1 = נר פנימי · 3 = נר חיצוני)">' + x + "</button>").join("") + "</span>"
             : "") +
         "</div></div>" +
         seqBuilder() +
@@ -4567,6 +4571,12 @@
             : (c.t === "2U" && c.br !== "down" ? "up" : (c.t === "2D" && c.br !== "up" ? "down" : ""));
           if (ifcVal !== scanState.inforce) return false;
           if (scanState.sigShape.length && scanState.sigShape.indexOf(c.psh || "") < 0) return false;
+          // reference-bar Strat type: the bar whose extreme we broke = the MIDDLE of seq3d
+          // ("C2-C1-CC", so C1 = the prior/reference bar). "IN FORCE 1" = above an inside bar's high, etc.
+          if (scanState.ifcType.length) {
+            const refType = (c.seq3d || "").split("-")[1] || "";
+            if (scanState.ifcType.indexOf(refType) < 0) return false;
+          }
         }
         if (scanState.broad === "1-1") {
           // double inside — the last TWO bars are both inside (1). coiled consolidation before a breakout.
@@ -4804,7 +4814,8 @@
     document.querySelectorAll("[data-broad]").forEach(b => b.onclick = () => { const v = b.dataset.broad; scanState.broad = (scanState.broad === v) ? "off" : v; reRender(); });   // built-in reversal filter
     { const sc = $("#seqClear"); if (sc) sc.onclick = () => { scanState.seq = { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" }; reRender(); }; }
     document.querySelectorAll("[data-seqfill]").forEach(b => b.onclick = () => { const p = b.dataset.seqfill.split("|"); scanState.seq = { c2: p[0] ? p[0].split(",") : [], c1: p[1] ? p[1].split(",") : [], cc: p[2] ? p[2].split(",") : [], c2col: "", c1col: "", cccol: "" }; reRender(); });
-    document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; if (scanState.inforce === "off") scanState.sigShape = []; reRender(); });
+    document.querySelectorAll("[data-inforce]").forEach(b => b.onclick = () => { const d = b.dataset.inforce; scanState.inforce = (scanState.inforce === d) ? "off" : d; if (scanState.inforce === "off") { scanState.sigShape = []; scanState.ifcType = []; } reRender(); });
+    document.querySelectorAll("[data-ifctype]").forEach(b => b.onclick = () => { const v = b.dataset.ifctype; const i = scanState.ifcType.indexOf(v); if (i >= 0) scanState.ifcType.splice(i, 1); else scanState.ifcType.push(v); reRender(); });
     wireMultiCombo("scanSigShape", scanState.sigShape, reRender);   // multi-select signal-bar shape
     wireMultiCombo("scanSector", scanState.sector, () => reRender());
     wireMultiCombo("scanSubsec", scanState.subsec, () => reRender());
