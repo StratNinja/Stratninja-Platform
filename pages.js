@@ -1428,7 +1428,8 @@
       '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
       '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · הסקטורים ותתי-הסקטורים מדורגים מהחזק לחלש לפי אחוז המניות מעל פתיחת היום. לחץ על שורה לכל המניות.</div></div>' +
-      '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" + insightBox + liveBanner() + breadthTopBar +
+      '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" +
+      '<div class="sp-toprow"><div class="sp-topside">' + insightBox + liveBanner() + "</div>" + breadthTopBar + "</div>" +
       '<div class="td-flow2">' + sectorsLadder + subsLadder + "</div>";
   }
   let spDrillSort = { col: "c", dir: -1 };

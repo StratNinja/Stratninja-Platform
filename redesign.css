@@ -368,7 +368,8 @@ body.dock-collapsed #athCeleb { display: none !important; }
 .hm-zoom-title { font-size: 13px; color: var(--muted); font-weight: 600; }
 
 /* ---------- money-flow "sector board": dashboard grid of cards (dark bg + colored bar/number) ---------- */
-.td-flow .bcell-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
+/* scoped to the money-flow page so the S&P-500 breadth ladders (also .td-flow .bcell-list) stay full-width rows */
+body[data-page="today"] .td-flow .bcell-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 8px; }
 .bc-card { background: var(--panel2, #12171f); border: 1px solid var(--line); border-radius: 11px; padding: 9px 11px;
   display: flex; flex-direction: column; gap: 6px; min-width: 0; transition: border-color .12s, transform .12s; }
 .bc-card:hover { border-color: var(--lux-g2, #17c08a); }
@@ -388,7 +389,14 @@ body.dock-collapsed #athCeleb { display: none !important; }
 .bc-card.t-n  .bcc-pct { color: #9aa3b0; } .bc-card.t-n  .bcc-fill { background: #565d69; }
 .bc-card.t-mr .bcc-pct { color: #e08787; } .bc-card.t-mr .bcc-fill { background: #8f3b42; }
 .bc-card.t-vr .bcc-pct { color: #ff5a6a; } .bc-card.t-vr .bcc-fill { background: linear-gradient(90deg, #e5384a, #ff8b8b); }
-@media (max-width: 560px) { .td-flow .bcell-list { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { body[data-page="today"] .td-flow .bcell-list { grid-template-columns: repeat(2, 1fr); } }
+
+/* S&P-500 'לפי סקטור': breadth bar sits beside the insight + live-data boxes (one row, less scroll) */
+.sp-toprow { display: grid; grid-template-columns: minmax(280px, 350px) 1fr; gap: 12px; align-items: stretch; margin-bottom: 10px; }
+.sp-toprow .sp-topside { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sp-toprow .sp-topside > * { margin: 0 !important; }
+.sp-toprow .breadth-panel { margin: 0; height: 100%; }
+@media (max-width: 900px) { .sp-toprow { grid-template-columns: 1fr; } }
 
 /* ---------- market breadth page: 5 % -above-MA charts across the width ---------- */
 .brd-charts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 10px; }
