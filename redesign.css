@@ -186,10 +186,10 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* NOTE: these need higher specificity (.brd-card.brd-cN) than the base .brd-card .brd-spk below, else it wins */
 .brd-card.brd-c0 .brd-pct, .brd-card.brd-c1 .brd-pct, .brd-card.brd-c2 .brd-pct { left: 13%; }
 .brd-card.brd-c0 .brd-chg, .brd-card.brd-c1 .brd-chg, .brd-card.brd-c2 .brd-chg { left: 50%; }
-.brd-card.brd-c0 .brd-spk, .brd-card.brd-c1 .brd-spk { left: 17%; right: -2%; }   /* 200 / 150 → further right */
-.brd-card.brd-c2 .brd-spk { left: 15%; right: -1%; }              /* 100 → right */
-.brd-card.brd-c3 .brd-spk { left: 9%; right: 3%; }                /* 50 → start+end more right */
-.brd-card.brd-c4 .brd-spk { left: 2%; right: 10%; }               /* 20 → left */
+.brd-card.brd-c0 .brd-spk, .brd-card.brd-c1 .brd-spk { left: 13%; right: 2%; }    /* 200 / 150 */
+.brd-card.brd-c2 .brd-spk { left: 11%; right: 3%; }               /* 100 */
+.brd-card.brd-c3 .brd-spk { left: 6.5%; right: 5.5%; }            /* 50 */
+.brd-card.brd-c4 .brd-spk { left: 7%; right: 9%; }                /* 20 → narrower (started off-frame) */
 .brd-card.brd-c3 .brd-pct, .brd-card.brd-c4 .brd-pct { left: 11%; }   /* 50/20 % right (were spilling) */
 /* per-MA card = one sparkline box (zones baked); % + change badge overlay its top strip */
 .brd-card { width: 18.8%; height: 13.8%; }
