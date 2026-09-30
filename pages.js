@@ -2700,6 +2700,88 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== 🖼️ Market Overview MEGA card — overlays live data onto Market_Template.png (Adi's AI design) =====
+  function _mkSpark(ohlc, cls) {
+    const cl = (ohlc || []).map(b => Array.isArray(b) ? b[3] : (b && (b.c != null ? b.c : b.close))).filter(v => v != null);
+    if (cl.length < 2) return "";
+    const w = 100, h = 26, mn = Math.min.apply(null, cl), mx = Math.max.apply(null, cl), rng = (mx - mn) || 1;
+    const pts = cl.map((v, i) => (i / (cl.length - 1) * w).toFixed(1) + "," + (h - (v - mn) / rng * h).toFixed(1)).join(" ");
+    const stroke = cls === "pos" ? "#3fe0a0" : cls === "neg" ? "#ff6b7a" : "#7f9ccb";
+    return '<svg class="mkt-spark" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none"><polyline points="' + pts + '" fill="none" stroke="' + stroke + '" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+  }
+  function buildMarketCardEl() {
+    const src = (typeof scanSource === "function") ? scanSource() : [];
+    const U = mktU(), ms = todayMarketState();
+    const b = U.breadth || (ms && ms.br) || {};
+    const total = b.total || ((b.above || 0) + (b.below || 0)) || 1;
+    const up = b.above || 0, down = b.below || 0;
+    const pct = Math.round(up / total * 100), dnPct = Math.round(down / total * 100);
+    const byS = {}; ((LIVE && LIVE.indices) || []).forEach(r => byS[r.sym] = r);
+    const vixLvl = (LIVE && LIVE.vix && LIVE.vix.level != null) ? LIVE.vix.level : (byS.VIX ? byS.VIX.price : null);
+    const vixChg = (LIVE && LIVE.vix && LIVE.vix.chg != null) ? LIVE.vix.chg : (byS.VIX ? byS.VIX.chg : null);
+    const _cls = c => c == null ? "z" : c > 0.05 ? "pos" : c < -0.05 ? "neg" : "z";
+    const _arrow = c => c == null ? "" : c > 0.05 ? " ▲" : c < -0.05 ? " ▼" : "";
+    const _pctS = c => c == null ? "—" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
+    // 5 index cards (LTR): SPY QQQ IWM DIA VIX
+    const IDX = [["SPY", "S&P 500"], ["QQQ", "NASDAQ 100"], ["IWM", "RUSSELL 2000"], ["DIA", "DOW JONES"], ["VIX", "תנודתיות"]];
+    const idxLefts = [2.2, 21.4, 40.6, 59.8, 79.0];   // % — calibrate to the template's 5 card slots
+    const idxCards = IDX.map((it, i) => {
+      const sym = it[0], vix = sym === "VIX";
+      const r = byS[sym];
+      const price = vix ? vixLvl : (r ? r.price : null);
+      const chg = vix ? vixChg : (r ? r.chg : null);
+      const cls = _cls(chg);
+      const sub = vix ? (vixLvl != null ? (vixLvl < 18 ? "תנודתיות נמוכה" : vixLvl > 28 ? "תנודתיות גבוהה" : "תנודתיות בינונית") : "תנודתיות") : it[1];
+      const spk = vix ? "" : _mkSpark(r && r.ohlc, cls);
+      return '<div class="mkt-idx" style="left:' + idxLefts[i] + '%">' +
+        '<div class="mkt-idx-sym">' + sym + '</div>' +
+        '<div class="mkt-idx-px">' + (price != null ? Number(price).toFixed(2) : "—") + '</div>' +
+        '<div class="mkt-idx-chg ' + cls + '">' + _pctS(chg) + _arrow(chg) + '</div>' +
+        '<div class="mkt-idx-spk">' + spk + '</div>' +
+        '<div class="mkt-idx-sub">' + sub + '</div></div>';
+    }).join("");
+    // leaders / laggards (stocks) + sectors up/down
+    const leadS = (U.leaders || []).slice().sort((a, c) => (c.c || 0) - (a.c || 0)).slice(0, 5);
+    const lagS = (U.laggards || []).slice().sort((a, c) => (a.c || 0) - (c.c || 0)).slice(0, 5);
+    const _secReal2 = s => s && s.name && s.name !== "אחר" && s.name !== "מדדים" && (s.etf || subEtfFor(s.name));
+    const secUp = (U.sectorLeaders || []).filter(_secReal2).slice(0, 5);
+    const secDn = (U.sectorLaggards || []).filter(_secReal2).slice(0, 5);
+    const stockRow = x => '<div class="mkt-lrow"><span class="mkt-lp ' + _cls(x.c) + '">' + _pctS(x.c) + '</span><span class="mkt-lt">' + escHtml(x.s) + '</span></div>';
+    const secRow = x => '<div class="mkt-lrow"><span class="mkt-lp ' + _cls(x.chg) + '">' + _pctS(x.chg) + '</span><span class="mkt-lt">' + escHtml(x.etf || subEtfFor(x.name) || x.name) + '</span></div>';
+    const listHtml = (rows, fn) => (rows.length ? rows.map(fn).join("") : '<div class="mkt-lrow"><span class="mkt-lt muted">—</span></div>');
+    // market state + insight
+    const riskTxt = (ms && ms.cls === "pos") ? "שוק חיובי · Risk-On" : (ms && ms.cls === "neg") ? "שוק שלילי · Risk-Off" : "שוק מעורב";
+    const stateExpl = (ms && ms.why) ? ms.why : (pct >= 55 ? "רוב המניות מעל הפתיחה" : pct <= 45 ? "רוב המניות מתחת לפתיחה" : "השוק חצוי");
+    const secs = (typeof todaySectors === "function" ? todaySectors(src) : []).filter(s => s && s.name && s.name !== "אחר" && s.chg != null).sort((a, c) => c.chg - a.chg);
+    const topSec = secs[0] ? (secs[0].etf || subEtfFor(secs[0].name) || secHe(secs[0].name)) : "—";
+    const vixCalm = vixLvl != null && vixLvl < 18;
+    const insTxt = "רוחב שוק " + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + (vixCalm ? " ו-VIX רגוע" : "") + " עם נטייה ל-" + ((ms && ms.cls === "neg") ? "Risk-Off" : (ms && ms.cls === "pos") ? "Risk-On" : "מעורב") + ". ההובלה ב-" + escHtml(topSec) + ".";
+
+    const el = document.createElement("div");
+    el.className = "market-card";   // background = Market_Template.png; we overlay only the data
+    el.innerHTML =
+      // breadth
+      '<div class="mkt-brd-num">' + up + '<span>/' + total + '</span></div>' +
+      '<div class="mkt-brd-pct">' + pct + '% מעל הפתיחה</div>' +
+      '<div class="mkt-brd-boxdn">' + down + ' ▼<span>' + dnPct + '%</span></div>' +
+      '<div class="mkt-brd-boxup">' + up + ' ▲<span>' + pct + '%</span></div>' +
+      '<div class="mkt-brd-bar"><span class="g" style="width:' + pct + '%"></span><span class="r" style="width:' + dnPct + '%"></span></div>' +
+      // market state
+      '<div class="mkt-state ' + (ms ? ms.cls : "z") + '"><span class="mkt-state-pill">' + (ms ? ms.emoji + " " : "") + riskTxt + '</span><span class="mkt-state-expl">' + escHtml(stateExpl) + '</span></div>' +
+      // index cards
+      idxCards +
+      // leaders (green box): stocks (right col) + sectors (left col)
+      '<div class="mkt-list mkt-lead-stocks">' + listHtml(leadS, stockRow) + '</div>' +
+      '<div class="mkt-list mkt-lead-secs">' + listHtml(secUp, secRow) + '</div>' +
+      // laggards (red box): stocks + sectors
+      '<div class="mkt-list mkt-lag-stocks">' + listHtml(lagS, stockRow) + '</div>' +
+      '<div class="mkt-list mkt-lag-secs">' + listHtml(secDn, secRow) + '</div>' +
+      // insight + footer date
+      '<div class="mkt-insight">' + insTxt + '</div>' +
+      '<div class="mkt-date">' + new Date().toLocaleDateString("he-IL") + '</div>';
+    document.body.appendChild(el);
+    return el;
+  }
   // ===== Favorites share card (personal watchlist snapshot) =====
   function buildFavoritesCardEl() {
     const favs = (window.Prefs ? window.Prefs.favorites() : []) || [];
@@ -3434,15 +3516,8 @@
     ["movers", "🌙 After / Pre-Market", "תנועות אחרי הסגירה / לפני הפתיחה"],
   ];
   function captureSummaryCard() {
-    if (state.page === "market") {
-      const body = '<div class="ac-choose">' + _MKT_SHARE_OPTS.map(o =>
-        '<button class="btn ghost mkt-share-opt" data-mss="' + o[0] + '" style="text-align:start;padding:12px 13px">' +
-          '<div style="font-weight:700;font-size:14px">' + o[1] + "</div>" +
-          '<div style="font-size:11px;font-weight:400;opacity:.72;margin-top:3px">' + o[2] + "</div></button>").join("") + "</div>";
-      modal("🗂️ איזה חלק לשתף?", body);
-      document.querySelectorAll("[data-mss]").forEach(b => b.onclick = () => { _mktShareSection = b.dataset.mss; closeModal(); _doCaptureSummaryCard(); });
-      return;
-    }
+    // market page → one comprehensive MEGA card (no more 4-part chooser; Adi 2026-09-30)
+    if (state.page === "market") { _captureRedesignCard(buildMarketCardEl); return; }
     _doCaptureSummaryCard();
   }
   function _doCaptureSummaryCard() {
