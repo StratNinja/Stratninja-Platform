@@ -31,7 +31,7 @@
     if (s && client && userId && s._pulled && !pulling) {
       origSet(k + "__mtime", String(Date.now()));   // stamp the local edit (dirty vs last push, clock-skew-free)
       clearTimeout(s._timer);
-      s._timer = setTimeout(() => pushOne(s), 900);
+      s._timer = setTimeout(() => pushOne(s), 400);   // shorter window = less time an edit sits unpushed
     }
   };
 
@@ -128,6 +128,15 @@
       client = null; userId = null;         // logged out — stays cleared
     }
   }
+
+  // FLUSH any pending (debounced) push the instant the tab is hidden or the page is unloading — so an
+  // edit followed by a quick refresh/close reaches the cloud first. Belt-and-suspenders with the dirty-guard.
+  function flushPending() {
+    if (!client || !userId) return;
+    SYNCS.forEach(s => { if (s._timer) { clearTimeout(s._timer); s._timer = null; if (s._pulled) pushOne(s); } });
+  }
+  document.addEventListener("visibilitychange", () => { if (document.hidden) flushPending(); });
+  window.addEventListener("pagehide", flushPending);
 
   function boot() {
     if (!window.SN_CLOUD || !window.SNAuth) return;
