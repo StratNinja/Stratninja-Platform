@@ -2796,12 +2796,14 @@
     let cmax = 0.01; shown.forEach(o => { if (o.chg != null) cmax = Math.max(cmax, Math.abs(o.chg)); });
     const barW = c => c == null ? 8 : Math.max(8, Math.round(Math.abs(c) / cmax * 100));
     const pctTxt = c => c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
-    // template row = [ETF box · LEFT] [long bar · RIGHT: name + % over a coloured fill]
-    const rowHtml = (o, side) => '<div class="ftc-row ftc-' + side + '">' +
-      '<span class="ftc-bar"><span class="ftc-fill" style="width:' + barW(o.chg) + '%"></span>' +
-        '<span class="ftc-name">' + escHtml(o.he || "—") + "</span>" +
-        '<span class="ftc-pct">' + pctTxt(o.chg) + "</span></span>" +
-      '<span class="ftc-etf">' + escHtml(o.etf || "—") + "</span></div>";
+    const _cardNm = n => String(n || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").trim();   // Hebrew only (one line)
+    // template row, FIXED grid (no length-based fill): [name · right] [% · fixed] [ETF box · left].
+    // % coloured by its SIGN (green ≥0 / red <0), not by the column. Name never overlaps the % or the frame.
+    const rowHtml = (o, side) => { const c = o.chg, pcls = c == null ? "zero" : c > 0 ? "pos" : c < 0 ? "neg" : "zero";
+      return '<div class="ftc-row ftc-' + side + '">' +
+        '<span class="ftc-name">' + escHtml(_cardNm(o.he) || "—") + "</span>" +
+        '<span class="ftc-pct ' + pcls + '">' + pctTxt(c) + "</span>" +
+        '<span class="ftc-etf">' + escHtml(o.etf || "—") + "</span></div>"; };
     const colHtml = (arr, side) => { let h = arr.map(o => rowHtml(o, side)).join(""); for (let i = arr.length; i < 3; i++) h += '<div class="ftc-row ftc-' + side + ' ftc-empty"></div>'; return h; };
     // Hebrew list join ("a, b ו-c")
     const joinHe = a => { const x = (a || []).filter(Boolean); if (!x.length) return ""; if (x.length === 1) return x[0]; return x.slice(0, -1).join(", ") + " ו" + x[x.length - 1]; };
@@ -2809,10 +2811,11 @@
     const netAll = secArr.length ? secArr.reduce((a, o) => a + o.net, 0) / secArr.length : 0;
     const tone = netAll > 0.15 ? "חיובי" : netAll > 0.03 ? "חיובי מתון" : netAll < -0.15 ? "שלילי" : netAll < -0.03 ? "שלילי מתון" : "מעורב ומאוזן";
     const toneCls = netAll > 0.03 ? "pos" : netAll < -0.03 ? "neg" : "zero";
-    const keyInsight = secP.green.length ? "כוח יחסי חיובי ב" + joinHe(secP.green.map(o => o.he)) : "המשכיות מעורבת בין הסקטורים";
-    const gSecNames = secP.green.map(o => o.he), rSubNames = subP.red.map(o => o.he);
-    const insight = (gSecNames.length ? "עוצמה חיובית בולטת ב" + joinHe(gSecNames) : "המשכיות חיובית מוגבלת")
-      + (rSubNames.length ? ", מנגד חולשה משמעותית ב" + joinHe(rSubNames.slice(0, 2)) : "") + ".";
+    const keyInsight = secP.green.length ? "כוח יחסי ב" + joinHe(secP.green.slice(0, 3).map(o => _cardNm(o.he))) : "המשכיות מעורבת בסקטורים";
+    // Ninja Insight: keep it to ~2 short lines — top-2 green sectors vs top-2 red sub-sectors
+    const gSecNames = secP.green.slice(0, 2).map(o => _cardNm(o.he)), rSubNames = subP.red.slice(0, 2).map(o => _cardNm(o.he));
+    const insight = (gSecNames.length ? "עוצמה ב" + joinHe(gSecNames) : "המשכיות חיובית מוגבלת")
+      + (rSubNames.length ? " · חולשה ב" + joinHe(rSubNames) : "") + ".";
     const now = new Date(), _p2 = x => String(x).padStart(2, "0");
     const dateStr = _p2(now.getHours()) + ":" + _p2(now.getMinutes()) + " | " + now.getDate() + " " + ["ינו'", "פבר'", "מרץ", "אפר'", "מאי", "יוני", "יולי", "אוג'", "ספט'", "אוק'", "נוב'", "דצמ'"][now.getMonth()] + " " + now.getFullYear();
     const el = document.createElement("div");
