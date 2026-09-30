@@ -209,7 +209,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 
 /* ===== FTFC "המשכיות זמנית" share card — overlay on Ftfc_Template.png ===== */
 .ftfc-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden;
-  background: #0B1020 url("Ftfc_Template.png?v=1") top center / 1254px 1254px no-repeat;
+  background: #0B1020 url("Ftfc_Template.png?v=2") top center / 1254px 1254px no-repeat;
   font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftfc-card > div { position: absolute; }
 .ftc-date { top: 2.1%; left: 2.4%; font-size: 21px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
