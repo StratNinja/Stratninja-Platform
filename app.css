@@ -2151,7 +2151,11 @@ html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; backgr
 .cg-grid.cg-4 .cg-frame { height: 270px; }
 .cg-grid.cg-5 .cg-frame { height: 230px; }
 .cg-ph { display: flex; align-items: center; justify-content: center; }
-.cg-spin { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,.15); border-top-color: var(--accent, #17c08a); border-radius: 50%; animation: cgspin .8s linear infinite; }
+/* loading indicator = our ninja icon, gently pulsing (was a plain spinner ring) */
+.cg-spin { width: 60px; height: 60px; border-radius: 15px;
+  background: url("ninja-icon.png") center / contain no-repeat;
+  filter: drop-shadow(0 4px 14px rgba(0,0,0,.5)); animation: cgninja 1.25s ease-in-out infinite; }
+@keyframes cgninja { 0%, 100% { transform: scale(.86); opacity: .55; } 50% { transform: scale(1.06); opacity: 1; } }
 @keyframes cgspin { to { transform: rotate(360deg); } }
 @media (max-width: 1200px) { .cg-grid.cg-5 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 900px) { .cg-grid.cg-3, .cg-grid.cg-4, .cg-grid.cg-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
