@@ -2811,7 +2811,7 @@
     const netAll = secArr.length ? secArr.reduce((a, o) => a + o.net, 0) / secArr.length : 0;
     const tone = netAll > 0.15 ? "חיובי" : netAll > 0.03 ? "חיובי מתון" : netAll < -0.15 ? "שלילי" : netAll < -0.03 ? "שלילי מתון" : "מעורב ומאוזן";
     const toneCls = netAll > 0.03 ? "pos" : netAll < -0.03 ? "neg" : "zero";
-    const keyInsight = secP.green.length ? "כוח יחסי ב" + joinHe(secP.green.slice(0, 3).map(o => _cardNm(o.he))) : "המשכיות מעורבת בסקטורים";
+    const keyInsight = secP.green.length ? "כוח יחסי ב" + joinHe(secP.green.slice(0, 2).map(o => _cardNm(o.he))) : "המשכיות מעורבת בסקטורים";
     // Ninja Insight: keep it to ~2 short lines — top-2 green sectors vs top-2 red sub-sectors
     const gSecNames = secP.green.slice(0, 2).map(o => _cardNm(o.he)), rSubNames = subP.red.slice(0, 2).map(o => _cardNm(o.he));
     const insight = (gSecNames.length ? "עוצמה ב" + joinHe(gSecNames) : "המשכיות חיובית מוגבלת")

@@ -213,8 +213,8 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
   font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftfc-card > div { position: absolute; }
 .ftc-date { top: 2.1%; left: 2.4%; font-size: 21px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
-/* three top boxes (icons baked in template → overlay text on the right of each box) */
-.ftc-box { display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: start; top: 31.8%; height: 6%; }
+/* three top boxes — label on the upper baked bar (~32.5%), value on the lower (~37.4%) */
+.ftc-box { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; text-align: start; top: 31%; height: 6.9%; }
 .ftc-tone  { left: 8%;    width: 24%; }
 .ftc-range { left: 39.5%; width: 24%; }
 .ftc-key   { left: 71%;   width: 25.5%; }
