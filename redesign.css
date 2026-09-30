@@ -225,10 +225,11 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-key-v { font-size: 18px; font-weight: 800; }
 /* the four data columns (sectors red/green · sub-sectors red/green) — 3 rows each, stacked */
 .ftc-col { display: flex; flex-direction: column; justify-content: space-between; }
-.ftc-sec-red   { left: 2.6%;  width: 46%; top: 47.8%; height: 13.6%; }
-.ftc-sec-green { left: 51.4%; width: 46%; top: 47.8%; height: 13.6%; }
-.ftc-sub-red   { left: 2.6%;  width: 46%; top: 72.4%; height: 13.6%; }
-.ftc-sub-green { left: 51.4%; width: 46%; top: 72.4%; height: 13.6%; }
+/* tops/heights calibrated to the baked row-bars: sectors centre 49.2/53.5/58.0% · subs 73.0/77.5/82.0% */
+.ftc-sec-red   { left: 2.6%;  width: 46%; top: 47.3%; height: 12.6%; }
+.ftc-sec-green { left: 51.4%; width: 46%; top: 47.3%; height: 12.6%; }
+.ftc-sub-red   { left: 2.6%;  width: 46%; top: 71.1%; height: 12.9%; }
+.ftc-sub-green { left: 51.4%; width: 46%; top: 71.1%; height: 12.9%; }
 /* FIXED-grid row (no length-based fill): [ETF box · left] [% · fixed slot] [name · right, fills] */
 .ftc-row { display: flex; align-items: center; direction: rtl; height: 30%; }
 .ftc-row.ftc-empty { visibility: hidden; }
