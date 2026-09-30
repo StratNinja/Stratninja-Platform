@@ -2063,9 +2063,8 @@
       '<div class="al-cols">' +
         '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px">🎯 הסריקות שלי · הפעל/כבה התראה</h3><div class="al-plist">' + plist + "</div></div>" +
         '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px">🔔 התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div></div>" +
-      "</div>" + _athAlertSection();
+      "</div>";
     modal("🔔 מרכז ההתראות", body, "al-modal");
-    { const a52 = $("#alAth52"); if (a52) a52.onclick = () => { closeModal(); goScanner52wHigh(); }; }
     document.querySelectorAll("[data-alp]").forEach(b => b.onchange = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); });
     { const pm = $("#alNotifyPerm"); if (pm) pm.onclick = () => { requestNotifyPerm(); setTimeout(openAlertsFeed, 400); }; }
     { const ps = $("#alPushSub"); if (ps) ps.onclick = () => subscribeToPush(); }
@@ -7671,28 +7670,22 @@
     clearTimeout(_athTimer);
     _athTimer = setTimeout(() => _athShow(_athIdx + 1), ATH_SECS * 1000);
   }
-  // 52-week-high highlights, rendered as a section at the BOTTOM of the 🔔 מרכז ההתראות menu
-  // (replaces the old floating bottom-left celebration pill — Adi 2026-09-30).
-  function _athAlertSection() {
-    const list = (typeof _athStocks === "function") ? _athStocks() : [];
-    const rows = list.length
-      ? list.slice(0, 30).map(s => '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(s.sym) + '" data-tf="D">' + escHtml(s.sym) + '</span>' +
-          '<span class="muted al-fname" title="' + escAttr((secHe(s.sec) || "") + (s.ind ? " · " + s.ind : "")) + '">' + escHtml(secHe(s.sec) || "") + (s.ind ? " · " + escHtml(s.ind) : "") + '</span>' +
-          '<span class="al-time ' + ((s.chg || 0) >= 0 ? "pos" : "neg") + '">' + pct(s.chg == null ? 0 : s.chg) + "</span></div>").join("")
-      : '<div class="muted">אין מניות בשיא 52 שבועות כרגע.</div>';
-    return '<div class="al-ath"><h3 style="margin:14px 0 8px;font-size:14px">🚀 שיא 52 שבועות · היום' +
-      (list.length ? ' <span class="muted" style="font-size:12px">· ' + list.length + " מניות</span>" : "") + "</h3>" +
-      '<div class="al-flist">' + rows + "</div>" +
-      (list.length ? '<div style="margin-top:8px"><button class="btn ghost" id="alAth52" style="font-size:12px;font-weight:600">כל השיאים בסורק ←</button></div>' : "") +
-      "</div>";
-  }
   function refreshAthCeleb() {
     if (!document.body.classList.contains("in-app")) return;   // app pages only
     _athList = _athStocks();
-    // Floating bottom-left pill retired (Adi 2026-09-30) — the 52-week highs now live at the bottom
-    // of the 🔔 מרכז ההתראות menu instead. Keep _athList fresh for that section; never show the toast.
+    // Floating bottom-left pill retired (Adi 2026-09-30) → a permanent sidebar item just BELOW
+    // 🔔 מרכז התראות (#sideAth52), visible on every page. Click → the scanner filtered to 52-week highs.
     const e = document.getElementById("athCeleb"); if (e) e.remove();
     clearTimeout(_athTimer);
+    const el = document.getElementById("sideAth52");
+    if (!el) return;
+    const n = _athList.length;
+    if (!n) { el.style.display = "none"; return; }
+    el.style.display = "";
+    const badge = document.getElementById("sideAth52n");
+    if (badge) badge.textContent = n;
+    el.title = n + " מניות בשיא 52 שבועות — לחץ לסינון בסורק";
+    el.onclick = () => goScanner52wHigh();
   }
 
   // merged "בקשות והצעות" — pick feature-request OR suggest-a-ticker
