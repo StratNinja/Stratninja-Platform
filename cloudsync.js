@@ -29,6 +29,7 @@
     // only push AFTER a confirmed successful pull for this user — otherwise a failed/incomplete pull
     // would leave local empty and this write would overwrite (wipe) the user's cloud data.
     if (s && client && userId && s._pulled && !pulling) {
+      origSet(k + "__mtime", String(Date.now()));   // stamp the local edit (dirty vs last push, clock-skew-free)
       clearTimeout(s._timer);
       s._timer = setTimeout(() => pushOne(s), 900);
     }
@@ -49,10 +50,12 @@
   async function pushOne(s) {
     if (!client || !userId) return;
     const data = safeParse(localStorage.getItem(s.key)) || s.empty;
+    const mtimeAtPush = localStorage.getItem(s.key + "__mtime") || String(Date.now());   // capture before await
     try {
       const { error } = await client.from(s.table).upsert(
         { user_id: userId, data: data, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
       if (error) console.error("[cloudsync] push " + s.table + ":", error.message);
+      else origSet(s.key + "__ptime", mtimeAtPush);   // cloud now holds everything up to this local edit-stamp
     } catch (e) { console.error("[cloudsync] push exception " + s.table + ":", e); }
   }
 
@@ -62,6 +65,18 @@
       const { data, error } = await client.from(s.table).select("data").eq("user_id", userId).maybeSingle();
       if (error) { console.error("[cloudsync] pull " + s.table + ":", error.message); return; }
       const cloud = data ? data.data : null;
+      // DIRTY GUARD: if this device has LOCAL edits that were never pushed (edit-stamp newer than our last
+      // successful push), a refresh must NOT let the stale cloud overwrite them. Keep the local copy (from the
+      // pre-clear snapshot) and push it UP instead. Purely client-clock based → no server clock-skew issues.
+      const mtime = +(localStorage.getItem(s.key + "__mtime") || 0);
+      const ptime = +(localStorage.getItem(s.key + "__ptime") || 0);
+      const bak = safeParse(localStorage.getItem(s.key + "__autobak"));   // local as it was just before clearLocal()
+      if (mtime > ptime && bak && s.hasData(bak.data)) {
+        origSet(s.key, JSON.stringify(bak.data));   // restore the unpushed local edits
+        s._pulled = true; s.rerender();
+        pushOne(s);                                 // sync them up so the cloud catches up
+        return;
+      }
       // cloud is authoritative — set local to cloud (or empty). NO local→cloud migration.
       snapshot(s);   // keep a recoverable copy of whatever local held before the cloud replaces it
       origSet(s.key, JSON.stringify(s.hasData(cloud) ? cloud : s.empty));
