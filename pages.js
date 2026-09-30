@@ -2791,6 +2791,11 @@
     // top-3 strongest continuity (green) / weakest (red), by NET continuity, tie-break by daily move
     const pick = arr => { const s = arr.slice().sort((a, b) => (b.net - a.net) || ((b.chg || 0) - (a.chg || 0))); return { green: s.slice(0, 3), red: s.slice(-3).reverse() }; };
     const secP = pick(secArr), subP = pick(subArr);
+    // display order WITHIN each column by daily % (clean gradient, not "messy"): green = high→low, red = low→high
+    const _chgDesc = (a, b) => (b.chg == null ? -1e9 : b.chg) - (a.chg == null ? -1e9 : a.chg);
+    const _chgAsc = (a, b) => (a.chg == null ? 1e9 : a.chg) - (b.chg == null ? 1e9 : b.chg);
+    secP.green.sort(_chgDesc); subP.green.sort(_chgDesc);
+    secP.red.sort(_chgAsc); subP.red.sort(_chgAsc);
     // bar scale — normalize by the largest |daily %| among the 12 shown rows
     const shown = secP.green.concat(secP.red, subP.green, subP.red);
     let cmax = 0.01; shown.forEach(o => { if (o.chg != null) cmax = Math.max(cmax, Math.abs(o.chg)); });
