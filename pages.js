@@ -5804,23 +5804,14 @@
       const fg = o.fg || 0, fr = o.fr || 0;
       const chip = '<span class="bc-etf flow-etf' + (o.etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(o.etf || "") +
         '" data-secname="' + escAttr(o.rawname) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (o.etf ? o.etf + " ▾" : "▾") + "</span>";
-      // composite (tot=1): aligned side = full bar; otherwise bar ∝ count / global max
-      const gW = o.kind ? (fg ? 100 : 0) : (fg ? Math.max(8, Math.round(fg / maxMass * 100)) : 0);
-      const rW = o.kind ? (fr ? 100 : 0) : (fr ? Math.max(8, Math.round(fr / maxMass * 100)) : 0);
+      // bar length ∝ how many stocks are in continuity on that side (normalised to the group's max)
+      const gW = fg ? Math.max(8, Math.round(fg / maxMass * 100)) : 0;
+      const rW = fr ? Math.max(8, Math.round(fr / maxMass * 100)) : 0;
       const net = o.tot ? (fg - fr) / o.tot : 0;
       const tierCls = net > 0.05 ? "t-vg" : net < -0.05 ? "t-vr" : "t-n";
-      const cls = "bc-card ftfc-tile bc-clickable " + tierCls + (o.kind ? " single-card" : "");
+      const cls = "bc-card ftfc-tile bc-clickable " + tierCls;   // composites look identical to sectors (Adi: "כמו השאר")
       const drill = o.kind ? (' data-compdrill="' + escAttr(o.etf || "") + '" data-compname="' + escAttr(o.name) + '"')
         : (" data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"');
-      // composite = single ETF → one clear directional pill (two bars make no sense for tot=1)
-      if (o.kind) {
-        const cdir = fg ? "up" : fr ? "dn" : "mix";
-        const clbl = fg ? "מיושר בעלייה" : fr ? "מיושר בירידה" : "ללא כיוון ברור";
-        const cico = fg ? "🟢" : fr ? "🔴" : "⚪";
-        return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="' + clbl + '">' +
-          '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</span></div>" +
-          '<div class="ftt-cpill ftt-c-' + cdir + '">' + cico + " " + clbl + "</div></div>";
-      }
       const bar = (w, side) => '<div class="ftt-row"><span class="ftt-ic ftt-ic-' + side + '"></span>' +
         '<span class="ftt-bar ftt-' + side + '"><span style="width:' + w + '%"></span></span></div>';
       return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + '">' +
@@ -5834,8 +5825,25 @@
       const rows = arr.slice().sort((a, c) => key(c) - key(a) || (_hgMass(c) - _hgMass(a)));
       return rows.length ? rows.map(o => _ftfcRow(o, maxMass)).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
-    // build a single-ETF composite as an FTFC row (tot=1, aligned up/down/neutral over the selected TFs)
-    const _ftfcSingle = (s, isSub) => { const d = _singleFtfc(s, TFS); return { name: s.name, rawname: s.name, etf: s.etf, tot: 1, fg: d === "up" ? 1 : 0, fr: d === "down" ? 1 : 0, isSub: isSub, chg: s.chg, kind: s.kind }; };
+    // composite → its member stocks (same mapping as openCompositeDrill), so we can count FTFC green/red
+    const _compMembers = etf => {
+      const rr = SCAN.rows || [];
+      if (etf === "MAGS") return rr.filter(r => _MAGS7.indexOf(r.s) >= 0);
+      if (etf === "SPY" || etf === "RSP") return rr.filter(r => r.sp);
+      if (etf === "QQQ") return rr.filter(r => r.sp && ["Technology", "Communication", "Consumer Disc."].indexOf(r.sec) >= 0);
+      if (etf === "IBIT" || etf === "WGMI") return rr.filter(r => r.sec === "Crypto" || /קריפטו|בלוקצ|crypto/i.test(r.ind || ""));
+      if (etf === "COMT") return rr.filter(r => r.sec === "סחורות" || /סחורות|commod/i.test(r.ind || ""));
+      return [];
+    };
+    // composite as a two-bar row: fg/fr = # member stocks in FTFC up/down. If it holds no scanner stocks
+    // (IBIT bitcoin / COMT commodities), fall back to the ETF's own alignment so it still shows a direction.
+    const _ftfcSingle = (s, isSub) => {
+      const mem = _compMembers(s.etf);
+      let fg, fr, tot;
+      if (mem.length) { fg = mem.filter(m => secFtfcDir(m, TFS) === "up").length; fr = mem.filter(m => secFtfcDir(m, TFS) === "down").length; tot = mem.length; }
+      else { const d = _singleFtfc(s, TFS); fg = d === "up" ? 1 : 0; fr = d === "down" ? 1 : 0; tot = 1; }
+      return { name: s.name, rawname: s.name, etf: s.etf, tot: tot, fg: fg, fr: fr, isSub: isSub, chg: s.chg, kind: s.kind };
+    };
     const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false, chg: (secChgLive[o.name] != null ? secChgLive[o.name] : o.avgChg) }));
     const secArrG = secArr.filter(o => o.etf);                       // 11 real GICS sectors only
     const macroArr = _singlesOf("macro").filter(s => (s.etf || "").toUpperCase() !== "RSP")   // RSP = same S&P 500 stocks as SPY → drop (Adi)
