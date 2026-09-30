@@ -2724,7 +2724,7 @@
     const _pctS = c => c == null ? "—" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
     // 5 index cards (LTR): SPY QQQ IWM DIA VIX
     const IDX = [["SPY", "S&P 500"], ["QQQ", "NASDAQ 100"], ["IWM", "RUSSELL 2000"], ["DIA", "DOW JONES"], ["VIX", "תנודתיות"]];
-    const idxLefts = [2.2, 21.4, 40.6, 59.8, 79.0];   // % — calibrate to the template's 5 card slots
+    const idxLefts = [4.3, 23.7, 43.1, 62.5, 81.5];   // % — left edge of each of the 5 card slots
     const idxCards = IDX.map((it, i) => {
       const sym = it[0], vix = sym === "VIX";   // the SYM label + icon are baked into the template; we overlay only price/chg/spark
       const r = byS[sym];
@@ -2771,6 +2771,8 @@
       // laggards (red box): stocks + sectors
       '<div class="mkt-list mkt-lag-stocks">' + listHtml(lagS, stockRow) + '</div>' +
       '<div class="mkt-list mkt-lag-secs">' + listHtml(secDn, secRow) + '</div>' +
+      // CTA in the empty center of the top frame
+      '<div class="mkt-cta">נכנסים בשביל הסורקים · נשארים בשביל הקהילה</div>' +
       // insight + footer date
       '<div class="mkt-insight">' + insTxt + '</div>' +
       '<div class="mkt-date">' + new Date().toLocaleDateString("he-IL") + '</div>';

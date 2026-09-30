@@ -129,13 +129,16 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .mkt-brd-bar .r { background: linear-gradient(90deg,#ff5a6a,#e5384a); height: 100%; } .mkt-brd-bar .g { background: linear-gradient(90deg,#17c08a,#3fe0a0); height: 100%; }
 .mkt-brd-pct { top: 40.4%; left: 3%; width: 23%; text-align: center; font-size: 13px; font-weight: 800; color: #dbe6f7; white-space: nowrap; }
 .mkt-brd-pct .pos { color: #3fe0a0; } .mkt-brd-pct .neg { color: #ff6b7a; }
+/* CTA in the empty center of the top frame */
+.mkt-cta { top: 34.5%; left: 27%; width: 46%; text-align: center; font-size: 23px; font-weight: 900; line-height: 1.35;
+  color: #eafff8; text-shadow: 0 0 22px rgba(70,140,255,.45); }
 /* market state — inside the right box */
-.mkt-state { top: 33.8%; left: 75.8%; width: 21.5%; text-align: center; }
+.mkt-state { top: 33.8%; left: 74.6%; width: 21.5%; text-align: center; }
 .mkt-state-pill { display: inline-block; font-size: 20px; font-weight: 900; padding: 4px 14px; border-radius: 20px; white-space: nowrap; }
 .mkt-state.neg .mkt-state-pill { color: #ff6b7a; background: rgba(229,56,74,.16); } .mkt-state.pos .mkt-state-pill { color: #3fe0a0; background: rgba(22,184,119,.16); } .mkt-state.z .mkt-state-pill { color: #e0b341; background: rgba(224,179,65,.16); }
 .mkt-state-expl { display: block; font-size: 14.5px; font-weight: 600; color: #d3dcec; margin-top: 6px; line-height: 1.32; }
 /* index cards — overlay price/chg/sparkline into each card's lower empty box (sym+icon are baked) */
-.mkt-idx { top: 49%; width: 17.3%; text-align: center; }
+.mkt-idx { top: 47.5%; width: 17.3%; text-align: center; }
 .mkt-idx-row { white-space: nowrap; direction: ltr; text-align: center; }
 .mkt-idx-px { font-size: 28px; font-weight: 900; color: #ffffff; }
 .mkt-idx-chg { font-size: 17px; font-weight: 900; margin-inline-start: 8px; } .mkt-idx-chg.pos { color: #3fe0a0; } .mkt-idx-chg.neg { color: #ff6b7a; } .mkt-idx-chg.z { color: #9fb0c8; }
@@ -143,12 +146,12 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* leaders (green, left box) + laggards (red, right box) — each column overlays the pill BAR (skips the square) */
 .mkt-list { display: flex; flex-direction: column; justify-content: space-between; height: 15.6%; }
 .mkt-lead-stocks { top: 69.7%; left: 30.8%; width: 16.5%; } .mkt-lead-secs { top: 69.7%; left: 6.8%; width: 17.7%; }
-.mkt-lag-stocks { top: 69.7%; left: 78.9%; width: 16.5%; } .mkt-lag-secs { top: 69.7%; left: 54.9%; width: 17.7%; }
+.mkt-lag-stocks { top: 68.6%; left: 77.2%; width: 16.5%; } .mkt-lag-secs { top: 68.6%; left: 53.2%; width: 17.7%; }
 .mkt-lrow { display: flex; align-items: center; justify-content: space-between; direction: rtl; font-size: 18px; padding: 0 5px; }
 .mkt-lrow .mkt-lt { font-weight: 900; color: #f2f7ff; } .mkt-lrow .mkt-lt.muted { color: #6b7a92; }
 .mkt-lrow .mkt-lp { font-weight: 900; font-variant-numeric: tabular-nums; direction: ltr; } .mkt-lp.pos { color: #3fe0a0; } .mkt-lp.neg { color: #ff6b7a; } .mkt-lp.z { color: #9fb0c8; }
 /* Ninja Insight text + date */
-.mkt-insight { top: 90.6%; left: 28%; width: 64%; font-size: 18px; font-weight: 700; color: #e5eefc; line-height: 1.4; text-align: start; }
+.mkt-insight { top: 90.6%; left: 26%; width: 65%; font-size: 20.5px; font-weight: 800; color: #eaf2ff; line-height: 1.38; text-align: start; }
 .mkt-date { top: 97.8%; left: 44%; width: 12%; text-align: center; font-size: 12px; color: #7f93b5; font-weight: 600; white-space: nowrap; }
 /* option current-price source tag (auto CBOE vs manually typed) */
 .opt-src { display: inline-block; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; white-space: nowrap; vertical-align: middle; letter-spacing: .2px; }
