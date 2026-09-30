@@ -3792,7 +3792,10 @@
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (pg === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
-    if (pg === "sectors") { _captureRedesignCard(buildFtfcCardEl); return; }   // FTFC "המשכיות זמנית" card (on Ftfc_Template.png)
+    if (pg === "sectors") {   // FTFC "המשכיות זמנית" card (on Ftfc_Template.png)
+      if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
+      _captureRedesignCard(buildFtfcCardEl); return;
+    }
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
     if (state.page === "market" && _mktShareSection === "leaders") { _captureRedesignCard(buildLeadersCardEl); return; }   // redesigned Leaders/Laggards card
