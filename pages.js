@@ -5766,7 +5766,7 @@
       '<span class="secftfc-sep muted">·</span>' +
       Object.keys(SEC_FTFC_SETS).map(k => { const tfs = SEC_FTFC_SETS[k], lbl = (k === "REALM" ? "NINJA REALM" : tfs.join("·"));
         return '<button class="secftfc-btn secftfc-preset' + (k === "REALM" ? " secftfc-realm" : "") + (_presetOn(tfs) ? " on" : "") + '" data-secftfset="' + k + '" title="בחירה מהירה · ' + tfs.join("·") + '">' + lbl + "</button>"; }).join("") + "</div>";
-    const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">איפה נמצאת <b>מסת המניות</b> שכבר בהמשכיות זמן (<b>' + TFLBL + '</b>) — כדי לדעת לאן ללכת לצוד. בכל אריח: <span class="pos">🟢 פס עליון</span> = כמה מניות בהמשכיות <b>עולה</b> (לונג) · <span class="neg">🔴 פס תחתון</span> = בהמשכיות <b>יורדת</b> (שורט). <b>פס ארוך יותר = יותר מניות</b> (משוואה בין כל האריחים). לחץ על אריח לרשימת המניות.</div></div>' + ftfcSwitch;
+    const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">איפה נמצאת <b>מסת המניות</b> שכבר בהמשכיות זמן (<b>' + TFLBL + '</b>) — כדי לדעת לאן ללכת לצוד. בכל אריח: <span class="pos">🟢 פס עליון</span> = בהמשכיות <b>עולה</b> (לונג) · <span class="neg">🔴 פס תחתון</span> = בהמשכיות <b>יורדת</b> (שורט). <b>אורך הפס = אחוז המניות של אותו נכס בהמשכיות</b> (כל נכס לעצמו — למשל 3 מתוך 7 = חצי פס). לחץ על אריח לרשימת המניות.</div></div>' + ftfcSwitch;
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
@@ -5793,13 +5793,13 @@
     // Both bars normalised to ONE global max so tiles are comparable → see at a glance where the most is.
     const _hgMass = o => Math.max(o.fg || 0, o.fr || 0);
     const _cleanNm = n => String(n || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").trim();   // drop " · English" suffix
-    const _ftfcRow = (o, maxMass) => {
-      const fg = o.fg || 0, fr = o.fr || 0;
+    const _ftfcRow = o => {
+      const fg = o.fg || 0, fr = o.fr || 0, tot = o.tot || 0;
       const chip = '<span class="bc-etf flow-etf' + (o.etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(o.etf || "") +
         '" data-secname="' + escAttr(o.rawname) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (o.etf ? o.etf + " ▾" : "▾") + "</span>";
-      // bar length ∝ how many stocks are in continuity on that side (normalised to the group's max)
-      const gW = fg ? Math.max(8, Math.round(fg / maxMass * 100)) : 0;
-      const rW = fr ? Math.max(8, Math.round(fr / maxMass * 100)) : 0;
+      // bar = % of THIS asset's OWN stocks in continuity (each asset normalised to itself, e.g. 3/7 → ~43%)
+      const gW = fg ? Math.max(4, Math.round(fg / tot * 100)) : 0;
+      const rW = fr ? Math.max(4, Math.round(fr / tot * 100)) : 0;
       const net = o.tot ? (fg - fr) / o.tot : 0;
       const tierCls = net > 0.05 ? "t-vg" : net < -0.05 ? "t-vr" : "t-n";
       const cls = "bc-card ftfc-tile bc-clickable " + tierCls;   // composites look identical to sectors (Adi: "כמו השאר")
@@ -5811,12 +5811,11 @@
         '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</span></div>" +
         '<div class="ftt-bars">' + bar(gW, "green") + bar(rW, "red") + "</div></div>";
     };
-    // ladder = one grid; sort by NET continuity (green-heavy first → red-heavy last)
+    // ladder = one grid; sort by NET continuity ratio (green-heavy first → red-heavy last)
     const _ftfcLadder = arr => {
-      const maxMass = arr.reduce((m, o) => Math.max(m, _hgMass(o)), 1);
       const key = o => o.tot ? (o.fg - o.fr) / o.tot : 0;
       const rows = arr.slice().sort((a, c) => key(c) - key(a) || (_hgMass(c) - _hgMass(a)));
-      return rows.length ? rows.map(o => _ftfcRow(o, maxMass)).join("") : '<div class="muted" style="padding:10px">—</div>';
+      return rows.length ? rows.map(o => _ftfcRow(o)).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
     // composite → its member stocks (same mapping as openCompositeDrill), so we can count FTFC green/red
     const _compMembers = etf => {
