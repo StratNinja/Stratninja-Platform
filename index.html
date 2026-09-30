@@ -139,16 +139,19 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
     </aside>
 
     <main class="main">
-      <!-- persistent live price ticker (SPY / QQQ / BTC) -->
-      <div id="liveTicker" class="live-ticker" aria-label="מחירים חיים"></div>
-      <!-- floating action dock (bottom-left, near accessibility): theme / share / draw · collapsible -->
-      <div id="snDock" class="sn-dock" dir="rtl">
-        <button class="snd-btn snd-toggle" id="snDockToggle" title="הסתר/הצג כלים" aria-label="הסתר/הצג">‹</button>
-        <div class="snd-icons" id="sndIcons">
-          <button class="snd-btn" id="snDockTheme" title="מצב בהיר / כהה" aria-label="מצב בהיר / כהה">🌙</button>
-          <button class="snd-btn snd-dens" id="snDockDensity" title="צפיפות תצוגה — רגיל / קומפקטי / צפוף" aria-label="צפיפות תצוגה">⇳</button>
-          <button class="snd-btn" id="snDockCam" title="שתף מסך" aria-label="שתף מסך">📷</button>
-          <button class="snd-btn" id="snDockDraw" title="שרטוט נרות" aria-label="שרטוט נרות" style="display:none">✏️</button>
+      <!-- top strip: live price ticker (SPY / QQQ / BTC) + action dock on the left -->
+      <div class="top-strip">
+        <!-- persistent live price ticker (SPY / QQQ / BTC) -->
+        <div id="liveTicker" class="live-ticker" aria-label="מחירים חיים"></div>
+        <!-- action dock (in the top strip, left side): theme / density / share / draw · collapsible -->
+        <div id="snDock" class="sn-dock" dir="rtl">
+          <button class="snd-btn snd-toggle" id="snDockToggle" title="הסתר/הצג כלים" aria-label="הסתר/הצג">›</button>
+          <div class="snd-icons" id="sndIcons">
+            <button class="snd-btn" id="snDockTheme" title="מצב בהיר / כהה" aria-label="מצב בהיר / כהה">🌙</button>
+            <button class="snd-btn snd-dens" id="snDockDensity" title="צפיפות תצוגה — רגיל / קומפקטי / צפוף" aria-label="צפיפות תצוגה">⇳</button>
+            <button class="snd-btn" id="snDockCam" title="שתף מסך" aria-label="שתף מסך">📷</button>
+            <button class="snd-btn" id="snDockDraw" title="שרטוט נרות" aria-label="שרטוט נרות" style="display:none">✏️</button>
+          </div>
         </div>
       </div>
       <a class="community-cta" href="https://www.patreon.com/14520383/join" target="_blank" rel="noopener">

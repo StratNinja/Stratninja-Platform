@@ -187,7 +187,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .brd-card.brd-c0 .brd-pct, .brd-card.brd-c1 .brd-pct, .brd-card.brd-c2 .brd-pct { left: 13%; }
 .brd-card.brd-c0 .brd-chg, .brd-card.brd-c1 .brd-chg, .brd-card.brd-c2 .brd-chg { left: 50%; }
 /* right edge LOCKED; left start pushed 2px LEFT for all except the 50-day */
-.brd-card.brd-c0 .brd-spk { left: 10.2%; right: 0.6%; }           /* 200 */
+.brd-card.brd-c0 .brd-spk { left: 8.8%; right: 0.6%; }            /* 200 → more left */
 .brd-card.brd-c1 .brd-spk { left: 10.6%; right: 1.3%; }           /* 150 */
 .brd-card.brd-c2 .brd-spk { left: 8.2%; right: 4.4%; }            /* 100 */
 .brd-sp-card.brd-c3 .brd-spk { left: 5.5%; right: 6.5%; }         /* S&P 50 (unchanged) */
@@ -292,18 +292,22 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 .gm-bar.up > span { background: var(--green); margin-inline-start: auto; }
 .gm-bar.down > span { background: var(--red); }
 
-/* ---------- floating action dock (theme / share / draw), bottom-left near accessibility ---------- */
-.sn-dock { position: fixed; bottom: 16px; left: 66px; z-index: 40; display: flex; align-items: center; gap: 8px; direction: ltr; }
-.sn-dock .snd-icons { display: flex; align-items: center; gap: 8px; overflow: hidden; max-width: 220px; opacity: 1;
+/* ---------- top strip: live ticker + action dock (theme / density / share / draw) on the left ---------- */
+.top-strip { display: flex; align-items: stretch; gap: 10px; position: sticky; top: 0; z-index: 33; margin-bottom: 6px; }
+.top-strip #liveTicker { flex: 1 1 auto; margin-bottom: 0; position: static; top: auto; z-index: auto; min-width: 0; }
+/* dock now lives inline inside the top strip (was a bottom-left floating dock) */
+.sn-dock { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; direction: ltr;
+  padding: 4px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+.sn-dock .snd-icons { display: flex; align-items: center; gap: 7px; overflow: hidden; max-width: 220px; opacity: 1;
   transition: max-width .25s ease, opacity .18s ease; }
 .sn-dock.collapsed .snd-icons { max-width: 0; opacity: 0; pointer-events: none; }
-.snd-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--panel);
-  color: var(--ink); font-size: 18px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .12s, border-color .12s; flex: none; line-height: 1; }
-.snd-btn:hover { transform: translateY(-2px); border-color: var(--lux-g2); }
-.snd-toggle { width: 26px; height: 26px; font-size: 15px; opacity: .75; box-shadow: none; }
+.snd-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg, transparent);
+  color: var(--ink); font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  transition: transform .12s, border-color .12s, background .12s; flex: none; line-height: 1; }
+.snd-btn:hover { transform: translateY(-1px); border-color: var(--lux-g2); }
+.snd-toggle { width: 24px; height: 24px; font-size: 14px; opacity: .7; border-color: transparent; }
 .snd-toggle:hover { opacity: 1; }
-@media (max-width: 640px) { .sn-dock { left: 60px; bottom: 12px; } .snd-btn { width: 36px; height: 36px; font-size: 16px; } }
+@media (max-width: 640px) { .sn-dock { padding: 3px 7px; gap: 5px; } .snd-btn { width: 30px; height: 30px; font-size: 15px; } }
 /* merged request/suggest chooser */
 .req-chooser { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
 .req-chooser .btn { width: 100%; justify-content: center; padding: 12px; font-size: 14px; }
