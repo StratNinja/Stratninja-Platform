@@ -315,7 +315,13 @@ body[data-page="today"] .bc-cell .bc-name { font-size: 13px; }
 body[data-page="today"] .bc-cell .bc-pct { font-size: 14px; }
 body[data-page="today"] .flow-mode, body[data-page="today"] .flow-controls, body[data-page="today"] .sec-ftfc-switch, body[data-page="today"] .flow-ctrl { margin-bottom: 6px; }
 body[data-page="today"] .flow-ctrl { padding: 7px 12px; }
-body[data-page="today"] .td-ixc, body[data-page="today"] .td-indices { padding: 5px 10px; }
+/* "📈 מדדים ראשיים" cards — removed: the top index strip already shows the same VIX/DIA/IWM/QQQ/SPY, so this row was redundant and ate vertical space (Adi 2026-09-30) */
+.td-indices { display: none; }
+/* top index strip — bigger & bolder (now the primary indices readout) */
+.live-ticker { padding: 8px 16px; gap: 22px; }
+.live-ticker .lt-item { font-size: 15px; }
+.live-ticker .lt-sym { font-size: 13px; }
+.live-ticker .lt-px, .live-ticker .lt-item .pos, .live-ticker .lt-item .neg { font-weight: 800; }
 body[data-page="today"] .td-flow2 { gap: 10px; margin-bottom: 6px; }
 body[data-page="today"] .td-market-row { padding: 7px 14px; }
 body[data-page="today"] .bc-cell { min-height: 23px; }
