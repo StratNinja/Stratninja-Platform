@@ -366,6 +366,7 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 .snd-toggle { width: 24px; height: 24px; font-size: 14px; opacity: .7; border-color: transparent; }
 .snd-toggle:hover { opacity: 1; }
 /* alerts bell in the dock, with a red unread-count badge (replaces the top-right indicator) */
+#alBadgeSide { display: none !important; }   /* retired: unread count now shows only in the dock bell */
 .snd-bell { position: relative; overflow: visible; }
 .snd-badge { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box;
   border-radius: 9px; background: #e5384a; color: #fff; font-size: 10px; font-weight: 800; line-height: 1;

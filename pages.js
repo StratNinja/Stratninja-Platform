@@ -2061,7 +2061,7 @@
   window._snTestAlert = () => _fireAlert([{ sym: "TSLA", preset: "בדיקה", pid: "x" }]);
   function updateAlertBell() {
     const n = window.Prefs ? Prefs.feedUnread() : 0;
-    [document.getElementById("alBadge"), document.getElementById("alBadgeSide"), document.getElementById("alBadgeDock")].forEach(b => {
+    [document.getElementById("alBadge"), document.getElementById("alBadgeDock")].forEach(b => {   // alBadgeSide retired — count now lives only in the dock bell
       if (b) { b.textContent = n ? n : ""; b.style.display = n ? "inline-flex" : "none"; }
     });
   }
