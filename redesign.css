@@ -578,6 +578,7 @@ body[data-page="sectors"] .td-flow .bcell-list { display: grid; grid-template-co
 #sideAth52.ath52-live { background: linear-gradient(180deg, rgba(34,227,155,.12), rgba(12,20,18,.55));
   border: 1px solid rgba(34,227,155,.55); border-radius: 11px; box-shadow: 0 0 14px rgba(34,227,155,.18); }
 #sideAth52.ath52-live .ath52-ico { filter: drop-shadow(0 0 6px rgba(34,227,155,.5)); }
+#sideAth52.ath52-live .lbl { color: #ffffff; }
 #sideAth52.ath52-live .ath52-t { color: #22e39b; font-weight: 900; letter-spacing: .3px; }
 #sideAth52.ath52-live:hover { border-color: rgba(34,227,155,.85); box-shadow: 0 0 18px rgba(34,227,155,.3); }
 

@@ -3681,10 +3681,12 @@
     _doCaptureSummaryCard();
   }
   function _doCaptureSummaryCard() {
-    if (state.page === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
-    if (state.page === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
-    if (state.page === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
-    if (state.page === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
+    // on the merged "דופק השוק" page state.page is "pulse"; the visible sub-tab is in pulseTab → resolve it
+    const pg = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;
+    if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
+    if (pg === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
+    if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
+    if (pg === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
     if (state.page === "market" && _mktShareSection === "leaders") { _captureRedesignCard(buildLeadersCardEl); return; }   // redesigned Leaders/Laggards card
@@ -7794,24 +7796,35 @@
     clearTimeout(_athTimer);
     _athTimer = setTimeout(() => _athShow(_athIdx + 1), ATH_SECS * 1000);
   }
+  // render the sidebar 52W item for the CURRENT rotation index (cycles through all the 52-week-high names)
+  let _athSideIdx = 0, _athSideTimer = null;
+  function _athSideShow() {
+    const el = document.getElementById("sideAth52");
+    if (!el) return;
+    const n = _athList.length;
+    if (!n) { el.style.display = "none"; el.classList.remove("ath52-live"); if (_athSideTimer) { clearInterval(_athSideTimer); _athSideTimer = null; } return; }
+    el.style.display = "";
+    el.classList.add("ath52-live");
+    _athSideIdx = ((_athSideIdx % n) + n) % n;
+    const s = _athList[_athSideIdx];
+    el.innerHTML = '<span class="ath52-ico">🚀</span><span class="lbl"><span class="ath52-t">' + escHtml(s.sym) +
+      '</span> · שיא 52ש׳<span class="ath52-badge" id="sideAth52n">' + n + "</span></span>";
+    el.title = n + " מניות בשיא 52 שבועות — מוצגת: " + s.sym + " · לחץ לסינון בסורק";
+    el.onclick = () => goScanner52wHigh();
+  }
   function refreshAthCeleb() {
     if (!document.body.classList.contains("in-app")) return;   // app pages only
     _athList = _athStocks();
     // Floating bottom-left pill retired (Adi 2026-09-30) → a permanent sidebar item just BELOW
-    // 🔔 מרכז התראות (#sideAth52), visible on every page. Click → the scanner filtered to 52-week highs.
+    // 🔔 מרכז התראות (#sideAth52), visible everywhere; cycles through the 52-week-high names (like the old pill).
     const e = document.getElementById("athCeleb"); if (e) e.remove();
     clearTimeout(_athTimer);
-    const el = document.getElementById("sideAth52");
-    if (!el) return;
-    const n = _athList.length;
-    if (!n) { el.style.display = "none"; el.classList.remove("ath52-live"); return; }
-    el.style.display = "";
-    el.classList.add("ath52-live");
-    const top = _athList[0];
-    el.innerHTML = '<span class="ath52-ico">🚀</span><span class="lbl"><span class="ath52-t">' + escHtml(top.sym) +
-      '</span> · שיא 52ש׳<span class="ath52-badge" id="sideAth52n">' + n + "</span></span>";
-    el.title = n + " מניות בשיא 52 שבועות — המובילה: " + top.sym + " · לחץ לסינון בסורק";
-    el.onclick = () => goScanner52wHigh();
+    _athSideShow();
+    if (_athList.length > 1 && !_athSideTimer) {
+      _athSideTimer = setInterval(() => { _athSideIdx++; _athSideShow(); }, 7000);   // rotate every 7s
+    } else if (_athList.length <= 1 && _athSideTimer) {
+      clearInterval(_athSideTimer); _athSideTimer = null;
+    }
   }
 
   // merged "בקשות והצעות" — pick feature-request OR suggest-a-ticker
