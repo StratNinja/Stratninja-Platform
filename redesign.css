@@ -255,7 +255,7 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 /* ---------- alerts center: wider modal, two columns (scans right · recent alerts left) ---------- */
 .al-modal { max-width: min(97vw, 1480px); width: min(97vw, 1480px); }
 /* two roomy columns — presets ("הסריקות שלי") and recent alerts both get real width */
-.al-cols { display: grid; grid-template-columns: minmax(340px, 1fr) minmax(0, 1.25fr); gap: 22px; margin-top: 6px; }
+.al-cols { display: grid; grid-template-columns: minmax(460px, 1.55fr) minmax(0, 1fr); gap: 22px; margin-top: 6px; }
 .al-cols .al-col { min-width: 0; }
 .al-cols .al-plist { max-height: 58vh; overflow: auto; padding-inline-end: 6px; }
 .al-cols .al-flist { max-height: 58vh; overflow: auto; padding-inline-end: 6px; }
