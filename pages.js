@@ -3629,15 +3629,24 @@
         const dchg = (cur != null && prev != null) ? (cur - prev) : null;
         const dcls = dchg == null ? "zero" : dchg > 0.05 ? "pos" : dchg < -0.05 ? "neg" : "zero";
         const dtxt = dchg == null ? "" : (dchg >= 0 ? "▲ " : "▼ ") + Math.abs(dchg).toFixed(1);
-        const zcls = cur == null ? "" : cur <= 35 ? "pos" : cur >= 65 ? "neg" : "";
+        const zcls = dchg != null && dchg > 0.1 ? "pos" : "";   // line green when today's breadth improves, else white
         return '<div class="brd-card ' + rowCls + '" style="left:' + cardL[i] + '%">' +
+          '<div class="brd-spk">' + _spark(s, zcls) + "</div>" +
           '<span class="brd-pct">' + (cur == null ? "—" : cur.toFixed(0) + "%") + "</span>" +
           (dtxt ? '<span class="brd-chg ' + dcls + '">' + dtxt + "</span>" : "") +
-          '<div class="brd-spk">' + _spark(s, zcls) + "</div></div>";
+          "</div>";
       }).join("");
     };
     const _st = uni => _brdState(_brdReadings(uni));
-    const _pill = st => st ? st.lbl.replace(/^\S+\s/, "") : "—";
+    // card state pill: market STRENGTH colouring (weak→red▼, neutral→yellow▬, strong→green▲) + arrow
+    const _cardState = uni => {
+      const st = _st(uni); if (!st) return null;
+      const s = st.score;
+      if (s <= 40) return { txt: s <= 20 ? "חלש מאוד · Oversold עמוק" : "חלש · מתקרב ל-oversold", cls: "neg", arrow: "▼" };
+      if (s <= 60) return { txt: "ניטרלי · תמיכה יציבה", cls: "zero", arrow: "▬" };
+      return { txt: s >= 80 ? "חזק מאוד · Overbought" : "חזק · מתקרב ל-overbought", cls: "pos", arrow: "▲" };
+    };
+    const _pillHtml = cs => cs ? '<span class="brd-state-pill"><span class="brd-state-arrow">' + cs.arrow + "</span> " + cs.txt + "</span>" : '<span class="brd-state-pill">—</span>';
     const _desc = (uni, st) => {
       const nm = uni === "sp" ? "S&P 500" : "Nasdaq 100";
       if (!st) return "";
@@ -3650,6 +3659,7 @@
       return "רוחב השוק במדד " + nm + " " + d;
     };
     const spSt = _st("sp"), ndxSt = _st("ndx");
+    const spCs = _cardState("sp"), ndxCs = _cardState("ndx");
     const now = new Date(), _p2 = x => String(x).padStart(2, "0");
     const dateStr = now.getDate() + "." + (now.getMonth() + 1) + "." + now.getFullYear() + " · " + _p2(now.getHours()) + ":" + _p2(now.getMinutes());
     let insight;
@@ -3663,10 +3673,10 @@
     el.className = "breadth-card";
     el.innerHTML =
       '<div class="brd-date">🕐 ' + dateStr + "</div>" +
-      '<div class="brd-sp-state ' + (spSt ? spSt.cls : "zero") + '"><span class="brd-state-pill">' + _pill(spSt) + "</span></div>" +
+      '<div class="brd-sp-state ' + (spCs ? spCs.cls : "zero") + '">' + _pillHtml(spCs) + "</div>" +
       '<div class="brd-sp-desc">' + _desc("sp", spSt) + "</div>" +
       cards("sp", "brd-sp-card") +
-      '<div class="brd-ndx-state ' + (ndxSt ? ndxSt.cls : "zero") + '"><span class="brd-state-pill">' + _pill(ndxSt) + "</span></div>" +
+      '<div class="brd-ndx-state ' + (ndxCs ? ndxCs.cls : "zero") + '">' + _pillHtml(ndxCs) + "</div>" +
       '<div class="brd-ndx-desc">' + _desc("ndx", ndxSt) + "</div>" +
       cards("ndx", "brd-ndx-card") +
       '<div class="brd-insight">' + insight + "</div>" +
