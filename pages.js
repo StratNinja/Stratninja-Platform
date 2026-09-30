@@ -2753,7 +2753,7 @@
     const secs = (typeof todaySectors === "function" ? todaySectors(src) : []).filter(s => s && s.name && s.name !== "אחר" && s.chg != null).sort((a, c) => c.chg - a.chg);
     const topSec = secs[0] ? (secs[0].etf || subEtfFor(secs[0].name) || secHe(secs[0].name)) : "—";
     const vixCalm = vixLvl != null && vixLvl < 18;
-    const insTxt = "רוחב שוק " + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + (vixCalm ? " ו-VIX רגוע" : "") + " עם נטייה ל-" + ((ms && ms.cls === "neg") ? "Risk-Off" : (ms && ms.cls === "pos") ? "Risk-On" : "מעורב") + ". ההובלה ב-" + escHtml(topSec) + ".";
+    const insTxt = "רוחב השוק " + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + (vixCalm ? ", <b>VIX רגוע</b>" : "") + " עם נטייה ל-" + ((ms && ms.cls === "neg") ? "Risk-Off" : (ms && ms.cls === "pos") ? "Risk-On" : "מעורב") + ".<br>כסף נכנס ל-" + escHtml(topSec) + ".";
 
     const el = document.createElement("div");
     el.className = "market-card";   // background = Market_Template.png; we overlay only the data
