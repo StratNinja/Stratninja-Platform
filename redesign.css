@@ -563,6 +563,20 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hm-tile { position: absolute; box-sizing: border-box; border: 1px solid rgba(0,0,0,.4); display: flex; flex-direction: column;
   align-items: center; justify-content: center; overflow: hidden; cursor: pointer; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
 .hm-tile:hover { filter: brightness(1.2); outline: 1px solid #fff; z-index: 4; }
+/* move filter — tiles outside the % range fade out so the movers pop */
+.hm-tile.hm-dim { opacity: .08; filter: grayscale(.6); }
+.hm-tile.hm-dim:hover { opacity: .5; }
+.hm-movefilter { display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px; border-radius: 10px;
+  background: var(--panel2); border: 1px solid var(--line); }
+.hm-movefilter.on { border-color: var(--lux-g2, #17c08a); box-shadow: 0 0 0 1px rgba(23,192,138,.25); }
+.hm-mf-lbl { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+.hm-mf-field { display: inline-flex; align-items: center; gap: 4px; }
+.hm-mf-ico { font-size: 11px; } .hm-mf-up .hm-mf-ico { color: #22e39b; } .hm-mf-down .hm-mf-ico { color: #ff6b7a; }
+.hm-mf-field input { width: 74px; padding: 4px 7px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); font-size: 13px; font-weight: 700; text-align: center; }
+.hm-mf-field input:focus { outline: none; border-color: var(--lux-g2, #17c08a); }
+.hm-mf-clear { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 6px; }
+.hm-mf-clear:hover { background: rgba(255,255,255,.08); color: var(--ink); }
 .hm-t-sym { font-size: 11px; font-weight: 800; line-height: 1.05; }
 .hm-t-chg { font-size: 9px; font-weight: 600; opacity: .92; }
 .hm-tile-sm .hm-t-sm { font-size: 8px; font-weight: 700; line-height: 1; letter-spacing: -.2px; }

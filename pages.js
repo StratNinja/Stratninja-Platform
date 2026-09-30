@@ -1287,6 +1287,16 @@
   try { spHeatAvg = localStorage.getItem("sn_hm_avg") === "1"; } catch (e) {}
   // heat-map timeframe (color period). 1D/1W/1M are live client-side; Q/Y/MTD/QTD/YTD need server returns.
   let spHeatTf = "1d"; try { spHeatTf = localStorage.getItem("sn_hm_tf") || "1d"; } catch (e) {}
+  // heat-map move filter — dim tiles outside the range. up = show gainers ≥ up% · down = show losers ≥ down% (both magnitudes)
+  let spHeatUp = "", spHeatDown = "";
+  try { spHeatUp = localStorage.getItem("sn_hm_up") || ""; spHeatDown = localStorage.getItem("sn_hm_down") || ""; } catch (e) {}
+  function _hmMoveMatch(cv) {
+    const up = parseFloat(spHeatUp), dn = parseFloat(spHeatDown);
+    const hasUp = !isNaN(up), hasDn = !isNaN(dn);
+    if (!hasUp && !hasDn) return true;              // no filter → everything visible
+    if (cv == null) return false;
+    return (hasUp && cv >= up) || (hasDn && cv <= -Math.abs(dn));   // gainers ≥ up%  OR  losers ≥ down%
+  }
   const HM_TFS = ["1d", "1w", "WTD", "1m", "MTD", "1Q", "QTD", "1Y", "YTD"], HM_TFS_SOON = [];
   const HM_TFL = { "1d": "1D", "1w": "1W", "WTD": "WTD", "1m": "1M", "MTD": "MTD", "1Q": "1Q", "QTD": "QTD", "1Y": "1Y", "YTD": "YTD" };
   const HM_TF_KEY = { "1w": "c5", "WTD": "cwtd", "1m": "c20", "MTD": "cmtd", "1Q": "c63", "QTD": "cqtd", "1Y": "c252", "YTD": "cytd" };   // scanner tech field per TF
@@ -1325,7 +1335,7 @@
       const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
       const cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
       // tiered labels: big tiles show ticker + move, mid tiles show just the ticker, tiny → tooltip only
-      let lbl = "", cls = "hm-tile clickable";
+      let lbl = "", cls = "hm-tile clickable" + (_hmMoveMatch(cv) ? "" : " hm-dim");
       if (c.w > 66 && c.h > 40) { lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>"; }
       else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
       return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + (x.mc ? " · " + fmtCap(x.mc) : "") +
@@ -1439,9 +1449,16 @@
       const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
         '<button class="flow-tf-btn hm-tf' + (k === spHeatTf ? " on" : "") + '" data-hmtf="' + k + '">' + HM_TFL[k] + "</button>").join("") +
         HM_TFS_SOON.map(k => '<button class="flow-tf-btn hm-tf hm-tf-soon" disabled title="בקרוב — דורש עדכון שרת">' + k + "</button>").join("") + "</div>";
+      // move filter: show only gainers ≥ (מעל)% and/or losers ≥ (מתחת)% — the rest dim out
+      const mfOn = spHeatUp !== "" || spHeatDown !== "";
+      const moveFilter = '<div class="hm-movefilter' + (mfOn ? " on" : "") + '" title="הצג רק מניות שעלו/ירדו מעל האחוז שתמלא — השאר יעומעמו">' +
+        '<span class="hm-mf-lbl">סינון תנועה %</span>' +
+        '<span class="hm-mf-field hm-mf-up"><span class="hm-mf-ico">▲</span><input type="number" step="0.5" min="0" inputmode="decimal" id="hmMoveUp" placeholder="עולות מעל" value="' + escAttr(spHeatUp) + '"></span>' +
+        '<span class="hm-mf-field hm-mf-down"><span class="hm-mf-ico">▼</span><input type="number" step="0.5" min="0" inputmode="decimal" id="hmMoveDown" placeholder="יורדות מעל" value="' + escAttr(spHeatDown) + '"></span>' +
+        (mfOn ? '<button class="hm-mf-clear" id="hmMoveClear" title="נקה סינון">✕</button>' : "") + "</div>";
       return '<div class="page-head hm-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">כל ריבוע = מניה, הצבע לפי התנועה בטווח הנבחר · לחץ שם סקטור (🔍) לזום · מניה לגרף · מונה שיא/שפל לרשימה.</div></div>' +
         '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" +
-        '<div class="hm-controls">' + tfBtns + countsStrip + "</div>" +
+        '<div class="hm-controls">' + tfBtns + moveFilter + countsStrip + "</div>" +
         '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
@@ -1554,6 +1571,10 @@
     { const hb = $("#hmBack"); if (hb) hb.onclick = () => { spHeatSector = null; reRender(); }; }
     { const av = $("#hmAvgToggle"); if (av) av.onclick = () => { spHeatAvg = !spHeatAvg; try { localStorage.setItem("sn_hm_avg", spHeatAvg ? "1" : "0"); } catch (e) {} reRender(); }; }
     document.querySelectorAll("[data-hmtf]").forEach(b => b.onclick = () => { spHeatTf = b.dataset.hmtf; try { localStorage.setItem("sn_hm_tf", spHeatTf); } catch (e) {} reRender(); });
+    // heat-map move filter (dim tiles outside the % range) — onchange fires on blur/Enter so it doesn't re-render mid-typing
+    { const up = $("#hmMoveUp"); if (up) up.onchange = () => { spHeatUp = up.value.trim(); try { localStorage.setItem("sn_hm_up", spHeatUp); } catch (e) {} reRender(); }; }
+    { const dn = $("#hmMoveDown"); if (dn) dn.onchange = () => { spHeatDown = dn.value.trim(); try { localStorage.setItem("sn_hm_down", spHeatDown); } catch (e) {} reRender(); }; }
+    { const cl = $("#hmMoveClear"); if (cl) cl.onclick = () => { spHeatUp = ""; spHeatDown = ""; try { localStorage.removeItem("sn_hm_up"); localStorage.removeItem("sn_hm_down"); } catch (e) {} reRender(); }; }
     document.querySelectorAll("[data-ext52]").forEach(el => el.onclick = () => _ext52Modal(el.dataset.ext52));
     document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill), c.dataset.spsub === "1"));
     // ETF chip inside a ladder cell → the sector menu (analyze ETF · charts · scanner · table), not the row drill
