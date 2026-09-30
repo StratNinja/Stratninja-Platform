@@ -2746,6 +2746,79 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== 🖼️ FTFC "המשכיות זמנית" share card — overlays live data on Ftfc_Template.png (Adi's AI design) =====
+  // Sectors (11 GICS) + sub-sectors (18 SPDR) split into FTFC-GREEN / FTFC-RED columns by NET continuity
+  // over the selected TF set; the big number = the asset's daily % move, bar ∝ |daily %|.
+  function buildFtfcCardEl() {
+    const TFS = _secFtfcTfs();
+    const rangeLbl = _secFtfcLbl();                       // e.g. "M·Q·Y"
+    const rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
+    const _avgChg = mem => { let cs = 0, cn = 0; (mem || []).forEach(m => { const c = (m.c != null ? m.c : (m.tech && m.tech.chg != null ? m.tech.chg : null)); if (c != null) { cs += c; cn++; } }); return cn ? cs / cn : null; };
+    const _dir = m => secFtfcDir(m, TFS);
+    // --- sectors: 11 real GICS (those with a SPDR sector ETF) ---
+    const bySec = {};
+    rows.forEach(r => { const s = r.sector || r.sec; if (!s || s === "מדדים" || s === "אחר") return; (bySec[s] = bySec[s] || []).push(r); });
+    const secChgLive = {}; if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => secChgLive[s.name] = s.chg);
+    let secArr = Object.keys(bySec).filter(n => etfFor(n) && bySec[n].length >= 3).map(name => {
+      const mem = bySec[name], tot = mem.length;
+      const fg = mem.filter(m => _dir(m) === "up").length, fr = mem.filter(m => _dir(m) === "down").length;
+      return { he: secHe(name), etf: etfFor(name), fg, fr, tot, net: tot ? (fg - fr) / tot : 0, chg: (secChgLive[name] != null ? secChgLive[name] : _avgChg(mem)) };
+    });
+    // --- sub-sectors: 18 SPDR industries ---
+    const byInd = {}; rows.forEach(r => { const k = (r.ind || "").trim(); if (k) (byInd[k] = byInd[k] || []).push(r); });
+    const subChgLive = {}; if (LIVE && LIVE.subsectors) LIVE.subsectors.forEach(s => subChgLive[s.ind] = s.chg);
+    const _subOf = name => { const mem = byInd[name] || [], tot = mem.length; const fg = mem.filter(m => _dir(m) === "up").length, fr = mem.filter(m => _dir(m) === "down").length; return { tot, fg, fr }; };
+    let subArr;
+    if (LIVE && LIVE.subsectors && LIVE.subsectors.length) {
+      subArr = LIVE.subsectors.map(ss => { const o = _subOf(ss.ind); return { he: ss.ind, etf: ss.etf, fg: o.fg, fr: o.fr, tot: o.tot, net: o.tot ? (o.fg - o.fr) / o.tot : 0, chg: (subChgLive[ss.ind] != null ? subChgLive[ss.ind] : _avgChg(byInd[ss.ind])) }; });
+    } else {
+      subArr = Object.keys(byInd).filter(k => byInd[k].length >= 4 && k !== "מדדים" && k !== "אחר").map(name => { const o = _subOf(name); return { he: name, etf: (typeof subEtfFor === "function" ? subEtfFor(name) : ""), fg: o.fg, fr: o.fr, tot: o.tot, net: o.tot ? (o.fg - o.fr) / o.tot : 0, chg: (subChgLive[name] != null ? subChgLive[name] : _avgChg(byInd[name])) }; });
+    }
+    // top-3 strongest continuity (green) / weakest (red), by NET continuity, tie-break by daily move
+    const pick = arr => { const s = arr.slice().sort((a, b) => (b.net - a.net) || ((b.chg || 0) - (a.chg || 0))); return { green: s.slice(0, 3), red: s.slice(-3).reverse() }; };
+    const secP = pick(secArr), subP = pick(subArr);
+    // bar scale — normalize by the largest |daily %| among the 12 shown rows
+    const shown = secP.green.concat(secP.red, subP.green, subP.red);
+    let cmax = 0.01; shown.forEach(o => { if (o.chg != null) cmax = Math.max(cmax, Math.abs(o.chg)); });
+    const barW = c => c == null ? 8 : Math.max(8, Math.round(Math.abs(c) / cmax * 100));
+    const pctTxt = c => c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
+    const rowHtml = (o, side) => '<div class="ftc-row ftc-' + side + '">' +
+      '<span class="ftc-etf">' + escHtml(o.etf || "—") + "</span>" +
+      '<span class="ftc-name">' + escHtml(o.he || "—") + "</span>" +
+      '<span class="ftc-pct">' + pctTxt(o.chg) + "</span>" +
+      '<span class="ftc-bar"><span style="width:' + barW(o.chg) + '%"></span></span></div>';
+    const colHtml = (arr, side) => { let h = arr.map(o => rowHtml(o, side)).join(""); for (let i = arr.length; i < 3; i++) h += '<div class="ftc-row ftc-' + side + ' ftc-empty"></div>'; return h; };
+    // Hebrew list join ("a, b ו-c")
+    const joinHe = a => { const x = (a || []).filter(Boolean); if (!x.length) return ""; if (x.length === 1) return x[0]; return x.slice(0, -1).join(", ") + " ו" + x[x.length - 1]; };
+    // top boxes
+    const netAll = secArr.length ? secArr.reduce((a, o) => a + o.net, 0) / secArr.length : 0;
+    const tone = netAll > 0.15 ? "חיובי" : netAll > 0.03 ? "חיובי מתון" : netAll < -0.15 ? "שלילי" : netAll < -0.03 ? "שלילי מתון" : "מעורב ומאוזן";
+    const toneCls = netAll > 0.03 ? "pos" : netAll < -0.03 ? "neg" : "zero";
+    const keyInsight = secP.green.length ? "כוח יחסי חיובי ב" + joinHe(secP.green.map(o => o.he)) : "המשכיות מעורבת בין הסקטורים";
+    const gSecNames = secP.green.map(o => o.he), rSubNames = subP.red.map(o => o.he);
+    const insight = (gSecNames.length ? "עוצמה חיובית בולטת ב" + joinHe(gSecNames) : "המשכיות חיובית מוגבלת")
+      + (rSubNames.length ? ", מנגד חולשה משמעותית ב" + joinHe(rSubNames.slice(0, 2)) : "") + ".";
+    const now = new Date(), _p2 = x => String(x).padStart(2, "0");
+    const dateStr = _p2(now.getHours()) + ":" + _p2(now.getMinutes()) + " | " + now.getDate() + " " + ["ינו'", "פבר'", "מרץ", "אפר'", "מאי", "יוני", "יולי", "אוג'", "ספט'", "אוק'", "נוב'", "דצמ'"][now.getMonth()] + " " + now.getFullYear();
+    const el = document.createElement("div");
+    el.className = "ftfc-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="ftc-date">🕐 ' + dateStr + "</div>" +
+      // three top boxes: overall tone · analysis range · key insight
+      '<div class="ftc-box ftc-tone"><span class="ftc-blbl">טון שוק כללי</span><span class="ftc-bval ' + toneCls + '">' + tone + "</span></div>" +
+      '<div class="ftc-box ftc-range"><span class="ftc-blbl">טווח ניתוח</span><span class="ftc-bval">המשכיות זמנית · ' + rangeLbl + "</span></div>" +
+      '<div class="ftc-box ftc-key"><span class="ftc-blbl">תובנה מרכזית</span><span class="ftc-bval ftc-key-v">' + escHtml(keyInsight) + "</span></div>" +
+      // sectors: red (left) + green (right)
+      '<div class="ftc-col ftc-sec-red">' + colHtml(secP.red, "red") + "</div>" +
+      '<div class="ftc-col ftc-sec-green">' + colHtml(secP.green, "green") + "</div>" +
+      // sub-sectors: red (left) + green (right)
+      '<div class="ftc-col ftc-sub-red">' + colHtml(subP.red, "red") + "</div>" +
+      '<div class="ftc-col ftc-sub-green">' + colHtml(subP.green, "green") + "</div>" +
+      // ninja insight
+      '<div class="ftc-insight">' + escHtml(insight) + "</div>";
+    document.body.appendChild(el);
+    return el;
+  }
   // ===== Market-overview super-card (state + breadth + indices + FTFC + movers) =====
   function buildMarketOverviewCardEl() {
     const src = (typeof scanSource === "function") ? scanSource() : [];
@@ -3725,7 +3798,7 @@
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (pg === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
-    if (pg === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
+    if (pg === "sectors") { _captureRedesignCard(buildFtfcCardEl); return; }   // FTFC "המשכיות זמנית" card (on Ftfc_Template.png)
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
     if (state.page === "market" && _mktShareSection === "leaders") { _captureRedesignCard(buildLeadersCardEl); return; }   // redesigned Leaders/Laggards card
@@ -5700,7 +5773,7 @@
       '<span class="secftfc-sep muted">·</span>' +
       Object.keys(SEC_FTFC_SETS).map(k => { const tfs = SEC_FTFC_SETS[k], lbl = (k === "REALM" ? "NINJA REALM" : tfs.join("·"));
         return '<button class="secftfc-btn secftfc-preset' + (k === "REALM" ? " secftfc-realm" : "") + (_presetOn(tfs) ? " on" : "") + '" data-secftfset="' + k + '" title="בחירה מהירה · ' + tfs.join("·") + '">' + lbl + "</button>"; }).join("") + "</div>";
-    const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">כאן רואים לאן הכסף זורם היום, לפי מניות <b>S&P 500</b>. <b>הפס</b> בכל כרטיס = יחס המניות בהמשכיות (<b>' + TFLBL + '</b>): <span class="pos">🟢 מעלה</span> · <span class="muted">אפור = ללא המשכיות</span> · <span class="neg">🔴 מטה</span>. <b>האחוז מימין</b> = תנועת הסקטור היום (לאן נכנס הכסף). לחץ על סקטור לפירוט.</div></div>' + ftfcSwitch;
+    const head = '<div class="page-head"><h1>המשכיות זמנית</h1><div class="sub">איפה נמצאת <b>מסת המניות</b> שכבר בהמשכיות זמן (<b>' + TFLBL + '</b>) — כדי לדעת לאן ללכת לצוד. <span class="pos">🟢 קרקע ללונג</span> = רוב המניות בסקטור בהמשכיות <b>עולה</b> · <span class="neg">🔴 קרקע לשורט</span> = בהמשכיות <b>יורדת</b>. <b>הפס הארוך יותר = יותר מניות בהמשכיות</b>. לחץ על סקטור לרשימת המניות.</div></div>' + ftfcSwitch;
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) {
       return head + '<div class="panel"><div class="stub"><div class="big">🗂️</div><h2>טוען נתוני סקטורים…</h2><p>הנתונים נטענים מהסורק. רגע ומתעדכן.</p></div></div>';
     }
@@ -5722,40 +5795,60 @@
       const bucket = ft === 0 ? "mid" : (fg / ft > 0.6 ? "bull" : (fg / ft < 0.4 ? "bear" : "mid"));
       return { name, members, bucket, fg, fr, tot, avgChg: _avgChg(members) };
     });
-    // ── strength ladder (battery-cell style) — like the money-flow / breadth pages ──
-    // Metric = NET continuity of the WHOLE group: (🟢 up-aligned − 🔴 down-aligned) / total stocks.
-    // This only reaches ±100% when EVERY stock is fully aligned — honest. (The old bias fg/(fg+fr) hid the
-    // non-aligned stocks, so a group with 16🟢 0🔴 out of 27 showed a misleading "100%".)
-    const _ftfcRow = o => {
+    // ── "hunting grounds" cards (Adi 2026-09-30 redesign: beginner-first, NUMBER-FREE) ──
+    // Each card = colour + plain-language label + a MASS bar whose length ∝ how many stocks are in
+    // continuity on the dominant side. No numbers shown. Grouped by dominant direction, sorted by mass.
+    const _hgCard = (o, maxMass) => {
       const tot = o.tot || 0, fg = o.fg || 0, fr = o.fr || 0;
-      const upW = tot ? (fg / tot * 100) : 0, dnW = tot ? (fr / tot * 100) : 0;
+      const dir = o.kind ? (fg ? "up" : fr ? "dn" : "mix") : (fg > fr ? "up" : fr > fg ? "dn" : "mix");
+      const domN = fg >= fr ? fg : fr;
       const chip = '<span class="bc-etf flow-etf' + (o.etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(o.etf || "") +
         '" data-secname="' + escAttr(o.rawname) + '" data-secsub="' + (o.isSub ? "1" : "") + '" title="אפשרויות סקטור">' + (o.etf ? o.etf + " ▾" : "▾") + "</span>";
-      // daily % move of the ASSET ("why money went in") → big number, colored by tier
-      const c = o.chg;
-      const tier = c == null ? "t-n" : c >= 0.5 ? "t-vg" : c >= 0.1 ? "t-mg" : c > -0.1 ? "t-n" : c > -0.5 ? "t-mr" : "t-vr";
-      const pct = c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
-      // DOMINANT side only (Adi 2026-09-30, option ב'): show whichever FTFC lean is larger, in its colour.
-      const upDom = fg >= fr, domN = upDom ? fg : fr, domW = tot ? (domN / tot * 100) : 0;
-      const mid = o.kind
-        ? (fg ? "🟢 מיושר מעלה" : fr ? "🔴 מיושר מטה" : "⚪ מעורב")
-        : (domN ? (upDom ? "🟢 " : "🔴 ") + domN + " · " + Math.round(domW) + "%" : "⚪ מעורב");
-      const cls = "bc-card ftfc-card bc-clickable " + tier + (o.kind ? " single-card" : "");
+      let label, barPct;
+      if (o.kind) {                                   // broad-market composite (tot=1)
+        label = fg ? "מיושר בהמשכיות עולה" : fr ? "מיושר בהמשכיות יורדת" : "ללא כיוון ברור";
+        barPct = (fg || fr) ? 100 : 14;
+      } else if (dir === "mix") {
+        label = "המשכיות מעורבת · ללא כיוון ברור"; barPct = 14;
+      } else {
+        const tierW = domN >= 10 ? "הרבה" : domN >= 5 ? "מספר" : "מעט";
+        label = tierW + " מניות בהמשכיות " + (dir === "up" ? "ירוקה" : "אדומה");
+        barPct = maxMass ? Math.max(10, Math.round(domN / maxMass * 100)) : 10;
+      }
+      const grad = dir === "up" ? "linear-gradient(90deg,#0c9160,#22e39b)" : dir === "dn" ? "linear-gradient(90deg,#e5384a,#ff8b8b)" : "linear-gradient(90deg,#3f4a66,#7f8daf)";
+      const icon = dir === "up" ? "🟢" : dir === "dn" ? "🔴" : "⚪";
+      const cls = "bc-card hg-card bc-clickable hg-" + dir + (o.kind ? " single-card" : "");
       const drill = o.kind ? (' data-compdrill="' + escAttr(o.etf || "") + '" data-compname="' + escAttr(o.name) + '"')
         : (" data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"');
-      // proportion bar: 🟢 מניות בהמשכיות מעלה · אפור ניטרלי · 🔴 מטה
-      return '<div class="' + cls + '"' + drill + ' title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
-        '<div class="bcc-head">' + chip + '<span class="bcc-name">' + o.name + "</span></div>" +
-        '<div class="bcc-mid"><span class="bcc-pct" data-flick="secc-' + escAttr(o.rawname) + '">' + pct + '</span><span class="bcc-usd">' + mid + "</span></div>" +
-        '<div class="bcc-bar ftfc"><span style="position:absolute;left:0;top:0;bottom:0;border-radius:4px;width:' + domW.toFixed(1) + '%;background:' + (upDom ? "linear-gradient(90deg,#0c9160,#22e39b)" : "linear-gradient(90deg,#e5384a,#ff8b8b)") + '"></span></div></div>';
+      return '<div class="' + cls + '"' + drill + ' title="לחץ לרשימת המניות">' +
+        '<div class="hgc-head">' + chip + '<span class="hgc-name">' + o.name + "</span></div>" +
+        '<div class="hgc-label">' + icon + " " + label + "</div>" +
+        '<div class="hgc-bar"><span style="width:' + barPct + '%;background:' + grad + '"></span></div></div>';
+    };
+    const _hgMass = o => (o.fg >= o.fr ? o.fg : o.fr);
+    // split an array into GREEN (dominant up) / RED (dominant down) / MIX, each sorted by mass (most first)
+    const _hgSplit = arr => {
+      const green = [], red = [], mix = [];
+      arr.forEach(o => { const fg = o.fg || 0, fr = o.fr || 0;
+        if (o.kind) { (fg ? green : fr ? red : mix).push(o); }
+        else if (fg > fr) green.push(o); else if (fr > fg) red.push(o); else mix.push(o); });
+      green.sort((a, b) => _hgMass(b) - _hgMass(a)); red.sort((a, b) => _hgMass(b) - _hgMass(a));
+      return { green: green, red: red, mix: mix };
+    };
+    // one section (sectors OR sub-sectors) = two hunting-ground columns + optional mixed / composites strips
+    const _hgSection = (icon, title, mainArr, compArr, ladderKey) => {
+      const sp = _hgSplit(mainArr);
+      const maxMass = Math.max(1, _hgMass(sp.green[0] || { fg: 0, fr: 0 }), _hgMass(sp.red[0] || { fg: 0, fr: 0 }));
+      const col = (cards, dir, lbl) => '<div class="hg-col" data-ftfcladder="' + ladderKey + '">' +
+        '<div class="hg-ch hg-ch-' + dir + '">' + lbl + "</div>" +
+        '<div class="hg-cards">' + (cards.length ? cards.map(o => _hgCard(o, maxMass)).join("") : '<div class="hg-none muted">— אין כרגע —</div>') + "</div></div>";
+      const strip = (arr, lbl) => arr.length ? '<div class="hg-mix"><div class="hg-mix-lbl">' + lbl + '</div><div class="hg-mix-cards">' + arr.map(o => _hgCard(o, maxMass)).join("") + "</div></div>" : "";
+      return '<div class="panel td-flow hg-panel"><h3 class="tdf-head"><span>' + icon + " " + title + "</span></h3>" +
+        '<div class="hg-cols">' + col(sp.green, "green", "🟢 המשכיות עולה · קרקע ללונג") + col(sp.red, "red", "🔴 המשכיות יורדת · קרקע לשורט") + "</div>" +
+        strip(sp.mix, "⚪ ללא כיוון ברור כרגע") + strip(compArr || [], "מכלולים רחבים") + "</div>";
     };
     // build a single-ETF composite as an FTFC row (tot=1, aligned up/down/neutral over the selected TFs)
     const _ftfcSingle = (s, isSub) => { const d = _singleFtfc(s, TFS); return { name: s.name, rawname: s.name, etf: s.etf, tot: 1, fg: d === "up" ? 1 : 0, fr: d === "down" ? 1 : 0, isSub: isSub, chg: s.chg, kind: s.kind }; };
-    const _ftfcLadder = arr => {
-      const key = o => o.tot ? (o.fg - o.fr) / o.tot : 0;
-      const rows = arr.slice().sort((a, c) => key(c) - key(a) || (c.fg - c.fr) - (a.fg - a.fr));
-      return rows.length ? rows.map(_ftfcRow).join("") : '<div class="muted" style="padding:10px">—</div>';
-    };
     const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false, chg: (secChgLive[o.name] != null ? secChgLive[o.name] : o.avgChg) }));
     const secArrG = secArr.filter(o => o.etf);                       // 11 real GICS sectors only
     const macroArr = _singlesOf("macro").map(s => _ftfcSingle(s, false));   // MAGS/crypto/commodities/RSP/QQQ/SPY
@@ -5788,15 +5881,10 @@
       { const seen = {}; subArr = subArr.filter(o => { if (!o.etf) return true; if (seen[o.etf]) { if (o.tot > seen[o.etf].tot) { seen[o.etf].drop = true; seen[o.etf] = o; return true; } return false; } seen[o.etf] = o; return true; }).filter(o => !o.drop); }
       if (subArr.length > 18) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 18); }
     }
-    const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
-      '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הסקטור היום · לחץ שורה למניות</div>' +
-      '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArrG) + (macroArr.length ? _bcellDivider("מכלולים רחבים") + _ftfcLadder(macroArr) : "") + "</div></div>";
-    const subLadder = subArr.length
-      ? '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · המשכיות</span></h3>' +
-        '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הענף היום · לחץ ענף למניות</div>' +
-        '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArr) + "</div></div>"
-      : "";
-    return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>";
+    const subSingles = _singlesOf("sub").map(s => _ftfcSingle(s, true));   // WGMI etc.
+    const secSection = _hgSection("🗂️", "עוצמת סקטורים · המשכיות", secArrG, macroArr, "sec");
+    const subSection = subArr.length ? _hgSection("🏭", "עוצמת תתי-סקטורים · המשכיות", subArr, subSingles, "sub") : "";
+    return head + note + '<div class="hg-wrap">' + secSection + subSection + "</div>";
   }
   function wireSectors() {
     // preset shortcut → set the whole timeframe set
@@ -5813,8 +5901,8 @@
     // ladder row → drill (sector / sub-sector). ETF chip → the sector menu (stopPropagation, below)
     document.querySelectorAll("[data-secladder]").forEach(c => c.onclick = () => openSectorDrillLive(decodeURIComponent(c.dataset.secladder)));
     document.querySelectorAll("[data-subladder]").forEach(c => c.onclick = () => openSubDrillLive(decodeURIComponent(c.dataset.subladder)));
-    document.querySelectorAll(".bcell-list .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
-    document.querySelectorAll(".bcell-list [data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
+    document.querySelectorAll(".hg-card .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
+    document.querySelectorAll(".hg-card[data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
     // "עוד N" — reveal/hide the collapsed cards inside each column
     document.querySelectorAll("[data-sssection]").forEach(b => b.onclick = e => {
       e.stopPropagation();

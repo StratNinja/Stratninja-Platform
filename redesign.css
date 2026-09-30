@@ -207,6 +207,69 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .brd-foot-left { top: 97%; left: 3%; font-size: 15px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
 .brd-foot-right { top: 97%; left: 55%; width: 42%; text-align: right; font-size: 15px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
 
+/* ===== FTFC "המשכיות זמנית" share card — overlay on Ftfc_Template.png ===== */
+.ftfc-card { width: 1240px; height: 1240px; position: relative; direction: rtl; overflow: hidden;
+  background: #0B1020 url("Ftfc_Template.png?v=1") top center / 100% 100% no-repeat;
+  font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
+.ftfc-card > div { position: absolute; }
+.ftc-date { top: 2.1%; left: 2.4%; font-size: 21px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+/* three top boxes (icons baked in template → overlay text on the right of each box) */
+.ftc-box { display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: start; top: 31.8%; height: 6%; }
+.ftc-tone  { left: 8%;    width: 24%; }
+.ftc-range { left: 39.5%; width: 24%; }
+.ftc-key   { left: 71%;   width: 25.5%; }
+.ftc-blbl { font-size: 18px; font-weight: 700; color: #9fb6d8; white-space: nowrap; }
+.ftc-bval { font-size: 24px; font-weight: 900; color: #eaf2ff; line-height: 1.15; }
+.ftc-bval.pos { color: #2fe08a; } .ftc-bval.neg { color: #ff6b7a; } .ftc-bval.zero { color: #f0cc63; }
+.ftc-key-v { font-size: 19px; font-weight: 800; line-height: 1.2; }
+/* the four data columns (sectors red/green · sub-sectors red/green) — 3 rows each, stacked */
+.ftc-col { display: flex; flex-direction: column; justify-content: space-between; }
+.ftc-sec-red   { left: 2.6%;  width: 46%; top: 47.8%; height: 13.6%; }
+.ftc-sec-green { left: 51.4%; width: 46%; top: 47.8%; height: 13.6%; }
+.ftc-sub-red   { left: 2.6%;  width: 46%; top: 72.4%; height: 13.6%; }
+.ftc-sub-green { left: 51.4%; width: 46%; top: 72.4%; height: 13.6%; }
+/* one data row: [ETF box · right] [hebrew name] [%] [bar · left] — text/fill overlaid on baked slots */
+.ftc-row { display: flex; align-items: center; direction: rtl; height: 30%; gap: 8px; }
+.ftc-row.ftc-empty { visibility: hidden; }
+.ftc-etf  { flex: 0 0 12%; text-align: center; font-size: 21px; font-weight: 900; color: #eaf2ff; letter-spacing: .3px; }
+.ftc-name { flex: 0 0 27%; text-align: start; font-size: 20px; font-weight: 700; color: #dbe8fb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ftc-pct  { flex: 0 0 20%; text-align: start; direction: ltr; font-size: 23px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.ftc-green .ftc-pct { color: #2fe08a; } .ftc-red .ftc-pct { color: #ff6b7a; }
+.ftc-bar  { flex: 1 1 auto; height: 34%; border-radius: 7px; overflow: hidden; direction: ltr; position: relative; }
+.ftc-bar > span { display: block; height: 100%; border-radius: 7px; }
+.ftc-green .ftc-bar > span { background: linear-gradient(90deg,#0c9160,#22e39b); }
+.ftc-red .ftc-bar > span { background: linear-gradient(90deg,#e5384a,#ff8b8b); }
+/* ninja insight (bulb + label baked → overlay text on the left area) */
+.ftc-insight { top: 91.6%; left: 34%; width: 58%; font-size: 27px; font-weight: 800; color: #eaf2ff; line-height: 1.3; text-align: start; }
+
+/* ===== המשכיות — "hunting grounds" board (number-free; grouped by dominant continuity) ===== */
+.hg-wrap { display: flex; flex-direction: column; gap: 18px; }
+.hg-panel { }
+.hg-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.hg-col { min-width: 0; }
+.hg-ch { font-weight: 800; font-size: 15px; padding: 9px 12px; border-radius: 11px; margin-bottom: 12px; text-align: center; white-space: nowrap; }
+.hg-ch-green { color: #7ee2b8; background: rgba(22,184,119,.13); border: 1px solid rgba(22,184,119,.32); }
+.hg-ch-red { color: #ff9aa4; background: rgba(229,56,74,.13); border: 1px solid rgba(229,56,74,.32); }
+.hg-cards { display: flex; flex-direction: column; gap: 10px; }
+.hg-none { padding: 16px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+.hg-card { padding: 13px 15px; border-radius: 13px; background: var(--panel2); border: 1px solid var(--line);
+  cursor: pointer; transition: transform .13s, border-color .13s, box-shadow .13s; }
+.hg-card:hover { border-color: var(--muted); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+.hg-card.hg-up { border-inline-start: 4px solid #22e39b; }
+.hg-card.hg-dn { border-inline-start: 4px solid #ff6b7a; }
+.hg-card.hg-mix { border-inline-start: 4px solid #59647f; opacity: .82; }
+.hgc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.hgc-name { font-weight: 800; font-size: 17px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hgc-label { font-size: 14.5px; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
+.hg-up .hgc-label { color: #7ee2b8; } .hg-dn .hgc-label { color: #ff9aa4; }
+.hgc-bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.06); overflow: hidden; }
+.hgc-bar > span { display: block; height: 100%; border-radius: 6px; transition: width .3s ease; }
+.hg-mix { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+.hg-mix-lbl { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 10px; }
+.hg-mix-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+.hg-mix-cards .hg-card { padding: 11px 13px; }
+@media (max-width: 860px) { .hg-cols { grid-template-columns: 1fr; } }
+
 /* option current-price source tag (auto CBOE vs manually typed) */
 .opt-src { display: inline-block; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; white-space: nowrap; vertical-align: middle; letter-spacing: .2px; }
 .opt-src.auto { color: #7ee2b8; background: rgba(23,192,138,.14); }
@@ -266,6 +329,8 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 
 /* ---------- alerts center: wider modal, two columns (scans right · recent alerts left) ---------- */
+/* .modal.al-modal (0,2,0) so it beats .modal.wide from app.css (redesign.css loads last) */
+.modal.al-modal { max-width: min(97vw, 1480px); width: min(97vw, 1480px); padding: 26px 30px 30px; }
 .al-modal { max-width: min(97vw, 1480px); width: min(97vw, 1480px); }
 /* two roomy columns — presets ("הסריקות שלי") and recent alerts both get real width */
 .al-cols { display: grid; grid-template-columns: minmax(460px, 1.55fr) minmax(0, 1fr); gap: 22px; margin-top: 6px; }
