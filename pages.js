@@ -1495,7 +1495,7 @@
     const subsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
       '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
-    return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · הסקטורים ותתי-הסקטורים מדורגים מהחזק לחלש לפי אחוז המניות מעל פתיחת היום. לחץ על שורה לכל המניות.</div></div>' +
+    return '<div class="page-head"><h1>רוחב סקטוריאלי · S&P 500</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · <b>כמה מהמניות בכל סקטור/תת-סקטור נמצאות מעל מחיר הפתיחה</b> (לא התנועה היומית) — מדורג מהחזק לחלש. לחץ על שורה לכל המניות.</div></div>' +
       '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" +
       '<div class="sp-toprow"><div class="sp-topside">' + insightBox + liveBanner() + "</div>" + breadthTopBar + "</div>" +
       '<div class="td-flow2">' + sectorsLadder + subsLadder + "</div>";
@@ -6315,7 +6315,7 @@
     return '<h3 class="td-ix-h">📈 מדדים ראשיים <span class="muted" style="font-size:12px">· ' + lbl + '</span></h3><div class="td-ixc-row">' + ms.idx.map(ixCard).join("") + vixCard + "</div>";
   }
   function renderToday() {
-    const head = '<div class="page-head"><h1>🎯 לאן הכסף הולך?</h1><div class="sub">התדריך היומי במבט אחד: מצב השוק, לאן הכסף זורם — מאילו סקטורים הוא יוצא ולאן הוא נכנס, עם ניתוח AI.</div></div>';
+    const head = '<div class="page-head"><h1>תזרים סקטוריאלי · לאן הכסף זורם</h1><div class="sub">התנועה היומית בפועל של כל נכס (תעודת הסל) — <b>לאן הכסף נכנס והיכן הוא יוצא</b>, עם ניתוח AI.</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const rows = scanSource().filter(t => t.ninja != null);
     if (!rows.length) return head + '<div class="panel"><div class="note" style="margin:6px 0">⏳ הנתונים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
@@ -7285,7 +7285,7 @@
 
   // ===== "דופק השוק" — one channel, four internal tabs (stock map / sector flow / continuity / breadth) =====
   let pulseTab = "today";
-  const PULSE_TABS = [["sp500", "🗺️ מפת מניות"], ["today", "💸 תזרים סקטורים"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
+  const PULSE_TABS = [["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
   const _pulseRender = { sp500: () => renderSp500(), today: () => renderToday(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
   const _pulseWire = { sp500: () => wireSp500(), today: () => wireToday(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
   function renderPulse() {
