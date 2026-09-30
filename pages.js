@@ -3637,9 +3637,9 @@
       const v = (s || []).map(x => x && x.v).filter(x => x != null);
       if (v.length < 2) return "";
       const w = 100, h = 34;
-      // map value → height so it lines up with the baked zones: green-zone top = 25%, dashed mid = 50%,
-      // red-zone bottom = 75%  →  y = h*(0.97 − 0.01*value)  (clamped to the box)
-      const _y = val => Math.max(0, Math.min(h, h * (0.97 - 0.01 * Math.max(0, Math.min(100, val)))));
+      // map value → y so it lines up with the baked zones. Anchors (fraction from TOP of box):
+      // value 25 → 0.68 (green-zone top) · value 50 → 0.47 (dashed midline)  →  y = h*(0.89 − 0.0084*value)
+      const _y = val => Math.max(0, Math.min(h, h * (0.89 - 0.0084 * Math.max(0, Math.min(100, val)))));
       const pts = v.map((val, i) => (i / (v.length - 1) * w).toFixed(1) + "," + _y(val).toFixed(1)).join(" ");
       const stroke = cls === "pos" ? "#3fe0a0" : cls === "neg" ? "#ff6b7a" : "#eaf2ff";
       return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:100%;display:block"><polyline points="' + pts + '" fill="none" stroke="' + stroke + '" stroke-width="1.05" stroke-linejoin="round"/></svg>';

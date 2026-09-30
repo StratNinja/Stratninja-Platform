@@ -173,7 +173,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* index state pill + description (per index header row) */
 .brd-sp-state, .brd-ndx-state { width: 28.5%; left: 29.5%; text-align: center; }
 .brd-sp-state { top: 32.45%; }
-.brd-ndx-state { top: 60.5%; width: 25%; left: 36%; }   /* neutral pill: right + a touch down + wider */
+.brd-ndx-state { top: 60.5%; width: 25%; left: 33%; }   /* neutral pill */
 /* pill fills the whole baked box, coloured by state (red/yellow/green), enlarged */
 .brd-state-pill { display: block; width: 100%; box-sizing: border-box; font-size: 23px; font-weight: 900; padding: 12px 8px; border-radius: 14px; white-space: nowrap; }
 .brd-state-arrow { font-size: 17px; vertical-align: middle; }
