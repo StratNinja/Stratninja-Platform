@@ -2724,7 +2724,7 @@
     const _pctS = c => c == null ? "—" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
     // 5 index cards (LTR): SPY QQQ IWM DIA VIX
     const IDX = [["SPY", "S&P 500"], ["QQQ", "NASDAQ 100"], ["IWM", "RUSSELL 2000"], ["DIA", "DOW JONES"], ["VIX", "תנודתיות"]];
-    const idxLefts = [3.5, 22.9, 42.3, 61.7, 80.7];   // % — left edge of each of the 5 card slots
+    const idxLefts = [3.5, 23.6, 42.3, 60.9, 80.7];   // % — SPY, QQQ, IWM, DIA, VIX (left edge of each card slot)
     const idxCards = IDX.map((it, i) => {
       const sym = it[0], vix = sym === "VIX";   // the SYM label + icon are baked into the template; we overlay only price/chg/spark
       const r = byS[sym];
