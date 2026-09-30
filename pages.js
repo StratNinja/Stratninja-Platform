@@ -3631,15 +3631,15 @@
   function buildBreadthCardEl() {
     if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
     const MAS_LR = ["200", "150", "100", "50", "20"];     // left→right, matching the baked template
-    const cardL = [1.4, 22.4, 43.1, 63.9, 84.4];          // card left edges (% of 1254)
-    const BRD_SPARK_N = 22;                               // sparkline window ≈ 1 month (clearer than 180d); 63 ≈ quarter
+    const cardL = [1.5, 21.2, 40.9, 60.6, 80.3];          // card left edges (% of 1254) — 5 cards fit the canvas
+    const BRD_SPARK_N = 63;                               // sparkline window ≈ 1 quarter (was 22 ≈ month)
     const _spark = (s, cls) => {
       const v = (s || []).map(x => x && x.v).filter(x => x != null);
       if (v.length < 2) return "";
       const w = 100, h = 34;
       const pts = v.map((val, i) => (i / (v.length - 1) * w).toFixed(1) + "," + (h - Math.max(0, Math.min(100, val)) / 100 * h).toFixed(1)).join(" ");
       const stroke = cls === "pos" ? "#3fe0a0" : cls === "neg" ? "#ff6b7a" : "#eaf2ff";
-      return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:100%;display:block"><polyline points="' + pts + '" fill="none" stroke="' + stroke + '" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+      return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:100%;display:block"><polyline points="' + pts + '" fill="none" stroke="' + stroke + '" stroke-width="1.05" stroke-linejoin="round"/></svg>';
     };
     const cards = (uni, rowCls) => {
       const readings = _brdReadings(uni) || {};
