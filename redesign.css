@@ -242,33 +242,13 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* ninja insight (bulb + label baked → overlay text on the left area) */
 .ftc-insight { top: 91.6%; left: 34%; width: 58%; font-size: 27px; font-weight: 800; color: #eaf2ff; line-height: 1.3; text-align: start; }
 
-/* ===== המשכיות — "hunting grounds" board (number-free; grouped by dominant continuity) ===== */
-.hg-wrap { display: flex; flex-direction: column; gap: 18px; }
-.hg-panel { }
-.hg-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.hg-col { min-width: 0; }
-.hg-ch { font-weight: 800; font-size: 15px; padding: 9px 12px; border-radius: 11px; margin-bottom: 12px; text-align: center; white-space: nowrap; }
-.hg-ch-green { color: #7ee2b8; background: rgba(22,184,119,.13); border: 1px solid rgba(22,184,119,.32); }
-.hg-ch-red { color: #ff9aa4; background: rgba(229,56,74,.13); border: 1px solid rgba(229,56,74,.32); }
-.hg-cards { display: flex; flex-direction: column; gap: 10px; }
-.hg-none { padding: 16px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
-.hg-card { padding: 13px 15px; border-radius: 13px; background: var(--panel2); border: 1px solid var(--line);
-  cursor: pointer; transition: transform .13s, border-color .13s, box-shadow .13s; }
-.hg-card:hover { border-color: var(--muted); transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.28); }
-.hg-card.hg-up { border-inline-start: 4px solid #22e39b; }
-.hg-card.hg-dn { border-inline-start: 4px solid #ff6b7a; }
-.hg-card.hg-mix { border-inline-start: 4px solid #59647f; opacity: .82; }
-.hgc-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.hgc-name { font-weight: 800; font-size: 17px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hgc-label { font-size: 14.5px; font-weight: 700; color: var(--muted); margin-bottom: 10px; }
-.hg-up .hgc-label { color: #7ee2b8; } .hg-dn .hgc-label { color: #ff9aa4; }
-.hgc-bar { height: 10px; border-radius: 6px; background: rgba(255,255,255,.06); overflow: hidden; }
-.hgc-bar > span { display: block; height: 100%; border-radius: 6px; transition: width .3s ease; }
-.hg-mix { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-.hg-mix-lbl { font-size: 13px; font-weight: 800; color: var(--muted); margin-bottom: 10px; }
-.hg-mix-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-.hg-mix-cards .hg-card { padding: 11px 13px; }
-@media (max-width: 860px) { .hg-cols { grid-template-columns: 1fr; } }
+/* ===== המשכיות tiles — SAME grid/size as the money-flow tiles, number-free content ===== */
+/* the mid row shows a plain colour label instead of the %/$ money numbers */
+.bcc-mid.bcc-ftfc { min-height: 34px; display: flex; align-items: center; }
+.bcc-flbl { font-size: 17px; font-weight: 800; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bcc-flbl.hg-up { color: #2fe08a; }
+.bcc-flbl.hg-dn { color: #ff6b7a; }
+.bcc-flbl.hg-mix { color: #9fb0c8; }
 
 /* option current-price source tag (auto CBOE vs manually typed) */
 .opt-src { display: inline-block; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; white-space: nowrap; vertical-align: middle; letter-spacing: .2px; }
