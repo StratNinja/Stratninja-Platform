@@ -173,7 +173,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* index state pill + description (per index header row) */
 .brd-sp-state, .brd-ndx-state { width: 28.5%; left: 29.5%; text-align: center; }
 .brd-sp-state { top: 32.45%; }
-.brd-ndx-state { top: 60.5%; width: 25%; left: 34%; }   /* neutral pill */
+.brd-ndx-state { top: 60.5%; width: 25%; left: 34.5%; }   /* neutral pill */
 /* pill fills the whole baked box, coloured by state (red/yellow/green), enlarged */
 .brd-state-pill { display: block; width: 100%; box-sizing: border-box; font-size: 23px; font-weight: 900; padding: 12px 8px; border-radius: 14px; white-space: nowrap; }
 .brd-state-arrow { font-size: 17px; vertical-align: middle; }
@@ -185,10 +185,11 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* per-card nudges: 150-day % + badge right; 200/150/100 graphs shifted right */
 .brd-c0 .brd-pct, .brd-c1 .brd-pct, .brd-c2 .brd-pct { left: 13%; }
 .brd-c0 .brd-chg, .brd-c1 .brd-chg, .brd-c2 .brd-chg { left: 50%; }
-.brd-c0 .brd-spk, .brd-c1 .brd-spk { left: 13.5%; right: 0%; }   /* 200 / 150 → further right */
-.brd-c2 .brd-spk { left: 11%; right: 1%; }                        /* 100 */
-.brd-c3 .brd-spk { left: 6.5%; right: 5.5%; }                     /* 50 → ~right */
-.brd-c4 .brd-spk { left: 3.5%; right: 8.5%; }                     /* 20 → a hair left */
+.brd-c0 .brd-spk, .brd-c1 .brd-spk { left: 17%; right: -2%; }     /* 200 / 150 → further right */
+.brd-c2 .brd-spk { left: 15%; right: -1%; }                       /* 100 → right */
+.brd-c3 .brd-spk { left: 9%; right: 3%; }                         /* 50 → start+end more right */
+.brd-c4 .brd-spk { left: 2%; right: 10%; }                        /* 20 → left */
+.brd-c3 .brd-pct, .brd-c4 .brd-pct { left: 11%; }                 /* 50/20 % nudged right (were spilling) */
 /* per-MA card = one sparkline box (zones baked); % + change badge overlay its top strip */
 .brd-card { width: 18.8%; height: 13.8%; }
 .brd-sp-card { top: 43.4%; } .brd-ndx-card { top: 72%; }
