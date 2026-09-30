@@ -3654,7 +3654,7 @@
         const dtxt = dchg == null ? "" : (dchg >= 0 ? "▲ " : "▼ ") + Math.abs(dchg).toFixed(1);
         const zcls = dchg != null && dchg > 0.1 ? "pos" : "";   // line green when today's breadth improves, else white
         const sSpark = s.slice(-BRD_SPARK_N);   // last ~month (clearer than the full 180d)
-        return '<div class="brd-card ' + rowCls + '" style="left:' + cardL[i] + '%">' +
+        return '<div class="brd-card ' + rowCls + ' brd-c' + i + '" style="left:' + cardL[i] + '%">' +
           '<div class="brd-spk">' + _spark(sSpark, zcls) + "</div>" +
           '<span class="brd-pct">' + (cur == null ? "—" : cur.toFixed(0) + "%") + "</span>" +
           (dtxt ? '<span class="brd-chg ' + dcls + '">' + dtxt + "</span>" : "") +
