@@ -5812,6 +5812,15 @@
       const cls = "bc-card ftfc-tile bc-clickable " + tierCls + (o.kind ? " single-card" : "");
       const drill = o.kind ? (' data-compdrill="' + escAttr(o.etf || "") + '" data-compname="' + escAttr(o.name) + '"')
         : (" data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"');
+      // composite = single ETF → one clear directional pill (two bars make no sense for tot=1)
+      if (o.kind) {
+        const cdir = fg ? "up" : fr ? "dn" : "mix";
+        const clbl = fg ? "מיושר בעלייה" : fr ? "מיושר בירידה" : "ללא כיוון ברור";
+        const cico = fg ? "🟢" : fr ? "🔴" : "⚪";
+        return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="' + clbl + '">' +
+          '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</span></div>" +
+          '<div class="ftt-cpill ftt-c-' + cdir + '">' + cico + " " + clbl + "</div></div>";
+      }
       const bar = (w, side) => '<div class="ftt-row"><span class="ftt-ic ftt-ic-' + side + '"></span>' +
         '<span class="ftt-bar ftt-' + side + '"><span style="width:' + w + '%"></span></span></div>';
       return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + '">' +
@@ -5829,7 +5838,8 @@
     const _ftfcSingle = (s, isSub) => { const d = _singleFtfc(s, TFS); return { name: s.name, rawname: s.name, etf: s.etf, tot: 1, fg: d === "up" ? 1 : 0, fr: d === "down" ? 1 : 0, isSub: isSub, chg: s.chg, kind: s.kind }; };
     const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false, chg: (secChgLive[o.name] != null ? secChgLive[o.name] : o.avgChg) }));
     const secArrG = secArr.filter(o => o.etf);                       // 11 real GICS sectors only
-    const macroArr = _singlesOf("macro").map(s => _ftfcSingle(s, false));   // MAGS/crypto/commodities/RSP/QQQ/SPY
+    const macroArr = _singlesOf("macro").filter(s => (s.etf || "").toUpperCase() !== "RSP")   // RSP = same S&P 500 stocks as SPY → drop (Adi)
+      .map(s => _ftfcSingle(s, false));   // MAGS / crypto / commodities / QQQ / SPY
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
