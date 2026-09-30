@@ -1377,6 +1377,23 @@
     }).join("");
     return '<div class="sp-heat">' + frames + "</div>";
   }
+  // ---- broad-market / thematic COMPOSITES (LIVE.singles) shared across all pulse tabs ----
+  // kind 'macro' → the "מכלולים רחבים" row under the 11 GICS sectors · 'sub' → an extra sub-sector (WGMI).
+  function _singlesOf(kind) { return (LIVE && LIVE.singles) ? LIVE.singles.filter(s => s.kind === kind) : []; }
+  // FTFC direction of a single ETF over the given timeframes (all up / all down / else null)
+  function _singleFtfc(s, tfs) {
+    const ds = (tfs && tfs.length ? tfs : ["M", "Q", "Y"]).map(t => (s.tfs || {})[t]).filter(Boolean);
+    if (!ds.length) return null;
+    if (ds.every(d => d === "up")) return "up";
+    if (ds.every(d => d === "down")) return "down";
+    return null;
+  }
+  // a full-width divider inside a .bcell-list grid, labelling the macro-composites block
+  function _bcellDivider(label) { return '<div class="bcell-div"><span>' + label + "</span></div>"; }
+  // keep only the 11 real GICS sectors (those with a SPDR sector ETF) — crypto/commodities/אחר are shown
+  // instead as single-ETF composites in the "מכלולים רחבים" row, so they never appear twice.
+  function _gicsSecs(arr) { return (arr || []).filter(s => s && s.name !== "אחר" && s.name !== "מדדים" && etfFor(s.name)); }
+
   function renderSp500() {
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
     if (!secs || !secs.length) {
@@ -1434,15 +1451,29 @@
     // sub-sector breadth: group the S&P stocks by sub-sector (.ind), count above-open
     const subMap = {};
     secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
-    let subArr = Object.keys(subMap).map(k => subMap[k]).filter(o => o.total >= 4);
-    if (subArr.length > 11) subArr = subArr.slice().sort((a, c) => Math.abs(c.above / c.total * 100 - 50) - Math.abs(a.above / a.total * 100 - 50)).slice(0, 11);   // keep it compact (no-scroll): most extreme breadth
+    // ALL 18 SPDR sub-sectors (from the live map) so every pulse tab carries the SAME assets
+    const subArr = (LIVE && LIVE.subsectors && LIVE.subsectors.length)
+      ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 })
+      : Object.keys(subMap).map(k => subMap[k]).filter(o => o.total >= 4);
     const secGridBtn = '<button class="btn ghost" id="spSectorGrid" style="font-size:12px;font-weight:600" title="פתח את כל תעודות-הסל של הסקטורים בתצוגת גרפים">📊 כל הסקטורים בגרפים</button>';
+    // single-ETF composite card (macro row + WGMI): bar/tier by the ETF's own above-open, big number = day move
+    const _brdSingle = s => {
+      const up = s.above == null ? ((s.chg || 0) >= 0) : s.above;
+      const c = s.chg, pct = c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
+      const chip = '<span class="bc-etf flow-etf" data-secetf="' + escAttr(s.etf) + '" data-secname="' + escAttr(s.name) + '" data-secsub="0" title="אפשרויות">' + s.etf + " ▾</span>";
+      return '<div class="bc-card single-card ' + (up ? "t-vg" : "t-vr") + '" title="' + escAttr(s.name) + " · " + s.etf + '">' +
+        '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(s.name) + "</span></div>" +
+        '<div class="bcc-mid"><span class="bcc-pct">' + pct + '</span><span class="bcc-usd">' + (up ? "🟢 מעל" : "🔴 מתחת") + "</span></div>" +
+        '<div class="bcc-bar"><span class="bcc-fill" style="width:100%"></span></div></div>';
+    };
+    const macroCards = _singlesOf("macro").slice().sort((a, c) => ((c.chg == null ? -99 : c.chg)) - ((a.chg == null ? -99 : a.chg))).map(_brdSingle).join("");
+    const wgmiCards = _singlesOf("sub").map(_brdSingle).join("");
     const sectorsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי אחוז המניות מעל הפתיחה · לחץ שורה לכל המניות</div>' +
-      '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs.filter(s => s.name !== "אחר" && s.name !== "מדדים"), false) + "</div></div>";
+      '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs.filter(s => s.name !== "אחר" && s.name !== "מדדים"), false) + (macroCards ? _bcellDivider("מכלולים רחבים") + macroCards : "") + "</div></div>";
     const subsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
-      '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
+      '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + wgmiCards + "</div></div>";
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · הסקטורים ותתי-הסקטורים מדורגים מהחזק לחלש לפי אחוז המניות מעל פתיחת היום. לחץ על שורה לכל המניות.</div></div>' +
       '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" +
       '<div class="sp-toprow"><div class="sp-topside">' + insightBox + liveBanner() + "</div>" + breadthTopBar + "</div>" +
@@ -5525,19 +5556,26 @@
       const c = o.chg;
       const tier = c == null ? "t-n" : c >= 0.5 ? "t-vg" : c >= 0.1 ? "t-mg" : c > -0.1 ? "t-n" : c > -0.5 ? "t-mr" : "t-vr";
       const pct = c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
+      // single-ETF composites → describe the ETF's own FTFC; real groups → count of stocks aligned
+      const mid = o.kind ? (fg ? "🟢 מיושר מעלה" : fr ? "🔴 מיושר מטה" : "⚪ מעורב") : ("🟢" + fg + " 🔴" + fr);
+      const cls = "bc-card ftfc-card " + tier + (o.kind ? " single-card" : " bc-clickable");
+      const drill = o.kind ? "" : " data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"';
       // proportion bar: 🟢 מניות בהמשכיות מעלה · אפור ניטרלי · 🔴 מטה
-      return '<div class="bc-card ftfc-card bc-clickable ' + tier + '" data-' + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '" title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
+      return '<div class="' + cls + '"' + drill + ' title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
         '<div class="bcc-head">' + chip + '<span class="bcc-name">' + o.name + "</span></div>" +
-        '<div class="bcc-mid"><span class="bcc-pct" data-flick="secc-' + escAttr(o.rawname) + '">' + pct + '</span><span class="bcc-usd">🟢' + fg + " 🔴" + fr + "</span></div>" +
+        '<div class="bcc-mid"><span class="bcc-pct" data-flick="secc-' + escAttr(o.rawname) + '">' + pct + '</span><span class="bcc-usd">' + mid + "</span></div>" +
         '<div class="bcc-bar ftfc"><span class="ftfc-bar-up" style="width:' + upW.toFixed(1) + '%"></span><span class="ftfc-bar-dn" style="width:' + dnW.toFixed(1) + '%"></span></div></div>';
     };
+    // build a single-ETF composite as an FTFC row (tot=1, aligned up/down/neutral over the selected TFs)
+    const _ftfcSingle = (s, isSub) => { const d = _singleFtfc(s, TFS); return { name: s.name, rawname: s.name, etf: s.etf, tot: 1, fg: d === "up" ? 1 : 0, fr: d === "down" ? 1 : 0, isSub: isSub, chg: s.chg, kind: s.kind }; };
     const _ftfcLadder = arr => {
       const key = o => o.tot ? (o.fg - o.fr) / o.tot : 0;
       const rows = arr.slice().sort((a, c) => key(c) - key(a) || (c.fg - c.fr) - (a.fg - a.fr));
       return rows.length ? rows.map(_ftfcRow).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
     const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false, chg: (secChgLive[o.name] != null ? secChgLive[o.name] : o.avgChg) }));
-    // (MAGS >$1T card removed — Adi 2026-09-30: less relevant among the GICS sectors)
+    const secArrG = secArr.filter(o => o.etf);                       // 11 real GICS sectors only
+    const macroArr = _singlesOf("macro").map(s => _ftfcSingle(s, false));   // MAGS/crypto/commodities/RSP/QQQ/SPY
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
@@ -5555,19 +5593,26 @@
       const bucket = bullPct > 50 ? "bull" : (bearPct >= 50 ? "bear" : "mid");
       return { name, tot, green, bull, bear, bullPct, bearPct, bucket, parentSec: mem[0].sec || "", avgChg: _avgChg(mem) };
     });
-    let subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true, chg: (subChgLive[o.name] != null ? subChgLive[o.name] : o.avgChg) }));
-    // safety net: never show the SAME ETF on two cards (subEtfFor already prevents heuristic borrowing,
-    // but guard here too) — keep the sub-sector with the most stocks per ETF. Empty-ETF cards stay distinct.
-    { const seen = {}; subArr = subArr.filter(o => { if (!o.etf) return true; if (seen[o.etf]) { if (o.tot > seen[o.etf].tot) { seen[o.etf].drop = true; seen[o.etf] = o; return true; } return false; } seen[o.etf] = o; return true; }).filter(o => !o.drop); }
-    // keep the sub panel compact: the 18 with the most decisive FTFC lean (furthest from neutral)
-    if (subArr.length > 18) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 18); }
+    // ALL 18 SPDR sub-sectors (same assets in every tab) — FTFC counts computed from the scanner rows
+    const _subByName = {}; subInfo.forEach(o => { _subByName[o.name] = o; });
+    let subArr;
+    if (LIVE && LIVE.subsectors && LIVE.subsectors.length) {
+      subArr = LIVE.subsectors.map(ss => { const o = _subByName[ss.ind] || { bull: 0, bear: 0, tot: 0, avgChg: null };
+        return { name: ss.ind, rawname: ss.ind, etf: ss.etf, fg: o.bull || 0, fr: o.bear || 0, tot: o.tot || 0, isSub: true, chg: (subChgLive[ss.ind] != null ? subChgLive[ss.ind] : o.avgChg) }; });
+    } else {
+      subArr = subInfo.map(o => ({ name: o.name, rawname: o.name, etf: subEtfFor(o.name), fg: o.bull, fr: o.bear, tot: o.tot, isSub: true, chg: (subChgLive[o.name] != null ? subChgLive[o.name] : o.avgChg) }));
+      // safety net: never show the SAME ETF on two cards — keep the sub-sector with the most stocks per ETF.
+      { const seen = {}; subArr = subArr.filter(o => { if (!o.etf) return true; if (seen[o.etf]) { if (o.tot > seen[o.etf].tot) { seen[o.etf].drop = true; seen[o.etf] = o; return true; } return false; } seen[o.etf] = o; return true; }).filter(o => !o.drop); }
+      if (subArr.length > 18) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 18); }
+    }
+    const wgmiArr = _singlesOf("sub").map(s => _ftfcSingle(s, true));
     const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
       '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הסקטור היום · לחץ שורה למניות</div>' +
-      '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArr) + "</div></div>";
-    const subLadder = indNames.length
+      '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArrG) + (macroArr.length ? _bcellDivider("מכלולים רחבים") + _ftfcLadder(macroArr) : "") + "</div></div>";
+    const subLadder = subArr.length
       ? '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · המשכיות</span></h3>' +
         '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הענף היום · לחץ ענף למניות</div>' +
-        '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArr) + "</div></div>"
+        '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArr) + wgmiArr.map(_ftfcRow).join("") + "</div></div>"
       : "";
     return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>";
   }
@@ -6005,8 +6050,8 @@
   // sector-strength "card" (dashboard grid): ETF+name on top, big % (colored by tier), a progress bar, $ move.
   function _bcellRowHtml(s, tf, isSub) {
     const v = _bcellVal(s, tf);
-    const etf = isSub ? (s.etf || subEtfFor(s.name)) : etfFor(s.name);
-    const name = isSub ? s.name : secHe(s.name);
+    const etf = s.etf || (isSub ? subEtfFor(s.name) : etfFor(s.name));   // single-ETF composites carry their own etf
+    const name = isSub ? s.name : (s.kind ? s.name : secHe(s.name));
     // $ move of the sector ETF for this timeframe, derived from its current price: px - px/(1+v/100)
     const usd = (s.px != null && v != null) ? s.px * v / (100 + v) : null;
     const tier = _bcellTier(v);
@@ -6016,7 +6061,7 @@
     const pctTxt = v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
     const usdTxt = usd == null ? "" : '<span class="bcc-usd">' + (usd >= 0 ? "+" : "−") + "$" + Math.abs(usd).toFixed(2) + "</span>";
     const w = v == null ? 0 : Math.max(6, Math.min(100, Math.abs(v) / 2.5 * 100));   // bar width ∝ |move| (cap 2.5%)
-    return '<div class="bc-card ' + tier + '" data-bckey="' + escAttr(s.name) + '">' +
+    return '<div class="bc-card ' + tier + (s.kind ? " single-card" : "") + '" data-bckey="' + escAttr(s.name) + '">' +
       '<div class="bcc-head">' + chip + '<span class="bcc-name">' + name + "</span></div>" +
       '<div class="bcc-mid"><span class="bcc-pct">' + pctTxt + "</span>" + usdTxt + "</div>" +
       '<div class="bcc-bar"><span class="bcc-fill" style="width:' + w.toFixed(0) + '%"></span></div></div>';
@@ -6027,16 +6072,25 @@
     if (limit && flow.length > limit) flow = flow.slice().sort((a, b) => Math.abs(v(b) || 0) - Math.abs(v(a) || 0)).slice(0, limit).sort(byV);
     return flow;
   }
-  function _bcellListHtml(data, tf, isSub, limit) {
+  function _bcellListHtml(data, tf, isSub, limit, augment) {
     const flow = _bcellSorted(data, tf, limit);
-    return flow.length ? flow.map(s => _bcellRowHtml(s, tf, isSub)).join("") : '<div class="muted" style="padding:10px">—</div>';
+    let html = flow.length ? flow.map(s => _bcellRowHtml(s, tf, isSub)).join("") : '<div class="muted" style="padding:10px">—</div>';
+    if (augment && !isSub) {   // 11 GICS → divider → broad-market composites (MAGS/crypto/commodities/RSP/QQQ/SPY)
+      const macro = _bcellSorted(_singlesOf("macro"), tf);
+      if (macro.length) html += _bcellDivider("מכלולים רחבים") + macro.map(s => _bcellRowHtml(s, tf, false)).join("");
+    }
+    if (augment && isSub) {    // 18 SPDR sub-sectors → WGMI (crypto miners)
+      html += _singlesOf("sub").map(s => _bcellRowHtml(s, tf, true)).join("");
+    }
+    return html;
   }
   // FLIP: re-render a battery list in place with a slide animation when the timeframe changes
   function _bcellFlip(listEl, data, tf, isSub, limit) {
+    const augment = listEl.dataset.augment === "1";
     const olds = {};
     listEl.querySelectorAll(".bc-card").forEach(el => olds[el.dataset.bckey] = el.getBoundingClientRect());
     listEl.setAttribute("data-tf", tf);
-    listEl.innerHTML = _bcellListHtml(data, tf, isSub, limit);
+    listEl.innerHTML = _bcellListHtml(data, tf, isSub, limit, augment);
     requestAnimationFrame(() => {
       listEl.querySelectorAll(".bc-card").forEach(el => {
         const o = olds[el.dataset.bckey]; if (!o) return;
@@ -6061,8 +6115,8 @@
     const subLbl = (o.isSub ? "תתי-סקטורים" : "כל הסקטורים") + (modeLbl ? " (" + modeLbl + ")" : "");
     return '<div class="panel td-flow"><h3 class="tdf-head"><span>' + o.title + '</span><span class="tdf-switches">' + modeSwitch + tfSwitch + "</span></h3>" +
       '<div class="muted tdf-sub">' + subLbl + " · מדורג לפי התנועה ב" + FLOW_TF_LBL[o.tf] + ' · 🟢 כסף נכנס · 🔴 כסף יוצא</div>' +
-      '<div class="bcell-list" data-issub="' + (o.isSub ? "1" : "0") + '" data-tf="' + o.tf + '" data-limit="' + (o.limit || "") + '">' +
-      _bcellListHtml(o.data, o.tf, o.isSub, o.limit) + "</div></div>";
+      '<div class="bcell-list" data-issub="' + (o.isSub ? "1" : "0") + '" data-tf="' + o.tf + '" data-limit="' + (o.limit || "") + '" data-augment="' + (o.augment ? "1" : "") + '">' +
+      _bcellListHtml(o.data, o.tf, o.isSub, o.limit, o.augment) + "</div></div>";
   }
   function todayStockRow(t) {
     return "<tr><td>" + ninjaCell(t.ninja, t.sym) + "</td>" +
@@ -6121,8 +6175,8 @@
       '<span class="flow-ctrl-lbl">טווח:</span><span class="flow-tf">' + tfBtns + "</span></div>";
 
     // "where the money flows" — sectors + sub-sectors ladders, both driven by the ONE control above.
-    const sectorsPanel = _flowPanelHtml({ title: "🗂️ לאן הכסף זורם — סקטורים", tf: flowTf, data: todaySectors(rows), isSub: false, mode: flowSecMode });
-    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTf, data: todaySubsectors(rows), isSub: true, mode: flowSecMode, limit: 11 });
+    const sectorsPanel = _flowPanelHtml({ title: "🗂️ לאן הכסף זורם — סקטורים", tf: flowTf, data: _gicsSecs(todaySectors(rows)), isSub: false, mode: flowSecMode, augment: true });
+    const subsPanel = _flowPanelHtml({ title: "🏭 לאן הכסף זורם — תתי-סקטורים", tf: flowTf, data: todaySubsectors(rows), isSub: true, mode: flowSecMode, augment: true });
 
     return head + (isLive ? liveBanner() : DEMO) +
       indicesPanel + marketPanel + flowControls +
@@ -6159,7 +6213,7 @@
       const rows = scanSource().filter(t => t.ninja != null);
       const secEl = document.querySelector('.bcell-list[data-issub="0"]'), subEl = document.querySelector('.bcell-list[data-issub="1"]');
       if (secEl || subEl) {
-        if (secEl) _bcellFlip(secEl, todaySectors(rows), flowTf, false, secEl.dataset.limit ? +secEl.dataset.limit : null);
+        if (secEl) _bcellFlip(secEl, _gicsSecs(todaySectors(rows)), flowTf, false, secEl.dataset.limit ? +secEl.dataset.limit : null);
         if (subEl) _bcellFlip(subEl, todaySubsectors(rows), flowTf, true, subEl.dataset.limit ? +subEl.dataset.limit : null);
         const ixEl = document.getElementById("tdIndices"), ms2 = todayMarketState();   // top indices strip follows the same timeframe
         if (ixEl && ms2) ixEl.innerHTML = _indicesInner(ms2, flowTf);

@@ -542,6 +542,13 @@ body[data-page="today"] .td-flow .bcell-list,
 body[data-page="sp500"] .td-flow .bcell-list,
 body[data-page="sectors"] .td-flow .bcell-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .bc-card.bc-clickable { cursor: pointer; }
+/* full-width divider inside a battery grid → separates the 11 GICS sectors from the broad-market composites */
+.bcell-div { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin: 7px 2px 3px; }
+.bcell-div::before, .bcell-div::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line, #2a3340), transparent); }
+.bcell-div span { font-size: 11px; font-weight: 800; letter-spacing: .4px; color: #8fa1bd; white-space: nowrap; }
+/* single-ETF composite cards (crypto / commodities / indices / MAGS / miners) — subtly set apart */
+.bc-card.single-card { background: linear-gradient(180deg, rgba(110,231,255,.05), var(--panel2, #12171f)); border-style: dashed; }
+.bc-card.single-card .bc-etf { background: rgba(110,231,255,.16); }
 /* המשכיות: two-sided FTFC proportion bar (green up on the left · red down on the right) */
 .bc-card .bcc-bar.ftfc { position: relative; direction: ltr; }
 .bc-card .bcc-bar.ftfc .ftfc-bar-up { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, #0c9160, #22e39b); border-radius: 4px 0 0 4px; }
