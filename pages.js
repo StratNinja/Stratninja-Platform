@@ -3577,6 +3577,76 @@
     ["leaders", "🏆 מובילים ומפגרים", "סקטורים ומניות מובילות / בפיגור"],
     ["movers", "🌙 After / Pre-Market", "תנועות אחרי הסגירה / לפני הפתיחה"],
   ];
+  // ---- breadth "מעל הממוצעים" share card — overlays live data on Breath_Template.png (1254²) ----
+  function buildBreadthCardEl() {
+    if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
+    const MAS_LR = ["200", "150", "100", "50", "20"];     // left→right, matching the baked template
+    const cardL = [1.4, 22.4, 43.1, 63.9, 84.4];          // card left edges (% of 1254)
+    const _spark = (s, cls) => {
+      const v = (s || []).map(x => x && x.v).filter(x => x != null);
+      if (v.length < 2) return "";
+      const w = 100, h = 34;
+      const pts = v.map((val, i) => (i / (v.length - 1) * w).toFixed(1) + "," + (h - Math.max(0, Math.min(100, val)) / 100 * h).toFixed(1)).join(" ");
+      const stroke = cls === "pos" ? "#3fe0a0" : cls === "neg" ? "#ff6b7a" : "#eaf2ff";
+      return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:100%;display:block"><polyline points="' + pts + '" fill="none" stroke="' + stroke + '" stroke-width="1.7" stroke-linejoin="round"/></svg>';
+    };
+    const cards = (uni, rowCls) => {
+      const readings = _brdReadings(uni) || {};
+      const data = (BREADTH_DATA && BREADTH_DATA[uni]) || {};
+      return MAS_LR.map((n, i) => {
+        let s = (data[n] || []).slice();
+        if (readings[n] != null && s.length) s[s.length - 1] = { d: s[s.length - 1].d, v: readings[n] };
+        const cur = readings[n] != null ? readings[n] : (s.length ? s[s.length - 1].v : null);
+        const prev = s.length >= 2 ? s[s.length - 2].v : null;
+        const dchg = (cur != null && prev != null) ? (cur - prev) : null;
+        const dcls = dchg == null ? "zero" : dchg > 0.05 ? "pos" : dchg < -0.05 ? "neg" : "zero";
+        const dtxt = dchg == null ? "" : (dchg >= 0 ? "▲ " : "▼ ") + Math.abs(dchg).toFixed(1);
+        const zcls = cur == null ? "" : cur <= 35 ? "pos" : cur >= 65 ? "neg" : "";
+        return '<div class="brd-card ' + rowCls + '" style="left:' + cardL[i] + '%">' +
+          '<span class="brd-pct">' + (cur == null ? "—" : cur.toFixed(0) + "%") + "</span>" +
+          (dtxt ? '<span class="brd-chg ' + dcls + '">' + dtxt + "</span>" : "") +
+          '<div class="brd-spk">' + _spark(s, zcls) + "</div></div>";
+      }).join("");
+    };
+    const _st = uni => _brdState(_brdReadings(uni));
+    const _pill = st => st ? st.lbl.replace(/^\S+\s/, "") : "—";
+    const _desc = (uni, st) => {
+      const nm = uni === "sp" ? "S&P 500" : "Nasdaq 100";
+      if (!st) return "";
+      const s = st.score;
+      const d = s <= 20 ? "חלש מאוד ובאזור oversold עמוק — לרוב אזור קנייה."
+        : s <= 40 ? "חלש ונמצא קרוב לרמות מכירה יותר (oversold)."
+        : s <= 60 ? "ניטרלי ומאוזן יחסית."
+        : s <= 80 ? "חזק ומתקרב לרמות קניית-יתר (overbought)."
+        : "חזק מאוד ובאזור overbought — זהירות מהתחממות.";
+      return "רוחב השוק במדד " + nm + " " + d;
+    };
+    const spSt = _st("sp"), ndxSt = _st("ndx");
+    const now = new Date(), _p2 = x => String(x).padStart(2, "0");
+    const dateStr = now.getDate() + "." + (now.getMonth() + 1) + "." + now.getFullYear() + " · " + _p2(now.getHours()) + ":" + _p2(now.getMinutes());
+    let insight;
+    if (spSt && ndxSt) {
+      const weaker = spSt.score <= ndxSt.score ? "S&P 500" : "Nasdaq 100";
+      const lean = (spSt.score + ndxSt.score) / 2;
+      const tone = lean <= 40 ? "עם נטייה לחולשה" : lean >= 60 ? "עם נטייה לחוזק" : "מעורב ומאוזן";
+      insight = "רוחב השוק " + tone + ". מדד " + weaker + " חלש יותר" + (lean <= 40 ? " ומתקרב לרמות מכירת-יתר" : "") + ".";
+    } else insight = "נתוני רוחב השוק נטענים…";
+    const el = document.createElement("div");
+    el.className = "breadth-card";
+    el.innerHTML =
+      '<div class="brd-date">🕐 ' + dateStr + "</div>" +
+      '<div class="brd-sp-state ' + (spSt ? spSt.cls : "zero") + '"><span class="brd-state-pill">' + _pill(spSt) + "</span></div>" +
+      '<div class="brd-sp-desc">' + _desc("sp", spSt) + "</div>" +
+      cards("sp", "brd-sp-card") +
+      '<div class="brd-ndx-state ' + (ndxSt ? ndxSt.cls : "zero") + '"><span class="brd-state-pill">' + _pill(ndxSt) + "</span></div>" +
+      '<div class="brd-ndx-desc">' + _desc("ndx", ndxSt) + "</div>" +
+      cards("ndx", "brd-ndx-card") +
+      '<div class="brd-insight">' + insight + "</div>" +
+      '<div class="brd-foot-left">Adi Koriat | @KoriatTrade</div>' +
+      '<div class="brd-foot-right">ניתוח שוק מעודכן | stratninja.win</div>';
+    document.body.appendChild(el);
+    return el;
+  }
   function captureSummaryCard() {
     // market page → one comprehensive MEGA card (no more 4-part chooser; Adi 2026-09-30)
     if (state.page === "market") { _captureRedesignCard(buildMarketCardEl); return; }
@@ -3585,6 +3655,7 @@
   function _doCaptureSummaryCard() {
     if (state.page === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (state.page === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
+    if (state.page === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
     if (state.page === "sectors") { _captureRedesignCard(buildSectorsCardEl); return; }   // redesigned sectors overview card
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card

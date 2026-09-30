@@ -163,6 +163,35 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .mkt-foot-right { top: 97.2%; left: 50%; width: 47%; text-align: right; font-size: 16px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
 .mkt-foot-right b { color: #eaf2ff; }
 .mkt-foot-left { top: 97.2%; left: 3%; width: 42%; text-align: left; font-size: 16px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
+
+/* ===== breadth "מעל הממוצעים" share card — overlay on Breath_Template.png (1254²) ===== */
+.breadth-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden;
+  background: #0B1020 url("Breath_Template.png?v=1") top center / 1254px 1254px no-repeat;
+  font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
+.breadth-card > div { position: absolute; }
+.brd-date { top: 1.6%; left: 2.2%; font-size: 20px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+/* index state pill + description (per index header row) */
+.brd-sp-state, .brd-ndx-state { width: 29%; left: 30%; text-align: center; }
+.brd-sp-state { top: 33.4%; } .brd-ndx-state { top: 61.2%; }
+.brd-state-pill { display: inline-block; font-size: 19px; font-weight: 900; padding: 5px 16px; border-radius: 20px; white-space: nowrap; }
+.brd-sp-state.pos .brd-state-pill, .brd-ndx-state.pos .brd-state-pill { color: #3fe0a0; background: rgba(22,184,119,.16); }
+.brd-sp-state.neg .brd-state-pill, .brd-ndx-state.neg .brd-state-pill { color: #ff6b7a; background: rgba(229,56,74,.16); }
+.brd-sp-state.zero .brd-state-pill, .brd-ndx-state.zero .brd-state-pill { color: #e0b341; background: rgba(224,179,65,.16); }
+.brd-sp-desc, .brd-ndx-desc { width: 34%; left: 63%; text-align: start; font-size: 18px; font-weight: 600; line-height: 1.35; color: #dbe8fb; }
+.brd-sp-desc { top: 32.8%; } .brd-ndx-desc { top: 60.6%; }
+/* per-MA card: big %, daily-change badge, sparkline (zones are baked in the template box) */
+.brd-card { width: 19.5%; height: 15%; }
+.brd-sp-card { top: 42.2%; } .brd-ndx-card { top: 71%; }
+.brd-card .brd-pct { position: absolute; top: 2%; left: 6%; font-size: 34px; font-weight: 900; color: #ffffff; }
+.brd-card .brd-chg { position: absolute; top: 11%; right: 6%; font-size: 15px; font-weight: 800; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+.brd-card .brd-chg.pos { color: #3fe0a0; background: rgba(22,184,119,.16); }
+.brd-card .brd-chg.neg { color: #ff6b7a; background: rgba(229,56,74,.16); }
+.brd-card .brd-chg.zero { color: #9fb0c8; background: rgba(150,160,180,.14); }
+.brd-card .brd-spk { position: absolute; top: 40%; left: 4%; right: 4%; height: 52%; }
+.brd-insight { top: 90.4%; left: 29%; width: 63%; font-size: 20px; font-weight: 800; color: #eaf2ff; line-height: 1.35; text-align: start; }
+.brd-foot-left { top: 97%; left: 3%; font-size: 15px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
+.brd-foot-right { top: 97%; left: 55%; width: 42%; text-align: right; font-size: 15px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
+
 /* option current-price source tag (auto CBOE vs manually typed) */
 .opt-src { display: inline-block; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; white-space: nowrap; vertical-align: middle; letter-spacing: .2px; }
 .opt-src.auto { color: #7ee2b8; background: rgba(23,192,138,.14); }
