@@ -171,25 +171,26 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .breadth-card > div { position: absolute; }
 .brd-date { top: 1.6%; left: 2.2%; font-size: 20px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
 /* index state pill + description (per index header row) */
-.brd-sp-state, .brd-ndx-state { width: 29%; left: 30%; text-align: center; }
-.brd-sp-state { top: 33.4%; } .brd-ndx-state { top: 61.2%; }
-.brd-state-pill { display: inline-block; font-size: 18px; font-weight: 900; padding: 5px 16px; border-radius: 20px; white-space: nowrap; }
-.brd-state-arrow { font-size: 14px; vertical-align: middle; }
-.brd-sp-state.pos .brd-state-pill, .brd-ndx-state.pos .brd-state-pill { color: #3fe0a0; background: rgba(22,184,119,.16); }
-.brd-sp-state.neg .brd-state-pill, .brd-ndx-state.neg .brd-state-pill { color: #ff6b7a; background: rgba(229,56,74,.16); }
-.brd-sp-state.zero .brd-state-pill, .brd-ndx-state.zero .brd-state-pill { color: #e0b341; background: rgba(224,179,65,.16); }
+.brd-sp-state, .brd-ndx-state { width: 31%; left: 28.3%; text-align: center; }
+.brd-sp-state { top: 32.6%; } .brd-ndx-state { top: 60.4%; }
+/* pill fills the whole baked box, coloured by state (red/yellow/green), enlarged */
+.brd-state-pill { display: block; width: 100%; box-sizing: border-box; font-size: 23px; font-weight: 900; padding: 12px 8px; border-radius: 14px; white-space: nowrap; }
+.brd-state-arrow { font-size: 17px; vertical-align: middle; }
+.brd-sp-state.pos .brd-state-pill, .brd-ndx-state.pos .brd-state-pill { color: #6bf0bf; background: rgba(22,184,119,.30); }
+.brd-sp-state.neg .brd-state-pill, .brd-ndx-state.neg .brd-state-pill { color: #ff8a95; background: rgba(229,56,74,.32); }
+.brd-sp-state.zero .brd-state-pill, .brd-ndx-state.zero .brd-state-pill { color: #f0cc63; background: rgba(224,179,65,.26); }
 .brd-sp-desc, .brd-ndx-desc { width: 34%; left: 63%; text-align: start; font-size: 18px; font-weight: 600; line-height: 1.35; color: #dbe8fb; }
 .brd-sp-desc { top: 32.8%; } .brd-ndx-desc { top: 60.6%; }
 /* per-MA card = one sparkline box (zones baked); % + change badge overlay its top strip */
 .brd-card { width: 19.5%; height: 13.8%; }
 .brd-sp-card { top: 43.4%; } .brd-ndx-card { top: 72%; }
-.brd-card .brd-spk { position: absolute; top: 0; left: 3%; right: 3%; height: 100%; }
+.brd-card .brd-spk { position: absolute; top: 0; left: 6%; right: 6%; height: 100%; }
 .brd-card .brd-pct { position: absolute; top: 3%; left: 7%; font-size: 30px; font-weight: 900; color: #ffffff; text-shadow: 0 1px 6px rgba(0,0,0,.75); }
 .brd-card .brd-chg { position: absolute; top: 8%; right: 7%; direction: ltr; font-size: 15px; font-weight: 800; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
 .brd-card .brd-chg.pos { color: #3fe0a0; background: rgba(22,184,119,.2); }
 .brd-card .brd-chg.neg { color: #ff6b7a; background: rgba(229,56,74,.2); }
 .brd-card .brd-chg.zero { color: #cdd7e6; background: rgba(150,160,180,.18); }
-.brd-insight { top: 90.4%; left: 29%; width: 63%; font-size: 20px; font-weight: 800; color: #eaf2ff; line-height: 1.35; text-align: start; }
+.brd-insight { top: 90%; left: 26%; width: 62%; font-size: 30px; font-weight: 800; color: #eaf2ff; line-height: 1.3; text-align: start; }
 .brd-foot-left { top: 97%; left: 3%; font-size: 15px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
 .brd-foot-right { top: 97%; left: 55%; width: 42%; text-align: right; font-size: 15px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
 

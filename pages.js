@@ -1393,6 +1393,28 @@
   // keep only the 11 real GICS sectors (those with a SPDR sector ETF) — crypto/commodities/אחר are shown
   // instead as single-ETF composites in the "מכלולים רחבים" row, so they never appear twice.
   function _gicsSecs(arr) { return (arr || []).filter(s => s && s.name !== "אחר" && s.name !== "מדדים" && etfFor(s.name)); }
+  // click a broad-market composite → drill into its constituent stocks (from the live scan), sorted by move.
+  // ETFs that hold no stocks in our universe (IBIT=bitcoin, COMT=commodity futures) → open the ETF chart.
+  const _MAGS7 = ["AAPL", "MSFT", "GOOGL", "GOOG", "AMZN", "NVDA", "META", "TSLA"];
+  function openCompositeDrill(name, etf) {
+    const rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
+    let members = [], note = "";
+    if (etf === "MAGS") { members = rows.filter(r => _MAGS7.indexOf(r.s) >= 0); note = "7 המניות הגדולות"; }
+    else if (etf === "SPY" || etf === "RSP") { members = rows.filter(r => r.sp); note = etf === "RSP" ? "S&P 500 · שווה-משקל" : "S&P 500"; }
+    else if (etf === "QQQ") { members = rows.filter(r => r.sp && ["Technology", "Communication", "Consumer Disc."].indexOf(r.sec) >= 0); note = 'ייצוג נאסד"ק 100 (טק · תקשורת · צריכה)'; }
+    else if (etf === "IBIT" || etf === "WGMI") { members = rows.filter(r => r.sec === "Crypto" || /קריפטו|בלוקצ|crypto/i.test(r.ind || "")); note = "קריפטו ובלוקצ'יין"; }
+    else if (etf === "COMT") { members = rows.filter(r => r.sec === "סחורות" || /סחורות|commod/i.test(r.ind || "")); note = "סחורות"; }
+    if (!members.length) { if (typeof openChart === "function") openChart(etf, "D"); else snToast("אין מניות מרכיבות זמינות"); return; }
+    members = members.slice().sort((a, b) => (b.c == null ? -999 : b.c) - (a.c == null ? -999 : a.c));
+    const body = '<div class="drill-bar"><span class="muted" style="font-size:12px">' + members.length + " מניות · ממויין לפי תנועת היום · לחץ על שם לגרף</span></div>" +
+      '<div class="tablewrap"><table class="scan-table"><thead><tr><th style="text-align:start">סימבול</th><th>תנועה</th><th>D</th><th>W</th><th>M</th></tr></thead><tbody>' +
+      members.map(r => "<tr><td class='sym'><span class='tsym clickable' data-chart='" + r.s + "' data-tf='D'>" + r.s + "</span></td>" +
+        "<td class='" + ((r.c || 0) >= 0 ? "pos" : "neg") + "'>" + pct(r.c) + "</td>" +
+        "<td>" + tf(r.D, r.s, "D") + "</td><td>" + tf(r.W, r.s, "W") + "</td><td>" + tf(r.M, r.s, "M") + "</td></tr>").join("") +
+      "</tbody></table></div>";
+    modal("📦 " + escHtml(name) + (etf ? " · " + etf : "") + ' <span class="muted" style="font-size:12px">' + note + "</span>", body);
+    wireCharts(document.getElementById("pgModal") || document);
+  }
 
   function renderSp500() {
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
@@ -1461,19 +1483,18 @@
       const up = s.above == null ? ((s.chg || 0) >= 0) : s.above;
       const c = s.chg, pct = c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
       const chip = '<span class="bc-etf flow-etf" data-secetf="' + escAttr(s.etf) + '" data-secname="' + escAttr(s.name) + '" data-secsub="0" title="אפשרויות">' + s.etf + " ▾</span>";
-      return '<div class="bc-card single-card ' + (up ? "t-vg" : "t-vr") + '" title="' + escAttr(s.name) + " · " + s.etf + '">' +
+      return '<div class="bc-card single-card bc-clickable ' + (up ? "t-vg" : "t-vr") + '" data-compdrill="' + escAttr(s.etf) + '" data-compname="' + escAttr(s.name) + '" title="' + escAttr(s.name) + " · " + s.etf + ' · לחץ למניות">' +
         '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(s.name) + "</span></div>" +
         '<div class="bcc-mid"><span class="bcc-pct">' + pct + '</span><span class="bcc-usd">' + (up ? "🟢 מעל" : "🔴 מתחת") + "</span></div>" +
         '<div class="bcc-bar"><span class="bcc-fill" style="width:100%"></span></div></div>';
     };
     const macroCards = _singlesOf("macro").slice().sort((a, c) => ((c.chg == null ? -99 : c.chg)) - ((a.chg == null ? -99 : a.chg))).map(_brdSingle).join("");
-    const wgmiCards = _singlesOf("sub").map(_brdSingle).join("");
     const sectorsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי אחוז המניות מעל הפתיחה · לחץ שורה לכל המניות</div>' +
       '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs.filter(s => s.name !== "אחר" && s.name !== "מדדים"), false) + (macroCards ? _bcellDivider("מכלולים רחבים") + macroCards : "") + "</div></div>";
     const subsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
-      '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + wgmiCards + "</div></div>";
+      '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
     return '<div class="page-head"><h1>S&P 500 · רוחב שוק לפי סקטור</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · הסקטורים ותתי-הסקטורים מדורגים מהחזק לחלש לפי אחוז המניות מעל פתיחת היום. לחץ על שורה לכל המניות.</div></div>' +
       '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" +
       '<div class="sp-toprow"><div class="sp-topside">' + insightBox + liveBanner() + "</div>" + breadthTopBar + "</div>" +
@@ -1544,6 +1565,7 @@
     document.querySelectorAll("[data-spdrill]").forEach(c => c.onclick = () => renderSp500Drill(decodeURIComponent(c.dataset.spdrill), c.dataset.spsub === "1"));
     // ETF chip inside a ladder cell → the sector menu (analyze ETF · charts · scanner · table), not the row drill
     document.querySelectorAll(".bcell-list .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
+    document.querySelectorAll(".bcell-list [data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
     // "עוד N" — reveal/hide the collapsed sector cards inside each column
     document.querySelectorAll("[data-sssection]").forEach(bt => bt.onclick = e => {
       e.stopPropagation();
@@ -3610,6 +3632,7 @@
     if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
     const MAS_LR = ["200", "150", "100", "50", "20"];     // left→right, matching the baked template
     const cardL = [1.4, 22.4, 43.1, 63.9, 84.4];          // card left edges (% of 1254)
+    const BRD_SPARK_N = 22;                               // sparkline window ≈ 1 month (clearer than 180d); 63 ≈ quarter
     const _spark = (s, cls) => {
       const v = (s || []).map(x => x && x.v).filter(x => x != null);
       if (v.length < 2) return "";
@@ -3630,8 +3653,9 @@
         const dcls = dchg == null ? "zero" : dchg > 0.05 ? "pos" : dchg < -0.05 ? "neg" : "zero";
         const dtxt = dchg == null ? "" : (dchg >= 0 ? "▲ " : "▼ ") + Math.abs(dchg).toFixed(1);
         const zcls = dchg != null && dchg > 0.1 ? "pos" : "";   // line green when today's breadth improves, else white
+        const sSpark = s.slice(-BRD_SPARK_N);   // last ~month (clearer than the full 180d)
         return '<div class="brd-card ' + rowCls + '" style="left:' + cardL[i] + '%">' +
-          '<div class="brd-spk">' + _spark(s, zcls) + "</div>" +
+          '<div class="brd-spk">' + _spark(sSpark, zcls) + "</div>" +
           '<span class="brd-pct">' + (cur == null ? "—" : cur.toFixed(0) + "%") + "</span>" +
           (dtxt ? '<span class="brd-chg ' + dcls + '">' + dtxt + "</span>" : "") +
           "</div>";
@@ -5708,8 +5732,9 @@
       const pct = c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
       // single-ETF composites → describe the ETF's own FTFC; real groups → count of stocks aligned
       const mid = o.kind ? (fg ? "🟢 מיושר מעלה" : fr ? "🔴 מיושר מטה" : "⚪ מעורב") : ("🟢" + fg + " 🔴" + fr);
-      const cls = "bc-card ftfc-card " + tier + (o.kind ? " single-card" : " bc-clickable");
-      const drill = o.kind ? "" : " data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"';
+      const cls = "bc-card ftfc-card bc-clickable " + tier + (o.kind ? " single-card" : "");
+      const drill = o.kind ? (' data-compdrill="' + escAttr(o.etf || "") + '" data-compname="' + escAttr(o.name) + '"')
+        : (" data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"');
       // proportion bar: 🟢 מניות בהמשכיות מעלה · אפור ניטרלי · 🔴 מטה
       return '<div class="' + cls + '"' + drill + ' title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
         '<div class="bcc-head">' + chip + '<span class="bcc-name">' + o.name + "</span></div>" +
@@ -5755,14 +5780,13 @@
       { const seen = {}; subArr = subArr.filter(o => { if (!o.etf) return true; if (seen[o.etf]) { if (o.tot > seen[o.etf].tot) { seen[o.etf].drop = true; seen[o.etf] = o; return true; } return false; } seen[o.etf] = o; return true; }).filter(o => !o.drop); }
       if (subArr.length > 18) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 18); }
     }
-    const wgmiArr = _singlesOf("sub").map(s => _ftfcSingle(s, true));
     const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
       '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הסקטור היום · לחץ שורה למניות</div>' +
       '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArrG) + (macroArr.length ? _bcellDivider("מכלולים רחבים") + _ftfcLadder(macroArr) : "") + "</div></div>";
     const subLadder = subArr.length
       ? '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · המשכיות</span></h3>' +
         '<div class="muted tdf-sub">פס = יחס המניות בהמשכיות (' + TFLBL + ') 🟢/🔴 · אחוז = תנועת הענף היום · לחץ ענף למניות</div>' +
-        '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArr) + wgmiArr.map(_ftfcRow).join("") + "</div></div>"
+        '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArr) + "</div></div>"
       : "";
     return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>";
   }
@@ -5782,6 +5806,7 @@
     document.querySelectorAll("[data-secladder]").forEach(c => c.onclick = () => openSectorDrillLive(decodeURIComponent(c.dataset.secladder)));
     document.querySelectorAll("[data-subladder]").forEach(c => c.onclick = () => openSubDrillLive(decodeURIComponent(c.dataset.subladder)));
     document.querySelectorAll(".bcell-list .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
+    document.querySelectorAll(".bcell-list [data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
     // "עוד N" — reveal/hide the collapsed cards inside each column
     document.querySelectorAll("[data-sssection]").forEach(b => b.onclick = e => {
       e.stopPropagation();
@@ -6211,7 +6236,7 @@
     const pctTxt = v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
     const usdTxt = usd == null ? "" : '<span class="bcc-usd">' + (usd >= 0 ? "+" : "−") + "$" + Math.abs(usd).toFixed(2) + "</span>";
     const w = v == null ? 0 : Math.max(6, Math.min(100, Math.abs(v) / 2.5 * 100));   // bar width ∝ |move| (cap 2.5%)
-    return '<div class="bc-card ' + tier + (s.kind ? " single-card" : "") + '" data-bckey="' + escAttr(s.name) + '">' +
+    return '<div class="bc-card ' + tier + (s.kind ? " single-card bc-clickable" : "") + '" data-bckey="' + escAttr(s.name) + '"' + (s.kind ? ' data-compdrill="' + escAttr(s.etf || "") + '" data-compname="' + escAttr(s.name) + '"' : "") + ">" +
       '<div class="bcc-head">' + chip + '<span class="bcc-name">' + name + "</span></div>" +
       '<div class="bcc-mid"><span class="bcc-pct">' + pctTxt + "</span>" + usdTxt + "</div>" +
       '<div class="bcc-bar"><span class="bcc-fill" style="width:' + w.toFixed(0) + '%"></span></div></div>';
@@ -6228,9 +6253,6 @@
     if (augment && !isSub) {   // 11 GICS → divider → broad-market composites (MAGS/crypto/commodities/RSP/QQQ/SPY)
       const macro = _bcellSorted(_singlesOf("macro"), tf);
       if (macro.length) html += _bcellDivider("מכלולים רחבים") + macro.map(s => _bcellRowHtml(s, tf, false)).join("");
-    }
-    if (augment && isSub) {    // 18 SPDR sub-sectors → WGMI (crypto miners)
-      html += _singlesOf("sub").map(s => _bcellRowHtml(s, tf, true)).join("");
     }
     return html;
   }
@@ -6252,6 +6274,7 @@
       });
     });
     listEl.querySelectorAll(".flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
+    listEl.querySelectorAll("[data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
   }
   function _flowPanelHtml(o) {
     const tfSwitch = o.tfAttr ? '<span class="flow-tf">' + ["1d", "5d", "20d"].map(k =>
@@ -6355,6 +6378,7 @@
     wireCharts($("#page")); wireStars($("#page"));
     // ETF ticker → choice menu (analyze the ETF · or open all sector charts)
     document.querySelectorAll(".flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
+    document.querySelectorAll("[data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
     // the ONE global timeframe control → animate BOTH ladders (sectors + sub-sectors) with a FLIP
     document.querySelectorAll("[data-flowtf]").forEach(b => b.onclick = () => {
       if (flowTf === b.dataset.flowtf) return;
