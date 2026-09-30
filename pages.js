@@ -4326,7 +4326,7 @@
             '<div class="fgrp"><label>52ש׳</label><div class="chips" style="align-items:center"><select id="tExt52">' +
               opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
-            '<div class="fgrp"><label>ATR% ≥ <span class="muted" style="font-size:10px">(תנודתיות)</span></label><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="—" style="width:66px" value="' + techState.atrpMin + '"></div>' +
+            '<div class="fgrp"><label>ATR% <span class="muted" style="font-size:10px">(תנודתיות · מ-עד)</span></label><div class="chips" style="align-items:center"><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="מ-" style="width:60px" value="' + techState.atrpMin + '"><span class="muted">–</span><input id="tAtrpMax" type="number" step="0.5" min="0" placeholder="עד" style="width:60px" value="' + techState.atrpMax + '"></div></div>' +
             '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
             '<div class="fgrp"><label>גאפ (פתיחה מול אתמול)</label><div class="chips" style="align-items:center"><select id="tGapDir">' +
               opt("off", techState.gapDir, "— הכל") + opt("up", techState.gapDir, "גאפ אפ ↑") + opt("down", techState.gapDir, "גאפ דאון ↓") + opt("any", techState.gapDir, "⚡ שניהם") +
@@ -4421,7 +4421,7 @@
       { key: "mfitrend", th: "מגמת MFI", tip: "רצף ימים רצופים של MFI עולה (📈) או יורד (📉) — תזרים כסף בונה או דועך", cell: k => { const v = k.mfitrend; return v ? "<td class='" + (v > 0 ? "pos" : "neg") + "'>" + (v > 0 ? "📈 " + v : "📉 " + Math.abs(v)) + " ימים</td>" : '<td class="muted">—</td>'; }, active: _mfiTrendActive() },
       { key: "mfiturn", th: "היפוך MFI", tip: "MFI משנה כיוון מקיצוניות: 📈 מלמטה (היה מתחת 20 ומתהפך למעלה) · 📉 מלמעלה (היה מעל 80 ומתהפך למטה)", cell: k => { const v = k.mfiturn; return v === "up" ? '<td class="pos">📈 מלמטה</td>' : v === "down" ? '<td class="neg">📉 מלמעלה</td>' : '<td class="muted">—</td>'; }, active: _mfiTurnActive() },
       { key: "earn", th: "דיווח", tip: "ימים עד דוח התוצאות הקרוב (מקור: Finnhub). '95+' = אין דיווח ידוע ב-95 הימים הקרובים (רחוק/בטוח)", cell: k => { const v = k.earn; return v == null ? '<td class="pos">🟢 95+ ימים</td>' : "<td class='" + (v <= 7 ? "neg" : "") + "'>📅 " + (v === 0 ? "היום" : "בעוד " + v + " ימים") + "</td>"; }, active: techState.earnMin !== "" },
-      { key: "atrp", th: "ATR%" + _tfSuf(), tip: "ATR%: טווח התנועה הממוצע כאחוז מהמחיר — מדד תנודתיות" + _tfTip(), cell: k => { const v = _techVal(k, "atrp"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "%") + "</td>"; }, active: _atrp() > 0 },
+      { key: "atrp", th: "ATR%" + _tfSuf(), tip: "ATR%: טווח התנועה הממוצע כאחוז מהמחיר — מדד תנודתיות" + _tfTip(), cell: k => { const v = _techVal(k, "atrp"); return "<td>" + (v == null ? "—" : v.toFixed(2) + "%") + "</td>"; }, active: _atrpActive() },
       { key: "gap", th: "גאפ", tip: "גאפ: פער הפתיחה של היום מול סגירת אתמול (%)", cell: k => "<td>" + dPct(k.gap) + "</td>", active: _gapActive() },
       { key: "ext", th: "🌙 פרה/אפטר", tip: "תנועת המחיר מחוץ לשעות המסחר (פרה-מרקט לפני הפתיחה · אפטר-מרקט אחרי הסגירה). מוצג רק כשחלון כזה פעיל.", cell: (k, dma, t) => { const e = _extOf(t.sym); return "<td>" + (e == null ? '<span class="muted">—</span>' : dPct(e)) + "</td>"; }, active: _extActive() },
       { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
@@ -4662,7 +4662,7 @@
         }
         if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
         if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
-        if (_atrp() > 0) { const av2 = _techVal(k, "atrp"); if (av2 == null || av2 < _atrp()) return false; }
+        if (_atrpActive()) { const av2 = _techVal(k, "atrp"); if (av2 == null) return false; if (techState.atrpMin !== "" && av2 < _atrp()) return false; const _amx = _atrpMax(); if (_amx != null && av2 > _amx) return false; }
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "any" && (k.gap == null || Math.abs(k.gap) < (parseFloat(techState.gapPct) || 0))) return false;   // gap up OR down beyond the threshold
@@ -4937,6 +4937,7 @@
       reRender();
     });
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
+    bind("tAtrpMax", "onchange", e => { techState.atrpMax = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
     bind("tGapDir", "onchange", e => { techState.gapDir = e.target.value; reRender(); });
@@ -5018,7 +5019,8 @@
     gid("tExt52", techState.ext52 !== "off");
     gid("tPopenTest", _popenActive());
     gid("tPextTest", _pextActive());
-    gid("tAtrpMin", _atrp() > 0);
+    gid("tAtrpMin", techState.atrpMin !== "");
+    gid("tAtrpMax", techState.atrpMax !== "");
     gid("tChgMin", techState.chgMin !== "");
     gid("tChgMax", techState.chgMax !== "");
     gid("tGapDir", techState.gapDir !== "off");
@@ -5058,7 +5060,7 @@
     earnDir: "far",              // "far" = report ≥N days away (safe) · "near" = report within N days (lead-up)
     avgVolPeriod: "30", avgVolMin: 0,
     ext52: "off", ext52Pct: 3,
-    atrpMin: "",                 // ATR as % of price ≥
+    atrpMin: "", atrpMax: "",     // ATR as % of price — from/to range (from alone = X%+, to alone = ≤Y%, both = range)
     chgMin: "", chgMax: "",      // daily % move, from–to (signed)
     gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
     extMove: "off", extPct: 3,   // extended-hours (pre/post market) move ≥ % — reads LIVE.ext (fresh during off-hours)
@@ -5167,6 +5169,8 @@
   function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_bbwActive() ? 1 : 0) + (_bbPosActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
+  function _atrpMax() { const v = parseFloat(techState.atrpMax); return isNaN(v) ? null : v; }
+  function _atrpActive() { return techState.atrpMin !== "" || techState.atrpMax !== ""; }
   // period-open test: is the price within N×ATR of a Yearly/Quarterly/Monthly OPEN?
   // side = "support" (price at/above the open → potential long) | "resistance" (price at/below → potential short).
   function _popenActive() { return techState.popenTest && techState.popenTest !== "off" && (techState.popenTfs || []).length > 0; }
@@ -5275,7 +5279,7 @@
     return techState.maRel !== "off" || _maExtraActive() > 0 || techState.rsiMin > 0 || techState.rsiMax < 100 ||
       techState.mfiMin > 0 || techState.mfiMax < 100 || _rv() > 0 ||
       techState.volMin > 0 || _volTrendActive() || _volAvgActive() || _mfiTrendActive() || _mfiTurnActive() || techState.earnMin !== "" || techState.avgVolMin > 0 || techState.ext52 !== "off" ||
-      _atrp() > 0 || _chgActive() || _gapActive() || _extActive() || _popenActive() || _pextActive();
+      _atrpActive() || _chgActive() || _gapActive() || _extActive() || _popenActive() || _pextActive();
   }
   function techActiveCount() {
     let n = 0;
@@ -5292,7 +5296,7 @@
     if (techState.earnMin !== "") n++;
     if (techState.avgVolMin > 0) n++;
     if (techState.ext52 !== "off") n++;
-    if (_atrp() > 0) n++;
+    if (_atrpActive()) n++;
     if (_chgActive()) n++;
     if (_gapActive()) n++;
     if (_extActive()) n++;
@@ -5307,7 +5311,7 @@
     techState.volAvgDir = "off"; techState.volAvgDays = 3;
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = ""; techState.earnDir = "far";
     techState.ext52 = "off"; techState.ext52Pct = 3;
-    techState.atrpMin = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3; techState.extMove = "off"; techState.extPct = 3;
+    techState.atrpMin = ""; techState.atrpMax = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3; techState.extMove = "off"; techState.extPct = 3;
     techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2; techState.swK = "5"; techState.pivRev = "off"; techState.pivPct = 2; techState.pivK = "5";
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
