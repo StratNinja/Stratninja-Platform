@@ -152,7 +152,12 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .mkt-lrow .mkt-lp { font-weight: 900; font-variant-numeric: tabular-nums; direction: ltr; } .mkt-lp.pos { color: #3fe0a0; } .mkt-lp.neg { color: #ff6b7a; } .mkt-lp.z { color: #9fb0c8; }
 /* Ninja Insight text + date */
 .mkt-insight { top: 90.6%; left: 26%; width: 65%; font-size: 20.5px; font-weight: 800; color: #eaf2ff; line-height: 1.38; text-align: start; }
-.mkt-date { top: 97.8%; left: 44%; width: 12%; text-align: center; font-size: 12px; color: #7f93b5; font-weight: 600; white-space: nowrap; }
+/* timestamp at the top (date + capture time) */
+.mkt-date { top: 2.3%; left: 2.5%; width: 34%; text-align: left; font-size: 21px; font-weight: 800; color: #d3e4ff; white-space: nowrap; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+/* bottom footer strip */
+.mkt-foot-right { top: 97.2%; left: 50%; width: 47%; text-align: right; font-size: 16px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
+.mkt-foot-right b { color: #eaf2ff; }
+.mkt-foot-left { top: 97.2%; left: 3%; width: 42%; text-align: left; font-size: 16px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
 /* option current-price source tag (auto CBOE vs manually typed) */
 .opt-src { display: inline-block; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; white-space: nowrap; vertical-align: middle; letter-spacing: .2px; }
 .opt-src.auto { color: #7ee2b8; background: rgba(23,192,138,.14); }

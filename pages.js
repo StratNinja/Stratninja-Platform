@@ -2773,9 +2773,12 @@
       '<div class="mkt-list mkt-lag-secs">' + listHtml(secDn, secRow) + '</div>' +
       // CTA in the empty center of the top frame
       '<div class="mkt-cta">נכנסים בשביל הסורקים · נשארים בשביל הקהילה</div>' +
-      // insight + footer date
+      // insight
       '<div class="mkt-insight">' + insTxt + '</div>' +
-      '<div class="mkt-date">' + new Date().toLocaleDateString("he-IL") + '</div>';
+      // timestamp at the top (date + capture time) + footer strip at the bottom
+      '<div class="mkt-date">🕐 ' + new Date().toLocaleDateString("he-IL") + ' · ' + new Date().toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }) + '</div>' +
+      '<div class="mkt-foot-right">ניתוח שוק מעודכן | <b>stratninja.win</b></div>' +
+      '<div class="mkt-foot-left">Adi Koriat | @KoriatTrade</div>';
     document.body.appendChild(el);
     return el;
   }
