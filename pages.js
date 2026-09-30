@@ -2742,7 +2742,8 @@
     const lagS = (U.laggards || []).slice(0, 5);
     const secUp = (U.sectorLeaders || []).slice(0, 5);
     const secDn = (U.sectorLaggards || []).slice(0, 5);
-    const _lrow = (tk, v) => '<div class="mkt-lrow"><span class="mkt-lt">' + escHtml(tk) + '</span><span class="mkt-lp ' + _cls(v) + '">' + _pctS(v) + '</span></div>';
+    // % in the WIDE bar (right), ticker in the small box (left) — direction:rtl puts the first child on the right
+    const _lrow = (tk, v) => '<div class="mkt-lrow"><span class="mkt-lp ' + _cls(v) + '">' + _pctS(v) + '</span><span class="mkt-lt">' + escHtml(tk) + '</span></div>';
     const stockRow = x => _lrow(x.s, x.c);
     const secRow = x => _lrow(etfFor(x.name) || secHe(x.name) || x.name, x.chg);
     const listHtml = (rows, fn) => (rows.length ? rows.map(fn).join("") : '<div class="mkt-lrow"><span class="mkt-lt muted">—</span></div>');
@@ -2772,7 +2773,7 @@
       '<div class="mkt-list mkt-lag-stocks">' + listHtml(lagS, stockRow) + '</div>' +
       '<div class="mkt-list mkt-lag-secs">' + listHtml(secDn, secRow) + '</div>' +
       // CTA in the empty center of the top frame
-      '<div class="mkt-cta">נכנסים בשביל הסורקים · נשארים בשביל הקהילה</div>' +
+      '<div class="mkt-cta">רוב הסוחרים לא נכשלים כי הם לא יודעים מספיק — אלא כי הם סוחרים <b>לבד</b>, בלי שיטה ובלי מישהו שיגיד להם עצור. פה יש לך את <b>שלושתם</b>.</div>' +
       // insight
       '<div class="mkt-insight">' + insTxt + '</div>' +
       // timestamp at the top (date + capture time) + footer strip at the bottom
