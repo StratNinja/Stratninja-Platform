@@ -7776,11 +7776,13 @@
     const el = document.getElementById("sideAth52");
     if (!el) return;
     const n = _athList.length;
-    if (!n) { el.style.display = "none"; return; }
+    if (!n) { el.style.display = "none"; el.classList.remove("ath52-live"); return; }
     el.style.display = "";
-    const badge = document.getElementById("sideAth52n");
-    if (badge) badge.textContent = n;
-    el.title = n + " מניות בשיא 52 שבועות — לחץ לסינון בסורק";
+    el.classList.add("ath52-live");
+    const top = _athList[0];
+    el.innerHTML = '<span class="ath52-ico">🚀</span><span class="lbl"><span class="ath52-t">' + escHtml(top.sym) +
+      '</span> · שיא 52ש׳<span class="ath52-badge" id="sideAth52n">' + n + "</span></span>";
+    el.title = n + " מניות בשיא 52 שבועות — המובילה: " + top.sym + " · לחץ לסינון בסורק";
     el.onclick = () => goScanner52wHigh();
   }
 
