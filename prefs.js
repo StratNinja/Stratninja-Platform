@@ -64,6 +64,17 @@ window.Prefs = (function () {
       arr.forEach(p => { if (next.indexOf(p) < 0) next.push(p); });
       d.scanPresets = next; write(d);
     },
+    // remove exact duplicates (same cfg) — keeps the one with the cleaner name (no trailing " N",
+    // i.e. the original over a restore-merge copy). Returns how many were removed.
+    dedupeScanPresets() {
+      const d = read(); const arr = d.scanPresets || [];
+      const hasSuffix = n => /\s\d+$/.test(n || "");
+      const order = arr.map((p, i) => ({ p, i })).sort((a, b) => (hasSuffix(a.p.name) ? 1 : 0) - (hasSuffix(b.p.name) ? 1 : 0) || a.i - b.i);
+      const seen = {}; const keep = []; let removed = 0;
+      order.forEach(o => { const k = JSON.stringify(o.p.cfg); if (seen[k]) { removed++; } else { seen[k] = 1; keep.push(o.p); } });
+      keep.sort((a, b) => arr.indexOf(a) - arr.indexOf(b));   // restore the original display order
+      d.scanPresets = keep; write(d); return removed;
+    },
     // rename a preset by id (keeps the name unique)
     renameScanPreset(id, name) {
       const d = read(); const arr = d.scanPresets || [];

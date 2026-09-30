@@ -34,9 +34,15 @@
     }
   };
 
+  // SAFETY NET: stash the current local copy (if it has data) before it is overwritten/cleared,
+  // so a stale or partial cloud pull can never silently lose the user's presets/journal.
+  // Recoverable from the manage dialog (📂 שחזר גיבוי אוטומטי). One rolling snapshot per key.
+  function snapshot(s) {
+    try { const cur = safeParse(localStorage.getItem(s.key)); if (s.hasData(cur)) origSet(s.key + "__autobak", JSON.stringify({ ts: Date.now(), data: cur })); } catch (e) {}
+  }
   // reset local caches WITHOUT triggering a cloud push (origSet bypasses the patch)
   function clearLocal() {
-    SYNCS.forEach(s => origSet(s.key, JSON.stringify(s.empty)));
+    SYNCS.forEach(s => { snapshot(s); origSet(s.key, JSON.stringify(s.empty)); });
   }
   function rerenderAll() { SYNCS.forEach(s => { try { s.rerender(); } catch (e) {} }); }
 
@@ -57,6 +63,7 @@
       if (error) { console.error("[cloudsync] pull " + s.table + ":", error.message); return; }
       const cloud = data ? data.data : null;
       // cloud is authoritative — set local to cloud (or empty). NO local→cloud migration.
+      snapshot(s);   // keep a recoverable copy of whatever local held before the cloud replaces it
       origSet(s.key, JSON.stringify(s.hasData(cloud) ? cloud : s.empty));
       s._pulled = true;                 // pull confirmed → writes may now sync up safely
       s.rerender();

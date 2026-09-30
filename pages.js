@@ -1699,9 +1699,14 @@
   function _pmIds() { return (window.Prefs.scanPresets() || []).map(p => p.id); }
   function pmBodyHtml() {
     const list = window.Prefs.scanPresets() || [];
+    let _ab = null; try { _ab = JSON.parse(localStorage.getItem((window.Prefs.KEY || "stratninja_prefs_v1") + "__autobak") || "null"); } catch (e) {}
+    const _abN = (_ab && _ab.data && (_ab.data.scanPresets || []).length) || 0;
+    const abBtn = _abN ? '<button class="btn ghost" id="pmAutoBak" title="שחזר מהגיבוי האוטומטי האחרון (' + (function () { try { return new Date(_ab.ts).toLocaleString("he-IL"); } catch (e) { return ""; } })() + ') — נשמר אוטומטית לפני כל סנכרון">♻️ גיבוי אוטומטי (' + _abN + ")</button>" : "";
     const ioBar = '<div class="pm-io">' +
         (list.length ? '<button class="btn ghost" id="pmExport" title="שמור את כל הסריקות לקובץ במחשב">💾 גבה לקובץ</button>' : "") +
         '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
+        (list.length ? '<button class="btn ghost" id="pmDedupe" title="הסר סריקות כפולות (הגדרה זהה) — שומר את השם הנקי">🧹 נקה כפילויות</button>' : "") +
+        abBtn +
         '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
     if (!list.length) return ioBar + '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף — או שחזר מקובץ גיבוי למעלה.</div>';
     return ioBar + '<div class="pm-list">' + list.map((p, i) =>
@@ -1713,6 +1718,7 @@
           '<button class="btn ghost pm-btn" data-pmdn="' + escAttr(p.id) + '"' + (i === list.length - 1 ? " disabled" : "") + ' title="הזז למטה">▼</button>' +
           '<button class="btn ghost pm-btn" data-pmren="' + escAttr(p.id) + '" title="שנה שם">✏️</button>' +
           '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
+          '<button class="btn ghost pm-btn pm-del" data-pmdel="' + escAttr(p.id) + '" title="מחק סריקה">🗑</button>' +
         "</span></div>").join("") + "</div>" +
       '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף</div>';
   }
@@ -1740,6 +1746,25 @@
         const ids = _pmIds(); ids.splice(ids.indexOf(dragId), 1); ids.splice(ids.indexOf(tgt), 0, dragId); _pmApply(ids);
       });
     });
+    document.querySelectorAll("[data-pmdel]").forEach(b => b.onclick = () => {
+      const p = (window.Prefs.scanPresets() || []).find(x => x.id === b.dataset.pmdel); if (!p) return;
+      if (!confirm('למחוק את הסריקה "' + p.name + '"?')) return;
+      window.Prefs.deleteScanPreset(p.id); pmRefresh(); if (state.page === "scanner") reRender();
+    });
+    { const dd = document.getElementById("pmDedupe"); if (dd) dd.onclick = () => {
+      const n = window.Prefs.dedupeScanPresets ? window.Prefs.dedupeScanPresets() : 0;
+      snToast(n ? "🧹 הוסרו " + n + " כפילויות" : "אין כפילויות למחיקה");
+      pmRefresh(); if (state.page === "scanner") reRender();
+    }; }
+    { const ab = document.getElementById("pmAutoBak"); if (ab) ab.onclick = () => {
+      let d = null; try { d = JSON.parse(localStorage.getItem((window.Prefs.KEY || "stratninja_prefs_v1") + "__autobak") || "null"); } catch (e) {}
+      const ps = (d && d.data && d.data.scanPresets) || [];
+      if (!ps.length) { snToast("אין גיבוי אוטומטי"); return; }
+      if (!confirm("לשחזר " + ps.length + " סריקות מהגיבוי האוטומטי? (יתווספו לקיימות)")) return;
+      let n = 0; ps.forEach(p => { if (p && p.cfg && p.name) { window.Prefs.importScanPreset(p.name, p.cfg); n++; } });
+      snToast("♻️ שוחזרו " + n + " סריקות מהגיבוי האוטומטי");
+      pmRefresh(); if (state.page === "scanner") reRender();
+    }; }
     { const ex = document.getElementById("pmExport"); if (ex) ex.onclick = () => exportPresets(); }
     { const ib = document.getElementById("pmImportBtn"), inp = document.getElementById("pmImportFile");
       if (ib && inp) { ib.onclick = () => inp.click(); inp.onchange = () => { if (inp.files && inp.files[0]) importPresetsFromFile(inp.files[0]); inp.value = ""; }; } }
