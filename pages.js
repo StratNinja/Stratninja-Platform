@@ -7788,16 +7788,12 @@
   }
   function _athStocks() {
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) return [];
-    return SCAN.rows.filter(r => {
-      const k = r.tech; if (!k) return false;
-      const chg = r.c != null ? r.c : (k.chg != null ? k.chg : null);
-      const px = r.p || k.px || 0;
-      // at (or within 0.3% of) the 52-week high, green today, tradable
-      return k.dhi52 != null && k.dhi52 >= -0.3 && (chg == null || chg > 0) &&
-        (k.avol30 == null || k.avol30 >= 300000) && px >= 3;
-    }).map(r => ({ sym: r.s, sec: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
-      chg: r.c != null ? r.c : (r.tech ? r.tech.chg : 0) }))
-      .sort((a, b) => (b.chg || 0) - (a.chg || 0));
+    // SAME rule as the scanner's 52-week-high filter (within EXT52_PCT of the high) so the sidebar count
+    // matches exactly what the click shows. Sorted closest-to-high first (matches the scanner's sort).
+    return SCAN.rows.filter(r => { const k = r.tech; return k && k.dhi52 != null && k.dhi52 >= -EXT52_PCT; })
+      .map(r => ({ sym: r.s, sec: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
+        chg: r.c != null ? r.c : (r.tech ? r.tech.chg : 0), dhi52: r.tech.dhi52 }))
+      .sort((a, b) => (b.dhi52 == null ? -999 : b.dhi52) - (a.dhi52 == null ? -999 : a.dhi52));
   }
   function _athEl() {
     let e = document.getElementById("athCeleb");
