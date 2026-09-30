@@ -3637,7 +3637,10 @@
       const v = (s || []).map(x => x && x.v).filter(x => x != null);
       if (v.length < 2) return "";
       const w = 100, h = 34;
-      const pts = v.map((val, i) => (i / (v.length - 1) * w).toFixed(1) + "," + (h - Math.max(0, Math.min(100, val)) / 100 * h).toFixed(1)).join(" ");
+      // map value → height so it lines up with the baked zones: green-zone top = 25%, dashed mid = 50%,
+      // red-zone bottom = 75%  →  y = h*(0.97 − 0.01*value)  (clamped to the box)
+      const _y = val => Math.max(0, Math.min(h, h * (0.97 - 0.01 * Math.max(0, Math.min(100, val)))));
+      const pts = v.map((val, i) => (i / (v.length - 1) * w).toFixed(1) + "," + _y(val).toFixed(1)).join(" ");
       const stroke = cls === "pos" ? "#3fe0a0" : cls === "neg" ? "#ff6b7a" : "#eaf2ff";
       return '<svg viewBox="0 0 100 34" preserveAspectRatio="none" style="width:100%;height:100%;display:block"><polyline points="' + pts + '" fill="none" stroke="' + stroke + '" stroke-width="1.05" stroke-linejoin="round"/></svg>';
     };
@@ -3666,7 +3669,9 @@
     const _cardState = uni => {
       const st = _st(uni); if (!st) return null;
       const s = st.score;
-      if (s <= 40) return { txt: s <= 20 ? "חלש מאוד · Oversold עמוק" : "חלש · מתקרב ל-oversold", cls: "neg", arrow: "▼" };
+      // Oversold = buy zone → GREEN. Overbought also GREEN (per Adi's backtests it does NOT signal a
+      // reversal; only oversold does). Neutral = yellow.
+      if (s <= 40) return { txt: s <= 20 ? "חלש מאוד · Oversold עמוק" : "חלש · מתקרב ל-oversold", cls: "pos", arrow: "▼" };
       if (s <= 60) return { txt: "ניטרלי · תמיכה יציבה", cls: "zero", arrow: "▬" };
       return { txt: s >= 80 ? "חזק מאוד · Overbought" : "חזק · מתקרב ל-overbought", cls: "pos", arrow: "▲" };
     };
