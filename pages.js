@@ -7555,7 +7555,8 @@
     }
     // on any chart-capable page, warm the TradingView library in the background so grids open fast
     if (["scanner", "pulse", "gappers", "favorites", "market"].indexOf(state.page) >= 0) warmTradingView();
-    try { localStorage.setItem("sn_last_page", state.page); } catch (e) {}
+    // remember the exact view — for the pulse channel save the active SUB-TAB so a refresh returns to it
+    try { localStorage.setItem("sn_last_page", state.page === "pulse" ? pulseTab : state.page); } catch (e) {}
     snTrack("page:" + state.page);   // usage analytics — which pages get visited
   }
   window.setPageExternal = setPage;
@@ -8091,7 +8092,7 @@
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
     try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}
-    setPage((PAGES[last] || last === "journal") ? last : "market");
+    setPage((PAGES[last] || last === "journal" || _pulseRender[last]) ? last : "market");   // _pulseRender[last] → a pulse sub-tab (sectors/today/…)
     if (/[?&]p=/.test(location.search)) setTimeout(checkSharedPresetInUrl, 1500);   // shared preset (?p=) — wait for cloud prefs to settle first
     loadLive();
     setInterval(loadLive, 60000);
