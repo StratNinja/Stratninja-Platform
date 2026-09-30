@@ -39,7 +39,23 @@
   // so a stale or partial cloud pull can never silently lose the user's presets/journal.
   // Recoverable from the manage dialog (📂 שחזר גיבוי אוטומטי). One rolling snapshot per key.
   function snapshot(s) {
-    try { const cur = safeParse(localStorage.getItem(s.key)); if (s.hasData(cur)) origSet(s.key + "__autobak", JSON.stringify({ ts: Date.now(), data: cur })); } catch (e) {}
+    try {
+      const cur = safeParse(localStorage.getItem(s.key));
+      if (!s.hasData(cur)) return;
+      // PRIMARY backup: keep the RICHEST recent copy — do NOT let a smaller/reduced local clobber a fuller,
+      // still-fresh backup (this is exactly how good presets got wiped). Ages out after 24h.
+      const prev = safeParse(localStorage.getItem(s.key + "__autobak"));
+      const curN = JSON.stringify(cur).length;
+      if (!(prev && prev.data && s.hasData(prev.data) && JSON.stringify(prev.data).length > curN
+            && (Date.now() - (prev.ts || 0)) < 24 * 3600 * 1000)) {
+        origSet(s.key + "__autobak", JSON.stringify({ ts: Date.now(), data: cur }));
+      }
+      // HISTORY: keep up to 6 distinct snapshots for deeper recovery (newest first).
+      const hk = s.key + "__bakhist";
+      let hist = safeParse(localStorage.getItem(hk)); if (!Array.isArray(hist)) hist = [];
+      const sig = JSON.stringify(cur);
+      if (!hist.length || JSON.stringify(hist[0].data) !== sig) { hist.unshift({ ts: Date.now(), data: cur }); origSet(hk, JSON.stringify(hist.slice(0, 6))); }
+    } catch (e) {}
   }
   // reset local caches WITHOUT triggering a cloud push (origSet bypasses the patch)
   function clearLocal() {

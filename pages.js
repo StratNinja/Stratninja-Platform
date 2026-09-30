@@ -2791,23 +2791,25 @@
     // top-3 strongest continuity (green) / weakest (red), by NET continuity, tie-break by daily move
     const pick = arr => { const s = arr.slice().sort((a, b) => (b.net - a.net) || ((b.chg || 0) - (a.chg || 0))); return { green: s.slice(0, 3), red: s.slice(-3).reverse() }; };
     const secP = pick(secArr), subP = pick(subArr);
-    // display order WITHIN each column by daily % (clean gradient, not "messy"): green = high→low, red = low→high
-    const _chgDesc = (a, b) => (b.chg == null ? -1e9 : b.chg) - (a.chg == null ? -1e9 : a.chg);
-    const _chgAsc = (a, b) => (a.chg == null ? 1e9 : a.chg) - (b.chg == null ? 1e9 : b.chg);
-    secP.green.sort(_chgDesc); subP.green.sort(_chgDesc);
-    secP.red.sort(_chgAsc); subP.red.sort(_chgAsc);
+    // the number = % of the sector's OWN stocks that are in FTFC continuity (green = up, red = down) — not the
+    // ETF's daily move. Sort each column by that proportion, strongest first.
+    const _propG = o => (o.tot ? o.fg / o.tot : 0), _propR = o => (o.tot ? o.fr / o.tot : 0);
+    secP.green.sort((a, b) => _propG(b) - _propG(a)); subP.green.sort((a, b) => _propG(b) - _propG(a));
+    secP.red.sort((a, b) => _propR(b) - _propR(a)); subP.red.sort((a, b) => _propR(b) - _propR(a));
     // bar scale — normalize by the largest |daily %| among the 12 shown rows
     const shown = secP.green.concat(secP.red, subP.green, subP.red);
     let cmax = 0.01; shown.forEach(o => { if (o.chg != null) cmax = Math.max(cmax, Math.abs(o.chg)); });
     const barW = c => c == null ? 8 : Math.max(8, Math.round(Math.abs(c) / cmax * 100));
     const pctTxt = c => c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
     const _cardNm = n => String(n || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").trim();   // Hebrew only (one line)
-    // template row, FIXED grid (no length-based fill): [name · right] [% · fixed] [ETF box · left].
-    // % coloured by its SIGN (green ≥0 / red <0), not by the column. Name never overlaps the % or the frame.
-    const rowHtml = (o, side) => { const c = o.chg, pcls = c == null ? "zero" : c > 0 ? "pos" : c < 0 ? "neg" : "zero";
+    // template row, FIXED grid: [name · right] [% · fixed] [ETF box · left].
+    // the % = share of the sector's OWN stocks in FTFC continuity (green col = up, red col = down), coloured by column.
+    const rowHtml = (o, side) => {
+      const prop = o.tot ? Math.round((side === "green" ? o.fg : o.fr) / o.tot * 100) : 0;
+      const pcls = side === "green" ? "pos" : "neg";
       return '<div class="ftc-row ftc-' + side + '">' +
         '<span class="ftc-name">' + escHtml(_cardNm(o.he) || "—") + "</span>" +
-        '<span class="ftc-pct ' + pcls + '">' + pctTxt(c) + "</span>" +
+        '<span class="ftc-pct ' + pcls + '">' + prop + "%</span>" +
         '<span class="ftc-etf">' + escHtml(o.etf || "—") + "</span></div>"; };
     const colHtml = (arr, side) => { let h = arr.map(o => rowHtml(o, side)).join(""); for (let i = arr.length; i < 3; i++) h += '<div class="ftc-row ftc-' + side + ' ftc-empty"></div>'; return h; };
     // Hebrew list join ("a, b ו-c")
