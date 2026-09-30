@@ -208,8 +208,8 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .brd-foot-right { top: 97%; left: 55%; width: 42%; text-align: right; font-size: 15px; font-weight: 700; color: #9fb3d4; white-space: nowrap; }
 
 /* ===== FTFC "המשכיות זמנית" share card — overlay on Ftfc_Template.png ===== */
-.ftfc-card { width: 1240px; height: 1240px; position: relative; direction: rtl; overflow: hidden;
-  background: #0B1020 url("Ftfc_Template.png?v=1") top center / 100% 100% no-repeat;
+.ftfc-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden;
+  background: #0B1020 url("Ftfc_Template.png?v=1") top center / 1254px 1254px no-repeat;
   font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftfc-card > div { position: absolute; }
 .ftc-date { top: 2.1%; left: 2.4%; font-size: 21px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
@@ -350,14 +350,15 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 .gm-bar.down > span { background: var(--red); }
 
 /* ---------- top strip: live ticker + action dock (theme / density / share / draw) on the left ---------- */
-.top-strip { display: flex; align-items: stretch; gap: 10px; position: sticky; top: 0; z-index: 33; margin-bottom: 6px; }
+.top-strip { display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 33; margin-bottom: 6px; }
 .top-strip #liveTicker { flex: 1 1 auto; margin-bottom: 0; position: static; top: auto; z-index: auto; min-width: 0; }
 /* dock now lives inline inside the top strip (was a bottom-left floating dock) */
 .sn-dock { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; direction: ltr;
-  padding: 4px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
-.sn-dock .snd-icons { display: flex; align-items: center; gap: 7px; overflow: hidden; max-width: 220px; opacity: 1;
+  padding: 5px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+/* overflow VISIBLE when expanded so the round buttons aren't clipped at top/bottom; only clip while collapsing */
+.sn-dock .snd-icons { display: flex; align-items: center; gap: 7px; overflow: visible; max-width: 220px; opacity: 1;
   transition: max-width .25s ease, opacity .18s ease; }
-.sn-dock.collapsed .snd-icons { max-width: 0; opacity: 0; pointer-events: none; }
+.sn-dock.collapsed .snd-icons { max-width: 0; opacity: 0; overflow: hidden; pointer-events: none; }
 .snd-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg, transparent);
   color: var(--ink); font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
   transition: transform .12s, border-color .12s, background .12s; flex: none; line-height: 1; }

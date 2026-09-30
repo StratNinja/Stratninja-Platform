@@ -2775,11 +2775,12 @@
     let cmax = 0.01; shown.forEach(o => { if (o.chg != null) cmax = Math.max(cmax, Math.abs(o.chg)); });
     const barW = c => c == null ? 8 : Math.max(8, Math.round(Math.abs(c) / cmax * 100));
     const pctTxt = c => c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
+    // template row = [ETF box · LEFT] [long bar · RIGHT: name + % over a coloured fill]
     const rowHtml = (o, side) => '<div class="ftc-row ftc-' + side + '">' +
-      '<span class="ftc-etf">' + escHtml(o.etf || "—") + "</span>" +
-      '<span class="ftc-name">' + escHtml(o.he || "—") + "</span>" +
-      '<span class="ftc-pct">' + pctTxt(o.chg) + "</span>" +
-      '<span class="ftc-bar"><span style="width:' + barW(o.chg) + '%"></span></span></div>';
+      '<span class="ftc-bar"><span class="ftc-fill" style="width:' + barW(o.chg) + '%"></span>' +
+        '<span class="ftc-name">' + escHtml(o.he || "—") + "</span>" +
+        '<span class="ftc-pct">' + pctTxt(o.chg) + "</span></span>" +
+      '<span class="ftc-etf">' + escHtml(o.etf || "—") + "</span></div>";
     const colHtml = (arr, side) => { let h = arr.map(o => rowHtml(o, side)).join(""); for (let i = arr.length; i < 3; i++) h += '<div class="ftc-row ftc-' + side + ' ftc-empty"></div>'; return h; };
     // Hebrew list join ("a, b ו-c")
     const joinHe = a => { const x = (a || []).filter(Boolean); if (!x.length) return ""; if (x.length === 1) return x[0]; return x.slice(0, -1).join(", ") + " ו" + x[x.length - 1]; };
