@@ -7281,6 +7281,18 @@
     const handles = [];
     const link = _drawLinkRoles(B);   // split: lower TF drawable → higher TF auto-aggregated
     const slotW = W => W / B.gridN;
+    // zoom: more slots = smaller candles = more room on the right (zoom OUT) · fewer = bigger candles (zoom IN)
+    function setGridN(n) {
+      n = Math.max(4, Math.min(240, Math.round(n)));
+      if (n === B.gridN) return;
+      B.gridN = n;
+      B.panels.forEach(p => { if (p.nextCol > B.gridN) p.nextCol = B.gridN; });
+      handles.forEach(h => h.draw());
+      if (link) redrawPanel(link.highIdx);
+      status();
+      document.querySelectorAll("[data-drawgrid]").forEach(x => x.classList.toggle("on", +x.dataset.drawgrid === B.gridN));
+    }
+    const _zoomStep = () => Math.max(1, Math.round(B.gridN * 0.1));
     function status() {
       const el = document.getElementById("drawStatus"); if (!el) return;
       el.textContent = B.split
@@ -7316,6 +7328,8 @@
       }
       cv.addEventListener("pointerup", finish);
       cv.addEventListener("pointercancel", finish);
+      // mouse wheel = dynamic zoom · wheel back (toward you, scroll down) → more room on the right · forward → less
+      cv.addEventListener("wheel", e => { e.preventDefault(); setGridN(B.gridN + (e.deltaY > 0 ? _zoomStep() : -_zoomStep())); }, { passive: false });
       if (window.ResizeObserver) { const ro = new ResizeObserver(() => setup()); ro.observe(cv); B._ros.push(ro); }
       handles.push({ idx: idx, cv: cv, draw: draw });
       setup();
@@ -7325,7 +7339,17 @@
     function syncHigher() { if (!link) return; const lo = B.panels[link.lowIdx], hi = B.panels[link.highIdx]; const src = lo.cur ? lo.candles.concat([lo.cur]) : lo.candles; hi.candles = _aggCandles(src, link.ratio); hi.nextCol = hi.candles.length; hi.cur = null; redrawPanel(link.highIdx); }
     syncHigher();   // initial roll-up so the higher panel reflects existing lower candles
     { const g = document.getElementById("drawGridToggle"); if (g) g.onclick = () => { B.gridOn = !B.gridOn; reRender(); }; }
-    document.querySelectorAll("[data-drawgrid]").forEach(b => b.onclick = () => { B.gridN = +b.dataset.drawgrid; B.panels.forEach(p => { if (p.nextCol > B.gridN) p.nextCol = B.gridN; }); reRender(); });
+    document.querySelectorAll("[data-drawgrid]").forEach(b => b.onclick = () => setGridN(+b.dataset.drawgrid));
+    // keyboard +/- zoom (draw board only): + → more room / smaller candles (zoom out) · - → bigger candles (zoom in)
+    if (B._keyHandler) document.removeEventListener("keydown", B._keyHandler);
+    B._keyHandler = e => {
+      if (e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (!document.querySelector("[data-drawpanel]")) return;   // left the draw board
+      if (e.key === "+" || e.key === "=") { setGridN(B.gridN + _zoomStep()); e.preventDefault(); }
+      else if (e.key === "-" || e.key === "_") { setGridN(B.gridN - _zoomStep()); e.preventDefault(); }
+    };
+    document.addEventListener("keydown", B._keyHandler);
     { const sp = document.getElementById("drawSplit"); if (sp) sp.onclick = () => { B.split = !B.split; reRender(); }; }
     document.querySelectorAll("[data-drawtf]").forEach(sel => sel.onchange = () => { const p = B.panels[+sel.dataset.drawtf]; if (p) { p.tf = sel.value; if (B.split) reRender(); else status(); } });
     // pen: mode toggle (structural → reRender), color + width (live, no reRender so drawing is preserved)
