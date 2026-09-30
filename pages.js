@@ -1405,15 +1405,8 @@
     else if (etf === "IBIT" || etf === "WGMI") { members = rows.filter(r => r.sec === "Crypto" || /קריפטו|בלוקצ|crypto/i.test(r.ind || "")); note = "קריפטו ובלוקצ'יין"; }
     else if (etf === "COMT") { members = rows.filter(r => r.sec === "סחורות" || /סחורות|commod/i.test(r.ind || "")); note = "סחורות"; }
     if (!members.length) { if (typeof openChart === "function") openChart(etf, "D"); else snToast("אין מניות מרכיבות זמינות"); return; }
-    members = members.slice().sort((a, b) => (b.c == null ? -999 : b.c) - (a.c == null ? -999 : a.c));
-    const body = '<div class="drill-bar"><span class="muted" style="font-size:12px">' + members.length + " מניות · ממויין לפי תנועת היום · לחץ על שם לגרף</span></div>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr><th style="text-align:start">סימבול</th><th>תנועה</th><th>D</th><th>W</th><th>M</th></tr></thead><tbody>' +
-      members.map(r => "<tr><td class='sym'><span class='tsym clickable' data-chart='" + r.s + "' data-tf='D'>" + r.s + "</span></td>" +
-        "<td class='" + ((r.c || 0) >= 0 ? "pos" : "neg") + "'>" + pct(r.c) + "</td>" +
-        "<td>" + tf(r.D, r.s, "D") + "</td><td>" + tf(r.W, r.s, "W") + "</td><td>" + tf(r.M, r.s, "M") + "</td></tr>").join("") +
-      "</tbody></table></div>";
-    modal("📦 " + escHtml(name) + (etf ? " · " + etf : "") + ' <span class="muted" style="font-size:12px">' + note + "</span>", body);
-    wireCharts(document.getElementById("pgModal") || document);
+    compSort = { col: "chg", dir: -1 };                       // fresh sort each open (default: today's move ↓)
+    openMembersDrill(name + (etf ? " · " + etf : ""), members, etf, note);
   }
 
   function renderSp500() {
@@ -5981,6 +5974,42 @@
       if (secSort.col === c) secSort.dir *= -1; else { secSort.col = c; secSort.dir = c === "sym" ? 1 : -1; }
       renderSecDrill(secName, indFilter);
     });
+  }
+  // generic member-drill (used by composites/מכלולים): same rich table as the sector drill — FTFC column + sortable
+  let compSort = { col: "chg", dir: -1 };
+  function openMembersDrill(displayName, members, etf, noteTxt) {
+    if (!members || !members.length) { modal("📦 " + escHtml(displayName), '<div class="muted" style="padding:20px">אין מניות מרכיבות זמינות.</div>'); return; }
+    const _tfs = _secFtfcTfs(), _tfLbl = _secFtfcLbl();
+    const rowHtml = r => {
+      const t = { sym: r.s, Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
+      const chg = r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
+      return "<tr><td>" + star(r.s) + '</td><td class="sym"><span class="tsym clickable" data-chart="' + r.s + '" data-tf="D">' + r.s + "</span></td><td>" + money(r.p || (r.tech ? r.tech.px : 0)) + "</td><td>" + pct(chg) + "</td>" + tfCells(t) + "<td>" + ftfcBadge(r, _tfs) + "</td></tr>";
+    };
+    const th = (label, col, start) => {
+      const arrow = compSort.col === col ? (compSort.dir < 0 ? " ▼" : " ▲") : "";
+      return '<th class="sortable" data-csort="' + col + '" style="cursor:pointer;user-select:none' + (start ? ";text-align:start" : "") + '">' + label + arrow + "</th>";
+    };
+    const head = "<th></th>" + th("סימבול", "sym", true) + th("מחיר", "price") + th("%", "chg") + th("Y", "Y") + th("Q", "Q") + th("M", "M") + th("W", "W") + th("D", "D") + th("FTFC " + _tfLbl, "ftfc");
+    const sorted = members.slice().sort((a, b) => {
+      let va = secSortVal(a, compSort.col), vb = secSortVal(b, compSort.col);
+      const na = va == null || va === "" || (typeof va === "number" && isNaN(va)), nb = vb == null || vb === "" || (typeof vb === "number" && isNaN(vb));
+      if (na && nb) return 0; if (na) return 1; if (nb) return -1;
+      if (typeof va === "string") return compSort.dir * va.localeCompare(vb);
+      return compSort.dir * (va - vb);
+    });
+    const bar = '<div class="drill-bar"><button class="btn ghost" id="cdrillGrid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
+      '<button class="btn ghost" id="cdrillCopy" style="font-size:12px;font-weight:600">📋 העתק ' + members.length + " טיקרים</button>" +
+      (etf ? '<span class="muted" style="font-size:12px">תעודת סל:</span>' + etfChip(etf) : "") + "</div>";
+    modal("📦 " + escHtml(displayName) + (noteTxt ? ' <span class="muted" style="font-size:12px">' + escHtml(noteTxt) + "</span>" : "") + " · " + members.length + " מניות · לחץ כותרת למיון",
+      bar + '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + sorted.map(rowHtml).join("") + "</tbody></table></div>" + colorLegend());
+    { const gb = $("#cdrillGrid"); if (gb) gb.onclick = () => openChartGrid(members.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: displayName }); }
+    { const cb = $("#cdrillCopy"); if (cb) cb.onclick = () => copyToClipboard(members.map(r => r.s).join(", "), () => { cb.textContent = "✓ הועתקו " + members.length; setTimeout(() => cb.textContent = "📋 העתק " + members.length + " טיקרים", 1600); }); }
+    document.querySelectorAll("[data-csort]").forEach(h => h.onclick = () => {
+      const c = h.dataset.csort;
+      if (compSort.col === c) compSort.dir *= -1; else { compSort.col = c; compSort.dir = c === "sym" ? 1 : -1; }
+      openMembersDrill(displayName, members, etf, noteTxt);
+    });
+    wireCharts(document.getElementById("pgModal") || document);
   }
 
   // ========== GAPPERS ==========
