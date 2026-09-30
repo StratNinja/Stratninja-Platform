@@ -172,7 +172,8 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .brd-date { top: 1.6%; left: 2.2%; font-size: 20px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
 /* index state pill + description (per index header row) */
 .brd-sp-state, .brd-ndx-state { width: 27%; left: 30.3%; text-align: center; }
-.brd-sp-state { top: 32.6%; } .brd-ndx-state { top: 60.4%; }
+.brd-sp-state { top: 32.1%; }
+.brd-ndx-state { top: 59.9%; width: 22.5%; left: 33.5%; }   /* neutral pill: narrower + a bit right */
 /* pill fills the whole baked box, coloured by state (red/yellow/green), enlarged */
 .brd-state-pill { display: block; width: 100%; box-sizing: border-box; font-size: 23px; font-weight: 900; padding: 12px 8px; border-radius: 14px; white-space: nowrap; }
 .brd-state-arrow { font-size: 17px; vertical-align: middle; }
@@ -185,8 +186,8 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .brd-card { width: 18.8%; height: 13.8%; }
 .brd-sp-card { top: 43.4%; } .brd-ndx-card { top: 72%; }
 .brd-card .brd-spk { position: absolute; top: 0; left: 4%; right: 8%; height: 100%; }
-.brd-card .brd-pct { position: absolute; top: 0%; left: 6%; font-size: 30px; font-weight: 900; color: #ffffff; text-shadow: 0 1px 6px rgba(0,0,0,.75); }
-.brd-card .brd-chg { position: absolute; top: 3%; left: 42%; direction: ltr; font-size: 15px; font-weight: 800; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
+.brd-card .brd-pct { position: absolute; top: -2%; left: 9%; font-size: 30px; font-weight: 900; color: #ffffff; text-shadow: 0 1px 6px rgba(0,0,0,.75); }
+.brd-card .brd-chg { position: absolute; top: 1%; left: 46%; direction: ltr; font-size: 15px; font-weight: 800; padding: 2px 8px; border-radius: 8px; white-space: nowrap; }
 .brd-card .brd-chg.pos { color: #3fe0a0; background: rgba(22,184,119,.2); }
 .brd-card .brd-chg.neg { color: #ff6b7a; background: rgba(229,56,74,.2); }
 .brd-card .brd-chg.zero { color: #cdd7e6; background: rgba(150,160,180,.18); }

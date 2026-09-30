@@ -3672,15 +3672,15 @@
     };
     const _pillHtml = cs => cs ? '<span class="brd-state-pill"><span class="brd-state-arrow">' + cs.arrow + "</span> " + cs.txt + "</span>" : '<span class="brd-state-pill">—</span>';
     const _desc = (uni, st) => {
-      const nm = uni === "sp" ? "S&P 500" : "Nasdaq 100";
+      const nm = uni === "sp" ? "ה-S&P 500" : "Nasdaq 100";
       if (!st) return "";
       const s = st.score;
-      const d = s <= 20 ? "חלש מאוד ובאזור oversold עמוק — לרוב אזור קנייה."
-        : s <= 40 ? "חלש ונמצא קרוב לרמות מכירה יותר (oversold)."
-        : s <= 60 ? "ניטרלי ומאוזן יחסית."
-        : s <= 80 ? "חזק ומתקרב לרמות קניית-יתר (overbought)."
-        : "חזק מאוד ובאזור overbought — זהירות מהתחממות.";
-      return "רוחב השוק במדד " + nm + " " + d;
+      const l = s <= 20 ? ["חלש מאוד", "באזור Oversold עמוק — לרוב אזור קנייה."]
+        : s <= 40 ? ["חלש", "נמצא קרוב לרמות מכירת יתר (Oversold)."]
+        : s <= 60 ? ["ניטרלי", "מאוזן יחסית."]
+        : s <= 80 ? ["חזק", "מתקרב לרמות קניית-יתר (Overbought)."]
+        : ["חזק מאוד", "באזור Overbought — זהירות מהתחממות."];
+      return "רוחב השוק במדד " + nm + " " + l[0] + "<br>" + l[1];
     };
     const spSt = _st("sp"), ndxSt = _st("ndx");
     const spCs = _cardState("sp"), ndxCs = _cardState("ndx");
