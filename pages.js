@@ -5730,8 +5730,11 @@
       const c = o.chg;
       const tier = c == null ? "t-n" : c >= 0.5 ? "t-vg" : c >= 0.1 ? "t-mg" : c > -0.1 ? "t-n" : c > -0.5 ? "t-mr" : "t-vr";
       const pct = c == null ? "—" : (c >= 0 ? "+" : "−") + Math.abs(c).toFixed(2) + "%";
-      // single-ETF composites → describe the ETF's own FTFC; real groups → count of stocks aligned
-      const mid = o.kind ? (fg ? "🟢 מיושר מעלה" : fr ? "🔴 מיושר מטה" : "⚪ מעורב") : ("🟢" + fg + " 🔴" + fr);
+      // DOMINANT side only (Adi 2026-09-30, option ב'): show whichever FTFC lean is larger, in its colour.
+      const upDom = fg >= fr, domN = upDom ? fg : fr, domW = tot ? (domN / tot * 100) : 0;
+      const mid = o.kind
+        ? (fg ? "🟢 מיושר מעלה" : fr ? "🔴 מיושר מטה" : "⚪ מעורב")
+        : (domN ? (upDom ? "🟢 " : "🔴 ") + domN + " · " + Math.round(domW) + "%" : "⚪ מעורב");
       const cls = "bc-card ftfc-card bc-clickable " + tier + (o.kind ? " single-card" : "");
       const drill = o.kind ? (' data-compdrill="' + escAttr(o.etf || "") + '" data-compname="' + escAttr(o.name) + '"')
         : (" data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"');
@@ -5739,7 +5742,7 @@
       return '<div class="' + cls + '"' + drill + ' title="' + fg + ' בהמשכיות מעלה · ' + fr + ' מטה · מתוך ' + tot + ' מניות">' +
         '<div class="bcc-head">' + chip + '<span class="bcc-name">' + o.name + "</span></div>" +
         '<div class="bcc-mid"><span class="bcc-pct" data-flick="secc-' + escAttr(o.rawname) + '">' + pct + '</span><span class="bcc-usd">' + mid + "</span></div>" +
-        '<div class="bcc-bar ftfc"><span class="ftfc-bar-up" style="width:' + upW.toFixed(1) + '%"></span><span class="ftfc-bar-dn" style="width:' + dnW.toFixed(1) + '%"></span></div></div>';
+        '<div class="bcc-bar ftfc"><span style="position:absolute;left:0;top:0;bottom:0;border-radius:4px;width:' + domW.toFixed(1) + '%;background:' + (upDom ? "linear-gradient(90deg,#0c9160,#22e39b)" : "linear-gradient(90deg,#e5384a,#ff8b8b)") + '"></span></div></div>';
     };
     // build a single-ETF composite as an FTFC row (tot=1, aligned up/down/neutral over the selected TFs)
     const _ftfcSingle = (s, isSub) => { const d = _singleFtfc(s, TFS); return { name: s.name, rawname: s.name, etf: s.etf, tot: 1, fg: d === "up" ? 1 : 0, fr: d === "down" ? 1 : 0, isSub: isSub, chg: s.chg, kind: s.kind }; };
