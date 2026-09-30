@@ -2726,19 +2726,16 @@
     const IDX = [["SPY", "S&P 500"], ["QQQ", "NASDAQ 100"], ["IWM", "RUSSELL 2000"], ["DIA", "DOW JONES"], ["VIX", "תנודתיות"]];
     const idxLefts = [2.2, 21.4, 40.6, 59.8, 79.0];   // % — calibrate to the template's 5 card slots
     const idxCards = IDX.map((it, i) => {
-      const sym = it[0], vix = sym === "VIX";
+      const sym = it[0], vix = sym === "VIX";   // the SYM label + icon are baked into the template; we overlay only price/chg/spark
       const r = byS[sym];
       const price = vix ? vixLvl : (r ? r.price : null);
       const chg = vix ? vixChg : (r ? r.chg : null);
       const cls = _cls(chg);
-      const sub = vix ? (vixLvl != null ? (vixLvl < 18 ? "תנודתיות נמוכה" : vixLvl > 28 ? "תנודתיות גבוהה" : "תנודתיות בינונית") : "תנודתיות") : it[1];
       const spk = vix ? "" : _mkSpark(r && r.ohlc, cls);
       return '<div class="mkt-idx" style="left:' + idxLefts[i] + '%">' +
-        '<div class="mkt-idx-sym">' + sym + '</div>' +
-        '<div class="mkt-idx-px">' + (price != null ? Number(price).toFixed(2) : "—") + '</div>' +
-        '<div class="mkt-idx-chg ' + cls + '">' + _pctS(chg) + _arrow(chg) + '</div>' +
-        '<div class="mkt-idx-spk">' + spk + '</div>' +
-        '<div class="mkt-idx-sub">' + sub + '</div></div>';
+        '<div class="mkt-idx-row"><span class="mkt-idx-px">' + (price != null ? Number(price).toFixed(2) : "—") + '</span>' +
+        '<span class="mkt-idx-chg ' + cls + '">' + _pctS(chg) + _arrow(chg) + '</span></div>' +
+        '<div class="mkt-idx-spk">' + spk + '</div></div>';
     }).join("");
     // leaders / laggards (stocks) + sectors up/down
     const leadS = (U.leaders || []).slice().sort((a, c) => (c.c || 0) - (a.c || 0)).slice(0, 5);
@@ -2760,12 +2757,10 @@
     const el = document.createElement("div");
     el.className = "market-card";   // background = Market_Template.png; we overlay only the data
     el.innerHTML =
-      // breadth
+      // breadth (compact: number + bar + label, inside the small left box)
       '<div class="mkt-brd-num">' + up + '<span>/' + total + '</span></div>' +
-      '<div class="mkt-brd-pct">' + pct + '% מעל הפתיחה</div>' +
-      '<div class="mkt-brd-boxdn">' + down + ' ▼<span>' + dnPct + '%</span></div>' +
-      '<div class="mkt-brd-boxup">' + up + ' ▲<span>' + pct + '%</span></div>' +
       '<div class="mkt-brd-bar"><span class="g" style="width:' + pct + '%"></span><span class="r" style="width:' + dnPct + '%"></span></div>' +
+      '<div class="mkt-brd-pct"><b class="pos">▲ ' + up + '</b> · <b class="neg">▼ ' + down + '</b> · ' + pct + '% מעל הפתיחה</div>' +
       // market state
       '<div class="mkt-state ' + (ms ? ms.cls : "z") + '"><span class="mkt-state-pill">' + (ms ? ms.emoji + " " : "") + riskTxt + '</span><span class="mkt-state-expl">' + escHtml(stateExpl) + '</span></div>' +
       // index cards
