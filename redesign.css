@@ -214,7 +214,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftfc-card > div { position: absolute; }
 .ftc-date { top: 2.1%; left: 2.4%; font-size: 21px; font-weight: 800; color: #d3e4ff; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
 /* three top boxes — label on the upper baked bar (~32.5%), value on the lower (~37.4%) */
-.ftc-box { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; text-align: start; top: 31%; height: 6.9%; }
+.ftc-box { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; text-align: start; top: 31.8%; height: 6.5%; }
 .ftc-tone  { left: 8%;    width: 24%; }
 .ftc-range { left: 39.5%; width: 24%; }
 .ftc-key   { left: 71%;   width: 25.5%; }
@@ -235,7 +235,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-row.ftc-empty { visibility: hidden; }
 .ftc-name { order: 1; flex: 1 1 auto; min-width: 0; text-align: start; padding-inline-start: 4%; padding-inline-end: 3%;
   font-size: 21px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ftc-pct { order: 2; flex: 0 0 24%; text-align: start; direction: ltr; font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.ftc-pct { order: 2; flex: 0 0 24%; text-align: end; direction: ltr; font-size: 22px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .ftc-pct.pos { color: #2fe08a; } .ftc-pct.neg { color: #ff6b7a; } .ftc-pct.zero { color: #cdd7e6; }
 .ftc-etf { order: 3; flex: 0 0 13%; text-align: center; font-size: 22px; font-weight: 900; color: #eaf2ff; letter-spacing: .3px; }
 /* ninja insight (bulb + label baked → overlay text) — max 2 lines, stays inside the box */
