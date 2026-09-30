@@ -365,6 +365,11 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 .snd-btn:hover { transform: translateY(-1px); border-color: var(--lux-g2); }
 .snd-toggle { width: 24px; height: 24px; font-size: 14px; opacity: .7; border-color: transparent; }
 .snd-toggle:hover { opacity: 1; }
+/* alerts bell in the dock, with a red unread-count badge (replaces the top-right indicator) */
+.snd-bell { position: relative; overflow: visible; }
+.snd-badge { position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 9px; background: #e5384a; color: #fff; font-size: 10px; font-weight: 800; line-height: 1;
+  display: none; align-items: center; justify-content: center; box-shadow: 0 0 0 2px var(--panel); }
 @media (max-width: 640px) { .sn-dock { padding: 3px 7px; gap: 5px; } .snd-btn { width: 30px; height: 30px; font-size: 15px; } }
 /* merged request/suggest chooser */
 .req-chooser { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }

@@ -2061,7 +2061,7 @@
   window._snTestAlert = () => _fireAlert([{ sym: "TSLA", preset: "בדיקה", pid: "x" }]);
   function updateAlertBell() {
     const n = window.Prefs ? Prefs.feedUnread() : 0;
-    [document.getElementById("alBadge"), document.getElementById("alBadgeSide")].forEach(b => {
+    [document.getElementById("alBadge"), document.getElementById("alBadgeSide"), document.getElementById("alBadgeDock")].forEach(b => {
       if (b) { b.textContent = n ? n : ""; b.style.display = n ? "inline-flex" : "none"; }
     });
   }
@@ -8035,6 +8035,8 @@
     { const t = document.getElementById("snDockTheme"); if (t) t.onclick = () => { try { if (window.snToggleTheme) snToggleTheme(); } catch (e) {} setThemeIcon(); }; }
     { const c = document.getElementById("snDockCam"); if (c) c.onclick = () => captureShare(); }
     { const d = document.getElementById("snDockDraw"); if (d) d.onclick = () => setPage("draw"); }
+    { const bl = document.getElementById("snDockBell"); if (bl) bl.onclick = () => openAlertsFeed(); }
+    updateAlertBell();   // paint the dock badge on load
     // display density (comfortable / compact / dense) — user-selectable, persisted, applies site-wide
     const DENS = ["comfortable", "compact", "dense"], DENS_HE = { comfortable: "רגיל", compact: "קומפקטי", dense: "צפוף" };
     let dens = "compact"; try { dens = localStorage.getItem("sn_density") || "compact"; } catch (e) {}
