@@ -2737,14 +2737,14 @@
         '<span class="mkt-idx-chg ' + cls + '">' + _pctS(chg) + _arrow(chg) + '</span></div>' +
         '<div class="mkt-idx-spk">' + spk + '</div></div>';
     }).join("");
-    // leaders / laggards (stocks) + sectors up/down
-    const leadS = (U.leaders || []).slice().sort((a, c) => (c.c || 0) - (a.c || 0)).slice(0, 5);
-    const lagS = (U.laggards || []).slice().sort((a, c) => (a.c || 0) - (c.c || 0)).slice(0, 5);
-    const _secReal2 = s => s && s.name && s.name !== "אחר" && s.name !== "מדדים" && (s.etf || subEtfFor(s.name));
-    const secUp = (U.sectorLeaders || []).filter(_secReal2).slice(0, 5);
-    const secDn = (U.sectorLaggards || []).filter(_secReal2).slice(0, 5);
-    const stockRow = x => '<div class="mkt-lrow"><span class="mkt-lp ' + _cls(x.c) + '">' + _pctS(x.c) + '</span><span class="mkt-lt">' + escHtml(x.s) + '</span></div>';
-    const secRow = x => '<div class="mkt-lrow"><span class="mkt-lp ' + _cls(x.chg) + '">' + _pctS(x.chg) + '</span><span class="mkt-lt">' + escHtml(x.etf || subEtfFor(x.name) || x.name) + '</span></div>';
+    // leaders / laggards — stocks are {s, c}; sectors are {name, chg} → main-sector ETF via etfFor(name)
+    const leadS = (U.leaders || []).slice(0, 5);
+    const lagS = (U.laggards || []).slice(0, 5);
+    const secUp = (U.sectorLeaders || []).slice(0, 5);
+    const secDn = (U.sectorLaggards || []).slice(0, 5);
+    const _lrow = (tk, v) => '<div class="mkt-lrow"><span class="mkt-lt">' + escHtml(tk) + '</span><span class="mkt-lp ' + _cls(v) + '">' + _pctS(v) + '</span></div>';
+    const stockRow = x => _lrow(x.s, x.c);
+    const secRow = x => _lrow(etfFor(x.name) || secHe(x.name) || x.name, x.chg);
     const listHtml = (rows, fn) => (rows.length ? rows.map(fn).join("") : '<div class="mkt-lrow"><span class="mkt-lt muted">—</span></div>');
     // market state + insight
     const riskTxt = (ms && ms.cls === "pos") ? "שוק חיובי · Risk-On" : (ms && ms.cls === "neg") ? "שוק שלילי · Risk-Off" : "שוק מעורב";
@@ -5531,14 +5531,7 @@
       return rows.length ? rows.map(_ftfcRow).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
     const secArr = secInfo.map(o => ({ name: secHe(o.name), rawname: o.name, etf: etfFor(o.name), fg: o.fg, fr: o.fr, tot: o.tot, isSub: false, chg: (secChgLive[o.name] != null ? secChgLive[o.name] : o.avgChg) }));
-    // MAGS — mega-caps over $1T (cross-sector; the Magnificent-7 style basket, ETF: MAGS). Its own strength card.
-    const magMembers = SCAN.rows.filter(r => (r.mc || 0) >= 1e12);
-    if (magMembers.length) {
-      const mfg = magMembers.filter(m => secFtfcDir(m, TFS) === "up").length;
-      const mfr = magMembers.filter(m => secFtfcDir(m, TFS) === "down").length;
-      const magChg = (subChgLive["MAGS"] != null ? subChgLive["MAGS"] : (secChgLive["MAGS"] != null ? secChgLive["MAGS"] : _avgChg(magMembers)));
-      secArr.push({ name: "MAGS · מעל 1T", rawname: "MAGS", etf: "MAGS", fg: mfg, fr: mfr, tot: magMembers.length, isSub: false, chg: magChg });
-    }
+    // (MAGS >$1T card removed — Adi 2026-09-30: less relevant among the GICS sectors)
     const note = (LIVE && LIVE.sectors && LIVE.sectors.length)
       ? liveBanner()
       : '<div class="demo-flag" style="background:rgba(22,184,119,.1);color:#7ee2b8;border-color:rgba(22,184,119,.25)">🟢 חברי הסקטור אמיתיים · הירוק/אדום לפי הנר היומי (השוק סגור — אין "מעל פתיחה")</div>';
