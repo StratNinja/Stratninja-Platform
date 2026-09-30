@@ -542,6 +542,9 @@ body[data-page="today"] .td-flow .bcell-list,
 body[data-page="sp500"] .td-flow .bcell-list,
 body[data-page="sectors"] .td-flow .bcell-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .bc-card.bc-clickable { cursor: pointer; }
+/* 52-week-high section at the bottom of the 🔔 מרכז ההתראות menu (replaced the floating pill) */
+.al-ath { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line, #2a3340); }
+.al-ath .al-time.pos { color: #3fe0a0; } .al-ath .al-time.neg { color: #ff6b7a; }
 /* full-width divider inside a battery grid → separates the 11 GICS sectors from the broad-market composites */
 .bcell-div { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin: 7px 2px 3px; }
 .bcell-div::before, .bcell-div::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line, #2a3340), transparent); }
