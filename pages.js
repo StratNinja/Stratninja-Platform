@@ -4930,11 +4930,16 @@
             if (q.cc.length && q.cc.indexOf(sd[2]) < 0) return false;
           }
           if (q.c2col || q.c1col || q.cccol) {
-            const sc = (c.seq3col || "").split("-");   // [C2, C1, CC] colours (up/down/"")
-            if (sc.length < 3) return false;
-            if (q.c2col && sc[0] !== q.c2col) return false;
-            if (q.c1col && sc[1] !== q.c1col) return false;
-            if (q.cccol && sc[2] !== q.cccol) return false;
+            // CC colour = the current candle's OWN close direction (c.c), which is present on EVERY TF
+            // incl. intraday (same field the נר colour filter uses). seq3col holds the 3-bar colour history
+            // but is NOT stored on the compact intraday cells → C2/C1 colours only apply where it exists.
+            const sc = (c.seq3col || "").split("-");   // [C2, C1, CC] colours (up/down/"") — D/W/M/Q/Y only
+            const hasSc = sc.length >= 3;
+            if (q.cccol) { const cc = c.c || (hasSc ? sc[2] : ""); if (cc !== q.cccol) return false; }
+            if (hasSc) {                               // C2/C1 need the last-3 history → wildcard on intraday
+              if (q.c2col && sc[0] !== q.c2col) return false;
+              if (q.c1col && sc[1] !== q.c1col) return false;
+            }
           }
         }
         if (scanState.patterns.length && scanState.patterns.indexOf(c.t) < 0) return false;
