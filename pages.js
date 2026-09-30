@@ -2277,11 +2277,33 @@
       let sub = await reg.pushManager.getSubscription();
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
       if (window.Prefs && sub) Prefs.addPushSub(sub.toJSON());
+      try { localStorage.setItem("sn_push_renew", String(Date.now())); } catch (e) {}
       snToast("✓ התראות לפלאפון הופעלו!");
       if (document.getElementById("pgModal")) openAlertsFeed();
     } catch (e) { snToast("שגיאה בהפעלת התראות פלאפון"); }
   }
   window._snSubPush = subscribeToPush;
+  // AUTO-HEAL the push subscription on app load: FCM rotates tokens, so a months-old sub goes "gone"
+  // (server sends, phone shows nothing). On load — if notifications are already granted and the user is
+  // logged in — make sure a subscription exists and is saved to the cloud, and FORCE a genuinely fresh
+  // token weekly (and on the very first run, since sn_push_renew is unset) so it can never rot silently.
+  async function _autoEnsurePush() {
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      if (!(window.Notification && Notification.permission === "granted")) return;   // never prompt automatically
+      if (!(window.SNAuth && window.SNAuth.getClient && window.SNAuth.getClient())) return;   // per-user → logged in only
+      const cfg = window.SN_CONFIG; if (!cfg || !cfg.VAPID_PUBLIC) return;
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      let renew = false;
+      try { renew = (Date.now() - (+(localStorage.getItem("sn_push_renew") || 0))) > 7 * 864e5; } catch (e) {}
+      if (renew && sub) { try { if (window.Prefs) Prefs.removePushSub(sub.endpoint); await sub.unsubscribe(); } catch (e) {} sub = null; }
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
+      if (window.Prefs && sub) Prefs.addPushSub(sub.toJSON());
+      if (renew) { try { localStorage.setItem("sn_push_renew", String(Date.now())); } catch (e) {} }
+    } catch (e) {}
+  }
+  window._snEnsurePush = _autoEnsurePush;
   // force a FRESH subscription — unsubscribe the current (often dead/zombie) one first, then re-subscribe.
   // fixes the common "server sends but phone shows nothing" case where getSubscription() keeps returning a stale sub.
   async function renewPush() {
@@ -2295,6 +2317,7 @@
       if (old) { const ep = old.endpoint; try { await old.unsubscribe(); } catch (e) {} if (window.Prefs) Prefs.removePushSub(ep); }
       const fresh = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
       if (window.Prefs && fresh) Prefs.addPushSub(fresh.toJSON());
+      try { localStorage.setItem("sn_push_renew", String(Date.now())); } catch (e) {}
       snToast("✓ המנוי חודש! עכשיו אפשר לשלוח בדיקה");
       if (state.page === "favorites") reRender();
     } catch (e) { snToast("שגיאה בחידוש המנוי"); }
@@ -7861,6 +7884,7 @@
     setInterval(_snBackendHealthTick, 90000);     // re-check every 90s (auto-clears when it recovers)
     _wireTrackClicks();                           // usage analytics — curated feature-click tracking
     snTrack("app:open");                          // session-start signal (logged-in users)
+    setTimeout(() => { try { _autoEnsurePush(); } catch (e) {} }, 3500);   // keep phone-push subscription fresh (auto-heal)
     // 52-week-high celebration: boot once scan data is present AND the app is visible,
     // then refresh each minute
     const _athBoot = setInterval(() => {
