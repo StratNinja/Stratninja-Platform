@@ -580,6 +580,11 @@ body[data-page="sectors"] .td-flow .bcell-list { display: grid; grid-template-co
 #sideAth52.ath52-live .ath52-ico { filter: drop-shadow(0 0 6px rgba(34,227,155,.5)); }
 #sideAth52.ath52-live .ath52-t { color: #22e39b; font-weight: 900; letter-spacing: .3px; }
 #sideAth52.ath52-live:hover { border-color: rgba(34,227,155,.85); box-shadow: 0 0 18px rgba(34,227,155,.3); }
+
+/* alerts-center preset row: name + separate desktop (🔔) / phone (📱) toggles */
+.al-prow .al-pname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-prow .al-ptgls { display: flex; align-items: center; gap: 6px; flex: none; }
+.al-prow .al-tgl-ico { font-size: 13px; opacity: .85; }
 /* full-width divider inside a battery grid → separates the 11 GICS sectors from the broad-market composites */
 .bcell-div { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; margin: 7px 2px 3px; }
 .bcell-div::before, .bcell-div::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line, #2a3340), transparent); }

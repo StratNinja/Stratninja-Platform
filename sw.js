@@ -4,7 +4,7 @@
 
 // Precache the notification icons so they're available from local cache when a push arrives while the
 // device is dozing (no network fetch needed) — otherwise Chrome falls back to a letter avatar + bell.
-const ICON_CACHE = "sn-icons-v4";
+const ICON_CACHE = "sn-icons-v5";   // bump → re-cache the updated ninja-icon.png (was serving a stale old icon)
 const ICON_URLS = ["/ninja-icon.png", "/badge-96.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(ICON_CACHE).then((c) => c.addAll(ICON_URLS)).catch(() => {}).then(() => self.skipWaiting()));

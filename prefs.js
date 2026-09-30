@@ -56,6 +56,10 @@ window.Prefs = (function () {
       d.scanPresets.push(rec); write(d); return rec;
     },
     togglePresetAlert(id) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (p) { p.alert = !p.alert; write(d); } return p ? p.alert : false; },
+    // phone-push per preset — separate from the desktop alert. Default ON (phone !== false) for
+    // backward-compat; turn OFF to keep an alert on the desktop feed only (avoid phone overload).
+    presetPhoneOn(id) { const p = (read().scanPresets || []).find(x => x.id === id); return p ? (p.phone !== false) : false; },
+    togglePresetPhone(id) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (!p) return false; p.phone = (p.phone === false); write(d); return p.phone !== false; },
     // reorder presets to the given id order (any id not listed is appended at the end)
     setScanPresetsOrder(ids) {
       const d = read(); const arr = d.scanPresets || []; const byId = {};
