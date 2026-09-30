@@ -363,7 +363,7 @@
     if ("requestIdleCallback" in window) requestIdleCallback(go, { timeout: 4000 }); else setTimeout(go, 1500);
   }
   function openChart(sym, tfl) {
-    const iv = ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M" })[tfl] || "D";
+    const iv = ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M", "15m": "15", "30m": "30", "60m": "60", "65m": "65", "2H": "120", "130m": "130", "3H": "180", "195m": "195", "4H": "240" })[tfl] || "D";
     const base = "https://www.tradingview.com/widgetembed/?frameElementId=tvchart&symbol=" + encodeURIComponent(sym) +
       "&interval=" + iv + "&theme=dark&style=1&hidesidetoolbar=0&saveimage=1&timezone=America%2FNew_York";
     modal(sym + " · " + tfl,
@@ -423,7 +423,7 @@
     } catch (e) { return {}; }
   };
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
-  const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M" };
+  const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M", "15m": "15", "30m": "30", "60m": "60", "65m": "65", "2H": "120", "130m": "130", "3H": "180", "195m": "195", "4H": "240" };
   const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
   function openScannerGrid() { openChartGrid(sortRows(filterRows(scanRowsView())), {}); }   // respect live/yesterday view
   // generic chart-grid: takes a list of rows ({sym, price, chg, name/ind/sector}) and shows them as a TV grid
@@ -1596,6 +1596,11 @@
   // ========== SCANNER ==========
   // expanded Strat timeframes the user can add via ➕ (computed on the server, TheStrat-agnostic)
   const EXTRA_TFS = ["2D", "3D", "5D", "2W", "3W", "6W", "2M", "4M", "6M"];
+  // intraday Strat timeframes (session-anchored, server-computed) — same cell format as D/W/M
+  const INTRADAY_TFS = ["15m", "30m", "60m", "65m", "2H", "130m", "3H", "195m", "4H"];
+  const XTRA_ALL = EXTRA_TFS.concat(INTRADAY_TFS);          // every user-addable custom TF
+  const ALL_TFS = ["Y", "Q", "M", "W", "D"].concat(XTRA_ALL);
+  const _isTfCol = c => ALL_TFS.indexOf(c) >= 0;
   // sector / subsec are MULTI-select: arrays of selected names (empty = "all")
   const scanState = { tfs: ["D"], tfsExtra: [], patterns: [], dir: "all", shape: [], broad: "off", seq: { c2: [], c1: [], cc: [], c2col: "", c1col: "", cccol: "" }, inforce: "off", sigShape: [], ifcType: [], sector: [], subsec: [], universe: "all", sym: "", ftfc: false, priceMin: "", priceMax: "", capMin: "", capMax: "", mtfOpen: false, indOpen: false, favTop: false, mtf: newMtf() };
   // normalize a stored sector/subsec value (old presets held a string "all"/name) to a selection array
@@ -3999,7 +4004,7 @@
     if (col === "ftfc") return t.ftfc ? 1 : 0;
     if (col === "ninja") return t.ninja;
     if (col === "ind") return t.ind || "";
-    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(t[col]);
+    if (_isTfCol(col)) return tfRank(t[col]);
     const k = t.tech || {};
     if (col === "rsi") return k.rsi;
     if (col === "mfi") return k.mfi;
@@ -4056,16 +4061,22 @@
   function _tfMenuOutside(e) { const p = document.getElementById("tfAddPop"); if (p && !p.contains(e.target) && e.target.id !== "tfAdd") closeTfMenu(); }
   function openTfAddMenu(btn) {
     closeTfMenu();
-    const avail = EXTRA_TFS.filter(t => scanState.tfsExtra.indexOf(t) < 0);
-    if (!avail.length) return;
+    const availI = INTRADAY_TFS.filter(t => scanState.tfsExtra.indexOf(t) < 0);   // intraday
+    const availX = EXTRA_TFS.filter(t => scanState.tfsExtra.indexOf(t) < 0);       // daily-based custom
+    if (!availI.length && !availX.length) return;
     const pop = document.createElement("div"); pop.className = "tf-addpop"; pop.id = "tfAddPop";
-    pop.innerHTML = '<div class="tf-addpop-lbl">➕ טיימפריים סטראט מותאם</div><div class="tf-addpop-grid">' +
-      avail.map(t => '<button class="chip" data-addtf="' + t + '">' + t + "</button>").join("") + "</div>" +
+    const grp = (lbl, arr) => arr.length ? '<div class="tf-addpop-grp">' + lbl + '</div><div class="tf-addpop-grid">' +
+      arr.map(t => '<button class="chip" data-addtf="' + t + '">' + t + "</button>").join("") + "</div>" : "";
+    pop.innerHTML = '<div class="tf-addpop-lbl">➕ טיימפריים סטראט מותאם</div>' +
+      grp("⏱️ תוך-יומי", availI) + grp("📆 יומי ומעלה", availX) +
       '<div class="tf-addpop-note">TheStrat אגנוסטי לזמן — הוסף כל מסגרת וסנן לפיה כמו D/W/M/Q/Y.</div>';
     document.body.appendChild(pop);
-    const r = btn.getBoundingClientRect();
+    // anchor the popover's RIGHT edge to the + button (RTL-natural), opening just below it — not detached
+    const r = btn.getBoundingClientRect(), pw = pop.offsetWidth;
+    let left = r.right + window.scrollX - pw;
+    left = Math.max(8 + window.scrollX, Math.min(left, window.scrollX + document.documentElement.clientWidth - pw - 8));
+    pop.style.left = left + "px";
     pop.style.top = (r.bottom + window.scrollY + 6) + "px";
-    pop.style.insetInlineStart = (r.left + window.scrollX) + "px";
     pop.querySelectorAll("[data-addtf]").forEach(b => b.onclick = () => {
       const t = b.dataset.addtf;
       if (scanState.tfsExtra.indexOf(t) < 0) scanState.tfsExtra.push(t);
@@ -4134,7 +4145,7 @@
       const o = { sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
         chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), mc: r.mc, ninja: r.ninja,
         Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech, sp: r.sp, comm: r.comm };
-      EXTRA_TFS.forEach(tf => { if (r[tf]) o[tf] = r[tf]; });   // custom Strat timeframes
+      XTRA_ALL.forEach(tf => { if (r[tf]) o[tf] = r[tf]; });   // custom Strat timeframes (daily-based + intraday)
       return o;
     });
   }
@@ -4550,7 +4561,8 @@
       const dma = (k[dmapKey] || {})[techState.maPeriod];
       const techCells = visCols.map(c => c.cell(k, dma, t)).join("");
       const s = t.sym;
-      const tfCellsSel = ["Y", "Q", "M", "W", "D"].map(k => showCol(k) ? "<td>" + tf(t[k], s, k) + "</td>" : "").join("");
+      const tfCellsSel = ["Y", "Q", "M", "W", "D"].map(k => showCol(k) ? "<td>" + tf(t[k], s, k) + "</td>" : "").join("") +
+        scanState.tfsExtra.map(k => "<td>" + tf(t[k], s, k) + "</td>").join("");   // custom + intraday TF cells
       return "<tr>" +
         "<td>" + star(t.sym) + "</td>" +
         '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
@@ -4587,7 +4599,9 @@
       D: sortableTh("D", "D", ' title="נר Strat בטיימפריים היומי"'),
       ftfc: sortableTh("FTFC", "ftfc", ' title="FTFC — המשכיות טיימפריימים מלאה: כל הטיימפריימים באותו כיוון (ירוק=עולה, אדום=יורד)"'),
     };
-    const baseOrder = ["sec", "etf", "price", "mc", "chg", "Y", "Q", "M", "W", "D", "ftfc"];
+    // each custom TF the user added (2D/3D… + intraday 15m…4H) becomes its own Strat column, right after D
+    scanState.tfsExtra.forEach(x => { baseTh[x] = sortableTh(x, x, ' title="נר Strat בטיימפריים ' + x + '"'); });
+    const baseOrder = ["sec", "etf", "price", "mc", "chg", "Y", "Q", "M", "W", "D"].concat(scanState.tfsExtra, ["ftfc"]);
     const head =
       '<th class="fav-th"><button class="fav-toptgl' + (scanState.favTop ? " on" : "") + '" id="favTopTgl" title="' + (scanState.favTop ? "בטל — הצג לפי המיון הרגיל" : "הצג את המועדפים (⭐) בראש הרשימה") + '">★</button></th>' + sortableTh("סימבול", "sym", ' title="סימבול המניה · לחץ על השם בשורה לגרף"') +
       baseOrder.filter(showCol).map(k => baseTh[k]).join("") +
@@ -5649,7 +5663,7 @@
     if (col === "chg") return r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0);
     // FTFC-green on top, then FTFC-red, then non-FTFC — computed for the SELECTED timeframe set (matches the badge)
     if (col === "ftfc") { const dir = (typeof secFtfcDir === "function") ? secFtfcDir(r, _secFtfcTfs()) : ""; return dir === "up" ? 2 : dir === "down" ? 1 : 0; }
-    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(r[col]);
+    if (_isTfCol(col)) return tfRank(r[col]);
     return null;
   }
   function openSectorDrillLive(secName) { secSort = { col: null, dir: -1 }; renderSecDrill(secName, null); }
@@ -6328,7 +6342,7 @@
     if (col === "ind") return t.ind || "";
     if (col === "price") return t.price;
     if (col === "chg") return t.chg;
-    if (["Y", "Q", "M", "W", "D"].indexOf(col) >= 0) return tfRank(t[col]);
+    if (_isTfCol(col)) return tfRank(t[col]);
     return null;
   }
   function favSortRows(rows) {
