@@ -2724,7 +2724,7 @@
     const _pctS = c => c == null ? "—" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
     // 5 index cards (LTR): SPY QQQ IWM DIA VIX
     const IDX = [["SPY", "S&P 500"], ["QQQ", "NASDAQ 100"], ["IWM", "RUSSELL 2000"], ["DIA", "DOW JONES"], ["VIX", "תנודתיות"]];
-    const idxLefts = [4.3, 23.7, 43.1, 62.5, 81.5];   // % — left edge of each of the 5 card slots
+    const idxLefts = [3.5, 22.9, 42.3, 61.7, 80.7];   // % — left edge of each of the 5 card slots
     const idxCards = IDX.map((it, i) => {
       const sym = it[0], vix = sym === "VIX";   // the SYM label + icon are baked into the template; we overlay only price/chg/spark
       const r = byS[sym];
@@ -2773,7 +2773,7 @@
       '<div class="mkt-list mkt-lag-stocks">' + listHtml(lagS, stockRow) + '</div>' +
       '<div class="mkt-list mkt-lag-secs">' + listHtml(secDn, secRow) + '</div>' +
       // CTA in the empty center of the top frame
-      '<div class="mkt-cta">רוב הסוחרים לא נכשלים כי הם לא יודעים מספיק — אלא כי הם סוחרים <b>לבד</b>, בלי שיטה ובלי מישהו שיגיד להם עצור. פה יש לך את <b>שלושתם</b>.</div>' +
+      '<div class="mkt-cta">רוב הסוחרים לא נכשלים כי הם לא יודעים מספיק<br>אלא כי הם סוחרים <b>לבד</b><br>בלי שיטה ובלי מישהו שיכווין אותם<br>בקהילת <b>סטראט נינג׳ה</b> יש לך את <b>שלושתם</b>.</div>' +
       // insight
       '<div class="mkt-insight">' + insTxt + '</div>' +
       // timestamp at the top (date + capture time) + footer strip at the bottom
