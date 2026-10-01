@@ -718,8 +718,10 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
   font-family: 'Heebo','Rubik',sans-serif; color: #eaf7ff;
   background: url("HeatMap_Template.png?v=1") center/100% 100% no-repeat; }
 /* top line inside the panel header: S&P 500 · date + short insight (left of the baked HEATMAP tab) */
-/* top row: anchored to the RIGHT edge (~15px gap) → S&P 500·date tag (rightmost), then breadth insight to its left */
-.hmsh-top { position: absolute; top: 34%; right: 4.5%; left: auto; width: auto; max-width: 72%; display: flex; align-items: center; gap: 14px; justify-content: flex-start; }
+/* top: anchored to the RIGHT edge (~15px gap) → row of [S&P 500·date tag][breadth insight], then a legend note */
+.hmsh-top { position: absolute; top: 33.2%; right: 4.5%; left: auto; width: auto; max-width: 74%; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.hmsh-toprow { display: flex; align-items: center; gap: 14px; }
+.hmsh-note { font-size: 15px; font-weight: 600; color: #9fb3c7; white-space: nowrap; }
 .hmsh-badge { flex: 0 0 auto; font-size: 20px; font-weight: 800; color: #07130d; direction: ltr; white-space: nowrap;
   background: linear-gradient(90deg,#22e39b,#12c07f); padding: 6px 16px; border-radius: 999px; }
 .hmsh-insight { font-size: 19px; font-weight: 700; color: #cfe8df; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

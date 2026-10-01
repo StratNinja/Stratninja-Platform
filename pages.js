@@ -2932,12 +2932,17 @@
     spHeatSector = null; spHeatAtr = 0; _hmShareClean = true;
     if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
     else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "3"; spHeatDown = "3"; }   // default: ≥3% movers (cleaner)
+    const upThr = spHeatUp, dnThr = spHeatDown;   // thresholds actually used (for the legend note)
     const mapHtml = spHeatmap();
     spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false;
+    const noteText = spHeatAvg
+      ? "הצבע = התנועה הממוצעת של כל סקטור"
+      : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
     const box = (cls, lbl, nm, chg) => '<div class="hmsh-box ' + cls + '"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch">' + _sgn(chg) + "</div></div>";
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
-      '<div class="hmsh-top"><span class="hmsh-badge">S&P 500 · ' + dateStr + "</span><span class=\"hmsh-insight\">" + escHtml(insight) + "</span></div>" +
+      '<div class="hmsh-top"><div class="hmsh-toprow"><span class="hmsh-badge">S&P 500 · ' + dateStr + '</span><span class="hmsh-insight">' + escHtml(insight) + "</span></div>" +
+        '<div class="hmsh-note">' + noteText + "</div></div>" +
       '<div class="hmsh-map hm-neon">' + mapHtml + "</div>" +
       '<div class="hmsh-boxes">' +
         box("sub", "תת-סקטור בולט", subNm, standout ? standout.chg : null) +
