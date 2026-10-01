@@ -3119,6 +3119,9 @@
     const netAll = secArr.length ? secArr.reduce((a, o) => a + o.net, 0) / secArr.length : 0;
     const tone = netAll > 0.15 ? "חיובי" : netAll > 0.03 ? "חיובי מתון" : netAll < -0.15 ? "שלילי" : netAll < -0.03 ? "שלילי מתון" : "מעורב ומאוזן";
     const toneCls = netAll > 0.03 ? "pos" : netAll < -0.03 ? "neg" : "zero";
+    // new template bakes the three top labels (מצב שוק · כיוון מוביל · פוקוס יומי) → emit VALUES only
+    const leadSec = secP.green.length ? _cardNm(secP.green[0].he) : "—";   // strongest-continuity sector
+    const leadSub = subP.green.length ? _cardNm(subP.green[0].he) : "—";   // strongest-continuity sub-sector
     const keyInsight = secP.green.length ? "כוח יחסי ב" + joinHe(secP.green.slice(0, 2).map(o => _cardNm(o.he))) : "המשכיות מעורבת בסקטורים";
     // Ninja Insight: keep it to ~2 short lines — top-2 green sectors vs top-2 red sub-sectors
     const gSecNames = secP.green.slice(0, 2).map(o => _cardNm(o.he)), rSubNames = subP.red.slice(0, 2).map(o => _cardNm(o.he));
@@ -3130,10 +3133,10 @@
     el.className = "ftfc-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
       '<div class="ftc-date">🕐 ' + dateStr + "</div>" +
-      // three top boxes: overall tone · analysis range · key insight
-      '<div class="ftc-box ftc-tone"><span class="ftc-blbl">טון שוק כללי</span><span class="ftc-bval ' + toneCls + '">' + tone + "</span></div>" +
-      '<div class="ftc-box ftc-range"><span class="ftc-blbl">טווח ניתוח</span><span class="ftc-bval">המשכיות זמנית · ' + rangeLbl + "</span></div>" +
-      '<div class="ftc-box ftc-key"><span class="ftc-blbl">תובנה מרכזית</span><span class="ftc-bval ftc-key-v">' + escHtml(keyInsight) + "</span></div>" +
+      // three top boxes — labels baked in template (RTL right→left: מצב שוק · כיוון מוביל · פוקוס יומי)
+      '<div class="ftc-box ftc-key"><span class="ftc-bval ' + toneCls + '">' + tone + "</span></div>" +             /* מצב שוק (rightmost) = overall tone */
+      '<div class="ftc-box ftc-range"><span class="ftc-bval pos">' + escHtml(leadSec) + "</span></div>" +          /* כיוון מוביל (center) = leading sector */
+      '<div class="ftc-box ftc-tone"><span class="ftc-bval pos">' + escHtml(leadSub) + "</span></div>" +           /* פוקוס יומי (leftmost) = leading sub-sector */
       // sectors: red (left) + green (right)
       '<div class="ftc-col ftc-sec-red">' + colHtml(secP.red, "red") + "</div>" +
       '<div class="ftc-col ftc-sec-green">' + colHtml(secP.green, "green") + "</div>" +
@@ -3202,10 +3205,12 @@
   }
   function openFtfcShareChooser() {
     const body = '<div class="ftf-chooser">' +
+      '<button class="ftf-ch-btn ftf-ch-full" data-ftfside="full">📊 <b>סקירת FTFC מלאה</b><span>סקטורים ותתי-סקטורים · ירוק/אדום</span></button>' +
       '<button class="ftf-ch-btn ftf-ch-bull" data-ftfside="bull">🐂 <b>שורי</b><span>איפה להיות כרגע</span></button>' +
       '<button class="ftf-ch-btn ftf-ch-bear" data-ftfside="bear">🐻 <b>דובי</b><span>איפה לא להיות כרגע</span></button></div>';
-    modal("🥷 כרטיס FTFC — בחר כיוון", body);
-    document.querySelectorAll("[data-ftfside]").forEach(b => b.onclick = () => { const s = b.dataset.ftfside; closeModal(); _captureRedesignCard(() => buildFtfcSideCardEl(s)); });
+    modal("🥷 כרטיס FTFC — בחר תצוגה", body);
+    document.querySelectorAll("[data-ftfside]").forEach(b => b.onclick = () => { const s = b.dataset.ftfside; closeModal();
+      _captureRedesignCard(s === "full" ? buildFtfcCardEl : () => buildFtfcSideCardEl(s)); });
   }
   // ===== Market-overview super-card (state + breadth + indices + FTFC + movers) =====
   function buildMarketOverviewCardEl() {
