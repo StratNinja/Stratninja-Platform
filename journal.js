@@ -1132,6 +1132,7 @@
   let eqPivots = false; try { eqPivots = localStorage.getItem("sn_eq_pivots") === "1"; } catch (e) {}   // PIVOT HIGH/LOW markers
   // equity-curve timeframe (which period to show) — modular + dynamic (Adi)
   let eqRange = "all"; try { eqRange = localStorage.getItem("sn_eq_range") || "all"; } catch (e) {}
+  let eqFrom = "", eqTo = ""; try { eqFrom = localStorage.getItem("sn_eq_from") || ""; eqTo = localStorage.getItem("sn_eq_to") || ""; } catch (e) {}   // custom from/to date range
   const EQ_RANGES = [["1m", "חודש"], ["3m", "3ח'"], ["6m", "6ח'"], ["ytd", "השנה"], ["1y", "שנה"], ["all", "הכל"]];
   if (!EQ_RANGES.some(r => r[0] === eqRange)) eqRange = "all";
   function _eqCutoff(range) {
@@ -1174,17 +1175,16 @@
     const base = getEqBase(acct) || autoBase || 0;
     // header: title + $/% toggle
     const head = el("div", "eq-head");
+    const _dateMode = !!(eqFrom || eqTo);
     head.innerHTML = '<h3>עקומת הון (רווח/הפסד מצטבר)</h3>' +
       '<span class="eq-ranges">' + EQ_RANGES.map(r =>
-        '<button class="eq-range-btn' + (eqRange === r[0] ? " on" : "") + '" data-eqrange="' + r[0] + '">' + r[1] + "</button>").join("") + "</span>" +
+        '<button class="eq-range-btn' + (!_dateMode && eqRange === r[0] ? " on" : "") + '" data-eqrange="' + r[0] + '">' + r[1] + "</button>").join("") +
+        '<span class="eq-daterange" title="בחר טווח מתאריך עד תאריך"><span class="eq-dr-lbl">מ־</span><input type="date" class="eq-date" id="eqFromInp" value="' + eqFrom + '"><span class="eq-dr-lbl">עד</span><input type="date" class="eq-date" id="eqToInp" value="' + eqTo + '"></span>' + "</span>" +
       '<span class="eq-modes">' +
         '<button class="eq-mode-btn eq-piv-btn' + (eqPivots ? " on" : "") + '" data-eqpiv="1" title="סמן שיאים ושפלים מקומיים (Pivot High/Low) לאורך העקומה">◆ פיבוטים</button>' +
         '<button class="eq-mode-btn' + (eqMode === "abs" ? " on" : "") + '" data-eqmode="abs">$</button>' +
         '<button class="eq-mode-btn' + (eqMode === "pct" ? " on" : "") + '" data-eqmode="pct">%</button></span>';
     box.appendChild(head);
-    head.querySelectorAll("[data-eqrange]").forEach(b => b.onclick = () => {
-      if (eqRange === b.dataset.eqrange) return; eqRange = b.dataset.eqrange; try { localStorage.setItem("sn_eq_range", eqRange); } catch (e) {} render();
-    });
     head.querySelectorAll("[data-eqmode]").forEach(b => b.onclick = () => {
       if (eqMode === b.dataset.eqmode) return; eqMode = b.dataset.eqmode; render();
     });
@@ -1203,10 +1203,23 @@
     const pctMode = eqMode === "pct" && base > 0;
     const toVal = eq => pctMode ? eq / base * 100 : eq;                       // $ → % of portfolio
     const fmtVal = v => pctMode ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : money(v, 0);
-    // VISIBLE WINDOW (trailing points): the buttons set it from a preset range; the mouse WHEEL zooms it
-    // (Shift+wheel pans through history). Lives in the closure so the wheel redraws without a full re-render.
-    let winN = _rangeCount(eqRange, allPts);   // how many trailing points are visible
-    let winOff = 0;                            // points back from the latest where the window ends (pan)
+    // VISIBLE WINDOW as an index range [winA, winB) — the single source of truth. Set by the preset buttons,
+    // the from/to date pickers, or the mouse WHEEL (zoom) / Shift+WHEEL (pan). Redraws without a full re-render.
+    let winA = 0, winB = allPts.length;
+    function _initWin() {
+      const total = allPts.length;
+      if (eqFrom || eqTo) {
+        let ia = 0, ib = total;
+        if (eqFrom) { ia = allPts.findIndex(p => p.date >= eqFrom); if (ia < 0) ia = total - 2; }
+        if (eqTo) { let j = total - 1; while (j >= 0 && allPts[j].date > eqTo) j--; ib = j + 1; }
+        winA = Math.max(0, Math.min(ia, total - 2));
+        winB = Math.max(winA + 2, Math.min(ib, total));
+      } else {
+        const n0 = _rangeCount(eqRange, allPts);
+        winA = Math.max(0, total - n0); winB = total;
+      }
+    }
+    _initWin();
     // Catmull-Rom → cubic-bezier smoothing so the line flows instead of jumping between points
     const smooth = P => {
       if (P.length < 2) return "";
@@ -1226,12 +1239,11 @@
       const w = Math.max(320, Math.round(chartWrap.clientWidth || box.clientWidth || 900));
       const h = Math.max(150, Math.round(Math.min(window.innerHeight * 0.30, 460)));
       const padX = 10, padTop = 26, padBot = 26;
-      // slice the visible trailing window (zoom = winN · pan = winOff) and derive this window's scale + pivots
+      // slice the visible window [winA, winB) and derive this window's scale + pivots
       const total = allPts.length;
-      const nN = Math.max(2, Math.min(total, Math.round(winN)));
-      winOff = Math.max(0, Math.min(total - nN, winOff));
-      const start = total - nN - winOff;
-      const pts = allPts.slice(start, start + nN);
+      winA = Math.max(0, Math.min(winA, total - 2));
+      winB = Math.max(winA + 2, Math.min(winB, total));
+      const pts = allPts.slice(winA, winB);
       const eq = pts.map(p => toVal(p.equity));
       const n = pts.length;
       const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
@@ -1309,23 +1321,54 @@
       svgEl.addEventListener("mouseleave", () => { g.style.opacity = "0"; });
       svgEl.addEventListener("touchmove", e => { if (e.touches && e.touches[0]) moveTo(e.touches[0].clientX); }, { passive: true });
     }
-    drawEq();
+    // redraw + reflect the current window in the from/to date inputs (so they're a live readout too)
+    function afterWindowChange(clearPreset) {
+      drawEq();
+      const vis = allPts.slice(Math.max(0, Math.min(winA, allPts.length - 2)), Math.max(0, Math.min(winB, allPts.length)));
+      const fi = head.querySelector("#eqFromInp"), ti = head.querySelector("#eqToInp");
+      if (fi && vis.length) fi.value = vis[0].date;
+      if (ti && vis.length) ti.value = vis[vis.length - 1].date;
+      if (clearPreset) head.querySelectorAll("[data-eqrange]").forEach(b => b.classList.remove("on"));
+    }
+    afterWindowChange(false);
     try { const ro = new ResizeObserver(() => drawEq()); ro.observe(chartWrap); } catch (e) {}
-    // mouse WHEEL = zoom the visible time window · Shift+WHEEL = pan through history (buttons stay for presets)
+    // mouse WHEEL = zoom the visible window · Shift+WHEEL = pan through history (buttons / dates stay for presets)
     chartWrap.addEventListener("wheel", e => {
       e.preventDefault();
-      const total = allPts.length;
+      const total = allPts.length, cnt = winB - winA;
       if (e.shiftKey) {
-        const step = Math.max(1, Math.round(winN * 0.12));
-        winOff = Math.max(0, Math.min(total - winN, winOff + (e.deltaY > 0 ? step : -step)));   // scroll down = older
+        const step = Math.max(1, Math.round(cnt * 0.12));
+        let a = winA + (e.deltaY > 0 ? -step : step), b = winB + (e.deltaY > 0 ? -step : step);   // scroll down = older
+        if (a < 0) { b -= a; a = 0; }
+        if (b > total) { a -= (b - total); b = total; }
+        winA = Math.max(0, a); winB = Math.min(total, b);
       } else {
-        winN = e.deltaY < 0 ? Math.round(winN / 1.18) : Math.round(winN * 1.18);                 // scroll up = zoom in
-        winN = Math.max(5, Math.min(total, winN));
+        const ncnt = Math.max(5, Math.min(total, Math.round(cnt * (e.deltaY < 0 ? 1 / 1.18 : 1.18))));   // scroll up = zoom in
+        winB = Math.min(total, winB); winA = Math.max(0, winB - ncnt);
+        if (winB - winA < ncnt) winB = Math.min(total, winA + ncnt);
       }
-      head.querySelectorAll("[data-eqrange]").forEach(b => b.classList.remove("on"));            // custom view → no preset lit
-      drawEq();
+      afterWindowChange(true);
     }, { passive: false });
-    box.appendChild(el("div", "note eq-hint", "🖱️ גלגלת = זום · Shift+גלגלת = הזזה בזמן · או בחר טווח בכפתורים"));
+    // preset range buttons → set the window (and clear any custom date range)
+    head.querySelectorAll("[data-eqrange]").forEach(b => b.onclick = () => {
+      eqRange = b.dataset.eqrange; eqFrom = ""; eqTo = "";
+      try { localStorage.setItem("sn_eq_range", eqRange); localStorage.removeItem("sn_eq_from"); localStorage.removeItem("sn_eq_to"); } catch (e) {}
+      const n0 = _rangeCount(eqRange, allPts); winA = Math.max(0, allPts.length - n0); winB = allPts.length;
+      head.querySelectorAll("[data-eqrange]").forEach(x => x.classList.toggle("on", x === b));
+      afterWindowChange(false);
+    });
+    // from/to date pickers → custom window
+    { const fi = head.querySelector("#eqFromInp"), ti = head.querySelector("#eqToInp");
+      const onDate = () => {
+        eqFrom = (fi && fi.value) || ""; eqTo = (ti && ti.value) || "";
+        try { eqFrom ? localStorage.setItem("sn_eq_from", eqFrom) : localStorage.removeItem("sn_eq_from"); eqTo ? localStorage.setItem("sn_eq_to", eqTo) : localStorage.removeItem("sn_eq_to"); } catch (e) {}
+        _initWin();
+        afterWindowChange(true);
+      };
+      if (fi) fi.onchange = onDate;
+      if (ti) ti.onchange = onDate;
+    }
+    box.appendChild(el("div", "note eq-hint", "🖱️ גלגלת = זום · Shift+גלגלת = הזזה בזמן · כפתורים או מתאריך–עד־תאריך לטווח"));
     return box;
   }
 
