@@ -1143,6 +1143,15 @@
     if (range === "1y") { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return d; }
     return null;   // "all"
   }
+  // how many trailing equity-curve points fall inside a preset range (→ the visible-window size)
+  function _rangeCount(range, allPts) {
+    const cut = _eqCutoff(range);
+    if (!cut) return allPts.length;
+    const cs = cut.toISOString().slice(0, 10);
+    let c = 0;
+    for (let i = allPts.length - 1; i >= 0; i--) { if (allPts[i].date >= cs) c++; else break; }
+    return Math.max(2, c);
+  }
   function eqBaseKey(acct) { return "sn_eq_base_" + (acct || "_"); }
   function getEqBase(acct) { try { const v = parseFloat(localStorage.getItem(eqBaseKey(acct))); return v > 0 ? v : null; } catch (e) { return null; } }
   function setEqBase(acct, v) { try { localStorage.setItem(eqBaseKey(acct), String(v)); } catch (e) {} }
@@ -1189,28 +1198,15 @@
       const inp = baseRow.querySelector(".eq-base-inp");
       inp.onchange = () => { const v = parseFloat(inp.value); if (v > 0) { setEqBase(acct, v); render(); } };
     }
-    let pts = E.equityCurve(trades);
-    const _cut = _eqCutoff(eqRange);
-    if (_cut) { const cs = _cut.toISOString().slice(0, 10); pts = pts.filter(p => p.date >= cs); }
-    if (pts.length < 2) { box.appendChild(el("div", "note", _cut ? "אין מספיק נתונים בטווח הנבחר — בחר טווח רחב יותר." : "צריך לפחות שני ימי מסחר כדי לצייר עקומה.")); return box; }
+    const allPts = E.equityCurve(trades);
+    if (allPts.length < 2) { box.appendChild(el("div", "note", "צריך לפחות שני ימי מסחר כדי לצייר עקומה.")); return box; }
     const pctMode = eqMode === "pct" && base > 0;
     const toVal = eq => pctMode ? eq / base * 100 : eq;                       // $ → % of portfolio
     const fmtVal = v => pctMode ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : money(v, 0);
-    const eq = pts.map(p => toVal(p.equity));
-    const n = pts.length;
-    const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
-    const rng = (maxY - minY) || 1;
-    // PIVOT HIGH/LOW: local extremes over a ±L window (~5 points), like pivot points on a chart
-    const L = 5, pivHi = [], pivLo = [];
-    for (let i = 1; i < n - 1; i++) {
-      let hi = true, lo = true;
-      for (let j = Math.max(0, i - L); j <= Math.min(n - 1, i + L); j++) {
-        if (j === i) continue;
-        if (eq[j] >= eq[i]) hi = false;
-        if (eq[j] <= eq[i]) lo = false;
-      }
-      if (hi) pivHi.push(i); else if (lo) pivLo.push(i);
-    }
+    // VISIBLE WINDOW (trailing points): the buttons set it from a preset range; the mouse WHEEL zooms it
+    // (Shift+wheel pans through history). Lives in the closure so the wheel redraws without a full re-render.
+    let winN = _rangeCount(eqRange, allPts);   // how many trailing points are visible
+    let winOff = 0;                            // points back from the latest where the window ends (pan)
     // Catmull-Rom → cubic-bezier smoothing so the line flows instead of jumping between points
     const smooth = P => {
       if (P.length < 2) return "";
@@ -1230,6 +1226,26 @@
       const w = Math.max(320, Math.round(chartWrap.clientWidth || box.clientWidth || 900));
       const h = Math.max(150, Math.round(Math.min(window.innerHeight * 0.30, 460)));
       const padX = 10, padTop = 26, padBot = 26;
+      // slice the visible trailing window (zoom = winN · pan = winOff) and derive this window's scale + pivots
+      const total = allPts.length;
+      const nN = Math.max(2, Math.min(total, Math.round(winN)));
+      winOff = Math.max(0, Math.min(total - nN, winOff));
+      const start = total - nN - winOff;
+      const pts = allPts.slice(start, start + nN);
+      const eq = pts.map(p => toVal(p.equity));
+      const n = pts.length;
+      const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
+      const rng = (maxY - minY) || 1;
+      const L = 5, pivHi = [], pivLo = [];
+      for (let i = 1; i < n - 1; i++) {
+        let hi = true, lo = true;
+        for (let j = Math.max(0, i - L); j <= Math.min(n - 1, i + L); j++) {
+          if (j === i) continue;
+          if (eq[j] >= eq[i]) hi = false;
+          if (eq[j] <= eq[i]) lo = false;
+        }
+        if (hi) pivHi.push(i); else if (lo) pivLo.push(i);
+      }
       const X = i => padX + (i / (n - 1)) * (w - padX * 2);
       const Y = v => padTop + (1 - (v - minY) / rng) * (h - padTop - padBot);
       const P = eq.map((v, i) => [X(i), Y(v)]);
@@ -1292,6 +1308,21 @@
     }
     drawEq();
     try { const ro = new ResizeObserver(() => drawEq()); ro.observe(chartWrap); } catch (e) {}
+    // mouse WHEEL = zoom the visible time window · Shift+WHEEL = pan through history (buttons stay for presets)
+    chartWrap.addEventListener("wheel", e => {
+      e.preventDefault();
+      const total = allPts.length;
+      if (e.shiftKey) {
+        const step = Math.max(1, Math.round(winN * 0.12));
+        winOff = Math.max(0, Math.min(total - winN, winOff + (e.deltaY > 0 ? step : -step)));   // scroll down = older
+      } else {
+        winN = e.deltaY < 0 ? Math.round(winN / 1.18) : Math.round(winN * 1.18);                 // scroll up = zoom in
+        winN = Math.max(5, Math.min(total, winN));
+      }
+      head.querySelectorAll("[data-eqrange]").forEach(b => b.classList.remove("on"));            // custom view → no preset lit
+      drawEq();
+    }, { passive: false });
+    box.appendChild(el("div", "note eq-hint", "🖱️ גלגלת = זום · Shift+גלגלת = הזזה בזמן · או בחר טווח בכפתורים"));
     return box;
   }
 
