@@ -2869,7 +2869,7 @@
     const tfCount = {}; TFS.forEach(tf => tfCount[tf] = secs.filter(s => s.mem.filter(m => ((m[tf] || {}).c) === dir).length > s.mem.length / 2).length);
     const strongest = TFS.slice().sort((a, b) => tfCount[b] - tfCount[a])[0];
     const leaders = secs.slice().sort((a, b) => (b.aligned - a.aligned) || (b.prop - a.prop)).slice(0, 4);
-    const _strength = p => p >= 0.5 ? "מוביל" : p >= 0.3 ? "חזק" : "בינוני";
+    const _score = p => Math.max(1, Math.min(10, Math.round(p * 10)));   // alignment score 1–10 (clearer than "חזק/בינוני")
     const _join = a => { const x = (a || []).filter(Boolean); return x.length <= 1 ? (x[0] || "") : x.slice(0, -1).join(", ") + " ו" + x[x.length - 1]; };
     const topHe = leaders.slice(0, 3).map(s => s.he);
     const insight = (up ? "היישור הרחב ביותר נמצא ב-" : "החולשה הרחבה ביותר נמצאת ב-") + strongest +
@@ -2893,10 +2893,9 @@
     // --- leading sectors (4) ---
     leaders.forEach((s, i) => {
       h += '<div class="ftf-sec ftf-sec' + i + '">' +
-        '<span class="ftf-sec-ico">' + (_FTFC_SEC_EMOJI[s.name] || "📊") + "</span>" +
         '<span class="ftf-sec-etf">' + escHtml(s.etf || "") + "</span>" +
         '<span class="ftf-sec-name">' + escHtml(s.he) + "</span>" +
-        '<span class="ftf-sec-str">' + _strength(s.prop) + "</span></div>";
+        '<span class="ftf-sec-str">' + _score(s.prop) + "/10</span></div>";
     });
     h += '<div class="ftf-insight">' + escHtml(insight) + "</div>";
     el.innerHTML = h;
