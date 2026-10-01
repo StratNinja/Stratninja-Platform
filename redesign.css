@@ -252,7 +252,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .cmw-verdict { margin-top: 10px; padding: 11px 16px; }
 
 /* ===== continuity tab 2026-10-01 redesign: candle-map (narrow, left) + sectors grid (right); sub-sectors in a drawer ===== */
-.cont-layout { display: flex; gap: 12px; align-items: stretch; margin-top: 10px; min-height: calc(100vh - 430px); }   /* stretch + fills down toward the footer */
+.cont-layout { display: flex; gap: 12px; align-items: stretch; margin-top: 10px; }   /* stretch: both columns share one height; the candle map drives it */
 .cont-left { flex: 0 0 clamp(240px, 27%, 360px); min-width: 0; }   /* a bit wider */
 .cont-right { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .cont-right .td-flow { margin: 0; }
@@ -269,7 +269,7 @@ body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 8px; margin-top: 9px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 11px; }
 body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
 /* narrow candle map on the left (candle types across the top × 5 TFs) — fills the column height */
-.cmap-side { margin: 0; padding: 14px 14px 16px; display: flex; flex-direction: column; }
+.cmap-side { margin: 0; padding: 14px 14px 16px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }
 .cmap-side .cmap-head { font-size: 16px; }
 .cmap-side .cms-note { font-size: 11.5px; margin: -2px 0 10px; }
 .cmap-side .tablewrap { flex: 1 1 auto; display: flex; }
@@ -277,7 +277,7 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
 .cmap-table-side .cmw-corner { width: 26px; font-size: 9.5px; color: var(--muted); font-weight: 800; }
 .cmap-table-side .cmw-bh { font-size: 10.5px; font-weight: 800; color: var(--muted); padding: 0 0 3px; white-space: nowrap; }
 .cmap-table-side .cm-type { width: 26px; font-size: 12px; font-weight: 800; }
-.cmap-table-side .cm-pill { min-width: 0; width: 100%; height: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 6px 0; font-size: 13px; }
+.cmap-table-side .cm-pill { min-width: 0; width: 100%; height: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; padding: 11px 0; font-size: 13px; }
 .cms-verdict { margin-top: 12px; padding: 11px 13px; flex-direction: column; gap: 7px; align-items: stretch; }
 .cms-verdict .cmv-item { justify-content: space-between; }
 /* sub-sector drawer (inside the modal) — same two-bar tiles, wraps nicely */
