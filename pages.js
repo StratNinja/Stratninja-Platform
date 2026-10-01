@@ -1242,6 +1242,7 @@
   }
   // neon/glow heat-map style toggle ("אפי" ↔ "קלאסי")
   let hmStyle = "neon"; try { hmStyle = localStorage.getItem("sn_hm_style") || "neon"; } catch (e) {}
+  let _hmShareClean = false;   // when true (share card): sector tabs show only Hebrew name + ETF (no English / breadth% / 🔍)
   function _heatNeon() { return hmStyle === "neon" ? " hm-neon" : ""; }
   function _heatStyleBtn() { return '<button class="uni-btn hm-style-toggle' + (hmStyle === "neon" ? " on" : "") + '" id="hmStyleToggle" title="מראה אפי (ניאון/זוהר) או קלאסי">' + (hmStyle === "neon" ? "✨ אפי" : "◻️ קלאסי") + "</button>"; }
   // per-tile CSS vars for the neon look: --bg = fill color, --gi = glow intensity (0..1 by |move|), --gc = glow color
@@ -1412,9 +1413,12 @@
     opts = opts || {};
     const en = opts.en ? ' <span class="hm-sec-en">' + escHtml(opts.en) + "</span>" : "";
     const etf = opts.etf ? ' <span class="hm-sec-etf">' + escHtml(opts.etf) + "</span>" : "";
-    const tab = opts.zoom
-      ? '<div class="hm-sec-tab hm-sec-zoom clickable" data-hmsector="' + encodeURIComponent(opts.key || name) + '" title="לחץ לזום לתתי-הסקטורים">' + name + en + etf + (opts.pct != null ? ' <span class="hm-sec-pct">' + opts.pct + "%</span>" : "") + " 🔍</div>"
-      : '<div class="hm-sec-tab" title="' + escAttr(name) + '">' + name + en + etf + "</div>";
+    // share card = a CLEAN tab: just the Hebrew name + ETF (no English, no breadth %, no 🔍)
+    const tab = _hmShareClean
+      ? '<div class="hm-sec-tab">' + name + etf + "</div>"
+      : (opts.zoom
+        ? '<div class="hm-sec-tab hm-sec-zoom clickable" data-hmsector="' + encodeURIComponent(opts.key || name) + '" title="לחץ לזום לתתי-הסקטורים">' + name + en + etf + (opts.pct != null ? ' <span class="hm-sec-pct">' + opts.pct + "%</span>" : "") + " 🔍</div>"
+        : '<div class="hm-sec-tab" title="' + escAttr(name) + '">' + name + en + etf + "</div>");
     let body;
     if (spHeatAvg) {
       // "מיצוע" — one color for the whole sector = its average move over the selected TF (money-flow at a glance)
@@ -2920,16 +2924,16 @@
     const _sgn = c => c == null ? "" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
     const dateStr = new Date().toLocaleDateString("he-IL");
     const insight = (pct != null)
-      ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : ""))
-      : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : "")) : "תמונת מצב סקטוריאלית");
+      ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : ""))
+      : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : "")) : "תמונת מצב סקטוריאלית");
     // SHARE map = only the SIGNIFICANT movers (≥2% up / down) → clean + meaningful (Adi). In "מיצוע" mode keep
     // the true full-sector average (no move filter). Rendered in the EPIC/neon look. Restore state after.
     const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
-    spHeatSector = null; spHeatAtr = 0;
+    spHeatSector = null; spHeatAtr = 0; _hmShareClean = true;
     if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
     else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "3"; spHeatDown = "3"; }   // default: ≥3% movers (cleaner)
     const mapHtml = spHeatmap();
-    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD;
+    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false;
     const box = (cls, lbl, nm, chg) => '<div class="hmsh-box ' + cls + '"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch">' + _sgn(chg) + "</div></div>";
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
