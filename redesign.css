@@ -292,6 +292,20 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
 .scanner-app .main { display: flex; flex-direction: column; }
 .scanner-app .main > .site-footer-mount { margin-top: auto; }
 
+/* ===== RISK ON/OFF heat map (volatile-stock map) — verdict badge + controls ===== */
+.risk-verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 10px 0; padding: 12px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel2); }
+.risk-verdict .risk-v-lbl { font-size: 12px; font-weight: 800; letter-spacing: .3px; color: var(--muted); text-transform: uppercase; }
+.risk-verdict .risk-v-val { font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 26px; direction: ltr; line-height: 1; }
+.risk-verdict .risk-v-sub { font-size: 13px; font-weight: 700; color: var(--muted); margin-inline-start: auto; }
+.risk-verdict.risk-on  { border-color: rgba(34,227,155,.5);  background: linear-gradient(180deg, rgba(34,227,155,.12), var(--panel2)); }
+.risk-verdict.risk-on  .risk-v-val { color: #22e39b; }
+.risk-verdict.risk-off { border-color: rgba(255,90,106,.5); background: linear-gradient(180deg, rgba(229,56,74,.12), var(--panel2)); }
+.risk-verdict.risk-off .risk-v-val { color: #ff5a6a; }
+.risk-verdict.risk-mid { border-color: rgba(230,190,90,.45); background: linear-gradient(180deg, rgba(230,190,90,.10), var(--panel2)); }
+.risk-verdict.risk-mid .risk-v-val { color: #e6c05a; }
+.risk-controls .risk-atr-field { display: flex; align-items: center; gap: 8px; }
+.risk-controls .risk-atr-field input { width: 66px; }
+
 /* ===== FTFC bull/bear share cards (overlay on FTFC_GREEN.png / FTFC_RED.png, 1254²) ===== */
 .ftf-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden; font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftf-card > div { position: absolute; }

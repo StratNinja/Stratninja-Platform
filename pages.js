@@ -1302,7 +1302,8 @@
   function sp500ViewSwitch() {
     return '<div class="sp-view-switch">' +
       '<button class="uni-btn' + (sp500View === "sectors" ? " on" : "") + '" data-spview="sectors">📊 לפי סקטור</button>' +
-      '<button class="uni-btn' + (sp500View === "heat" ? " on" : "") + '" data-spview="heat">🔥 HEAT MAP</button></div>';
+      '<button class="uni-btn' + (sp500View === "heat" ? " on" : "") + '" data-spview="heat">🔥 HEAT MAP</button>' +
+      '<button class="uni-btn' + (sp500View === "risk" ? " on" : "") + '" data-spview="risk">⚡ RISK ON/OFF</button></div>';
   }
   // the 500-square heatmap: every S&P 500 stock = one square, green (up) / red (down), sorted so
   // the up/down proportion is visible at a glance. Each square is clickable → its chart.
@@ -1432,6 +1433,66 @@
     }).join("");
     return '<div class="sp-heat">' + frames + "</div>";
   }
+  // ── RISK ON/OFF heat map: only the VOLATILE names (ATR% ≥ threshold) from the WHOLE universe (1300+),
+  //    grouped by sector, colored by TODAY's move. Sea of green = risk-on · sea of red = risk-off. ──
+  let riskAtrMin = 5; try { const _rv = parseFloat(localStorage.getItem("sn_risk_atr")); if (!isNaN(_rv) && _rv > 0) riskAtrMin = _rv; } catch (e) {}
+  // risk-map timeframe (which period's move colors the tiles) — modular, reuses the heat-map TF set
+  let riskTf = "1d"; try { riskTf = localStorage.getItem("sn_risk_tf") || "1d"; } catch (e) {} if (HM_TFS.indexOf(riskTf) < 0) riskTf = "1d";
+  function _riskAtrp(r) { const k = r.tech; return (k && k.atrp != null) ? k.atrp : null; }
+  // the move over the selected risk-map timeframe (1D = today's change; others from the scanner tech fields)
+  function _riskChg(x) { if (riskTf === "1d") return x.c; const t = x.tech || _hmSMap()[x.s]; if (!t) return null; const v = t[HM_TF_KEY[riskTf]]; return v == null ? null : v; }
+  // map each sub-sector (.ind) → its majority GICS sector, for stocks whose own .sec isn't one of the 11 GICS
+  let _riskIndParentCache = null, _riskIndParentKey = null;
+  function _riskIndParent() {
+    const key = (SCAN && SCAN.rows) ? SCAN.rows.length : 0;
+    if (_riskIndParentCache && _riskIndParentKey === key) return _riskIndParentCache;
+    const byInd = {};
+    ((SCAN && SCAN.rows) || []).forEach(r => { const ind = (r.ind || "").trim(); if (!ind || !etfFor(r.sec)) return; (byInd[ind] = byInd[ind] || {})[r.sec] = (byInd[ind][r.sec] || 0) + 1; });
+    const out = {}; Object.keys(byInd).forEach(ind => { out[ind] = Object.keys(byInd[ind]).sort((a, b) => byInd[ind][b] - byInd[ind][a])[0]; });
+    _riskIndParentCache = out; _riskIndParentKey = key; return out;
+  }
+  // nearest GICS sector for any stock — real sector → itself; else its sub-sector's majority sector; else the fallback (never "אחר")
+  function _riskSecOf(r, fallback) {
+    if (etfFor(r.sec)) return r.sec;
+    const p = _riskIndParent()[(r.ind || "").trim()];
+    return p || fallback;
+  }
+  function _riskVol() {
+    const rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
+    return rows.filter(r => { const a = _riskAtrp(r); return a != null && a >= riskAtrMin && _riskChg(r) != null; });
+  }
+  function _riskTiles(stocks) {
+    const sorted = stocks.slice().sort((a, b) => { const va = _riskChg(a), vb = _riskChg(b); return (vb == null ? -999 : vb) - (va == null ? -999 : va); });
+    const items = sorted.map(x => ({ value: 1, stk: x }));
+    return squarify(items, 0, 0, 1000, 600).map(c => {
+      const x = c.item.stk, cv = _riskChg(x), a = _riskAtrp(x);
+      const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
+      const cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
+      const as = a != null ? a.toFixed(1) + "% ATR" : "";
+      let lbl = "", cls = "hm-tile clickable";
+      if (c.w > 66 && c.h > 40) lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>";
+      else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
+      return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + " · " + as + '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;background:" + chgColor(cv == null ? 0 : cv) + '">' + lbl + "</span>";
+    }).join("");
+  }
+  function riskHeatmap() {
+    const vol = _riskVol();
+    if (!vol.length) return '<div class="panel"><div class="stub"><div class="big">⚡</div><h2>אין כרגע מניות עם ATR% ≥ ' + riskAtrMin + '%</h2><p>הורד את הסף או חזור בשעות המסחר.</p></div></div>';
+    const secCount = {}; vol.forEach(r => { if (etfFor(r.sec)) secCount[r.sec] = (secCount[r.sec] || 0) + 1; });
+    const domSec = Object.keys(secCount).sort((a, b) => secCount[b] - secCount[a])[0] || "Technology";   // fallback bucket (never "אחר")
+    const bySec = {}; vol.forEach(r => { const s = _riskSecOf(r, domSec); (bySec[s] = bySec[s] || []).push(r); });
+    const list = Object.keys(bySec).map(name => ({ name: name, stocks: bySec[name], value: bySec[name].length }));
+    const frames = squarify(list, 0, 0, 1000, 600).map(fr => {
+      const nm = fr.item.name, stocks = fr.item.stocks;
+      const up = stocks.filter(x => (_riskChg(x) || 0) > 0).length, tot = stocks.length;
+      const tab = '<div class="hm-sec-tab" title="' + escAttr(secHe(nm)) + '">' + secHe(nm) +
+        ' <span class="hm-sec-en">' + escHtml(nm) + "</span>" + (etfFor(nm) ? ' <span class="hm-sec-etf">' + etfFor(nm) + "</span>" : "") +
+        ' <span class="hm-sec-pct">' + up + "/" + tot + " 🟢</span></div>";
+      return '<div class="hm-sec" style="left:' + (fr.x / 1000 * 100).toFixed(3) + "%;top:" + (fr.y / 600 * 100).toFixed(3) + "%;width:" + (fr.w / 1000 * 100).toFixed(3) + "%;height:" + (fr.h / 600 * 100).toFixed(3) + '%">' +
+        tab + '<div class="hm-sec-body">' + _riskTiles(stocks) + "</div></div>";
+    }).join("");
+    return '<div class="sp-heat">' + frames + "</div>";
+  }
   // ---- broad-market / thematic COMPOSITES (LIVE.singles) shared across all pulse tabs ----
   // kind 'macro' → the "מכלולים רחבים" row under the 11 GICS sectors · 'sub' → an extra sub-sector (WGMI).
   function _singlesOf(kind) { return (LIVE && LIVE.singles) ? LIVE.singles.filter(s => s.kind === kind) : []; }
@@ -1505,6 +1566,33 @@
         '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" +
         '<div class="hm-controls">' + tfBtns + moveFilter + countsStrip + "</div>" +
         '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
+    }
+    // ── RISK ON/OFF VIEW: volatile names (ATR% ≥ threshold) from the whole universe, colored by today's move ──
+    if (sp500View === "risk") {
+      const rowsN = (SCAN && SCAN.rows) ? SCAN.rows.length : 0;
+      const vol = _riskVol();
+      const up = vol.filter(r => (_riskChg(r) || 0) > 0).length, dn = vol.filter(r => (_riskChg(r) || 0) < 0).length, tot = vol.length;
+      const upPct = tot ? up / tot * 100 : 0;
+      const tfl = HM_TFL[riskTf] || riskTf;
+      let verdict, vcls;
+      if (tot < 5) { verdict = "מעט מדי מניות תנודתיות"; vcls = "risk-mid"; }
+      else if (upPct >= 60) { verdict = "RISK ON 🟢"; vcls = "risk-on"; }
+      else if (upPct <= 40) { verdict = "RISK OFF 🔴"; vcls = "risk-off"; }
+      else { verdict = "מעורב · זהירות 🟡"; vcls = "risk-mid"; }
+      const badge = '<div class="risk-verdict ' + vcls + '"><span class="risk-v-lbl">מצב סיכון · ' + tfl + "</span>" +
+        '<span class="risk-v-val">' + verdict + "</span>" +
+        '<span class="risk-v-sub"><span class="pos">🟢 ' + up + " עולות</span> · <span class=\"neg\">🔴 " + dn + " יורדות</span> · " + tot + " מניות תנודתיות · " + upPct.toFixed(0) + "% ירוקות</span></div>";
+      const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
+        '<button class="flow-tf-btn hm-tf' + (k === riskTf ? " on" : "") + '" data-risktf="' + k + '">' + HM_TFL[k] + "</button>").join("") + "</div>";
+      const ctl = '<div class="hm-controls risk-controls">' + tfBtns +
+        '<div class="risk-atr-field"><span class="hm-mf-lbl">תנודתיות מינימלית · ATR%</span>' +
+        '<input type="number" step="0.5" min="0" inputmode="decimal" id="riskAtrInput" value="' + escAttr(String(riskAtrMin)) + '">' +
+        '<span class="muted" style="font-size:12px">ככל שהסף גבוה יותר → רק המניות הכי תנודתיות</span></div>' +
+        '<span class="hm-legend"><span class="hml neg"></span> יורדת<span class="hml zero"></span> ללא שינוי<span class="hml pos"></span> עולה · הצבע = התנועה ב' + tfl + "</span></div>";
+      return '<div class="page-head hm-head"><h1>⚡ מפת סיכון · RISK ON / OFF</h1><div class="sub">רק המניות <b>התנודתיות</b> (ATR% ≥ ' + riskAtrMin + '%) מכל היקום (' + rowsN + ' מניות), מקובצות לפי סקטור וצבועות לפי <b>התנועה ב' + tfl + '</b>. ים של ירוק = תיאבון לסיכון · ים של אדום = בריחה מסיכון · לחץ מניה לגרף.</div></div>' +
+        '<div class="sp-view-row">' + sp500ViewSwitch() + "</div>" +
+        badge + ctl +
+        '<div class="panel sp-heat-panel">' + riskHeatmap() + "</div>";
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
     // ranked by breadth = % of the sector's stocks above their open. Leaders/laggards moved into the click.
@@ -1616,6 +1704,9 @@
     { const hb = $("#hmBack"); if (hb) hb.onclick = () => { spHeatSector = null; reRender(); }; }
     { const av = $("#hmAvgToggle"); if (av) av.onclick = () => { spHeatAvg = !spHeatAvg; try { localStorage.setItem("sn_hm_avg", spHeatAvg ? "1" : "0"); } catch (e) {} reRender(); }; }
     document.querySelectorAll("[data-hmtf]").forEach(b => b.onclick = () => { spHeatTf = b.dataset.hmtf; try { localStorage.setItem("sn_hm_tf", spHeatTf); } catch (e) {} reRender(); });
+    // RISK map: modular timeframe + volatility threshold
+    document.querySelectorAll("[data-risktf]").forEach(b => b.onclick = () => { riskTf = b.dataset.risktf; try { localStorage.setItem("sn_risk_tf", riskTf); } catch (e) {} reRender(); });
+    { const ra = $("#riskAtrInput"); if (ra) ra.onchange = () => { const v = parseFloat(ra.value); if (!isNaN(v) && v >= 0) { riskAtrMin = v; try { localStorage.setItem("sn_risk_atr", String(v)); } catch (e) {} reRender(); } }; }
     // heat-map move filter (dim tiles outside the % range) — onchange fires on blur/Enter so it doesn't re-render mid-typing
     { const up = $("#hmMoveUp"); if (up) up.onchange = () => { spHeatUp = up.value.trim(); try { localStorage.setItem("sn_hm_up", spHeatUp); } catch (e) {} reRender(); }; }
     { const dn = $("#hmMoveDown"); if (dn) dn.onchange = () => { spHeatDown = dn.value.trim(); try { localStorage.setItem("sn_hm_down", spHeatDown); } catch (e) {} reRender(); }; }
