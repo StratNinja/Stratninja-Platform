@@ -1354,6 +1354,8 @@
   let _atrpMapKey = null, _atrpMapV = null;
   function _atrpMap() { const key = (SCAN && SCAN.rows) ? SCAN.rows.length : 0; if (_atrpMapV && _atrpMapKey === key) return _atrpMapV; const m = {}; ((SCAN && SCAN.rows) || []).forEach(r => { if (r.tech && r.tech.atrp != null) m[r.s] = r.tech.atrp; }); _atrpMapKey = key; _atrpMapV = m; return m; }
   function _hmAtrPass(x) { if (!spHeatAtr) return true; const a = _atrpMap()[x.s]; return a != null && a >= spHeatAtr; }
+  // combined heat-map stock filter: ATR% AND move% both REMOVE non-matching tiles (resize the map), per Adi
+  function _hmPass(x) { return _hmAtrPass(x) && _hmMoveMatch(_hmChg(x)); }
   function _hmMoveMatch(cv) {
     const up = parseFloat(spHeatUp), dn = parseFloat(spHeatDown);
     const hasUp = !isNaN(up), hasDn = !isNaN(dn);
@@ -1399,7 +1401,7 @@
       const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
       const cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
       // tiered labels: big tiles show ticker + move, mid tiles show just the ticker, tiny → tooltip only
-      let lbl = "", cls = "hm-tile clickable" + (_hmMoveMatch(cv) ? "" : " hm-dim") + (Math.abs(cv || 0) >= 2 ? " hm-glow" : "");
+      let lbl = "", cls = "hm-tile clickable" + (Math.abs(cv || 0) >= 2 ? " hm-glow" : "");
       if (c.w > 66 && c.h > 40) { lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>"; }
       else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
       return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + (x.mc ? " · " + fmtCap(x.mc) : "") +
@@ -1433,7 +1435,7 @@
       const sec = secs.find(s => s.name === spHeatSector);
       if (sec) {
         const subMap = {};
-        (sec.stocks || []).filter(_hmAtrPass).forEach(x => { const k = (x.ind && x.ind !== "אחר" && x.ind !== "מדדים") ? x.ind : "אחר"; (subMap[k] = subMap[k] || []).push(x); });
+        (sec.stocks || []).filter(_hmPass).forEach(x => { const k = (x.ind && x.ind !== "אחר" && x.ind !== "מדדים") ? x.ind : "אחר"; (subMap[k] = subMap[k] || []).push(x); });
         const subs = Object.keys(subMap).map(k => ({ name: k, stocks: subMap[k], value: subMap[k].reduce((a, b) => a + _hmValue(b), 0) }));
         const frames = squarify(subs, 0, 0, 1000, 600).map(r =>
           _hmFrame(r.item.name, r.item.stocks, { etf: subEtfFor(r.item.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 })).join("");
@@ -1444,10 +1446,11 @@
       spHeatSector = null;
     }
     // FULL view: all sectors framed, stocks inside (ATR% filter removes low-volatility names when active)
-    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmAtrPass); return { sec: s, stocks: st, value: st.length }; }).filter(o => o.stocks.length);
+    const _hmFiltered = spHeatAtr || spHeatUp !== "" || spHeatDown !== "";
+    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmPass); return { sec: s, stocks: st, value: st.length }; }).filter(o => o.stocks.length);
     const frames = squarify(list, 0, 0, 1000, 600).map(r => {
       const s = r.item.sec, st = r.item.stocks;
-      const above = spHeatAtr ? st.filter(x => x.ao).length : s.above, totl = spHeatAtr ? st.length : s.total;
+      const above = _hmFiltered ? st.filter(x => x.ao).length : s.above, totl = _hmFiltered ? st.length : s.total;
       const p = totl ? Math.round(above / totl * 100) : null;
       return _hmFrame(secHe(s.name), st, { zoom: true, key: s.name, pct: p, en: s.name, etf: etfFor(s.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
     }).join("");
@@ -1599,7 +1602,7 @@
         HM_TFS_SOON.map(k => '<button class="flow-tf-btn hm-tf hm-tf-soon" disabled title="בקרוב — דורש עדכון שרת">' + k + "</button>").join("") + "</div>";
       // move filter: show only gainers ≥ (מעל)% and/or losers ≥ (מתחת)% — the rest dim out
       const mfOn = spHeatUp !== "" || spHeatDown !== "";
-      const moveFilter = '<div class="hm-movefilter' + (mfOn ? " on" : "") + '" title="הצג רק מניות שעלו/ירדו מעל האחוז שתמלא — השאר יעומעמו">' +
+      const moveFilter = '<div class="hm-movefilter' + (mfOn ? " on" : "") + '" title="הצג רק מניות שעלו/ירדו מעל האחוז שתמלא — השאר מוסרות מהמפה">' +
         '<span class="hm-mf-lbl">סינון תנועה %</span>' +
         '<span class="hm-mf-field hm-mf-up"><span class="hm-mf-ico">▲</span><input type="number" step="0.5" min="0" inputmode="decimal" id="hmMoveUp" placeholder="עולות מעל" value="' + escAttr(spHeatUp) + '"></span>' +
         '<span class="hm-mf-field hm-mf-down"><span class="hm-mf-ico">▼</span><input type="number" step="0.5" min="0" inputmode="decimal" id="hmMoveDown" placeholder="יורדות מעל" value="' + escAttr(spHeatDown) + '"></span>' +
@@ -2903,6 +2906,40 @@
       '<div class="spm-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span><span>Adi Koriat · @KoriatTrade · <span class="spm-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
     document.body.appendChild(el); return el;
   }
+  // ===== 🔥 HEAT MAP share card — overlays the LIVE treemap + 3 stat boxes onto HeatMap_Template.png =====
+  function buildHeatmapShareCardEl() {
+    // strong / weak sectors (by ETF daily move) + the standout sub-sector (biggest absolute move)
+    const secs = (LIVE && LIVE.sectors) ? LIVE.sectors.filter(s => s.name !== "מדדים" && s.name !== "אחר" && etfFor(s.name) && s.chg != null) : [];
+    const subs = (LIVE && LIVE.subsectors) ? LIVE.subsectors.filter(s => s.chg != null) : [];
+    let strong = null, weak = null; secs.forEach(s => { if (!strong || s.chg > strong.chg) strong = s; if (!weak || s.chg < weak.chg) weak = s; });
+    let standout = null; subs.forEach(s => { if (!standout || Math.abs(s.chg) > Math.abs(standout.chg)) standout = s; });
+    const b = (LIVE && LIVE.breadth) || null;
+    const pct = (b && b.total) ? Math.round(b.above / b.total * 100) : null;
+    const strongHe = strong ? secHe(strong.name) : "—", weakHe = weak ? secHe(weak.name) : "—";
+    const subNm = standout ? String(standout.ind || standout.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").trim() : "—";
+    const _sgn = c => c == null ? "" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
+    const dateStr = new Date().toLocaleDateString("he-IL");
+    const insight = (pct != null)
+      ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : ""))
+      : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : "")) : "תמונת מצב סקטוריאלית");
+    // build the FULL classic treemap (not zoomed, not averaged, not neon) for a clean capture
+    const _saveSec = spHeatSector, _saveAvg = spHeatAvg; spHeatSector = null; spHeatAvg = false;
+    const mapHtml = spHeatmap();
+    spHeatSector = _saveSec; spHeatAvg = _saveAvg;
+    const box = (cls, lbl, nm, chg) => '<div class="hmsh-box ' + cls + '"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch">' + _sgn(chg) + "</div></div>";
+    const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="hmsh-top"><span class="hmsh-badge">S&P 500 · ' + dateStr + "</span><span class=\"hmsh-insight\">" + escHtml(insight) + "</span></div>" +
+      '<div class="hmsh-map">' + mapHtml + "</div>" +
+      '<div class="hmsh-boxes">' +
+        box("sub", "תת-סקטור בולט", subNm, standout ? standout.chg : null) +
+        box("weak", "הסקטור החלש", weakHe, weak ? weak.chg : null) +
+        box("strong", "הסקטור החזק", strongHe, strong ? strong.chg : null) +
+      "</div>";
+    // html2canvas doesn't resolve var(--bg) reliably → bake each tile's colour into a direct background
+    el.querySelectorAll(".hm-tile").forEach(t => { const m = /--bg:\s*([^;]+)/.exec(t.getAttribute("style") || ""); if (m) t.style.background = m[1].trim(); });
+    document.body.appendChild(el); return el;
+  }
   // ===== Sectors overview share card (leaders / weakest / breadth) =====
   function buildSectorsCardEl() {
     const src = (typeof scanSource === "function") ? scanSource() : [];
@@ -4081,7 +4118,7 @@
     // on the merged "דופק השוק" page state.page is "pulse"; the visible sub-tab is in pulseTab → resolve it
     const pg = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
-    if (pg === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
+    if (pg === "sp500") { _captureRedesignCard((sp500View === "heat" || sp500View === "risk") ? buildHeatmapShareCardEl : buildSpMapCardEl); return; }   // heat/risk → treemap card; breadth view → breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
     if (pg === "sectors") {   // FTFC bull/bear card → chooser (שורי / דובי)
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
