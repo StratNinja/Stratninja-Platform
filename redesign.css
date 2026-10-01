@@ -733,7 +733,7 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hmsh-map .hm-t-chg { font-size: 15px; }
 .hmsh-map .hm-tile-sm .hm-t-sm { font-size: 16px; }
 /* 3 stat boxes at the panel bottom — RIGHT=standout sub · MIDDLE=weak · LEFT=strong (RTL order) */
-.hmsh-boxes { position: absolute; top: 76%; left: 3.4%; width: 93.2%; height: 5.5%; display: flex; gap: 12px; }
+.hmsh-boxes { position: absolute; top: 75.8%; left: 3.4%; width: 93.2%; height: 5.1%; display: flex; gap: 12px; }
 .hmsh-box { flex: 1 1 0; min-width: 0; border-radius: 12px; padding: 4px 16px; display: flex; flex-direction: column; justify-content: center;
   background: rgba(8,13,20,.66); border: 1px solid rgba(255,255,255,.1); }
 .hmsh-box.strong { border-color: rgba(34,227,155,.55); box-shadow: inset 0 0 0 1px rgba(34,227,155,.14); }
