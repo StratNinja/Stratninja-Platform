@@ -2927,7 +2927,7 @@
     const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
     spHeatSector = null; spHeatAtr = 0;
     if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
-    else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "2"; spHeatDown = "2"; }   // default: ≥2% movers
+    else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "3"; spHeatDown = "3"; }   // default: ≥3% movers (cleaner)
     const mapHtml = spHeatmap();
     spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD;
     const box = (cls, lbl, nm, chg) => '<div class="hmsh-box ' + cls + '"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch">' + _sgn(chg) + "</div></div>";
