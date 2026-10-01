@@ -4093,7 +4093,7 @@
     if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
     const MAS_LR = ["200", "150", "100", "50", "20"];       // left→right, matching the baked template
     const cardL = [2.5, 21.9, 41.3, 60.7, 80.1];            // 5 MA-card left edges (% of 1122) — calibrate to taste
-    const _fmt = v => v == null ? "—" : Math.round(v) + "%";
+    const _fmt = v => v == null ? "—" : String(Math.round(v));   // template bakes the "%" unit in each card
     const _zc = v => v == null ? "" : _brdZoneCls(v);
     const maCards = uni => {
       const r = _brdReadings(uni) || {};
