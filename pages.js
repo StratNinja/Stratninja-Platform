@@ -2096,7 +2096,7 @@
     const plist = presets.length ? presets.map(p =>
       '<div class="al-prow"><span class="al-pname">' + escHtml(p.name) + "</span>" +
         '<span class="al-ptgls">' +
-          (p.alert ? '<span class="al-tgl-ico" title="שלח גם לפלאפון">📱</span><label class="ios-switch al-phone-sw" title="שלח את ההתראה גם לפלאפון"><input type="checkbox" data-alpphone="' + escAttr(p.id) + '"' + (p.phone !== false ? " checked" : "") + '><span class="ios-slider"></span></label>' : "") +
+          '<span class="al-phone-wrap"' + (p.alert ? "" : ' style="display:none"') + '><span class="al-tgl-ico" title="שלח גם לפלאפון">📱</span><label class="ios-switch al-phone-sw" title="שלח את ההתראה גם לפלאפון"><input type="checkbox" data-alpphone="' + escAttr(p.id) + '"' + (p.phone !== false ? " checked" : "") + '><span class="ios-slider"></span></label></span>' +
           '<span class="al-tgl-ico" title="התראה (מחשב)">🔔</span><label class="ios-switch"><input type="checkbox" data-alp="' + escAttr(p.id) + '"' + (p.alert ? " checked" : "") + '><span class="ios-slider"></span></label>' +
         "</span></div>").join("")
       : '<div class="muted">אין עדיין סריקות שמורות. שמור פריסט בסורק העסקאות כדי להפעיל עליו התראה.</div>';
@@ -2126,11 +2126,17 @@
         '<button class="btn ghost al-style' + (_alertStyle() === "sound" ? " on" : "") + '" data-style="sound" style="font-size:12px">🔔 צליל בלבד</button>' +
         '<button class="btn ghost" id="alTestAlert" style="font-size:12px;font-weight:600">🧪 בדוק התראה</button></div>' +
       '<div class="al-cols">' +
-        '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px">🎯 הסריקות שלי · <span class="muted" style="font-size:11px;font-weight:600">🔔 התראה (מחשב) · 📱 גם לפלאפון</span></h3><div class="al-plist">' + plist + "</div></div>" +
+        '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">🎯 הסריקות שלי <button class="btn ghost" id="alManagePresets" style="font-size:12px;font-weight:600" title="נהל, סדר, שתף וגבה את הסריקות לקובץ (או שחזר מגיבוי)">🗂️ נהל / גבה</button> <span class="muted" style="font-size:11px;font-weight:600">🔔 התראה (מחשב) · 📱 גם לפלאפון</span></h3><div class="al-plist">' + plist + "</div></div>" +
         '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px">🔔 התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div></div>" +
       "</div>";
     modal("🔔 מרכז ההתראות", body, "al-modal");
-    document.querySelectorAll("[data-alp]").forEach(b => b.onchange = () => { Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); openAlertsFeed(); });
+    { const mp = $("#alManagePresets"); if (mp) mp.onclick = () => openPresetManager(); }
+    // toggle in place (do NOT rebuild the modal — that scrolled it to the top): flip the matching 📱 switch visibility
+    document.querySelectorAll("[data-alp]").forEach(b => b.onchange = () => {
+      const on = Prefs.togglePresetAlert(b.dataset.alp); requestNotifyPerm(); updateAlertBell();
+      const row = b.closest(".al-prow"), pw = row && row.querySelector(".al-phone-wrap");
+      if (pw) pw.style.display = on ? "" : "none";
+    });
     document.querySelectorAll("[data-alpphone]").forEach(b => b.onchange = () => { Prefs.togglePresetPhone(b.dataset.alpphone); });
     { const pm = $("#alNotifyPerm"); if (pm) pm.onclick = () => { requestNotifyPerm(); setTimeout(openAlertsFeed, 400); }; }
     { const ps = $("#alPushSub"); if (ps) ps.onclick = () => subscribeToPush(); }
