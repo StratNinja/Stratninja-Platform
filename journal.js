@@ -1252,6 +1252,9 @@
       const dpath = smooth(P);
       const apath = dpath + " L" + X(n - 1).toFixed(1) + " " + Y(minY).toFixed(1) + " L" + X(0).toFixed(1) + " " + Y(minY).toFixed(1) + " Z";
       const zeroY = Y(0), last = eq[n - 1];
+      // headline (right edge) = RETURN OVER THE VISIBLE WINDOW: change from the leftmost visible point to now
+      const first = eq[0], winRet = last - first;
+      const retStr = pctMode ? (winRet >= 0 ? "+" : "") + winRet.toFixed(2) + "%" : (winRet >= 0 ? "+" : "-") + money(Math.abs(winRet), 0);
       const pivMark = (arr, cls, dy) => arr.map(i =>
         '<g class="eq-piv ' + cls + '"><circle cx="' + X(i).toFixed(1) + '" cy="' + Y(eq[i]).toFixed(1) + '" r="4"/>' +
         '<text x="' + X(i).toFixed(1) + '" y="' + (Y(eq[i]) + dy).toFixed(1) + '" text-anchor="middle">' + fmtVal(eq[i]) + "</text></g>").join("");
@@ -1262,7 +1265,7 @@
         '<line class="axis" x1="' + padX + '" y1="' + zeroY.toFixed(1) + '" x2="' + (w - padX) + '" y2="' + zeroY.toFixed(1) + '"/>' +
         '<path class="eqarea" d="' + apath + '"/>' +
         '<path class="eqline" d="' + dpath + '"/>' + pivMarks +
-        '<text x="' + (w - padX) + '" y="' + (Y(last) - 8).toFixed(1) + '" text-anchor="end" fill="' + (last >= 0 ? "#16b877" : "#e0524f") + '" font-size="15" font-weight="700">' + fmtVal(last) + "</text>" +
+        '<text x="' + (w - padX) + '" y="' + (Y(last) - 8).toFixed(1) + '" text-anchor="end" fill="' + (winRet >= 0 ? "#16b877" : "#e0524f") + '" font-size="15" font-weight="700">' + retStr + "</text>" +
         '<g class="eqhover" style="opacity:0">' +
           '<line class="eqcross" x1="0" y1="' + padTop + '" x2="0" y2="' + (h - padBot) + '"/>' +
           '<circle class="eqdot" cx="0" cy="0" r="5"/>' +
