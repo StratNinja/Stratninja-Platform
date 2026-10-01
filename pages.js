@@ -1430,13 +1430,8 @@
     } else if (_hmShareGrid) {
       // UNIFORM grid (share card) — equal cells; columns ≈ √(n·1.3) so blocks read wide, not tall
       const st = (stocks || []).slice().sort((a, b) => Math.abs(_hmChg(b) || 0) - Math.abs(_hmChg(a) || 0));
-      const _n = st.length;
-      // pick the column count (around √n, leaning wide) that leaves the FEWEST empty trailing cells
-      let cols = Math.max(1, Math.round(Math.sqrt(_n * 1.4))), _bestE = 1e9;
-      for (let c = Math.max(1, Math.floor(Math.sqrt(_n))); c <= Math.min(_n, Math.ceil(Math.sqrt(_n) * 2) + 1); c++) {
-        const e = c * Math.ceil(_n / c) - _n;
-        if (e < _bestE || (e === _bestE && c > cols)) { _bestE = e; cols = c; }
-      }
+      // columns ≈ √(n·1.3) → cells come out WIDER than tall, so the ticker + % read nicely (Adi)
+      const cols = Math.max(1, Math.min(st.length, Math.round(Math.sqrt(st.length * 1.3))));
       body = '<div class="hm-sec-body hm-gridbody" style="grid-template-columns:repeat(' + cols + ',1fr)">' +
         st.map(x => { const cv = _hmChg(x), cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
           return '<span class="hm-tile hm-gcell' + (Math.abs(cv || 0) >= 2 ? " hm-glow" : "") + '" data-chart="' + x.s + '" data-tf="D" style="' + _glowVars(cv) + '"><span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span></span>"; }).join("") + "</div>";
@@ -1465,7 +1460,7 @@
     }
     // FULL view: all sectors framed, stocks inside (ATR% filter removes low-volatility names when active)
     const _hmFiltered = spHeatAtr || spHeatUp !== "" || spHeatDown !== "";
-    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmPass); return { sec: s, stocks: st, value: _hmShareGrid ? Math.max(st.length, 2.6) : st.length }; }).filter(o => o.stocks.length);
+    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmPass); return { sec: s, stocks: st, value: _hmShareGrid ? Math.max(st.length, 1.8) : st.length }; }).filter(o => o.stocks.length);
     const frames = squarify(list, 0, 0, 1000, 600).map(r => {
       const s = r.item.sec, st = r.item.stocks;
       const above = _hmFiltered ? st.filter(x => x.ao).length : s.above, totl = _hmFiltered ? st.length : s.total;
