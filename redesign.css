@@ -252,12 +252,22 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .cmw-verdict { margin-top: 10px; padding: 11px 16px; }
 
 /* ===== continuity tab 2026-10-01 redesign: candle-map (narrow, left) + sectors grid (right); sub-sectors in a drawer ===== */
-.cont-layout { display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; }
+.cont-layout { display: flex; gap: 12px; align-items: stretch; margin-top: 10px; }   /* stretch: right column matches the candle-map height */
 .cont-left { flex: 0 0 clamp(190px, 23%, 280px); min-width: 0; }
 .cont-right { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .cont-right .td-flow { margin: 0; }
-body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-.cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; }
+/* sectors panel GROWS to fill the empty space; composites strip keeps its natural height at the bottom */
+body[data-page="sectors"] .cont-right > .td-flow { flex: 0 0 auto; }
+body[data-page="sectors"] .cont-right > .td-flow:first-child { flex: 1 1 auto; display: flex; flex-direction: column; }
+body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; }
+body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { flex: 1 1 auto; grid-auto-rows: 1fr; align-content: stretch; }
+.cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
+/* bigger tiles — taller cards + thicker bars fill the height to the candle map's bottom */
+body[data-page="sectors"] .cont-secgrid .bc-card { height: 100%; min-height: 74px; justify-content: flex-start; gap: 9px; padding: 12px 13px; }
+body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 13.5px; }
+body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 8px; margin-top: 9px; }
+body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 11px; }
+body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
 /* compact narrow candle map on the left (bucket types × 5 TFs) */
 .cmap-side { margin: 0; padding: 12px 12px 14px; }
 .cmap-side .cmap-head { font-size: 15px; }
