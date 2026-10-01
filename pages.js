@@ -2922,31 +2922,31 @@
     const insight = (pct != null)
       ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : ""))
       : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : "")) : "תמונת מצב סקטוריאלית");
-    // SHARE map = only each sector's TOP movers (biggest |move| today) → big, readable tiles (Adi: not crowded).
-    // Temporarily trim LIVE.sectors[].stocks + clear zoom/avg/filters, build the classic treemap, then restore.
-    const N_PER_SEC = 6;
-    const _topMovers = arr => (arr || []).slice().sort((a, b) => Math.abs(b.c || 0) - Math.abs(a.c || 0)).slice(0, N_PER_SEC);
-    const _saveSecs = (LIVE && LIVE.sectors) || null;
+    // SHARE map = only the SIGNIFICANT movers (≥2% up / down) → clean + meaningful (Adi). In "מיצוע" mode keep
+    // the true full-sector average (no move filter). Rendered in the EPIC/neon look. Restore state after.
     const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
-    // respect the live 🌡️ "מיצוע סקטור" toggle: avg mode = one colour per sector (true FULL-sector average →
-    // do NOT trim); detailed mode = each sector's top-6 movers (trim for a clean, readable card).
-    if (_saveSecs && !spHeatAvg) LIVE.sectors = _saveSecs.map(s => Object.assign({}, s, { stocks: _topMovers(s.stocks) }));
-    spHeatSector = null; spHeatAtr = 0; spHeatUp = ""; spHeatDown = "";
+    spHeatSector = null; spHeatAtr = 0;
+    if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
+    else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "2"; spHeatDown = "2"; }   // default: ≥2% movers
     const mapHtml = spHeatmap();
     spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD;
-    if (_saveSecs) LIVE.sectors = _saveSecs;
     const box = (cls, lbl, nm, chg) => '<div class="hmsh-box ' + cls + '"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch">' + _sgn(chg) + "</div></div>";
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
       '<div class="hmsh-top"><span class="hmsh-badge">S&P 500 · ' + dateStr + "</span><span class=\"hmsh-insight\">" + escHtml(insight) + "</span></div>" +
-      '<div class="hmsh-map">' + mapHtml + "</div>" +
+      '<div class="hmsh-map hm-neon">' + mapHtml + "</div>" +
       '<div class="hmsh-boxes">' +
         box("sub", "תת-סקטור בולט", subNm, standout ? standout.chg : null) +
         box("weak", "הסקטור החלש", weakHe, weak ? weak.chg : null) +
         box("strong", "הסקטור החזק", strongHe, strong ? strong.chg : null) +
       "</div>";
-    // html2canvas doesn't resolve var(--bg) reliably → bake each tile's colour into a direct background
-    el.querySelectorAll(".hm-tile").forEach(t => { const m = /--bg:\s*([^;]+)/.exec(t.getAttribute("style") || ""); if (m) t.style.background = m[1].trim(); });
+    // html2canvas doesn't resolve var() reliably → bake the neon look (depth gradient + glow on movers) inline
+    el.querySelectorAll(".hm-tile").forEach(t => {
+      const st = t.getAttribute("style") || "";
+      const bg = /--bg:\s*([^;]+)/.exec(st), gi = /--gi:\s*([^;]+)/.exec(st), gc = /--gc:\s*([^;]+)/.exec(st);
+      if (bg) t.style.background = "linear-gradient(170deg, rgba(255,255,255,.13), rgba(0,0,0,.24)), " + bg[1].trim();
+      if (t.classList.contains("hm-glow") && gi && gc) t.style.boxShadow = "0 0 " + (3 + parseFloat(gi[1]) * 11).toFixed(1) + "px " + gc[1].trim();
+    });
     document.body.appendChild(el); return el;
   }
   // ===== Sectors overview share card (leaders / weakest / breadth) =====
