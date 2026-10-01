@@ -288,6 +288,10 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
   .cmap-table-side .cm-pill { padding: 7px 0; }
 }
 
+/* sticky footer: anchor the footer to the bottom of the viewport on short pages, so it stays put across pages */
+.scanner-app .main { display: flex; flex-direction: column; }
+.scanner-app .main > .site-footer-mount { margin-top: auto; }
+
 /* ===== FTFC bull/bear share cards (overlay on FTFC_GREEN.png / FTFC_RED.png, 1254²) ===== */
 .ftf-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden; font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftf-card > div { position: absolute; }
