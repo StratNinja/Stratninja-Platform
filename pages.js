@@ -1487,9 +1487,18 @@
     const m = {}; ((LIVE && LIVE.sectors) || []).forEach(s => (s.stocks || []).forEach(x => { if (x.c != null) m[x.s] = x.c; }));
     _liveChgObj = LIVE; _liveChgMapV = m; return m;
   }
-  // the move over the selected risk-map timeframe (1D = today's live/pre-market change; others from scanner tech)
+  // extended-hours (pre/post) move per symbol — covers the WHOLE universe (not just S&P), so the risk map
+  // reacts to pre/after-market movers like COIN/PLTR etc. that aren't in LIVE.sectors. Empty during RTH.
+  function _extChgMap() { return (LIVE && LIVE.extWin && LIVE.ext) ? LIVE.ext : {}; }
+  function _riskExt() { return !!(LIVE && LIVE.extWin); }
+  // the move over the selected risk-map timeframe. 1D = extended-hours move (pre/post, full universe) when
+  // an extended session is live, else the live RTH move (S&P) / scanner change. Other TFs = scanner tech.
   function _riskChg(x) {
-    if (riskTf === "1d") { const lc = _liveChgMap()[x.s]; return lc != null ? lc : (x.c != null ? x.c : null); }
+    if (riskTf === "1d") {
+      const ec = _extChgMap()[x.s]; if (ec != null) return ec;                 // pre/post move (all names)
+      const lc = _liveChgMap()[x.s]; if (lc != null) return lc;                // live RTH move (S&P)
+      return x.c != null ? x.c : null;                                          // scanner change (fallback)
+    }
     const t = x.tech || _hmSMap()[x.s]; if (!t) return null; const v = t[HM_TF_KEY[riskTf]]; return v == null ? null : v;
   }
   // map each sub-sector (.ind) → its majority GICS sector, for stocks whose own .sec isn't one of the 11 GICS
@@ -1639,7 +1648,8 @@
       const vol = _riskVol();
       const up = vol.filter(r => (_riskChg(r) || 0) > 0).length, dn = vol.filter(r => (_riskChg(r) || 0) < 0).length, tot = vol.length;
       const upPct = tot ? up / tot * 100 : 0;
-      const tfl = HM_TFL[riskTf] || riskTf;
+      const _extOn = _riskExt() && riskTf === "1d";
+      const tfl = (HM_TFL[riskTf] || riskTf) + (_extOn ? (LIVE.extWin === "pre" ? " ⚡פרה-מרקט" : " ⚡אחרי-סגירה") : "");
       let verdict, vcls;
       if (tot < 5) { verdict = "מעט מדי מניות תנודתיות"; vcls = "risk-mid"; }
       else if (upPct >= 60) { verdict = "RISK ON 🟢"; vcls = "risk-on"; }
