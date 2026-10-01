@@ -2963,7 +2963,7 @@
     const mapHtml = spHeatmap();
     spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false;
     const noteText = spHeatAvg
-      ? "הצבע = התנועה הממוצעת של כל סקטור"
+      ? "הצבע = תנועת תעודת-הסל של כל סקטור"
       : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
     const box = (lbl, nm, chg) => { const chCls = chg == null ? "" : (chg >= 0 ? " hmsh-pos" : " hmsh-neg"); return '<div class="hmsh-box"><div class="hmsh-bx-cap"><span class="hmsh-bx-lbl">' + lbl + '</span> ' + escHtml(nm) + '</div><div class="hmsh-bx-ch' + chCls + '">' + _sgn(chg) + "</div></div>"; };
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
@@ -4326,7 +4326,7 @@
     const page = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;   // resolve the pulse sub-tab
     const src = (typeof scanSource === "function" ? scanSource() : []);
     const cash = arr => arr.filter(Boolean).map(s => "$" + s).slice(0, 8).join(" ");
-    let cap = "סרקתי את השוק ב-StratNinja 📊", tags = [];
+    let cap = "סרקתי את השוק ב-StratNinja 📊", tags = [], customTagStr = null;
     if (page === "journal") {
       // reflect the card: the day/period result + return. No scanner $tickers (this is personal performance).
       const s = _journalShareCap;
@@ -4401,15 +4401,26 @@
       const lag = (U.laggards || []).slice().sort((a, b) => (a.c || 0) - (b.c || 0)).slice(0, 2).map(x => x.s);
       tags = lead.concat(lag);
     } else if (page === "sp500" && (sp500View === "heat" || sp500View === "risk")) {
-      // HEAT MAP / RISK card → one LEADING stock from EACH sector (the biggest gainer per sector)
-      cap = "🔥 מפת החום של השוק · S&P 500 · StratNinja";
-      const picks = [];
-      ((LIVE && LIVE.sectors) || []).forEach(s => {
-        if (!etfFor(s.name)) return;
-        const top = (s.stocks || []).filter(x => x.c != null).sort((a, b) => b.c - a.c)[0];
-        if (top && top.c > 0) picks.push(top);
-      });
-      tags = picks.sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 8).map(x => x.s);
+      if (spHeatAvg) {
+        // "תנועת סקטור" mode → the sector ETFs themselves: 🟢 עולות (ETF > 1%) · 🔴 יורדות (ETF < -1%)
+        cap = "🔥 תנועת הסקטורים · S&P 500 · StratNinja";
+        const secs = ((LIVE && LIVE.sectors) || []).filter(s => etfFor(s.name) && s.chg != null);
+        const up = secs.filter(s => s.chg > 1).sort((a, b) => b.chg - a.chg).map(s => etfFor(s.name));
+        const dn = secs.filter(s => s.chg < -1).sort((a, b) => a.chg - b.chg).map(s => etfFor(s.name));
+        const upStr = up.length ? "🟢 עולות: " + up.map(t => "$" + t).join(" ") : "";
+        const dnStr = dn.length ? "🔴 יורדות: " + dn.map(t => "$" + t).join(" ") : "";
+        customTagStr = [upStr, dnStr].filter(Boolean).join("\n") || null;
+      } else {
+        // HEAT MAP / RISK card → one LEADING stock from EACH sector (the biggest gainer per sector)
+        cap = "🔥 מפת החום של השוק · S&P 500 · StratNinja";
+        const picks = [];
+        ((LIVE && LIVE.sectors) || []).forEach(s => {
+          if (!etfFor(s.name)) return;
+          const top = (s.stocks || []).filter(x => x.c != null).sort((a, b) => b.c - a.c)[0];
+          if (top && top.c > 0) picks.push(top);
+        });
+        tags = picks.sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 8).map(x => x.s);
+      }
     } else if (page === "sp500") {
       // S&P 500 breadth-map card → the strong sector ETF, weak sector ETF + leading stocks it highlights
       cap = "🗺️ רוחב שוק S&P 500 · StratNinja";
@@ -4427,7 +4438,7 @@
       cap = "📊 סקירת השוק היום ב-StratNinja";
       tags = src.filter(t => t.ftfc).sort((a, b) => (b.chg || 0) - (a.chg || 0)).slice(0, 5).map(t => t.sym);
     }
-    const tagStr = cash(tags);
+    const tagStr = customTagStr != null ? customTagStr : cash(tags);
     return cap + (tagStr ? "\n\n" + tagStr : "") + "\n\n" + SHARE_HASHTAGS + "\n\nstratninja.win";
   }
   const SHARE_HASHTAGS = "#Trading #TheStrat #StratNinja";
