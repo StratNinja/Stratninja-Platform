@@ -59,7 +59,14 @@
   }
   // reset local caches WITHOUT triggering a cloud push (origSet bypasses the patch)
   function clearLocal() {
-    SYNCS.forEach(s => { snapshot(s); origSet(s.key, JSON.stringify(s.empty)); });
+    SYNCS.forEach(s => {
+      const cur = safeParse(localStorage.getItem(s.key));
+      snapshot(s);                        // richest-recent + 6-deep history → for MANUAL recovery only
+      // EXACT pre-clear copy — this is what the dirty-guard restores. It reflects the user's LATEST state
+      // including DELETIONS, so deleting presets can never be undone by a "richer" stale backup.
+      origSet(s.key + "__preclear", JSON.stringify({ ts: Date.now(), data: (cur != null ? cur : s.empty) }));
+      origSet(s.key, JSON.stringify(s.empty));
+    });
   }
   function rerenderAll() { SYNCS.forEach(s => { try { s.rerender(); } catch (e) {} }); }
 
@@ -86,11 +93,13 @@
       // pre-clear snapshot) and push it UP instead. Purely client-clock based → no server clock-skew issues.
       const mtime = +(localStorage.getItem(s.key + "__mtime") || 0);
       const ptime = +(localStorage.getItem(s.key + "__ptime") || 0);
-      const bak = safeParse(localStorage.getItem(s.key + "__autobak"));   // local as it was just before clearLocal()
-      if (mtime > ptime && bak && s.hasData(bak.data)) {
-        origSet(s.key, JSON.stringify(bak.data));   // restore the unpushed local edits
+      // restore the EXACT pre-clear local (reflects DELETIONS) — never the "richest" autobak, which would
+      // resurrect presets the user just deleted and then push them back to the cloud.
+      const pre = safeParse(localStorage.getItem(s.key + "__preclear"));
+      if (mtime > ptime && pre && pre.data) {
+        origSet(s.key, JSON.stringify(pre.data));   // honor the user's latest local state (incl. deletions)
         s._pulled = true; s.rerender();
-        pushOne(s);                                 // sync them up so the cloud catches up
+        pushOne(s);                                 // push it up so the cloud matches
         return;
       }
       // cloud is authoritative — set local to cloud (or empty). NO local→cloud migration.
@@ -110,6 +119,7 @@
   function onUser(user) {
     const newId = user ? user.id : null;
     if (newId === currentUserId) return;   // same user (e.g. token refresh) → nothing to do
+    const prevId = currentUserId;
     currentUserId = newId;
 
     // whoever was here before, wipe their local cache immediately so it can never
@@ -117,6 +127,11 @@
     pulling = true;
     SYNCS.forEach(s => { clearTimeout(s._timer); s._pulled = false; });   // block pushes until this user is re-pulled
     clearLocal();
+    // on a REAL account switch (not the first load / refresh), the global edit-stamps + pre-clear copy belong
+    // to the PREVIOUS user — reset them so the new user never inherits or pushes the old user's data.
+    if (prevId && prevId !== "__init__" && prevId !== newId) {
+      SYNCS.forEach(s => { origSet(s.key + "__mtime", "0"); origSet(s.key + "__ptime", "0"); origSet(s.key + "__preclear", JSON.stringify({ ts: Date.now(), data: s.empty })); });
+    }
     rerenderAll();
     pulling = false;
 
