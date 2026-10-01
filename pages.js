@@ -720,6 +720,29 @@
     return '<div class="panel cmap-wide"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימת המניות</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table cmap-table-wide">' + head + body + "</table></div>" + verdict + "</div>";
   }
+  // NARROW/compact Candle Map for the LEFT column of the continuity tab — bar-type buckets down the side,
+  // timeframes across the top (5 cols) so it stays slim and doesn't add page height.
+  function candleMapPanelSide() {
+    const cols = ["D", "W", "M", "Q", "Y"];
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) return "";
+    const cmRows = cmapRows();
+    const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
+    cmRows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
+    const head = '<tr><th class="cmw-corner">סוג</th>' + cols.map(t => '<th class="cmw-bh">' + t + "</th>").join("") + "</tr>";
+    const body = CMAP_ROWS.map(([key, desc, cls]) =>
+      '<tr><td class="cm-type" title="' + escAttr(desc) + '">' + key + "</td>" +
+      cols.map(tf => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + escAttr(desc) + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
+    let domB = null, domN = -1;
+    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    let bestTf = null, bestScore = -Infinity;
+    cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; } });
+    const verdict = '<div class="cm-verdict cmw-verdict cms-verdict">' +
+      '<span class="cmv-item"><span class="cmv-k">מבנה דומיננטי</span><span class="cmv-v">' + (domB || "—") + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">TF חזק</span><span class="cmv-v">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span></div>";
+    return '<div class="panel cmap-side"><h3 class="cmap-head"><span>🗺️ Candle Map</span></h3>' +
+      '<div class="muted cms-note">' + cmRows.length + ' מניות · לחץ מספר לרשימה</div>' +
+      '<div class="tablewrap"><table class="cmap-table cmap-table-side">' + head + body + "</table></div>" + verdict + "</div>";
+  }
   let cmDrill = { bucket: null, tfk: null, col: null, dir: -1, favTop: false };
   function cmSortVal(r, col, tfk) {
     if (col === "sym") return r.s;
@@ -5885,6 +5908,24 @@
     }
     return dir || "";
   }
+  // continuity tab: sector → its sub-sectors (pre-rendered two-bar cards), stashed by renderSectors
+  let _contSubCards = {}, _contSubCount = {};
+  // sector tile click → a side drawer (modal, page doesn't move) with that sector's sub-sectors (continuity only)
+  function openSectorSubsModal(secRaw) {
+    const cards = _contSubCards[secRaw] || "";
+    const heName = (typeof secHe === "function") ? secHe(secRaw) : secRaw;
+    if (!cards) { openSectorDrillLive(secRaw); return; }   // no sub-sectors → go straight to the stock list
+    const cnt = _contSubCount[secRaw] || 0;
+    const body =
+      '<div class="drill-bar"><button class="btn ghost" id="secAllStocks" style="font-size:12px;font-weight:600">📋 כל מניות הסקטור</button></div>' +
+      '<div class="muted" style="margin:2px 0 10px"><span class="pos">🟢 פס עליון</span> = מניות בהמשכיות עולה · <span class="neg">🔴 פס תחתון</span> = יורדת · לחץ תת-סקטור לרשימת המניות</div>' +
+      '<div class="bcell-list cont-secgrid cont-drawer-grid">' + cards + "</div>";
+    modal("🏭 " + heName + " · תתי-סקטורים · המשכיות (" + cnt + ")", body);
+    const bs = $("#secAllStocks"); if (bs) bs.onclick = () => openSectorDrillLive(secRaw);
+    document.querySelectorAll(".modal [data-subladder]").forEach(c => c.onclick = e => { if (e.target.closest(".flow-etf")) return; openSubDrillLive(decodeURIComponent(c.dataset.subladder)); });
+    document.querySelectorAll(".modal .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
+    if (typeof wireCharts === "function") wireCharts(document);
+  }
   function renderSectors() {
     const TFS = _secFtfcTfs();
     const TFLBL = _secFtfcLbl();
@@ -6000,16 +6041,30 @@
       if (subArr.length > 18) { const ext = o => Math.abs(o.tot ? (o.fg - o.fr) / o.tot : 0); subArr = subArr.slice().sort((a, c) => ext(c) - ext(a)).slice(0, 18); }
     }
     const subSingles = _singlesOf("sub").map(s => _ftfcSingle(s, true));   // WGMI etc.
-    const secLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
-      '<div class="muted tdf-sub">כל אריח = סקטור · <span class="pos">🟢 פס עליון</span> = מניות בהמשכיות עולה · <span class="neg">🔴 פס תחתון</span> = יורדת (' + TFLBL + ') · לחץ אריח לרשימת המניות</div>' +
-      '<div class="bcell-list" data-ftfcladder="sec">' + _ftfcLadder(secArrG) + (macroArr.length ? _bcellDivider("מכלולים רחבים") + _ftfcLadder(macroArr) : "") + "</div></div>";
     const subArrAll = subArr.concat(subSingles);
-    const subLadder = subArrAll.length
-      ? '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · המשכיות</span></h3>' +
-        '<div class="muted tdf-sub">כל אריח = תת-סקטור · <span class="pos">🟢 פס עליון</span> = מניות בהמשכיות עולה · <span class="neg">🔴 פס תחתון</span> = יורדת (' + TFLBL + ') · לחץ אריח לרשימת המניות</div>' +
-        '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArrAll) + "</div></div>"
+    // nest each sub-sector under its parent GICS sector (by the majority sector of its member stocks),
+    // so a sector tile can open a side-drawer showing only its own sub-sectors (Adi 2026-10-01 redesign).
+    _contSubCards = {}; _contSubCount = {};
+    const subByParent = {};
+    subArrAll.forEach(o => {
+      const mem = byInd[o.rawname] || [];
+      let parent = "";
+      if (mem.length) { const sc = {}; mem.forEach(m => { if (m.sec) sc[m.sec] = (sc[m.sec] || 0) + 1; }); parent = Object.keys(sc).sort((a, b) => sc[b] - sc[a])[0] || ""; }
+      (subByParent[parent] = subByParent[parent] || []).push(o);
+    });
+    Object.keys(subByParent).forEach(p => { _contSubCards[p] = _ftfcLadder(subByParent[p]); _contSubCount[p] = subByParent[p].length; });
+    // main grid = 11 GICS sectors only (sub-sectors live inside each sector's drawer now)
+    const secGrid = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
+      '<div class="muted tdf-sub">כל אריח = סקטור · <span class="pos">🟢 פס עליון</span> = מניות בהמשכיות עולה · <span class="neg">🔴 פס תחתון</span> = יורדת (' + TFLBL + ') · <b>לחץ סקטור לתתי-הסקטורים שלו</b></div>' +
+      '<div class="bcell-list cont-secgrid" data-ftfcladder="sec">' + _ftfcLadder(secArrG) + "</div></div>";
+    const compStrip = macroArr.length
+      ? '<div class="panel td-flow cont-comp"><h3 class="tdf-head"><span>🧩 מכלולים רחבים · המשכיות</span></h3>' +
+        '<div class="bcell-list cont-secgrid" data-ftfcladder="macro">' + _ftfcLadder(macroArr) + "</div></div>"
       : "";
-    return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>" + candleMapPanelWide();
+    return head + note + '<div class="cont-layout">' +
+      '<div class="cont-left">' + candleMapPanelSide() + "</div>" +
+      '<div class="cont-right">' + secGrid + compStrip + "</div>" +
+      "</div>";
   }
   function wireSectors() {
     // preset shortcut → set the whole timeframe set
@@ -6023,9 +6078,9 @@
       if (i >= 0) { if (arr.length > 1) arr.splice(i, 1); } else arr.push(t);
       sectorFtfcTfs = arr; reRender();
     });
-    // ladder row → drill (sector / sub-sector). ETF chip → the sector menu (stopPropagation, below)
-    document.querySelectorAll("[data-secladder]").forEach(c => c.onclick = () => openSectorDrillLive(decodeURIComponent(c.dataset.secladder)));
-    document.querySelectorAll("[data-subladder]").forEach(c => c.onclick = () => openSubDrillLive(decodeURIComponent(c.dataset.subladder)));
+    // sector tile → side drawer with its sub-sectors (continuity). ETF chip → the sector menu (stopPropagation, below)
+    document.querySelectorAll("[data-secladder]").forEach(c => c.onclick = () => openSectorSubsModal(decodeURIComponent(c.dataset.secladder)));
+    document.querySelectorAll(".cont-right [data-subladder]").forEach(c => c.onclick = () => openSubDrillLive(decodeURIComponent(c.dataset.subladder)));
     document.querySelectorAll(".bcell-list .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
     document.querySelectorAll(".bcell-list [data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
     // "עוד N" — reveal/hide the collapsed cards inside each column
@@ -6035,7 +6090,7 @@
       const open = col.classList.toggle("expanded");
       b.textContent = open ? "פחות ↑" : ("עוד " + col.querySelectorAll(".ss-extra").length + " ↓");
     });
-    document.querySelectorAll(".cmap-wide [data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));   // candle-map pills → drill
+    document.querySelectorAll(".cmap-side [data-cmb], .cmap-wide [data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));   // candle-map pills → drill
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }
   let secSort = { col: null, dir: -1 };

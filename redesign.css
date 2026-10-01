@@ -251,6 +251,32 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .cmap-table-wide .cm-pill { min-width: 0; width: 100%; padding: 8px 0; font-size: 14px; }
 .cmw-verdict { margin-top: 10px; padding: 11px 16px; }
 
+/* ===== continuity tab 2026-10-01 redesign: candle-map (narrow, left) + sectors grid (right); sub-sectors in a drawer ===== */
+.cont-layout { display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; }
+.cont-left { flex: 0 0 clamp(190px, 23%, 280px); min-width: 0; }
+.cont-right { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.cont-right .td-flow { margin: 0; }
+body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important; }
+/* compact narrow candle map on the left (bucket types × 5 TFs) */
+.cmap-side { margin: 0; padding: 12px 12px 14px; }
+.cmap-side .cmap-head { font-size: 15px; }
+.cmap-side .cms-note { font-size: 11px; margin: -2px 0 8px; }
+.cmap-table-side { width: 100%; border-spacing: 3px 3px; table-layout: fixed; }
+.cmap-table-side .cmw-corner { width: 30px; font-size: 10px; color: var(--muted); font-weight: 800; }
+.cmap-table-side .cmw-bh { font-size: 11px; font-weight: 800; color: var(--muted); }
+.cmap-table-side .cm-type { width: 30px; font-size: 11px; font-weight: 800; }
+.cmap-table-side .cm-pill { min-width: 0; width: 100%; padding: 5px 0; font-size: 12px; }
+.cms-verdict { margin-top: 10px; padding: 9px 11px; flex-direction: column; gap: 6px; align-items: stretch; }
+.cms-verdict .cmv-item { justify-content: space-between; }
+/* sub-sector drawer (inside the modal) — same two-bar tiles, wraps nicely */
+.cont-drawer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 4px; }
+@media (max-width: 860px) {
+  .cont-layout { flex-direction: column; }
+  .cont-left { flex: none; width: 100%; }
+  .cmap-table-side .cm-pill { padding: 7px 0; }
+}
+
 /* ===== FTFC bull/bear share cards (overlay on FTFC_GREEN.png / FTFC_RED.png, 1254²) ===== */
 .ftf-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden; font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftf-card > div { position: absolute; }
