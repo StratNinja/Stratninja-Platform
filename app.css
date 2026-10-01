@@ -3,7 +3,7 @@
 
 /* brand icon (3-candle favicon replaces the SN gradient) */
 .brand-ico { width: 34px; height: 34px; border-radius: 8px; display: block; flex-shrink: 0; }
-.sf-logo-img { width: 30px; height: 30px; border-radius: 7px; display: block; }
+.sf-logo-img { width: 52px; height: 52px; border-radius: 11px; display: block; }
 /* landing founder photo */
 .hero-photo-wrap { max-width: 720px; margin: 6px auto 0; padding: 0 20px; }
 .hero-photo { width: 100%; border-radius: 18px; display: block; box-shadow: 0 14px 44px rgba(0,0,0,.55); border: 1px solid var(--line); }
