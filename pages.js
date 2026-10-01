@@ -720,18 +720,18 @@
     return '<div class="panel cmap-wide"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימת המניות</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table cmap-table-wide">' + head + body + "</table></div>" + verdict + "</div>";
   }
-  // NARROW/compact Candle Map for the LEFT column of the continuity tab — bar-type buckets down the side,
-  // timeframes across the top (5 cols) so it stays slim and doesn't add page height.
+  // NARROW/compact Candle Map for the LEFT column of the continuity tab — bar-type buckets across the TOP
+  // (columns), timeframes down the RIGHT side (rows), so it maps the CANDLES. Stays slim (no page height).
   function candleMapPanelSide() {
-    const cols = ["D", "W", "M", "Q", "Y"];
+    const cols = ["D", "W", "M", "Q", "Y"];   // timeframes = rows (down the right side)
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) return "";
     const cmRows = cmapRows();
     const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
     cmRows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
-    const head = '<tr><th class="cmw-corner">סוג</th>' + cols.map(t => '<th class="cmw-bh">' + t + "</th>").join("") + "</tr>";
-    const body = CMAP_ROWS.map(([key, desc, cls]) =>
-      '<tr><td class="cm-type" title="' + escAttr(desc) + '">' + key + "</td>" +
-      cols.map(tf => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + escAttr(desc) + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
+    const head = '<tr><th class="cmw-corner">TF</th>' + CMAP_ROWS.map(([key, desc]) => '<th class="cmw-bh" title="' + escAttr(desc) + '">' + key + "</th>").join("") + "</tr>";
+    const body = cols.map(tf =>
+      '<tr><td class="cm-type">' + tf + "</td>" +
+      CMAP_ROWS.map(([key, desc, cls]) => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + escAttr(desc) + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
     let domB = null, domN = -1;
     CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
     let bestTf = null, bestScore = -Infinity;

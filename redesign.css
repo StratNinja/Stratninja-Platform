@@ -272,11 +272,11 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
 .cmap-side { margin: 0; padding: 12px 12px 14px; }
 .cmap-side .cmap-head { font-size: 15px; }
 .cmap-side .cms-note { font-size: 11px; margin: -2px 0 8px; }
-.cmap-table-side { width: 100%; border-spacing: 3px 3px; table-layout: fixed; }
-.cmap-table-side .cmw-corner { width: 30px; font-size: 10px; color: var(--muted); font-weight: 800; }
-.cmap-table-side .cmw-bh { font-size: 11px; font-weight: 800; color: var(--muted); }
-.cmap-table-side .cm-type { width: 30px; font-size: 11px; font-weight: 800; }
-.cmap-table-side .cm-pill { min-width: 0; width: 100%; padding: 5px 0; font-size: 12px; }
+.cmap-table-side { width: 100%; border-spacing: 2px 3px; table-layout: fixed; }
+.cmap-table-side .cmw-corner { width: 22px; font-size: 9px; color: var(--muted); font-weight: 800; }
+.cmap-table-side .cmw-bh { font-size: 9.5px; font-weight: 800; color: var(--muted); padding: 0 0 2px; white-space: nowrap; }
+.cmap-table-side .cm-type { width: 22px; font-size: 11px; font-weight: 800; }
+.cmap-table-side .cm-pill { min-width: 0; width: 100%; padding: 5px 0; font-size: 11px; }
 .cms-verdict { margin-top: 10px; padding: 9px 11px; flex-direction: column; gap: 6px; align-items: stretch; }
 .cms-verdict .cmv-item { justify-content: space-between; }
 /* sub-sector drawer (inside the modal) — same two-bar tiles, wraps nicely */
