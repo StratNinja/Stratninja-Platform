@@ -1243,6 +1243,7 @@
   // neon/glow heat-map style toggle ("אפי" ↔ "קלאסי")
   let hmStyle = "neon"; try { hmStyle = localStorage.getItem("sn_hm_style") || "neon"; } catch (e) {}
   let _hmShareClean = false;   // when true (share card): sector tabs show only Hebrew name + ETF (no English / breadth% / 🔍)
+  let _hmShareGrid = false;    // when true (share card): each sector body is a UNIFORM grid → equal, clean tiles
   function _heatNeon() { return hmStyle === "neon" ? " hm-neon" : ""; }
   function _heatStyleBtn() { return '<button class="uni-btn hm-style-toggle' + (hmStyle === "neon" ? " on" : "") + '" id="hmStyleToggle" title="מראה אפי (ניאון/זוהר) או קלאסי">' + (hmStyle === "neon" ? "✨ אפי" : "◻️ קלאסי") + "</button>"; }
   // per-tile CSS vars for the neon look: --bg = fill color, --gi = glow intensity (0..1 by |move|), --gc = glow color
@@ -1426,6 +1427,13 @@
       const avg = arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
       const cs = (avg >= 0 ? "+" : "") + avg.toFixed(2) + "%";
       body = '<div class="hm-sec-body hm-avg" style="background:' + chgColor(avg * 2.2) + '"><span class="hm-avg-pct">' + cs + "</span></div>";   // ×2.2: sector avgs are small, boost saturation for a clearer money-flow read
+    } else if (_hmShareGrid) {
+      // UNIFORM grid (share card) — equal cells; columns ≈ √(n·1.3) so blocks read wide, not tall
+      const st = (stocks || []).slice().sort((a, b) => Math.abs(_hmChg(b) || 0) - Math.abs(_hmChg(a) || 0));
+      const cols = Math.max(1, Math.min(st.length, Math.round(Math.sqrt(st.length * 1.3))));
+      body = '<div class="hm-sec-body hm-gridbody" style="grid-template-columns:repeat(' + cols + ',1fr)">' +
+        st.map(x => { const cv = _hmChg(x), cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
+          return '<span class="hm-tile hm-gcell' + (Math.abs(cv || 0) >= 2 ? " hm-glow" : "") + '" data-chart="' + x.s + '" data-tf="D" style="' + _glowVars(cv) + '"><span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span></span>"; }).join("") + "</div>";
     } else {
       body = '<div class="hm-sec-body">' + _hmTiles(stocks) + "</div>";
     }
@@ -2920,7 +2928,7 @@
     const b = (LIVE && LIVE.breadth) || null;
     const pct = (b && b.total) ? Math.round(b.above / b.total * 100) : null;
     const strongHe = strong ? secHe(strong.name) : "—", weakHe = weak ? secHe(weak.name) : "—";
-    const subNm = standout ? String(standout.ind || standout.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").trim() : "—";
+    const subNm = standout ? String(standout.ind || standout.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").replace(/\s+[A-Z]{2,6}\d?$/, "").trim() : "—";
     const _sgn = c => c == null ? "" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
     const dateStr = new Date().toLocaleDateString("he-IL");
     const insight = (pct != null)
@@ -2929,12 +2937,12 @@
     // SHARE map = only the SIGNIFICANT movers (≥2% up / down) → clean + meaningful (Adi). In "מיצוע" mode keep
     // the true full-sector average (no move filter). Rendered in the EPIC/neon look. Restore state after.
     const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
-    spHeatSector = null; spHeatAtr = 0; _hmShareClean = true;
+    spHeatSector = null; spHeatAtr = 0; _hmShareClean = true; _hmShareGrid = true;
     if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
     else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "3"; spHeatDown = "3"; }   // default: ≥3% movers (cleaner)
     const upThr = spHeatUp, dnThr = spHeatDown;   // thresholds actually used (for the legend note)
     const mapHtml = spHeatmap();
-    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false;
+    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false;
     const noteText = spHeatAvg
       ? "הצבע = התנועה הממוצעת של כל סקטור"
       : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
