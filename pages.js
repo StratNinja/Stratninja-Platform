@@ -2947,16 +2947,16 @@
     const noteText = spHeatAvg
       ? "הצבע = התנועה הממוצעת של כל סקטור"
       : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
-    const box = (cls, lbl, nm, chg) => '<div class="hmsh-box ' + cls + '"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch">' + _sgn(chg) + "</div></div>";
+    const box = (lbl, nm, chg) => { const chCls = chg == null ? "" : (chg >= 0 ? " hmsh-pos" : " hmsh-neg"); return '<div class="hmsh-box"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch' + chCls + '">' + _sgn(chg) + "</div></div>"; };
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
       '<div class="hmsh-top"><div class="hmsh-toprow"><span class="hmsh-badge">S&P 500 · ' + dateStr + '</span><span class="hmsh-insight">' + escHtml(insight) + "</span></div>" +
         '<div class="hmsh-note">' + noteText + "</div></div>" +
       '<div class="hmsh-map hm-neon">' + mapHtml + "</div>" +
       '<div class="hmsh-boxes">' +
-        box("sub", "תת-סקטור בולט", subNm, standout ? standout.chg : null) +
-        box("weak", "הסקטור החלש", weakHe, weak ? weak.chg : null) +
-        box("strong", "הסקטור החזק", strongHe, strong ? strong.chg : null) +
+        box("תת-סקטור בולט", subNm, standout ? standout.chg : null) +
+        box("הסקטור החלש", weakHe, weak ? weak.chg : null) +
+        box("הסקטור החזק", strongHe, strong ? strong.chg : null) +
       "</div>";
     // html2canvas doesn't resolve var() reliably → bake the neon look (depth gradient + glow on movers) inline
     el.querySelectorAll(".hm-tile").forEach(t => {
