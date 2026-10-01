@@ -144,11 +144,46 @@
     }
   }
 
-  // FLUSH any pending (debounced) push the instant the tab is hidden or the page is unloading — so an
-  // edit followed by a quick refresh/close reaches the cloud first. Belt-and-suspenders with the dirty-guard.
+  // read the logged-in user's access token from the supabase-persisted session (for the keepalive flush)
+  function _authToken() {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && /^sb-.*-auth-token$/.test(k)) {
+          const j = safeParse(localStorage.getItem(k));
+          if (!j) continue;
+          return j.access_token || (j.currentSession && j.currentSession.access_token) || (j.session && j.session.access_token) || null;
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+  // FLUSH any pending (debounced) push the instant the tab is hidden or the page is unloading. Uses a
+  // keepalive fetch so the request SURVIVES the page tear-down — the normal async client push often dies
+  // mid-flight on a hard refresh, which is exactly how starred favorites / edits got lost. Dirty-guard backs it up.
   function flushPending() {
     if (!client || !userId) return;
-    SYNCS.forEach(s => { if (s._timer) { clearTimeout(s._timer); s._timer = null; if (s._pulled) pushOne(s); } });
+    const cfg = window.SN_CONFIG, token = _authToken();
+    SYNCS.forEach(s => {
+      if (!(s._timer && s._pulled)) { if (s._timer) { clearTimeout(s._timer); s._timer = null; } return; }
+      clearTimeout(s._timer); s._timer = null;
+      const data = safeParse(localStorage.getItem(s.key)) || s.empty;
+      const mtimeAtPush = localStorage.getItem(s.key + "__mtime") || String(Date.now());
+      if (cfg && cfg.SUPABASE_URL && token) {
+        try {
+          fetch(cfg.SUPABASE_URL + "/rest/v1/" + s.table + "?on_conflict=user_id", {
+            method: "POST", keepalive: true,
+            headers: {
+              apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + token,
+              "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal",
+            },
+            body: JSON.stringify({ user_id: userId, data: data, updated_at: new Date().toISOString() }),
+          }).then(() => { try { origSet(s.key + "__ptime", mtimeAtPush); } catch (e) {} }).catch(() => {});
+        } catch (e) { pushOne(s); }
+      } else {
+        pushOne(s);
+      }
+    });
   }
   document.addEventListener("visibilitychange", () => { if (document.hidden) flushPending(); });
   window.addEventListener("pagehide", flushPending);
