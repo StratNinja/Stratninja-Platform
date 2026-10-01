@@ -1240,6 +1240,16 @@
     const tgt = m >= 0 ? G : R, t = Math.abs(m);
     return "rgb(" + Math.round(N[0] + (tgt[0] - N[0]) * t) + "," + Math.round(N[1] + (tgt[1] - N[1]) * t) + "," + Math.round(N[2] + (tgt[2] - N[2]) * t) + ")";
   }
+  // neon/glow heat-map style toggle ("אפי" ↔ "קלאסי")
+  let hmStyle = "neon"; try { hmStyle = localStorage.getItem("sn_hm_style") || "neon"; } catch (e) {}
+  function _heatNeon() { return hmStyle === "neon" ? " hm-neon" : ""; }
+  function _heatStyleBtn() { return '<button class="uni-btn hm-style-toggle' + (hmStyle === "neon" ? " on" : "") + '" id="hmStyleToggle" title="מראה אפי (ניאון/זוהר) או קלאסי">' + (hmStyle === "neon" ? "✨ אפי" : "◻️ קלאסי") + "</button>"; }
+  // per-tile CSS vars for the neon look: --bg = fill color, --gi = glow intensity (0..1 by |move|), --gc = glow color
+  function _glowVars(cv) {
+    const mag = Math.min(1, Math.abs(cv || 0) / 4);                  // saturate the glow at ±4%
+    const gc = (cv || 0) >= 0 ? "52,227,155" : "255,70,90";
+    return "--bg:" + chgColor(cv == null ? 0 : cv) + ";--gi:" + mag.toFixed(2) + ";--gc:rgba(" + gc + ",.7)";
+  }
   // squarified treemap (Bruls et al.) — lays out items by .value inside rect [X,Y,W,H]; returns [{item,x,y,w,h}]
   function _worst(areas, side) {
     let sum = 0, mn = Infinity, mx = 0;
@@ -1389,11 +1399,11 @@
       const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
       const cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
       // tiered labels: big tiles show ticker + move, mid tiles show just the ticker, tiny → tooltip only
-      let lbl = "", cls = "hm-tile clickable" + (_hmMoveMatch(cv) ? "" : " hm-dim");
+      let lbl = "", cls = "hm-tile clickable" + (_hmMoveMatch(cv) ? "" : " hm-dim") + (Math.abs(cv || 0) >= 4 ? " hm-hot" : "");
       if (c.w > 66 && c.h > 40) { lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>"; }
       else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
       return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + (x.mc ? " · " + fmtCap(x.mc) : "") +
-        '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;background:" + chgColor(cv == null ? 0 : cv) + '">' + lbl + "</span>";
+        '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;" + _glowVars(cv) + '">' + lbl + "</span>";
     }).join("");
   }
   function _hmFrame(name, stocks, opts) {
@@ -1491,10 +1501,10 @@
       const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
       const cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
       const as = a != null ? a.toFixed(1) + "% ATR" : "";
-      let lbl = "", cls = "hm-tile clickable";
+      let lbl = "", cls = "hm-tile clickable" + (Math.abs(cv || 0) >= 4 ? " hm-hot" : "");
       if (c.w > 66 && c.h > 40) lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>";
       else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
-      return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + " · " + as + '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;background:" + chgColor(cv == null ? 0 : cv) + '">' + lbl + "</span>";
+      return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + " · " + as + '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;" + _glowVars(cv) + '">' + lbl + "</span>";
     }).join("");
   }
   function riskHeatmap() {
@@ -1600,9 +1610,9 @@
         '<span class="hm-mf-field"><input type="number" step="0.5" min="0" inputmode="decimal" id="hmAtrMin" placeholder="0" value="' + escAttr(spHeatAtr ? String(spHeatAtr) : "") + '"></span>' +
         (spHeatAtr ? '<button class="hm-mf-clear" id="hmAtrClear" title="נקה">✕</button>' : "") + "</div>";
       return '<div class="page-head hm-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">כל ריבוע = מניה, הצבע לפי התנועה בטווח הנבחר · לחץ שם סקטור (🔍) לזום · מניה לגרף · מונה שיא/שפל לרשימה.</div></div>' +
-        '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" +
+        '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + _heatStyleBtn() + "</div>" +
         '<div class="hm-controls">' + tfBtns + moveFilter + atrFilter + countsStrip + "</div>" +
-        '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
+        '<div class="panel sp-heat-panel' + _heatNeon() + '">' + spHeatmap() + "</div>";
     }
     // ── RISK ON/OFF VIEW: volatile names (ATR% ≥ threshold) from the whole universe, colored by today's move ──
     if (sp500View === "risk") {
@@ -1628,9 +1638,9 @@
         '<span class="hm-legend"><span class="hml neg"></span> יורדת<span class="hml zero"></span> ללא שינוי<span class="hml pos"></span> עולה · הצבע = התנועה ב' + tfl + "</span></div>";
       return '<div class="page-head hm-head risk-head"><div class="risk-head-row"><h1>⚡ מפת סיכון · RISK ON / OFF</h1>' + verdictInline + "</div>" +
         '<div class="sub">רק המניות <b>התנודתיות</b> (ATR% ≥ ' + riskAtrMin + '%) מכל היקום (' + rowsN + ' מניות), מקובצות לפי סקטור וצבועות לפי <b>התנועה ב' + tfl + '</b>. ים של ירוק = תיאבון לסיכון · ים של אדום = בריחה מסיכון · לחץ סקטור (🔍) לזום · מניה לגרף.</div></div>' +
-        '<div class="sp-view-row">' + sp500ViewSwitch() + "</div>" +
+        '<div class="sp-view-row">' + sp500ViewSwitch() + _heatStyleBtn() + "</div>" +
         ctl +
-        '<div class="panel sp-heat-panel">' + riskHeatmap() + "</div>";
+        '<div class="panel sp-heat-panel' + _heatNeon() + '">' + riskHeatmap() + "</div>";
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
     // ranked by breadth = % of the sector's stocks above their open. Leaders/laggards moved into the click.
@@ -1743,6 +1753,7 @@
     document.querySelectorAll("[data-hmsector]").forEach(el => el.onclick = e => { e.stopPropagation(); spHeatSector = decodeURIComponent(el.dataset.hmsector); reRender(); });
     { const hb = $("#hmBack"); if (hb) hb.onclick = () => { spHeatSector = null; reRender(); }; }
     { const av = $("#hmAvgToggle"); if (av) av.onclick = () => { spHeatAvg = !spHeatAvg; try { localStorage.setItem("sn_hm_avg", spHeatAvg ? "1" : "0"); } catch (e) {} reRender(); }; }
+    { const st = $("#hmStyleToggle"); if (st) st.onclick = () => { hmStyle = hmStyle === "neon" ? "classic" : "neon"; try { localStorage.setItem("sn_hm_style", hmStyle); } catch (e) {} reRender(); }; }
     document.querySelectorAll("[data-hmtf]").forEach(b => b.onclick = () => { spHeatTf = b.dataset.hmtf; try { localStorage.setItem("sn_hm_tf", spHeatTf); } catch (e) {} reRender(); });
     // RISK map: modular timeframe + volatility threshold + sector zoom
     document.querySelectorAll("[data-risktf]").forEach(b => b.onclick = () => { riskTf = b.dataset.risktf; try { localStorage.setItem("sn_risk_tf", riskTf); } catch (e) {} reRender(); });

@@ -666,7 +666,8 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hm-sec-pct { color: #9fb0c0; font-weight: 700; font-size: 10px; }
 .hm-sec-body { position: relative; flex: 1 1 auto; min-height: 0; }
 .hm-tile { position: absolute; box-sizing: border-box; border: 1px solid rgba(0,0,0,.4); display: flex; flex-direction: column;
-  align-items: center; justify-content: center; overflow: hidden; cursor: pointer; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
+  align-items: center; justify-content: center; overflow: hidden; cursor: pointer; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  background: var(--bg, #2a2e3a); }
 .hm-tile:hover { filter: brightness(1.2); outline: 1px solid #fff; z-index: 4; }
 /* move filter — tiles outside the % range fade out so the movers pop */
 .hm-tile.hm-dim { opacity: .08; filter: grayscale(.6); }
@@ -689,6 +690,33 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hm-sec-body.hm-avg { display: flex; align-items: center; justify-content: center; }
 .hm-avg-pct { color: #fff; font-weight: 800; font-size: clamp(13px, 1.8vw, 30px); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .hm-avg-toggle { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ===== NEON / GLOW heat-map style (toggle: ✨ אפי) ===== */
+.hm-style-toggle { display: inline-flex; align-items: center; gap: 4px; }
+.sp-heat-panel.hm-neon { background: radial-gradient(120% 90% at 50% 0%, #10151f 0%, #070a0e 72%); }
+.hm-neon .sp-heat { background: radial-gradient(135% 100% at 50% 0%, #0d1320 0%, #05070b 78%); }
+/* glass sector frames */
+.hm-neon .hm-sec { border: 1px solid rgba(255,255,255,.10); border-radius: 12px; background: rgba(10,15,22,.42);
+  box-shadow: 0 6px 24px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.03); }
+.hm-neon .hm-sec-tab { background: linear-gradient(90deg, rgba(34,227,155,.17), rgba(10,15,22,.14)); color: #eaf7ff;
+  border-bottom: 1px solid rgba(255,255,255,.08); border-radius: 11px 11px 0 0; text-shadow: 0 0 10px rgba(34,227,155,.3); }
+.hm-neon .hm-sec-zoom:hover { background: linear-gradient(90deg, rgba(34,227,155,.3), rgba(10,15,22,.2)); }
+.hm-neon .hm-sec-etf { color: #2bf29f; text-shadow: 0 0 8px rgba(43,242,159,.4); }
+/* tiles: depth gradient + glow bloom scaled by |move| (--gi / --gc set inline) */
+.hm-neon .hm-tile { border: 1px solid rgba(0,0,0,.35); border-radius: 4px; filter: saturate(1.22);
+  background: linear-gradient(170deg, rgba(255,255,255,.13), rgba(0,0,0,.24)), var(--bg, #2a2e3a);
+  box-shadow: 0 0 calc(1px + var(--gi,0) * 16px) var(--gc, transparent);
+  transition: transform .12s ease, box-shadow .15s ease, filter .15s ease; }
+.hm-neon .hm-tile:hover { filter: saturate(1.4) brightness(1.12); outline: none; transform: scale(1.09);
+  box-shadow: 0 0 22px var(--gc, #22e39b), 0 6px 18px rgba(0,0,0,.6); z-index: 6; }
+.hm-neon .hm-t-sym { text-shadow: 0 1px 4px rgba(0,0,0,.75); }
+/* extreme movers (|move| ≥ 4%) breathe */
+.hm-neon .hm-tile.hm-hot { animation: hmPulse 1.9s ease-in-out infinite; }
+@keyframes hmPulse {
+  0%, 100% { box-shadow: 0 0 calc(4px + var(--gi,0) * 14px) var(--gc, #22e39b); }
+  50%      { box-shadow: 0 0 calc(11px + var(--gi,0) * 26px) var(--gc, #22e39b); }
+}
+@media (prefers-reduced-motion: reduce) { .hm-neon .hm-tile.hm-hot { animation: none; } }
 /* heat-map timeframe bar */
 .hm-tfbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
 .hm-tf { font-size: 12px; font-weight: 700; }
