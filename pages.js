@@ -4155,8 +4155,9 @@
     return el;
   }
   function captureSummaryCard() {
-    // market page → one comprehensive MEGA card (no more 4-part chooser; Adi 2026-09-30)
-    if (state.page === "market") { _captureRedesignCard(buildMarketCardEl); return; }
+    // market page (now the first tab of the 'pulse' channel) → one comprehensive MEGA card (no 4-part chooser)
+    const _pg = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;
+    if (_pg === "market") { _captureRedesignCard(buildMarketCardEl); return; }
     _doCaptureSummaryCard();
   }
   function _doCaptureSummaryCard() {
@@ -4169,11 +4170,11 @@
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
       openFtfcShareChooser(); return;
     }
-    if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
-    if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
-    if (state.page === "market" && _mktShareSection === "leaders") { _captureRedesignCard(buildLeadersCardEl); return; }   // redesigned Leaders/Laggards card
+    if (pg === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
+    if (pg === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
+    if (pg === "market" && _mktShareSection === "leaders") { _captureRedesignCard(buildLeadersCardEl); return; }   // redesigned Leaders/Laggards card
     // market-page "After/Pre-Market" share during the gappers window → the new square gappers card (not the legacy landscape one)
-    if (state.page === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } _captureRedesignCard(buildMoversCardEl); return; }
+    if (pg === "market" && _mktShareSection === "movers") { const _m = (typeof _ilMinutes === "function") ? _ilMinutes() : 0; if (_m >= 16 * 60 + 30 && _m < 23 * 60) { _captureRedesignCard(buildGappersCardEl); return; } _captureRedesignCard(buildMoversCardEl); return; }
     if (state.page === "favorites") { _captureRedesignCard(buildFavoritesCardEl); return; }   // redesigned favorites watchlist card
     if (state.page === "journal") { openJournalShareChooser(); return; }   // choose: 🙏 single-trade ninja card OR period summary
     if (state.page === "gappers") { _captureRedesignCard(buildGappersCardEl); return; }   // redesigned gappers pre-market card
@@ -7870,20 +7871,20 @@
     setTxt("anaUsers", _anaBars(users, k => emailMap[k] || ("…" + String(k).slice(0, 8)), 15));   // show email when known, else short id
   }
 
-  // ===== "דופק השוק" — one channel, four internal tabs (stock map / sector flow / continuity / breadth) =====
-  let pulseTab = "today";
-  const PULSE_TABS = [["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
-  const _pulseRender = { sp500: () => renderSp500(), today: () => renderToday(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
-  const _pulseWire = { sp500: () => wireSp500(), today: () => wireToday(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
+  // ===== "סקירת שוק" — one channel: market overview (first) + sector-breadth / sector-flow / continuity / breadth =====
+  let pulseTab = "market";
+  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
+  const _pulseRender = { market: () => renderMarket(), sp500: () => renderSp500(), today: () => renderToday(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
+  const _pulseWire = { market: () => wireMarket(), sp500: () => wireSp500(), today: () => wireToday(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
   function renderPulse() {
-    const tab = _pulseRender[pulseTab] ? pulseTab : "today";
+    const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     const bar = '<div class="pulse-tabs">' + PULSE_TABS.map(([k, l]) =>
       '<button class="pulse-tab' + (tab === k ? " on" : "") + '" data-pulsetab="' + k + '">' + l + "</button>").join("") + "</div>";
     return bar + _pulseRender[tab]();
   }
   function wirePulse() {
     document.querySelectorAll("[data-pulsetab]").forEach(b => b.onclick = () => { if (pulseTab === b.dataset.pulsetab) return; pulseTab = b.dataset.pulsetab; reRender(); try { window.scrollTo(0, 0); } catch (e) {} });
-    const tab = _pulseRender[pulseTab] ? pulseTab : "today";
+    const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     if (_pulseWire[tab]) _pulseWire[tab]();
   }
   const PAGES = {
@@ -7907,7 +7908,7 @@
     const p = PAGES[state.page]; if (!p) return;
     const _sy = window.scrollY || window.pageYOffset || 0;   // preserve scroll across in-place re-renders (e.g. changing a filter)
     try { const _ob = document.querySelector(".fpop.open .fpop-body"); _fbarScroll = _ob ? _ob.scrollTop : 0; } catch (e) { _fbarScroll = 0; }   // preserve the open filter-popover's inner scroll
-    try { document.body.setAttribute("data-page", state.page === "pulse" ? (pulseTab || "today") : state.page); } catch (e) {}   // pulse → expose the active sub-tab so per-page CSS (compaction) still applies
+    try { document.body.setAttribute("data-page", state.page === "pulse" ? (pulseTab || "market") : state.page); } catch (e) {}   // pulse → expose the active sub-tab so per-page CSS (compaction) still applies
     $("#page").innerHTML = guideSection(state.page) + p.render();   // guide-video area at the TOP (most viewers don't scroll down)
     if (p.wire) p.wire();
     wireStars($("#page"));
@@ -7941,8 +7942,8 @@
   }
 
   function setPage(name) {
-    // the four market-internals views live inside one 'pulse' channel as tabs — route their old names there
-    if (name === "sp500" || name === "today" || name === "sectors" || name === "breadth") { pulseTab = name; name = "pulse"; }
+    // market-overview + the sector-internals views all live inside one 'pulse' channel as tabs — route old names there
+    if (name === "market" || name === "sp500" || name === "today" || name === "sectors" || name === "breadth") { pulseTab = name; name = "pulse"; }
     document.querySelectorAll(".side-nav a").forEach(a => a.classList.toggle("active", a.dataset.page === name));
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
@@ -7967,7 +7968,7 @@
       const r = await fetch(url, { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       if (!r.ok) return;
       const j = await r.json();
-      if (j && j[0] && j[0].data) { LIVE = j[0].data; _liveTs = Date.now(); updateTicker(); if (state.page === "market" || state.page === "today") reRender(); }
+      if (j && j[0] && j[0].data) { LIVE = j[0].data; _liveTs = Date.now(); updateTicker(); if (state.page === "pulse" || state.page === "market" || state.page === "today") reRender(); }
     } catch (e) { /* keep demo data */ }
   }
 
@@ -7983,7 +7984,7 @@
       if (j && j[0] && j[0].data) {
         SCAN = j[0].data;
         applyLivePrices();     // overlay the live price/% onto the fresh scan (Strat cells untouched)
-        if (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "favorites") reRender();
+        if (state.page === "pulse" || state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "favorites") reRender();
         checkPresetAlerts();   // fire preset × favorites alerts on fresh scan data
       }
     } catch (e) { /* keep demo */ }
@@ -8056,7 +8057,7 @@
       const prices = j && j[0] && j[0].data && j[0].data.prices;
       if (!prices || !Object.keys(prices).length) return;
       PRICES = prices;
-      if (applyLivePrices() && (state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today")) reRender();
+      if (applyLivePrices() && (state.page === "pulse" || state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today")) reRender();
     } catch (e) { /* keep last */ }
   }
 
