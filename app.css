@@ -1915,6 +1915,8 @@ input.sl-missing { border-color:rgba(255,114,111,.7) !important; background:rgba
 .jr-risk { margin-top:5px; font-size:12.5px; color:var(--muted); min-height:1px; }
 .jr-risk b { color:#ff726f; }
 .jr-risk.warn { color:#e0b341; font-weight:600; }
+.jr-risk.good { color:#2bba7e; font-weight:600; }
+.jr-risk.good b { color:#2bf29f; }
 /* open-positions risk column — muted amber so it reads as "at risk", not P&L */
 .risk-cell { color:#e0a84a; }
 td.risk-cell { font-variant-numeric:tabular-nums; }

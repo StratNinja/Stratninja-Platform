@@ -1816,8 +1816,15 @@
     const ep = parseFloat(d.entryPrice), sl = parseFloat(d.sl), qty = Math.abs(parseFloat(d.qty) || 0);
     const mult = d.assetType === "option" ? 100 : 1;
     if (isNaN(ep) || isNaN(sl) || !ep || !qty) { el.className = "jr-risk"; el.innerHTML = ""; return; }
-    const wrongSide = (d.direction === "short") ? (sl <= ep) : (sl >= ep);   // long: SL must be below entry; short: above
-    if (wrongSide) { el.className = "jr-risk warn"; el.innerHTML = "⚠️ הסטופ בצד הלא-נכון של מחיר הכניסה"; return; }
+    // SL on the "profit side" of entry (long: above entry · short: below) isn't a mistake — it's a stop
+    // RAISED into profit (locking gains). Celebrate it + show the locked-in profit, instead of warning.
+    const profitLock = (d.direction === "short") ? (sl < ep) : (sl > ep);
+    if (profitLock) {
+      const lockShare = Math.abs(sl - ep), lockGain = lockShare * qty * mult, lockPct = lockShare / ep * 100;
+      el.className = "jr-risk good";
+      el.innerHTML = "✅ כל הכבוד על ניהול סיכונים! אתה בצד המרוויח — נעלת רווח של <b>" + money(lockGain, 2) + "</b> (<b>" + lockPct.toFixed(2) + "%</b>)";
+      return;
+    }
     const perShare = Math.abs(ep - sl), risk = perShare * qty * mult, riskPct = perShare / ep * 100;
     el.className = "jr-risk";
     el.innerHTML = "🛑 סיכון: <b>" + money(risk, 2) + "</b> · <b>" + riskPct.toFixed(2) + "%</b> מהעסקה";
