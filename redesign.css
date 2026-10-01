@@ -738,13 +738,13 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hm-gridbody { display: grid; gap: 3px; width: 100%; height: 100%; padding: 3px; box-sizing: border-box; grid-auto-rows: 1fr; }
 .hm-gridbody .hm-tile { position: static; width: auto; height: auto; min-height: 0; border-radius: 4px; }
 /* 3 stat boxes at the panel bottom — RIGHT=standout sub · MIDDLE=weak · LEFT=strong (RTL order) */
-.hmsh-boxes { position: absolute; top: 75.9%; left: 3.4%; width: 93.2%; height: 5.9%; display: flex; align-items: stretch; gap: 12px; }
+.hmsh-boxes { position: absolute; top: 75.9%; left: 3.4%; width: 93.2%; height: 4.15%; display: flex; align-items: stretch; gap: 12px; }
 /* all 3 boxes IDENTICAL (same bg/border/height); only the % value is coloured by sign */
-.hmsh-box { flex: 1 1 0; min-width: 0; align-self: stretch; box-sizing: border-box; border-radius: 12px; padding: 8px 16px 6px; display: flex; flex-direction: column; justify-content: flex-start;
+.hmsh-box { flex: 1 1 0; min-width: 0; align-self: stretch; box-sizing: border-box; border-radius: 12px; padding: 4px 16px 3px; display: flex; flex-direction: column; justify-content: flex-start;
   background: rgba(8,13,20,.72); border: 1px solid rgba(255,255,255,.14); box-shadow: none; }
-.hmsh-bx-lbl { font-size: 15px; font-weight: 700; color: #9fb3c7; margin-bottom: 1px; line-height: 1.1; }
-.hmsh-bx-nm { font-size: 24px; font-weight: 900; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.08; }
-.hmsh-bx-ch { font-size: 18px; font-weight: 800; direction: ltr; line-height: 1.1; margin-top: 1px; color: #eaf2ff; }
+.hmsh-bx-lbl { font-size: 13px; font-weight: 700; color: #9fb3c7; margin-bottom: 0; line-height: 1.08; }
+.hmsh-bx-nm { font-size: 20px; font-weight: 900; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.05; }
+.hmsh-bx-ch { font-size: 15px; font-weight: 800; direction: ltr; line-height: 1.05; margin-top: 0; color: #eaf2ff; }
 .hmsh-bx-ch.hmsh-pos { color: #2bf29f; }
 .hmsh-bx-ch.hmsh-neg { color: #ff5a6a; }
 .hmsh-box.strong .hmsh-bx-ch { color: #2bf29f; }
