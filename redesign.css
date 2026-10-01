@@ -897,7 +897,15 @@ body[data-page="sectors"] .td-flow .bcell-list { display: grid; grid-template-co
 
 /* ---------- market breadth page: 5 % -above-MA charts across the width ---------- */
 .brd-charts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 10px; }
-.brd-chart { min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 6px; }
+.brd-chart { position: relative; min-width: 0; background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 6px; transition: border-color .15s, box-shadow .15s; }
+/* ── breadth zone badges: 🟢 BUY ZONE · 🧊 OVERSOLD · ⚡ BOUNCE (corner pill + card glow) ── */
+.brd-badge { position: absolute; top: -9px; left: 50%; transform: translateX(-50%); z-index: 3; font-size: 11px; font-weight: 900; letter-spacing: .3px; padding: 3px 11px; border-radius: 999px; white-space: nowrap; direction: ltr; }
+.brd-badge.bz-buy-b { background: linear-gradient(90deg,#0c9160,#22e39b); color: #04140d; box-shadow: 0 0 12px rgba(34,227,155,.55); }
+.brd-badge.bz-os-b { background: linear-gradient(90deg,#1f6fd0,#38b6ff); color: #04121f; box-shadow: 0 0 12px rgba(56,182,255,.55); }
+.brd-badge.bz-bounce-b { background: linear-gradient(90deg,#b8860b,#ffcf4a); color: #1a1200; box-shadow: 0 0 12px rgba(255,207,74,.55); }
+.brd-chart.bz-buy { border-color: rgba(34,227,155,.6); box-shadow: 0 0 18px rgba(34,227,155,.2); }
+.brd-chart.bz-os { border-color: rgba(56,182,255,.6); box-shadow: 0 0 18px rgba(56,182,255,.2); }
+.brd-chart.bz-bounce { border-color: rgba(255,207,74,.55); box-shadow: 0 0 16px rgba(255,207,74,.18); }
 .brd-chart .idx-chart-lbl { display: flex; align-items: center; gap: 6px; font-size: 12.5px; margin-bottom: 6px; }
 .brd-chart .idx-chart-sym { color: var(--ink); font-weight: 800; }
 .brd-cur { margin-inline-start: auto; font-weight: 800; font-size: 14px; }

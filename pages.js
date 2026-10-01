@@ -1151,6 +1151,16 @@
     if (cp) cp.onclick = () => copyToClipboard(syms, () => { cp.textContent = "✓ הועתקו " + rows.length; setTimeout(() => cp.textContent = "📋 העתק " + rows.length + " טיקרים", 1600); });
   }
   function _brdZoneCls(v) { return v <= 25 ? "pos" : v >= 75 ? "neg" : (v >= 45 && v <= 55 ? "zero" : ""); }
+  // corner badge per MA card: 🧊 Oversold (≤20) · 🟢 BUY ZONE (≤25) · ⚡ BOUNCE (recently ≤25 and now rising out)
+  function _brdBadge(cur, series) {
+    if (cur == null) return null;
+    if (cur <= 20) return { cls: "bz-os", html: '<span class="brd-badge bz-os-b">🧊 OVERSOLD ' + cur.toFixed(0) + "%</span>" };
+    if (cur <= 25) return { cls: "bz-buy", html: '<span class="brd-badge bz-buy-b">🟢 BUY ZONE ' + cur.toFixed(0) + "%</span>" };
+    const tail = (series || []).slice(-12).map(p => p && p.v).filter(v => v != null);
+    const recentMin = tail.length ? Math.min.apply(null, tail) : 999;
+    if (recentMin <= 25 && cur <= 32) return { cls: "bz-bounce", html: '<span class="brd-badge bz-bounce-b">⚡ BOUNCE ' + cur.toFixed(0) + "%</span>" };
+    return null;
+  }
   function _brdChartSvg(series, cur) {
     const W = 300, H = 150, padT = 6, padB = 4, padL = 2, padR = 2;
     const iw = W - padL - padR, ih = H - padT - padB;
@@ -1191,9 +1201,10 @@
         const dchgHtml = dchg != null
           ? '<span class="brd-dchg ' + (dchg > 0.05 ? "pos" : dchg < -0.05 ? "neg" : "zero") + '" title="שינוי יומי מול אתמול">' + (dchg >= 0 ? "▲ +" : "▼ ") + Math.abs(dchg).toFixed(1) + "</span>"
           : "";
-        return '<div class="brd-chart"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + n + " ימים</span>" +
+        const _bdg = _brdBadge(cur, s);
+        return '<div class="brd-chart' + (_bdg ? " " + _bdg.cls : "") + '"><div class="idx-chart-lbl">% מעל ממוצע <span class="idx-chart-sym">' + n + " ימים</span>" +
           (cur != null ? '<span class="brd-cur ' + _brdZoneCls(cur) + '">' + cur.toFixed(0) + "%</span>" : "") + dchgHtml + "</div>" +
-          _brdChartSvg(s, cur) + "</div>";
+          _brdChartSvg(s, cur) + (_bdg ? _bdg.html : "") + "</div>";
       }).join("") + "</div>";
     } else {
       charts = '<div class="note" style="margin:6px 0 4px">טוען נתונים… (יופיע אחרי הסריקה הבאה בשרת)</div>';
