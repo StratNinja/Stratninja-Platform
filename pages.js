@@ -4088,8 +4088,40 @@
     ["leaders", "🏆 מובילים ומפגרים", "סקטורים ומניות מובילות / בפיגור"],
     ["movers", "🌙 After / Pre-Market", "תנועות אחרי הסגירה / לפני הפתיחה"],
   ];
-  // ---- breadth "מעל הממוצעים" share card — overlays live data on Breath_Template.png (1254²) ----
+  // ---- breadth share card — overlays live data (NO sparklines, cleaner) on Breath_Template.png (1122×1402) ----
   function buildBreadthCardEl() {
+    if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
+    const MAS_LR = ["200", "150", "100", "50", "20"];       // left→right, matching the baked template
+    const cardL = [2.5, 21.9, 41.3, 60.7, 80.1];            // 5 MA-card left edges (% of 1122) — calibrate to taste
+    const _fmt = v => v == null ? "—" : Math.round(v) + "%";
+    const _zc = v => v == null ? "" : _brdZoneCls(v);
+    const maCards = uni => {
+      const r = _brdReadings(uni) || {};
+      return MAS_LR.map((n, i) => { const cur = r[n];
+        return '<div class="b2-ma b2-ma' + i + " " + _zc(cur) + '" style="left:' + cardL[i] + '%"><span class="b2-ma-pct">' + _fmt(cur) + "</span></div>"; }).join("");
+    };
+    const spSt = _brdState(_brdReadings("sp")), ndxSt = _brdState(_brdReadings("ndx"));
+    const sp50 = (_brdReadings("sp") || {})["50"];
+    // 3 top cards: פוקוס יומי = 50D S&P · רוחב שוק = S&P weighted score · מצב שוק = Nasdaq weighted score
+    const topFocus = sp50, topBreadth = spSt ? spSt.score : null, topState = ndxSt ? ndxSt.score : null;
+    let insight;
+    if (spSt && ndxSt) {
+      const weaker = spSt.score <= ndxSt.score ? "S&P 500" : "Nasdaq 100";
+      const lean = (spSt.score + ndxSt.score) / 2;
+      const tone = lean <= 40 ? "עם נטייה לחולשה" : lean >= 60 ? "עם נטייה לחוזק" : "מעורב ומאוזן";
+      insight = "רוחב השוק " + tone + ". מדד " + weaker + " חלש יותר" + (lean <= 40 ? " ומתקרב לרמות מכירת-יתר (אזור קנייה)" : "") + ".";
+    } else insight = "נתוני רוחב השוק נטענים…";
+    const el = document.createElement("div"); el.className = "breadth-card2"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<div class="b2-top b2-focus ' + _zc(topFocus) + '">' + _fmt(topFocus) + "</div>" +
+      '<div class="b2-top b2-breadth ' + _zc(topBreadth) + '">' + _fmt(topBreadth) + "</div>" +
+      '<div class="b2-top b2-state ' + _zc(topState) + '">' + _fmt(topState) + "</div>" +
+      '<div class="b2-sp">' + maCards("sp") + "</div>" +
+      '<div class="b2-ndx">' + maCards("ndx") + "</div>" +
+      '<div class="b2-insight">' + insight + "</div>";
+    document.body.appendChild(el); return el;
+  }
+  function buildBreadthCardElOLD() {
     if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
     const MAS_LR = ["200", "150", "100", "50", "20"];     // left→right, matching the baked template
     const cardL = [1.5, 21.2, 40.9, 60.6, 80.3];          // card left edges (% of 1254) — 5 cards fit the canvas
