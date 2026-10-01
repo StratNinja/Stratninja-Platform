@@ -1399,7 +1399,7 @@
       const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
       const cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
       // tiered labels: big tiles show ticker + move, mid tiles show just the ticker, tiny → tooltip only
-      let lbl = "", cls = "hm-tile clickable" + (_hmMoveMatch(cv) ? "" : " hm-dim") + (Math.abs(cv || 0) >= 4 ? " hm-hot" : "");
+      let lbl = "", cls = "hm-tile clickable" + (_hmMoveMatch(cv) ? "" : " hm-dim") + (Math.abs(cv || 0) >= 2 ? " hm-glow" : "");
       if (c.w > 66 && c.h > 40) { lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>"; }
       else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
       return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + (x.mc ? " · " + fmtCap(x.mc) : "") +
@@ -1501,7 +1501,7 @@
       const left = c.x / 1000 * 100, top = c.y / 600 * 100, w = c.w / 1000 * 100, h = c.h / 600 * 100;
       const cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
       const as = a != null ? a.toFixed(1) + "% ATR" : "";
-      let lbl = "", cls = "hm-tile clickable" + (Math.abs(cv || 0) >= 4 ? " hm-hot" : "");
+      let lbl = "", cls = "hm-tile clickable" + (Math.abs(cv || 0) >= 2 ? " hm-glow" : "");
       if (c.w > 66 && c.h > 40) lbl = '<span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span>";
       else if (c.w > 30 && c.h > 20) { lbl = '<span class="hm-t-sym hm-t-sm">' + x.s + "</span>"; cls += " hm-tile-sm"; }
       return '<span class="' + cls + '" data-chart="' + x.s + '" data-tf="D" title="' + x.s + " · " + cs + " · " + as + '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;" + _glowVars(cv) + '">' + lbl + "</span>";
