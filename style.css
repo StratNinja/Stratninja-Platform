@@ -101,6 +101,10 @@ button{font-family:inherit}
 .eq-mode-btn{font-size:13px;font-weight:800;min-width:34px;padding:4px 10px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line);transition:.15s}
 .eq-mode-btn.on{background:linear-gradient(90deg,rgba(12,145,96,.92),rgba(23,192,138,.85));color:#fff;border-color:transparent}
 .eq-mode-btn:hover:not(.on){color:var(--ink)}
+.eq-ranges{display:inline-flex;gap:3px;flex-wrap:wrap}
+.eq-range-btn{font-size:12px;font-weight:800;padding:4px 9px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--line);transition:.15s}
+.eq-range-btn.on{background:linear-gradient(90deg,rgba(12,145,96,.92),rgba(23,192,138,.85));color:#fff;border-color:transparent}
+.eq-range-btn:hover:not(.on){color:var(--ink)}
 .eq-base-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 2px;font-size:12.5px}
 .eq-base-row label{display:inline-flex;align-items:center;gap:4px;font-weight:600}
 .eq-base-inp{width:110px;padding:5px 8px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:13px;font-weight:700}

@@ -1130,6 +1130,19 @@
   // ---- Equity curve ------------------------------------------------------
   let eqMode = "abs";   // "abs" ($) | "pct" (% of portfolio size)
   let eqPivots = false; try { eqPivots = localStorage.getItem("sn_eq_pivots") === "1"; } catch (e) {}   // PIVOT HIGH/LOW markers
+  // equity-curve timeframe (which period to show) — modular + dynamic (Adi)
+  let eqRange = "all"; try { eqRange = localStorage.getItem("sn_eq_range") || "all"; } catch (e) {}
+  const EQ_RANGES = [["1m", "חודש"], ["3m", "3ח'"], ["6m", "6ח'"], ["ytd", "השנה"], ["1y", "שנה"], ["all", "הכל"]];
+  if (!EQ_RANGES.some(r => r[0] === eqRange)) eqRange = "all";
+  function _eqCutoff(range) {
+    const now = new Date();
+    if (range === "1m") { const d = new Date(now); d.setMonth(d.getMonth() - 1); return d; }
+    if (range === "3m") { const d = new Date(now); d.setMonth(d.getMonth() - 3); return d; }
+    if (range === "6m") { const d = new Date(now); d.setMonth(d.getMonth() - 6); return d; }
+    if (range === "ytd") return new Date(now.getFullYear(), 0, 1);
+    if (range === "1y") { const d = new Date(now); d.setFullYear(d.getFullYear() - 1); return d; }
+    return null;   // "all"
+  }
   function eqBaseKey(acct) { return "sn_eq_base_" + (acct || "_"); }
   function getEqBase(acct) { try { const v = parseFloat(localStorage.getItem(eqBaseKey(acct))); return v > 0 ? v : null; } catch (e) { return null; } }
   function setEqBase(acct, v) { try { localStorage.setItem(eqBaseKey(acct), String(v)); } catch (e) {} }
@@ -1153,11 +1166,16 @@
     // header: title + $/% toggle
     const head = el("div", "eq-head");
     head.innerHTML = '<h3>עקומת הון (רווח/הפסד מצטבר)</h3>' +
+      '<span class="eq-ranges">' + EQ_RANGES.map(r =>
+        '<button class="eq-range-btn' + (eqRange === r[0] ? " on" : "") + '" data-eqrange="' + r[0] + '">' + r[1] + "</button>").join("") + "</span>" +
       '<span class="eq-modes">' +
         '<button class="eq-mode-btn eq-piv-btn' + (eqPivots ? " on" : "") + '" data-eqpiv="1" title="סמן שיאים ושפלים מקומיים (Pivot High/Low) לאורך העקומה">◆ פיבוטים</button>' +
         '<button class="eq-mode-btn' + (eqMode === "abs" ? " on" : "") + '" data-eqmode="abs">$</button>' +
         '<button class="eq-mode-btn' + (eqMode === "pct" ? " on" : "") + '" data-eqmode="pct">%</button></span>';
     box.appendChild(head);
+    head.querySelectorAll("[data-eqrange]").forEach(b => b.onclick = () => {
+      if (eqRange === b.dataset.eqrange) return; eqRange = b.dataset.eqrange; try { localStorage.setItem("sn_eq_range", eqRange); } catch (e) {} render();
+    });
     head.querySelectorAll("[data-eqmode]").forEach(b => b.onclick = () => {
       if (eqMode === b.dataset.eqmode) return; eqMode = b.dataset.eqmode; render();
     });
@@ -1171,8 +1189,10 @@
       const inp = baseRow.querySelector(".eq-base-inp");
       inp.onchange = () => { const v = parseFloat(inp.value); if (v > 0) { setEqBase(acct, v); render(); } };
     }
-    const pts = E.equityCurve(trades);
-    if (pts.length < 2) { box.appendChild(el("div", "note", "צריך לפחות שני ימי מסחר כדי לצייר עקומה.")); return box; }
+    let pts = E.equityCurve(trades);
+    const _cut = _eqCutoff(eqRange);
+    if (_cut) { const cs = _cut.toISOString().slice(0, 10); pts = pts.filter(p => p.date >= cs); }
+    if (pts.length < 2) { box.appendChild(el("div", "note", _cut ? "אין מספיק נתונים בטווח הנבחר — בחר טווח רחב יותר." : "צריך לפחות שני ימי מסחר כדי לצייר עקומה.")); return box; }
     const pctMode = eqMode === "pct" && base > 0;
     const toVal = eq => pctMode ? eq / base * 100 : eq;                       // $ → % of portfolio
     const fmtVal = v => pctMode ? (v >= 0 ? "+" : "") + v.toFixed(2) + "%" : money(v, 0);

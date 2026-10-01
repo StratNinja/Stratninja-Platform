@@ -1297,8 +1297,10 @@
     if (mega.length >= 6) facts.push("מבין <b>12 החברות הגדולות</b> בשוק, <b>" + mega.filter(x => x.ao).length + "</b> מעל מחיר הפתיחה.");
     return facts;
   }
-  // S&P 500 tab has two views, toggled by a button: "sectors" (breakdown) | "grid" (500 squares)
-  let sp500View = "sectors";
+  // S&P 500 tab views, toggled by a button: "heat" (treemap) | "risk" (volatile map) | "sectors" (breadth ladder).
+  // Default = HEAT MAP so landing on the page lands straight on the map (Adi) — and remembers the last choice.
+  let sp500View = "heat"; try { sp500View = localStorage.getItem("sn_sp_view") || "heat"; } catch (e) {}
+  if (["heat", "risk", "sectors"].indexOf(sp500View) < 0) sp500View = "heat";
   function sp500ViewSwitch() {
     return '<div class="sp-view-switch">' +
       '<button class="uni-btn' + (sp500View === "sectors" ? " on" : "") + '" data-spview="sectors">📊 לפי סקטור</button>' +
@@ -1336,6 +1338,12 @@
   // heat-map move filter — dim tiles outside the range. up = show gainers ≥ up% · down = show losers ≥ down% (both magnitudes)
   let spHeatUp = "", spHeatDown = "";
   try { spHeatUp = localStorage.getItem("sn_hm_up") || ""; spHeatDown = localStorage.getItem("sn_hm_down") || ""; } catch (e) {}
+  // ATR% minimum — removes low-volatility names from the S&P heat map (0 = off). Same idea as the RISK map (Adi).
+  let spHeatAtr = 0; try { const _ha = parseFloat(localStorage.getItem("sn_hm_atr")); if (!isNaN(_ha) && _ha > 0) spHeatAtr = _ha; } catch (e) {}
+  // ATR% per symbol (from the scanner rows) for the heat-map volatility filter
+  let _atrpMapKey = null, _atrpMapV = null;
+  function _atrpMap() { const key = (SCAN && SCAN.rows) ? SCAN.rows.length : 0; if (_atrpMapV && _atrpMapKey === key) return _atrpMapV; const m = {}; ((SCAN && SCAN.rows) || []).forEach(r => { if (r.tech && r.tech.atrp != null) m[r.s] = r.tech.atrp; }); _atrpMapKey = key; _atrpMapV = m; return m; }
+  function _hmAtrPass(x) { if (!spHeatAtr) return true; const a = _atrpMap()[x.s]; return a != null && a >= spHeatAtr; }
   function _hmMoveMatch(cv) {
     const up = parseFloat(spHeatUp), dn = parseFloat(spHeatDown);
     const hasUp = !isNaN(up), hasDn = !isNaN(dn);
@@ -1415,7 +1423,7 @@
       const sec = secs.find(s => s.name === spHeatSector);
       if (sec) {
         const subMap = {};
-        (sec.stocks || []).forEach(x => { const k = (x.ind && x.ind !== "אחר" && x.ind !== "מדדים") ? x.ind : "אחר"; (subMap[k] = subMap[k] || []).push(x); });
+        (sec.stocks || []).filter(_hmAtrPass).forEach(x => { const k = (x.ind && x.ind !== "אחר" && x.ind !== "מדדים") ? x.ind : "אחר"; (subMap[k] = subMap[k] || []).push(x); });
         const subs = Object.keys(subMap).map(k => ({ name: k, stocks: subMap[k], value: subMap[k].reduce((a, b) => a + _hmValue(b), 0) }));
         const frames = squarify(subs, 0, 0, 1000, 600).map(r =>
           _hmFrame(r.item.name, r.item.stocks, { etf: subEtfFor(r.item.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 })).join("");
@@ -1425,11 +1433,13 @@
       }
       spHeatSector = null;
     }
-    // FULL view: all sectors framed, stocks inside
-    const list = secs.filter(s => (s.stocks || []).length && s.name !== "מדדים").map(s => ({ sec: s, value: (s.stocks || []).reduce((a, b) => a + _hmValue(b), 0) }));
+    // FULL view: all sectors framed, stocks inside (ATR% filter removes low-volatility names when active)
+    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmAtrPass); return { sec: s, stocks: st, value: st.length }; }).filter(o => o.stocks.length);
     const frames = squarify(list, 0, 0, 1000, 600).map(r => {
-      const s = r.item.sec, p = s.total ? Math.round(s.above / s.total * 100) : null;
-      return _hmFrame(secHe(s.name), s.stocks, { zoom: true, key: s.name, pct: p, en: s.name, etf: etfFor(s.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
+      const s = r.item.sec, st = r.item.stocks;
+      const above = spHeatAtr ? st.filter(x => x.ao).length : s.above, totl = spHeatAtr ? st.length : s.total;
+      const p = totl ? Math.round(above / totl * 100) : null;
+      return _hmFrame(secHe(s.name), st, { zoom: true, key: s.name, pct: p, en: s.name, etf: etfFor(s.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
     }).join("");
     return '<div class="sp-heat">' + frames + "</div>";
   }
@@ -1438,9 +1448,21 @@
   let riskAtrMin = 5; try { const _rv = parseFloat(localStorage.getItem("sn_risk_atr")); if (!isNaN(_rv) && _rv > 0) riskAtrMin = _rv; } catch (e) {}
   // risk-map timeframe (which period's move colors the tiles) — modular, reuses the heat-map TF set
   let riskTf = "1d"; try { riskTf = localStorage.getItem("sn_risk_tf") || "1d"; } catch (e) {} if (HM_TFS.indexOf(riskTf) < 0) riskTf = "1d";
+  let riskZoomSec = null;   // when set → zoom into one sector's volatile stocks (bigger tiles)
   function _riskAtrp(r) { const k = r.tech; return (k && k.atrp != null) ? k.atrp : null; }
-  // the move over the selected risk-map timeframe (1D = today's change; others from the scanner tech fields)
-  function _riskChg(x) { if (riskTf === "1d") return x.c; const t = x.tech || _hmSMap()[x.s]; if (!t) return null; const v = t[HM_TF_KEY[riskTf]]; return v == null ? null : v; }
+  // live 1D change per symbol (from the LIVE snapshot — includes PRE/POST-market), so the risk map reacts in
+  // extended hours exactly like the S&P map. Falls back to the scanner's change for names not in LIVE.
+  let _liveChgObj = null, _liveChgMapV = null;
+  function _liveChgMap() {
+    if (_liveChgObj === LIVE && _liveChgMapV) return _liveChgMapV;
+    const m = {}; ((LIVE && LIVE.sectors) || []).forEach(s => (s.stocks || []).forEach(x => { if (x.c != null) m[x.s] = x.c; }));
+    _liveChgObj = LIVE; _liveChgMapV = m; return m;
+  }
+  // the move over the selected risk-map timeframe (1D = today's live/pre-market change; others from scanner tech)
+  function _riskChg(x) {
+    if (riskTf === "1d") { const lc = _liveChgMap()[x.s]; return lc != null ? lc : (x.c != null ? x.c : null); }
+    const t = x.tech || _hmSMap()[x.s]; if (!t) return null; const v = t[HM_TF_KEY[riskTf]]; return v == null ? null : v;
+  }
   // map each sub-sector (.ind) → its majority GICS sector, for stocks whose own .sec isn't one of the 11 GICS
   let _riskIndParentCache = null, _riskIndParentKey = null;
   function _riskIndParent() {
@@ -1481,13 +1503,23 @@
     const secCount = {}; vol.forEach(r => { if (etfFor(r.sec)) secCount[r.sec] = (secCount[r.sec] || 0) + 1; });
     const domSec = Object.keys(secCount).sort((a, b) => secCount[b] - secCount[a])[0] || "Technology";   // fallback bucket (never "אחר")
     const bySec = {}; vol.forEach(r => { const s = _riskSecOf(r, domSec); (bySec[s] = bySec[s] || []).push(r); });
+    // ZOOM view: one sector's volatile stocks fill the whole area (bigger tiles)
+    if (riskZoomSec && bySec[riskZoomSec] && bySec[riskZoomSec].length) {
+      const stocks = bySec[riskZoomSec];
+      return '<div class="hm-zoom-bar"><button class="btn ghost" id="riskBack">← חזרה למפה המלאה</button>' +
+        '<span class="hm-zoom-title">' + secHe(riskZoomSec) + " · " + stocks.length + " מניות תנודתיות · זום</span></div>" +
+        '<div class="sp-heat"><div class="hm-sec" style="left:0;top:0;width:100%;height:100%">' +
+        '<div class="hm-sec-tab" title="' + escAttr(secHe(riskZoomSec)) + '">' + secHe(riskZoomSec) + (etfFor(riskZoomSec) ? ' <span class="hm-sec-etf">' + etfFor(riskZoomSec) + "</span>" : "") + "</div>" +
+        '<div class="hm-sec-body">' + _riskTiles(stocks) + "</div></div></div>";
+    }
+    riskZoomSec = null;
     const list = Object.keys(bySec).map(name => ({ name: name, stocks: bySec[name], value: bySec[name].length }));
     const frames = squarify(list, 0, 0, 1000, 600).map(fr => {
       const nm = fr.item.name, stocks = fr.item.stocks;
       const up = stocks.filter(x => (_riskChg(x) || 0) > 0).length, tot = stocks.length;
-      const tab = '<div class="hm-sec-tab" title="' + escAttr(secHe(nm)) + '">' + secHe(nm) +
+      const tab = '<div class="hm-sec-tab hm-sec-zoom clickable" data-riskzoom="' + encodeURIComponent(nm) + '" title="לחץ לזום על הסקטור">' + secHe(nm) +
         ' <span class="hm-sec-en">' + escHtml(nm) + "</span>" + (etfFor(nm) ? ' <span class="hm-sec-etf">' + etfFor(nm) + "</span>" : "") +
-        ' <span class="hm-sec-pct">' + up + "/" + tot + " 🟢</span></div>";
+        ' <span class="hm-sec-pct">' + up + "/" + tot + " 🟢</span> 🔍</div>";
       return '<div class="hm-sec" style="left:' + (fr.x / 1000 * 100).toFixed(3) + "%;top:" + (fr.y / 600 * 100).toFixed(3) + "%;width:" + (fr.w / 1000 * 100).toFixed(3) + "%;height:" + (fr.h / 600 * 100).toFixed(3) + '%">' +
         tab + '<div class="hm-sec-body">' + _riskTiles(stocks) + "</div></div>";
     }).join("");
@@ -1562,9 +1594,14 @@
         '<span class="hm-mf-field hm-mf-up"><span class="hm-mf-ico">▲</span><input type="number" step="0.5" min="0" inputmode="decimal" id="hmMoveUp" placeholder="עולות מעל" value="' + escAttr(spHeatUp) + '"></span>' +
         '<span class="hm-mf-field hm-mf-down"><span class="hm-mf-ico">▼</span><input type="number" step="0.5" min="0" inputmode="decimal" id="hmMoveDown" placeholder="יורדות מעל" value="' + escAttr(spHeatDown) + '"></span>' +
         (mfOn ? '<button class="hm-mf-clear" id="hmMoveClear" title="נקה סינון">✕</button>' : "") + "</div>";
+      // ATR% volatility filter — removes low-volatility names from the map (Adi, same as the RISK map)
+      const atrFilter = '<div class="hm-movefilter hm-atrfilter' + (spHeatAtr ? " on" : "") + '" title="הצג רק מניות עם תנודתיות (ATR%) מעל הסף — השאר מוסרות מהמפה">' +
+        '<span class="hm-mf-lbl">תנודתיות מינ׳ · ATR%</span>' +
+        '<span class="hm-mf-field"><input type="number" step="0.5" min="0" inputmode="decimal" id="hmAtrMin" placeholder="0" value="' + escAttr(spHeatAtr ? String(spHeatAtr) : "") + '"></span>' +
+        (spHeatAtr ? '<button class="hm-mf-clear" id="hmAtrClear" title="נקה">✕</button>' : "") + "</div>";
       return '<div class="page-head hm-head"><h1>S&P 500 · HEAT MAP</h1><div class="sub">כל ריבוע = מניה, הצבע לפי התנועה בטווח הנבחר · לחץ שם סקטור (🔍) לזום · מניה לגרף · מונה שיא/שפל לרשימה.</div></div>' +
         '<div class="sp-view-row">' + sp500ViewSwitch() + avgBtn + "</div>" +
-        '<div class="hm-controls">' + tfBtns + moveFilter + countsStrip + "</div>" +
+        '<div class="hm-controls">' + tfBtns + moveFilter + atrFilter + countsStrip + "</div>" +
         '<div class="panel sp-heat-panel">' + spHeatmap() + "</div>";
     }
     // ── RISK ON/OFF VIEW: volatile names (ATR% ≥ threshold) from the whole universe, colored by today's move ──
@@ -1579,9 +1616,9 @@
       else if (upPct >= 60) { verdict = "RISK ON 🟢"; vcls = "risk-on"; }
       else if (upPct <= 40) { verdict = "RISK OFF 🔴"; vcls = "risk-off"; }
       else { verdict = "מעורב · זהירות 🟡"; vcls = "risk-mid"; }
-      const badge = '<div class="risk-verdict ' + vcls + '"><span class="risk-v-lbl">מצב סיכון · ' + tfl + "</span>" +
-        '<span class="risk-v-val">' + verdict + "</span>" +
-        '<span class="risk-v-sub"><span class="pos">🟢 ' + up + " עולות</span> · <span class=\"neg\">🔴 " + dn + " יורדות</span> · " + tot + " מניות תנודתיות · " + upPct.toFixed(0) + "% ירוקות</span></div>";
+      // verdict sits on the SAME line as the RISK ON/OFF title (Adi) — compact chip
+      const verdictInline = '<span class="risk-verdict-chip ' + vcls + '"><span class="risk-v-val">' + verdict + "</span>" +
+        '<span class="risk-v-sub"><span class="pos">🟢 ' + up + "</span> · <span class=\"neg\">🔴 " + dn + "</span> · " + tot + " תנודתיות · " + upPct.toFixed(0) + "% ירוקות · " + tfl + "</span></span>";
       const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
         '<button class="flow-tf-btn hm-tf' + (k === riskTf ? " on" : "") + '" data-risktf="' + k + '">' + HM_TFL[k] + "</button>").join("") + "</div>";
       const ctl = '<div class="hm-controls risk-controls">' + tfBtns +
@@ -1589,9 +1626,10 @@
         '<input type="number" step="0.5" min="0" inputmode="decimal" id="riskAtrInput" value="' + escAttr(String(riskAtrMin)) + '">' +
         '<span class="muted" style="font-size:12px">ככל שהסף גבוה יותר → רק המניות הכי תנודתיות</span></div>' +
         '<span class="hm-legend"><span class="hml neg"></span> יורדת<span class="hml zero"></span> ללא שינוי<span class="hml pos"></span> עולה · הצבע = התנועה ב' + tfl + "</span></div>";
-      return '<div class="page-head hm-head"><h1>⚡ מפת סיכון · RISK ON / OFF</h1><div class="sub">רק המניות <b>התנודתיות</b> (ATR% ≥ ' + riskAtrMin + '%) מכל היקום (' + rowsN + ' מניות), מקובצות לפי סקטור וצבועות לפי <b>התנועה ב' + tfl + '</b>. ים של ירוק = תיאבון לסיכון · ים של אדום = בריחה מסיכון · לחץ מניה לגרף.</div></div>' +
+      return '<div class="page-head hm-head risk-head"><div class="risk-head-row"><h1>⚡ מפת סיכון · RISK ON / OFF</h1>' + verdictInline + "</div>" +
+        '<div class="sub">רק המניות <b>התנודתיות</b> (ATR% ≥ ' + riskAtrMin + '%) מכל היקום (' + rowsN + ' מניות), מקובצות לפי סקטור וצבועות לפי <b>התנועה ב' + tfl + '</b>. ים של ירוק = תיאבון לסיכון · ים של אדום = בריחה מסיכון · לחץ סקטור (🔍) לזום · מניה לגרף.</div></div>' +
         '<div class="sp-view-row">' + sp500ViewSwitch() + "</div>" +
-        badge + ctl +
+        ctl +
         '<div class="panel sp-heat-panel">' + riskHeatmap() + "</div>";
     }
     // ── SECTOR / SUB-SECTOR "strength ladder" (battery-cell style, like the money-flow page) ──
@@ -1697,16 +1735,23 @@
     wireCharts(document);
     document.querySelectorAll("[data-spview]").forEach(b => b.onclick = () => {
       if (sp500View === b.dataset.spview) return;
-      sp500View = b.dataset.spview; spHeatSector = null; reRender();
+      sp500View = b.dataset.spview; spHeatSector = null; riskZoomSec = null;
+      try { localStorage.setItem("sn_sp_view", sp500View); } catch (e) {}
+      reRender();
     });
     // HEAT MAP: zoom into a sector's sub-sectors / back to the full map
     document.querySelectorAll("[data-hmsector]").forEach(el => el.onclick = e => { e.stopPropagation(); spHeatSector = decodeURIComponent(el.dataset.hmsector); reRender(); });
     { const hb = $("#hmBack"); if (hb) hb.onclick = () => { spHeatSector = null; reRender(); }; }
     { const av = $("#hmAvgToggle"); if (av) av.onclick = () => { spHeatAvg = !spHeatAvg; try { localStorage.setItem("sn_hm_avg", spHeatAvg ? "1" : "0"); } catch (e) {} reRender(); }; }
     document.querySelectorAll("[data-hmtf]").forEach(b => b.onclick = () => { spHeatTf = b.dataset.hmtf; try { localStorage.setItem("sn_hm_tf", spHeatTf); } catch (e) {} reRender(); });
-    // RISK map: modular timeframe + volatility threshold
+    // RISK map: modular timeframe + volatility threshold + sector zoom
     document.querySelectorAll("[data-risktf]").forEach(b => b.onclick = () => { riskTf = b.dataset.risktf; try { localStorage.setItem("sn_risk_tf", riskTf); } catch (e) {} reRender(); });
     { const ra = $("#riskAtrInput"); if (ra) ra.onchange = () => { const v = parseFloat(ra.value); if (!isNaN(v) && v >= 0) { riskAtrMin = v; try { localStorage.setItem("sn_risk_atr", String(v)); } catch (e) {} reRender(); } }; }
+    document.querySelectorAll("[data-riskzoom]").forEach(el => el.onclick = e => { e.stopPropagation(); riskZoomSec = decodeURIComponent(el.dataset.riskzoom); reRender(); });
+    { const rb = $("#riskBack"); if (rb) rb.onclick = () => { riskZoomSec = null; reRender(); }; }
+    // S&P heat map: ATR% volatility filter (removes low-volatility names)
+    { const am = $("#hmAtrMin"); if (am) am.onchange = () => { const v = parseFloat(am.value); spHeatAtr = (!isNaN(v) && v > 0) ? v : 0; try { if (spHeatAtr) localStorage.setItem("sn_hm_atr", String(spHeatAtr)); else localStorage.removeItem("sn_hm_atr"); } catch (e) {} reRender(); }; }
+    { const ac = $("#hmAtrClear"); if (ac) ac.onclick = () => { spHeatAtr = 0; try { localStorage.removeItem("sn_hm_atr"); } catch (e) {} reRender(); }; }
     // heat-map move filter (dim tiles outside the % range) — onchange fires on blur/Enter so it doesn't re-render mid-typing
     { const up = $("#hmMoveUp"); if (up) up.onchange = () => { spHeatUp = up.value.trim(); try { localStorage.setItem("sn_hm_up", spHeatUp); } catch (e) {} reRender(); }; }
     { const dn = $("#hmMoveDown"); if (dn) dn.onchange = () => { spHeatDown = dn.value.trim(); try { localStorage.setItem("sn_hm_down", spHeatDown); } catch (e) {} reRender(); }; }
