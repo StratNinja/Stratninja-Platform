@@ -242,6 +242,49 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-insight { top: 91.4%; left: 34%; width: 58%; height: 6.4%; font-size: 24px; font-weight: 800; color: #eaf2ff;
   line-height: 1.28; text-align: start; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* ===== FTFC bull/bear share cards (overlay on FTFC_GREEN.png / FTFC_RED.png, 1254²) ===== */
+.ftf-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden; font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
+.ftf-card > div { position: absolute; }
+.ftf-bull { background: #0a1420 url("FTFC_GREEN.png?v=1") top center / 1254px 1254px no-repeat; }
+.ftf-bear { background: #0a1420 url("FTFC_RED.png?v=1") top center / 1254px 1254px no-repeat; }
+/* dominant-direction block */
+.ftf-dir { top: 30.6%; left: 37%; width: 26%; text-align: center; font-size: 54px; font-weight: 900; }
+.ftf-bull .ftf-dir { color: #2fe08a; } .ftf-bear .ftf-dir { color: #ff5a6a; }
+.ftf-strong { top: 37.6%; left: 37.3%; width: 6.5%; text-align: center; font-size: 26px; font-weight: 900; }
+.ftf-bull .ftf-strong { color: #8affc8; } .ftf-bear .ftf-strong { color: #ff9aa4; }
+.ftf-support { top: 34.4%; left: 78.5%; width: 11%; text-align: center; font-size: 46px; font-weight: 900; color: #dcebff; }
+/* direction per timeframe (W M Q Y) — value next to the baked arrow */
+.ftf-tf { top: 51%; width: 11%; text-align: center; font-size: 44px; font-weight: 900; }
+.ftf-bull .ftf-tf { color: #2fe08a; } .ftf-bear .ftf-tf { color: #ff5a6a; }
+.ftf-tf0 { left: 13%; } .ftf-tf1 { left: 36.5%; } .ftf-tf2 { left: 60%; } .ftf-tf3 { left: 83.5%; }
+/* where is the most FTFC (Y Q M W) — fill bar + count */
+.ftf-most { top: 63.2%; height: 3.4%; width: 17.5%; display: flex; align-items: center; gap: 7px; direction: ltr; }
+.ftf-most0 { left: 7%; } .ftf-most1 { left: 30.5%; } .ftf-most2 { left: 54%; } .ftf-most3 { left: 77.5%; }
+.ftf-most-bar { flex: 1 1 auto; height: 38%; border-radius: 6px; background: rgba(255,255,255,.08); overflow: hidden; }
+.ftf-most-bar > span { display: block; height: 100%; border-radius: 6px; }
+.ftf-bull .ftf-most-bar > span { background: linear-gradient(90deg,#0c9160,#22e39b); }
+.ftf-bear .ftf-most-bar > span { background: linear-gradient(90deg,#e5384a,#ff8b8b); }
+.ftf-most-n { flex: 0 0 auto; font-size: 26px; font-weight: 900; min-width: 1.1em; text-align: center; }
+.ftf-bull .ftf-most-n { color: #8affc8; } .ftf-bear .ftf-most-n { color: #ff9aa4; }
+/* leading sectors (4) — leader[0] leftmost */
+.ftf-sec { top: 74%; width: 23%; height: 11%; }
+.ftf-sec0 { left: 2.5%; } .ftf-sec1 { left: 26.5%; } .ftf-sec2 { left: 50.5%; } .ftf-sec3 { left: 74.5%; }
+.ftf-sec-ico { position: absolute; top: 2%; left: 6%; font-size: 34px; }
+.ftf-sec-etf { position: absolute; top: 4%; right: 5%; font-size: 30px; font-weight: 900; color: #eaf2ff; }
+.ftf-sec-name { position: absolute; top: 36%; right: 5%; font-size: 17px; font-weight: 700; color: #bcd0ea; white-space: nowrap; }
+.ftf-sec-str { position: absolute; bottom: 7%; left: 10%; right: 10%; text-align: center; font-size: 18px; font-weight: 800; }
+.ftf-bull .ftf-sec-str { color: #8affc8; } .ftf-bear .ftf-sec-str { color: #ff9aa4; }
+/* ninja insight */
+.ftf-insight { top: 89.3%; left: 24%; width: 72%; font-size: 25px; font-weight: 800; line-height: 1.3; color: #eaf2ff;
+  text-align: start; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* bull/bear chooser */
+.ftf-chooser { display: flex; gap: 16px; padding: 12px 4px; }
+.ftf-ch-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 24px 14px; border-radius: 16px;
+  cursor: pointer; font-size: 34px; border: 2px solid var(--line); background: var(--panel2); color: var(--ink); transition: .15s; }
+.ftf-ch-btn b { font-size: 26px; } .ftf-ch-btn span { font-size: 13px; color: var(--muted); font-weight: 600; }
+.ftf-ch-bull:hover { border-color: #22e39b; box-shadow: 0 0 0 2px rgba(34,227,155,.3); }
+.ftf-ch-bear:hover { border-color: #ff6b7a; box-shadow: 0 0 0 2px rgba(255,107,122,.3); }
+
 /* ===== המשכיות tiles — SAME grid/size as money-flow, number-free, TWO bars (green up · red down) ===== */
 /* name: allow up to 2 lines (no "…"), smaller font, reserve 2 lines so all tiles' bars align */
 .ftfc-tile .bcc-head { align-items: flex-start; }

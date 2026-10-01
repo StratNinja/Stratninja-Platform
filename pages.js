@@ -2850,6 +2850,66 @@
     document.body.appendChild(el);
     return el;
   }
+  // ===== 🖼️ FTFC bull/bear share card — "איפה להיות / לא להיות כרגע" (on FTFC_GREEN/RED.png) =====
+  const _FTFC_SEC_EMOJI = { "Technology": "💻", "Financials": "🏦", "Health Care": "🩺", "Energy": "🛢️", "Consumer Disc.": "🛒", "Communication": "📡", "Industrials": "⚙️", "Consumer Staples": "🛍️", "Materials": "⛏️", "Real Estate": "🏠", "Utilities": "⚡", "Crypto": "🪙" };
+  function buildFtfcSideCardEl(side) {
+    const up = side !== "bear";                       // "bull" (default) or "bear"
+    const TFS = ["W", "M", "Q", "Y"], dir = up ? "up" : "down";
+    const rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
+    const bySec = {};
+    rows.forEach(r => { const s = r.sec; if (!s || s === "מדדים" || s === "אחר") return; (bySec[s] = bySec[s] || []).push(r); });
+    const secs = Object.keys(bySec).filter(n => etfFor(n) && bySec[n].length >= 3).map(name => {
+      const mem = bySec[name], tot = mem.length;
+      const fg = mem.filter(m => secFtfcDir(m, TFS) === "up").length, fr = mem.filter(m => secFtfcDir(m, TFS) === "down").length;
+      const aligned = up ? fg : fr;
+      return { name, he: secHe(name), etf: etfFor(name), mem, fg, fr, tot, aligned, prop: tot ? aligned / tot : 0 };
+    });
+    const supporting = secs.filter(s => up ? s.fg > s.fr : s.fr > s.fg).length;
+    // per-TF: # sectors where the majority of the sector's stocks close in the card's direction on that TF
+    const tfCount = {}; TFS.forEach(tf => tfCount[tf] = secs.filter(s => s.mem.filter(m => ((m[tf] || {}).c) === dir).length > s.mem.length / 2).length);
+    const strongest = TFS.slice().sort((a, b) => tfCount[b] - tfCount[a])[0];
+    const leaders = secs.slice().sort((a, b) => (b.aligned - a.aligned) || (b.prop - a.prop)).slice(0, 4);
+    const _strength = p => p >= 0.5 ? "מוביל" : p >= 0.3 ? "חזק" : "בינוני";
+    const _join = a => { const x = (a || []).filter(Boolean); return x.length <= 1 ? (x[0] || "") : x.slice(0, -1).join(", ") + " ו" + x[x.length - 1]; };
+    const topHe = leaders.slice(0, 3).map(s => s.he);
+    const insight = (up ? "היישור הרחב ביותר נמצא ב-" : "החולשה הרחבה ביותר נמצאת ב-") + strongest +
+      ", בהובלת " + _join(topHe) + ".";
+    const maxN = secs.length || 11;
+    const el = document.createElement("div");
+    el.className = "ftf-card ftf-" + (up ? "bull" : "bear");
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    // --- dominant-direction block ---
+    let h = '<div class="ftf-dir">' + (up ? "שורי" : "דובי") + "</div>" +
+      '<div class="ftf-strong">' + strongest + "</div>" +
+      '<div class="ftf-support">' + supporting + "</div>";
+    // --- direction per timeframe (W M Q Y) — uniform with the baked arrows ---
+    const tfType = up ? "2U" : "2D";
+    ["W", "M", "Q", "Y"].forEach((tf, i) => { h += '<div class="ftf-tf ftf-tf' + i + '">' + tfType + "</div>"; });
+    // --- "where is the most FTFC" (Y Q M W) — count + bar fill ---
+    ["Y", "Q", "M", "W"].forEach((tf, i) => {
+      const n = tfCount[tf] || 0, w = Math.round(n / maxN * 100);
+      h += '<div class="ftf-most ftf-most' + i + '"><span class="ftf-most-bar"><span style="width:' + w + '%"></span></span><span class="ftf-most-n">' + n + "</span></div>";
+    });
+    // --- leading sectors (4) ---
+    leaders.forEach((s, i) => {
+      h += '<div class="ftf-sec ftf-sec' + i + '">' +
+        '<span class="ftf-sec-ico">' + (_FTFC_SEC_EMOJI[s.name] || "📊") + "</span>" +
+        '<span class="ftf-sec-etf">' + escHtml(s.etf || "") + "</span>" +
+        '<span class="ftf-sec-name">' + escHtml(s.he) + "</span>" +
+        '<span class="ftf-sec-str">' + _strength(s.prop) + "</span></div>";
+    });
+    h += '<div class="ftf-insight">' + escHtml(insight) + "</div>";
+    el.innerHTML = h;
+    document.body.appendChild(el);
+    return el;
+  }
+  function openFtfcShareChooser() {
+    const body = '<div class="ftf-chooser">' +
+      '<button class="ftf-ch-btn ftf-ch-bull" data-ftfside="bull">🐂 <b>שורי</b><span>איפה להיות כרגע</span></button>' +
+      '<button class="ftf-ch-btn ftf-ch-bear" data-ftfside="bear">🐻 <b>דובי</b><span>איפה לא להיות כרגע</span></button></div>';
+    modal("🥷 כרטיס FTFC — בחר כיוון", body);
+    document.querySelectorAll("[data-ftfside]").forEach(b => b.onclick = () => { const s = b.dataset.ftfside; closeModal(); _captureRedesignCard(() => buildFtfcSideCardEl(s)); });
+  }
   // ===== Market-overview super-card (state + breadth + indices + FTFC + movers) =====
   function buildMarketOverviewCardEl() {
     const src = (typeof scanSource === "function") ? scanSource() : [];
@@ -3829,9 +3889,9 @@
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (pg === "sp500") { _captureRedesignCard(buildSpMapCardEl); return; }   // redesigned S&P 500 breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
-    if (pg === "sectors") {   // FTFC "המשכיות זמנית" card (on Ftfc_Template.png)
+    if (pg === "sectors") {   // FTFC bull/bear card → chooser (שורי / דובי)
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
-      _captureRedesignCard(buildFtfcCardEl); return;
+      openFtfcShareChooser(); return;
     }
     if (state.page === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (state.page === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
