@@ -735,20 +735,20 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hmsh-map .hm-t-chg { font-size: 15px; }
 .hmsh-map .hm-tile-sm .hm-t-sm { font-size: 16px; }
 /* UNIFORM grid body (share card) — equal cells */
-.hm-gridbody { display: grid; gap: 3px; width: 100%; height: 100%; padding: 3px; box-sizing: border-box; grid-auto-rows: 1fr; }
+.hm-gridbody { display: grid; direction: ltr; gap: 3px; width: 100%; height: 100%; padding: 3px; box-sizing: border-box; grid-auto-rows: 1fr; }
 .hm-gridbody .hm-tile { position: static; width: auto; height: auto; min-height: 0; border-radius: 4px; }
 /* red count badge on the "מניות קהילה · ניהול" sidebar item = pending approvals */
 #commAdminBadge { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 5px;
   margin-inline-start: 8px; border-radius: 9px; background: #e5384a; color: #fff; font-size: 11px; font-weight: 800; vertical-align: middle;
   box-shadow: 0 0 8px rgba(229,56,74,.5); }
 /* 3 stat boxes at the panel bottom — RIGHT=standout sub · MIDDLE=weak · LEFT=strong (RTL order) */
-.hmsh-boxes { position: absolute; top: 75.9%; left: 3.4%; width: 93.2%; height: 6.6%; display: flex; align-items: stretch; gap: 12px; }
-/* all 3 boxes IDENTICAL; words (label + name) on ONE line, with a BIG % below */
-.hmsh-box { flex: 1 1 0; min-width: 0; align-self: stretch; box-sizing: border-box; border-radius: 12px; padding: 6px 16px; display: flex; flex-direction: column; justify-content: center; gap: 1px;
+.hmsh-boxes { position: absolute; top: 75.9%; left: 3.4%; width: 93.2%; height: 5.3%; display: flex; align-items: stretch; gap: 12px; }
+/* all 3 boxes IDENTICAL; words (label + name) on ONE line, with a BIG % below (scaled to ~80%) */
+.hmsh-box { flex: 1 1 0; min-width: 0; align-self: stretch; box-sizing: border-box; border-radius: 11px; padding: 5px 14px; display: flex; flex-direction: column; justify-content: center; gap: 1px;
   background: rgba(8,13,20,.72); border: 1px solid rgba(255,255,255,.14); box-shadow: none; }
-.hmsh-bx-cap { font-size: 30px; font-weight: 900; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.08; }
-.hmsh-bx-lbl { font-size: 20px; font-weight: 700; color: #9fb3c7; }
-.hmsh-bx-ch { font-size: 45px; font-weight: 900; direction: ltr; line-height: 1; color: #eaf2ff; }
+.hmsh-bx-cap { font-size: 24px; font-weight: 900; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.08; }
+.hmsh-bx-lbl { font-size: 16px; font-weight: 700; color: #9fb3c7; }
+.hmsh-bx-ch { font-size: 36px; font-weight: 900; direction: ltr; line-height: 1; color: #eaf2ff; }
 .hmsh-bx-ch.hmsh-pos { color: #2bf29f; }
 .hmsh-bx-ch.hmsh-neg { color: #ff5a6a; }
 .hmsh-box.strong .hmsh-bx-ch { color: #2bf29f; }

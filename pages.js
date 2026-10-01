@@ -1429,7 +1429,8 @@
       body = '<div class="hm-sec-body hm-avg" style="background:' + chgColor(avg * 2.2) + '"><span class="hm-avg-pct">' + cs + "</span></div>";   // ×2.2: sector avgs are small, boost saturation for a clearer money-flow read
     } else if (_hmShareGrid) {
       // UNIFORM grid (share card) — equal cells; columns ≈ √(n·1.3) so blocks read wide, not tall
-      const st = (stocks || []).slice().sort((a, b) => Math.abs(_hmChg(b) || 0) - Math.abs(_hmChg(a) || 0));
+      // sort by % DESCENDING → biggest gainer first (top-left, grid is LTR), biggest loser last (bottom-right)
+      const st = (stocks || []).slice().sort((a, b) => (_hmChg(b) == null ? -1e9 : _hmChg(b)) - (_hmChg(a) == null ? -1e9 : _hmChg(a)));
       // columns ≈ √(n·1.3) → cells come out WIDER than tall, so the ticker + % read nicely (Adi)
       const cols = Math.max(1, Math.min(st.length, Math.round(Math.sqrt(st.length * 1.3))));
       body = '<div class="hm-sec-body hm-gridbody" style="grid-template-columns:repeat(' + cols + ',1fr)">' +
