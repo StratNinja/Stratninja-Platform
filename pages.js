@@ -1422,9 +1422,10 @@
         : '<div class="hm-sec-tab" title="' + escAttr(name) + '">' + name + en + etf + "</div>");
     let body;
     if (spHeatAvg) {
-      // "מיצוע" — one color for the whole sector = its average move over the selected TF (money-flow at a glance)
+      // one color for the whole sector = the ETF's move (cap-weighted, matches TradingView / the strength panels).
+      // Falls back to the member average only when the ETF move for this TF isn't available.
       const arr = (stocks || []).map(x => _hmChg(x)).filter(v => v != null);
-      const avg = arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+      const avg = (opts.secChg != null) ? opts.secChg : (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
       const cs = (avg >= 0 ? "+" : "") + avg.toFixed(2) + "%";
       body = '<div class="hm-sec-body hm-avg" style="background:' + chgColor(avg * 2.2) + '"><span class="hm-avg-pct">' + cs + "</span></div>";   // ×2.2: sector avgs are small, boost saturation for a clearer money-flow read
     } else if (_hmShareGrid) {
@@ -1466,7 +1467,8 @@
       const s = r.item.sec, st = r.item.stocks;
       const above = _hmFiltered ? st.filter(x => x.ao).length : s.above, totl = _hmFiltered ? st.length : s.total;
       const p = totl ? Math.round(above / totl * 100) : null;
-      return _hmFrame(secHe(s.name), st, { zoom: true, key: s.name, pct: p, en: s.name, etf: etfFor(s.name), left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
+      const secChg = spHeatTf === "1d" ? s.chg : (spHeatTf === "1w" ? s.chg5d : (spHeatTf === "1m" ? s.chg20d : null));
+      return _hmFrame(secHe(s.name), st, { zoom: true, key: s.name, pct: p, en: s.name, etf: etfFor(s.name), secChg: secChg, left: r.x / 1000 * 100, top: r.y / 600 * 100, w: r.w / 1000 * 100, h: r.h / 600 * 100 });
     }).join("");
     return '<div class="sp-heat">' + frames + "</div>";
   }
@@ -1610,7 +1612,7 @@
           ? '<span class="be-hi clickable" data-ext52="high" title="לחץ לרשימת המניות בשיא">📈 <b>' + ex.hi + "</b> בשיא 52 שבועות</span><span class=\"be-lo clickable\" data-ext52=\"low\" title=\"לחץ לרשימת המניות בשפל\">📉 <b>" + ex.lo + "</b> בשפל 52 שבועות</span>"
           : '<span class="muted">נתוני שיא/שפל נטענים…</span>') +
         '<span class="hm-legend"><span class="hml neg"></span> ירידה<span class="hml zero"></span> ללא שינוי<span class="hml pos"></span> עלייה · הצבע = התנועה ב' + HM_TFL[spHeatTf] + '</span></div>';
-      const avgBtn = '<button class="uni-btn hm-avg-toggle' + (spHeatAvg ? " on" : "") + '" id="hmAvgToggle" title="צבע אחד לכל סקטור לפי התנועה הממוצעת — לראות מיד לאן הכסף נכנס">🌡️ מיצוע סקטור</button>';
+      const avgBtn = '<button class="uni-btn hm-avg-toggle' + (spHeatAvg ? " on" : "") + '" id="hmAvgToggle" title="צבע אחד לכל סקטור לפי תנועת תעודת-הסל (XLK/XLF… · משוקלל כמו TradingView) — לראות מיד לאן הכסף נכנס">🌡️ תנועת סקטור</button>';
       const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
         '<button class="flow-tf-btn hm-tf' + (k === spHeatTf ? " on" : "") + '" data-hmtf="' + k + '">' + HM_TFL[k] + "</button>").join("") +
         HM_TFS_SOON.map(k => '<button class="flow-tf-btn hm-tf hm-tf-soon" disabled title="בקרוב — דורש עדכון שרת">' + k + "</button>").join("") + "</div>";
