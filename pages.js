@@ -2922,10 +2922,19 @@
     const insight = (pct != null)
       ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : ""))
       : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מפגרת" : "")) : "תמונת מצב סקטוריאלית");
-    // build the FULL classic treemap (not zoomed, not averaged, not neon) for a clean capture
-    const _saveSec = spHeatSector, _saveAvg = spHeatAvg; spHeatSector = null; spHeatAvg = false;
+    // SHARE map = only each sector's TOP movers (biggest |move| today) → big, readable tiles (Adi: not crowded).
+    // Temporarily trim LIVE.sectors[].stocks + clear zoom/avg/filters, build the classic treemap, then restore.
+    const N_PER_SEC = 6;
+    const _topMovers = arr => (arr || []).slice().sort((a, b) => Math.abs(b.c || 0) - Math.abs(a.c || 0)).slice(0, N_PER_SEC);
+    const _saveSecs = (LIVE && LIVE.sectors) || null;
+    const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
+    // respect the live 🌡️ "מיצוע סקטור" toggle: avg mode = one colour per sector (true FULL-sector average →
+    // do NOT trim); detailed mode = each sector's top-6 movers (trim for a clean, readable card).
+    if (_saveSecs && !spHeatAvg) LIVE.sectors = _saveSecs.map(s => Object.assign({}, s, { stocks: _topMovers(s.stocks) }));
+    spHeatSector = null; spHeatAtr = 0; spHeatUp = ""; spHeatDown = "";
     const mapHtml = spHeatmap();
-    spHeatSector = _saveSec; spHeatAvg = _saveAvg;
+    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD;
+    if (_saveSecs) LIVE.sectors = _saveSecs;
     const box = (cls, lbl, nm, chg) => '<div class="hmsh-box ' + cls + '"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch">' + _sgn(chg) + "</div></div>";
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
