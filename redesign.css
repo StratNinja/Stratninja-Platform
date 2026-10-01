@@ -242,6 +242,15 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-insight { top: 91.4%; left: 34%; width: 58%; height: 6.4%; font-size: 24px; font-weight: 800; color: #eaf2ff;
   line-height: 1.28; text-align: start; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* ===== wide/compact Candle Map at the bottom of the continuity tab (transposed: TFs × bucket types) ===== */
+.cmap-wide { margin-top: 16px; }
+.cmap-table-wide { border-spacing: 5px 5px; table-layout: fixed; }
+.cmap-table-wide .cmw-corner { width: 42px; }
+.cmap-table-wide .cmw-bh { font-size: 12px; font-weight: 800; color: var(--muted); white-space: nowrap; }
+.cmap-table-wide .cm-type { width: 42px; font-size: 14px; }
+.cmap-table-wide .cm-pill { min-width: 0; width: 100%; padding: 8px 0; font-size: 14px; }
+.cmw-verdict { margin-top: 10px; padding: 11px 16px; }
+
 /* ===== FTFC bull/bear share cards (overlay on FTFC_GREEN.png / FTFC_RED.png, 1254²) ===== */
 .ftf-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden; font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftf-card > div { position: absolute; }

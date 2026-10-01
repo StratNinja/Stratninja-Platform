@@ -698,6 +698,28 @@
     return '<div class="panel"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות לפי טיימפריים <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימה</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table">' + head + body + "</table></div>" + insightBox + "</div>";
   }
+  // WIDE/compact Candle Map (for the bottom of the continuity tab) — TRANSPOSED so it's wide & short (no scroll):
+  // timeframes down the side, bar-type buckets across the top.
+  function candleMapPanelWide() {
+    const cols = ["D", "W", "M", "Q", "Y"];
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) return "";
+    const cmRows = cmapRows();
+    const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
+    cmRows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
+    const head = '<tr><th class="cmw-corner">TF</th>' + CMAP_ROWS.map(([key, desc]) => '<th class="cmw-bh" title="' + escAttr(desc) + '">' + key + "</th>").join("") + "</tr>";
+    const body = cols.map(tf =>
+      '<tr><td class="cm-type">' + tf + "</td>" +
+      CMAP_ROWS.map(([key, desc, cls]) => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + escAttr(desc) + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
+    let domB = null, domN = -1;
+    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    let bestTf = null, bestScore = -Infinity;
+    cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; } });
+    const verdict = '<div class="cm-verdict cmw-verdict">' +
+      '<span class="cmv-item"><span class="cmv-k">מבנה דומיננטי</span><span class="cmv-v">' + (domB || "—") + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">טיימפריים חזק</span><span class="cmv-v">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span></div>";
+    return '<div class="panel cmap-wide"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימת המניות</span></span></h3>' +
+      '<div class="tablewrap"><table class="cmap-table cmap-table-wide">' + head + body + "</table></div>" + verdict + "</div>";
+  }
   let cmDrill = { bucket: null, tfk: null, col: null, dir: -1, favTop: false };
   function cmSortVal(r, col, tfk) {
     if (col === "sym") return r.s;
@@ -2870,10 +2892,13 @@
     const strongest = TFS.slice().sort((a, b) => tfCount[b] - tfCount[a])[0];
     const leaders = secs.slice().sort((a, b) => (b.aligned - a.aligned) || (b.prop - a.prop)).slice(0, 4);
     const _score = p => Math.max(1, Math.min(10, Math.round(p * 10)));   // alignment score 1–10 (clearer than "חזק/בינוני")
-    const _join = a => { const x = (a || []).filter(Boolean); return x.length <= 1 ? (x[0] || "") : x.slice(0, -1).join(", ") + " ו" + x[x.length - 1]; };
-    const topHe = leaders.slice(0, 3).map(s => s.he);
-    const insight = (up ? "היישור הרחב ביותר נמצא ב-" : "החולשה הרחבה ביותר נמצאת ב-") + strongest +
-      ", בהובלת " + _join(topHe) + ".";
+    // Ninja Insight — interpret the data (breadth of support + where it concentrates), don't just repeat it.
+    const totSec = secs.length || 11, broad = supporting >= totSec * 0.6;
+    const insight = up
+      ? (broad ? "היישור השורי רחב — רוב הסקטורים תומכים, עם ריכוז חזק בטווח ה-" + strongest + "."
+               : "היישור חיובי, אך התמיכה הסקטוריאלית עדיין מצומצמת יחסית — בעיקר בטווח ה-" + strongest + ".")
+      : (broad ? "החולשה רחבה לרוחב הסקטורים, עם ריכוז גבוה במיוחד בטווח ה-" + strongest + "."
+               : "החולשה ממוקדת ומתרכזת בעיקר בטווח ה-" + strongest + ", ולא רחבה בכל השוק.");
     const maxN = secs.length || 11;
     const el = document.createElement("div");
     el.className = "ftf-card ftf-" + (up ? "bull" : "bear");
@@ -5984,7 +6009,7 @@
         '<div class="muted tdf-sub">כל אריח = תת-סקטור · <span class="pos">🟢 פס עליון</span> = מניות בהמשכיות עולה · <span class="neg">🔴 פס תחתון</span> = יורדת (' + TFLBL + ') · לחץ אריח לרשימת המניות</div>' +
         '<div class="bcell-list" data-ftfcladder="sub">' + _ftfcLadder(subArrAll) + "</div></div>"
       : "";
-    return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>";
+    return head + note + '<div class="td-flow2">' + secLadder + subLadder + "</div>" + candleMapPanelWide();
   }
   function wireSectors() {
     // preset shortcut → set the whole timeframe set
@@ -6010,6 +6035,7 @@
       const open = col.classList.toggle("expanded");
       b.textContent = open ? "פחות ↑" : ("עוד " + col.querySelectorAll(".ss-extra").length + " ↓");
     });
+    document.querySelectorAll(".cmap-wide [data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));   // candle-map pills → drill
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }
   let secSort = { col: null, dir: -1 };
