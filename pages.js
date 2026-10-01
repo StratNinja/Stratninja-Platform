@@ -2930,7 +2930,8 @@
     const strongHe = strong ? secHe(strong.name) : "—", weakHe = weak ? secHe(weak.name) : "—";
     const subNm = standout ? String(standout.ind || standout.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").replace(/\s+[A-Z]{2,6}\d?$/, "").trim() : "—";
     const _sgn = c => c == null ? "" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
-    const dateStr = new Date().toLocaleDateString("he-IL");
+    const _now = new Date();
+    const dateStr = _now.toLocaleDateString("he-IL") + " · " + _now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
     const insight = (pct != null)
       ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : ""))
       : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : "")) : "תמונת מצב סקטוריאלית");
