@@ -1430,7 +1430,13 @@
     } else if (_hmShareGrid) {
       // UNIFORM grid (share card) — equal cells; columns ≈ √(n·1.3) so blocks read wide, not tall
       const st = (stocks || []).slice().sort((a, b) => Math.abs(_hmChg(b) || 0) - Math.abs(_hmChg(a) || 0));
-      const cols = Math.max(1, Math.min(st.length, Math.round(Math.sqrt(st.length * 1.3))));
+      const _n = st.length;
+      // pick the column count (around √n, leaning wide) that leaves the FEWEST empty trailing cells
+      let cols = Math.max(1, Math.round(Math.sqrt(_n * 1.4))), _bestE = 1e9;
+      for (let c = Math.max(1, Math.floor(Math.sqrt(_n))); c <= Math.min(_n, Math.ceil(Math.sqrt(_n) * 2) + 1); c++) {
+        const e = c * Math.ceil(_n / c) - _n;
+        if (e < _bestE || (e === _bestE && c > cols)) { _bestE = e; cols = c; }
+      }
       body = '<div class="hm-sec-body hm-gridbody" style="grid-template-columns:repeat(' + cols + ',1fr)">' +
         st.map(x => { const cv = _hmChg(x), cs = cv == null ? "—" : (cv >= 0 ? "+" : "") + cv.toFixed(2) + "%";
           return '<span class="hm-tile hm-gcell' + (Math.abs(cv || 0) >= 2 ? " hm-glow" : "") + '" data-chart="' + x.s + '" data-tf="D" style="' + _glowVars(cv) + '"><span class="hm-t-sym">' + x.s + '</span><span class="hm-t-chg">' + cs + "</span></span>"; }).join("") + "</div>";
@@ -1459,7 +1465,7 @@
     }
     // FULL view: all sectors framed, stocks inside (ATR% filter removes low-volatility names when active)
     const _hmFiltered = spHeatAtr || spHeatUp !== "" || spHeatDown !== "";
-    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmPass); return { sec: s, stocks: st, value: st.length }; }).filter(o => o.stocks.length);
+    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmPass); return { sec: s, stocks: st, value: _hmShareGrid ? Math.max(st.length, 2.6) : st.length }; }).filter(o => o.stocks.length);
     const frames = squarify(list, 0, 0, 1000, 600).map(r => {
       const s = r.item.sec, st = r.item.stocks;
       const above = _hmFiltered ? st.filter(x => x.ao).length : s.above, totl = _hmFiltered ? st.length : s.total;
@@ -2459,6 +2465,20 @@
   }
   window._snSuggestTicker = openSuggestTicker;
 
+  // admin-only: red count badge on "מניות קהילה · ניהול" = how many are waiting for YOUR approval
+  async function updateCommAdminBadge() {
+    const el = document.getElementById("commAdminBadge");
+    if (!el || !_snIsAdmin()) return;
+    try {
+      const client = window.SNAuth && SNAuth.getClient && SNAuth.getClient();
+      if (!client) return;
+      const { data, error } = await client.from("community_tickers").select("id").eq("status", "pending").eq("validated", true);
+      if (error) return;
+      const n = (data || []).length;
+      el.textContent = n ? String(n) : "";
+      el.style.display = n ? "" : "none";
+    } catch (e) {}
+  }
   // admin-only: approve / reject / remove suggested tickers
   async function openCommunityAdmin() {
     if (!_snIsAdmin()) { snToast("גישה למנהל בלבד"); return; }
@@ -2505,7 +2525,7 @@
         if (act === "del") await client.from("community_tickers").delete().eq("id", id);
         else if (act === "approve") await client.from("community_tickers").update({ status: "approved", validated: true, reason: null }).eq("id", id);
         else if (act === "reject") await client.from("community_tickers").update({ status: "rejected", reason: "נדחה ידנית" }).eq("id", id);
-        renderCommunityAdmin(client);
+        renderCommunityAdmin(client); updateCommAdminBadge();
       } catch (e) { snToast("שגיאה: " + (e.message || e)); b.disabled = false; renderCommunityAdmin(client); }
     });
   }
@@ -2947,7 +2967,7 @@
     const noteText = spHeatAvg
       ? "הצבע = התנועה הממוצעת של כל סקטור"
       : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
-    const box = (lbl, nm, chg) => { const chCls = chg == null ? "" : (chg >= 0 ? " hmsh-pos" : " hmsh-neg"); return '<div class="hmsh-box"><div class="hmsh-bx-lbl">' + lbl + '</div><div class="hmsh-bx-nm">' + escHtml(nm) + '</div><div class="hmsh-bx-ch' + chCls + '">' + _sgn(chg) + "</div></div>"; };
+    const box = (lbl, nm, chg) => { const chCls = chg == null ? "" : (chg >= 0 ? " hmsh-pos" : " hmsh-neg"); return '<div class="hmsh-box"><div class="hmsh-bx-cap"><span class="hmsh-bx-lbl">' + lbl + '</span> ' + escHtml(nm) + '</div><div class="hmsh-bx-ch' + chCls + '">' + _sgn(chg) + "</div></div>"; };
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
       '<div class="hmsh-top"><div class="hmsh-toprow"><span class="hmsh-badge">S&P 500 · ' + dateStr + '</span><span class="hmsh-insight">' + escHtml(insight) + "</span></div>" +
@@ -4305,7 +4325,7 @@
   }
   // page-aware share caption + $cashtags (for the X tweet / WhatsApp text)
   function shareTweetText() {
-    const page = state.page;
+    const page = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;   // resolve the pulse sub-tab
     const src = (typeof scanSource === "function" ? scanSource() : []);
     const cash = arr => arr.filter(Boolean).map(s => "$" + s).slice(0, 8).join(" ");
     let cap = "סרקתי את השוק ב-StratNinja 📊", tags = [];
@@ -4382,6 +4402,16 @@
       const lead = (U.leaders || []).slice().sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 2).map(x => x.s);
       const lag = (U.laggards || []).slice().sort((a, b) => (a.c || 0) - (b.c || 0)).slice(0, 2).map(x => x.s);
       tags = lead.concat(lag);
+    } else if (page === "sp500" && (sp500View === "heat" || sp500View === "risk")) {
+      // HEAT MAP / RISK card → one LEADING stock from EACH sector (the biggest gainer per sector)
+      cap = "🔥 מפת החום של השוק · S&P 500 · StratNinja";
+      const picks = [];
+      ((LIVE && LIVE.sectors) || []).forEach(s => {
+        if (!etfFor(s.name)) return;
+        const top = (s.stocks || []).filter(x => x.c != null).sort((a, b) => b.c - a.c)[0];
+        if (top && top.c > 0) picks.push(top);
+      });
+      tags = picks.sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 8).map(x => x.s);
     } else if (page === "sp500") {
       // S&P 500 breadth-map card → the strong sector ETF, weak sector ETF + leading stocks it highlights
       cap = "🗺️ רוחב שוק S&P 500 · StratNinja";
@@ -8473,9 +8503,10 @@
     // ── floating action dock (theme / share / draw) + collapse ──
     initFloatDock();
     // reveal the admin-only bits for Adi (and whenever auth state changes). Draw is now the DOCK pencil.
-    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "snDockDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); };   // מטריצת שימוש עברה לתוך פאנל הניהול
+    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "snDockDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); if (adm) updateCommAdminBadge(); };   // מטריצת שימוש עברה לתוך פאנל הניהול
     _revealAdmin();
     try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(_revealAdmin); } catch (e) {}
+    setInterval(() => { if (_snIsAdmin()) updateCommAdminBadge(); }, 180000);   // refresh the pending-approval count every 3 min
     updateAlertBell();
     loadNews();
     setInterval(loadNews, 300000);   // refresh the news feed every 5 min
