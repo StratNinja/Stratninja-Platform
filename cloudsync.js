@@ -170,6 +170,13 @@
       const data = safeParse(localStorage.getItem(s.key)) || s.empty;
       const mtimeAtPush = localStorage.getItem(s.key + "__mtime") || String(Date.now());
       if (cfg && cfg.SUPABASE_URL && token) {
+        // Mark this edit as SYNCED optimistically — the instant we dispatch the keepalive push, not in its
+        // .then(). A keepalive fetch is designed to complete AFTER the page tears down, so delivery is ~certain,
+        // but its .then() almost never runs on a hard refresh / tab-background (very common on PHONES). Without
+        // this, __ptime stays behind forever → the device is permanently "dirty" (mtime>ptime) → every load it
+        // IGNORES the cloud and force-pushes its own stale local, overwriting the other device. That ping-pong
+        // is exactly why presets differed between phone and computer. (Rare true failure → recoverable via __autobak.)
+        try { origSet(s.key + "__ptime", mtimeAtPush); } catch (e) {}
         try {
           fetch(cfg.SUPABASE_URL + "/rest/v1/" + s.table + "?on_conflict=user_id", {
             method: "POST", keepalive: true,
@@ -178,7 +185,7 @@
               "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal",
             },
             body: JSON.stringify({ user_id: userId, data: data, updated_at: new Date().toISOString() }),
-          }).then(() => { try { origSet(s.key + "__ptime", mtimeAtPush); } catch (e) {} }).catch(() => {});
+          }).catch(() => {});
         } catch (e) { pushOne(s); }
       } else {
         pushOne(s);
