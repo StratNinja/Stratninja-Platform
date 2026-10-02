@@ -613,8 +613,17 @@
   const _CM_BUCKET_HE = { "3G": "3 ירוק (התרחבות שורית)", "F2D": "היפוך 2D (reclaim)", "2U": "2U (המשך שורי)", "1": "Inside", "2D": "2D (המשך דובי)", "F2U": "היפוך 2U (rejection)", "3R": "3 אדום (התרחבות דובית)" };
   const _CM_TF_HE = { D: "היומי", W: "השבועי", M: "החודשי", Q: "הרבעוני", Y: "השנתי" };
   let _cmFacts = [], _cmTimer = null;
-  // global universe toggle for the market-overview page: "sp500" (default) | "all" (StratNinja world)
+  // global universe toggle: "sp500" (default) | "all" (StratNinja world). Controls the Candle Map + market
+  // overview everywhere; switchable from the market page AND a persistent sidebar control (under 🚀 שיא 52ש').
   let marketUniverse = "sp500", _mktFlip = false;
+  try { const _mu = localStorage.getItem("sn_mkt_uni"); if (_mu === "sp500" || _mu === "all") marketUniverse = _mu; } catch (e) {}
+  function _syncSideUni() { document.querySelectorAll("#sideUni .side-uni-btn").forEach(b => b.classList.toggle("on", b.dataset.uni === marketUniverse)); }
+  function _setUniverse(u) {
+    if ((u !== "sp500" && u !== "all") || marketUniverse === u) return;
+    marketUniverse = u; _mktFlip = true;
+    try { localStorage.setItem("sn_mkt_uni", u); } catch (e) {}
+    _syncSideUni(); reRender();
+  }
   // which section of the market-overview page the user chose to share (set by the share-section picker)
   let _mktShareSection = "state";   // "state" | "candlemap" | "leaders" | "movers"
   function mktU() {
@@ -993,7 +1002,7 @@
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
       '<button class="uni-btn' + (marketUniverse === "sp500" ? " on" : "") + '" data-uni="sp500">S&P 500</button>' +
-      '<button class="uni-btn' + (marketUniverse === "all" ? " on" : "") + '" data-uni="all">StratNinja</button>' +
+      '<button class="uni-btn' + (marketUniverse === "all" ? " on" : "") + '" data-uni="all">כל היקום</button>' +
       "</div>";
     const dSecUp = [{ name: "חומרי גלם", chg: 1.9 }, { name: "תקשורת", chg: 1.2 }, { name: "אנרגיה", chg: 0.8 }];
     const dSecDn = [{ name: "מוצרי צריכה", chg: -1.4 }, { name: "בריאות", chg: -0.9 }, { name: "שירותים", chg: -0.5 }];
@@ -1023,10 +1032,7 @@
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => { techState.gapDir = "any"; if (!(parseFloat(techState.gapPct) > 0)) techState.gapPct = 3; setPage("scanner"); }; }   // gappers page retired → open the scanner with the gap filter on
     document.querySelectorAll("[data-idxmode]").forEach(b => b.onclick = () => { _idxChartMode = b.dataset.idxmode; reRender(); });
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
-    document.querySelectorAll("[data-uni]").forEach(el => el.onclick = () => {
-      if (marketUniverse === el.dataset.uni) return;
-      marketUniverse = el.dataset.uni; _mktFlip = true; reRender();
-    });
+    document.querySelectorAll(".uni-btn[data-uni]").forEach(el => el.onclick = () => _setUniverse(el.dataset.uni));
     _mktFlip = false;   // one-shot: the flip animation only plays on the switch render
     // rotating "did you know" Candle Map insight
     if (_cmTimer) { clearInterval(_cmTimer); _cmTimer = null; }
@@ -8589,6 +8595,8 @@
     { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestChooser(); }
     { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
+    // persistent universe selector (under 🚀 שיא 52ש') → sets marketUniverse for the Candle Map + market overview
+    { document.querySelectorAll("#sideUni .side-uni-btn").forEach(b => b.onclick = () => _setUniverse(b.dataset.uni)); _syncSideUni(); }
     // ── floating action dock (theme / share / draw) + collapse ──
     initFloatDock();
     // reveal the admin-only bits for Adi (and whenever auth state changes). Draw is now the DOCK pencil.
