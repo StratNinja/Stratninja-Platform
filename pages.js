@@ -1488,6 +1488,9 @@
   let riskAtrMin = 5; try { const _rv = parseFloat(localStorage.getItem("sn_risk_atr")); if (!isNaN(_rv) && _rv > 0) riskAtrMin = _rv; } catch (e) {}
   // risk-map timeframe (which period's move colors the tiles) — modular, reuses the heat-map TF set
   let riskTf = "1d"; try { riskTf = localStorage.getItem("sn_risk_tf") || "1d"; } catch (e) {} if (HM_TFS.indexOf(riskTf) < 0) riskTf = "1d";
+  // move% filter on the RISK map — show only gainers ≥ up% and/or losers ≥ down% (removes the rest), same as the S&P heat map (Adi)
+  let riskUp = "", riskDown = "";
+  try { riskUp = localStorage.getItem("sn_risk_up") || ""; riskDown = localStorage.getItem("sn_risk_down") || ""; } catch (e) {}
   let riskZoomSec = null;   // when set → zoom into one sector's volatile stocks (bigger tiles)
   function _riskAtrp(r) { const k = r.tech; return (k && k.atrp != null) ? k.atrp : null; }
   // live 1D change per symbol (from the LIVE snapshot — includes PRE/POST-market), so the risk map reacts in
@@ -1512,6 +1515,14 @@
     }
     const t = x.tech || _hmSMap()[x.s]; if (!t) return null; const v = t[HM_TF_KEY[riskTf]]; return v == null ? null : v;
   }
+  // move% filter (over the selected risk TF) — gainers ≥ up% OR losers ≥ down%; non-matching tiles are REMOVED
+  function _riskMoveMatch(cv) {
+    const up = parseFloat(riskUp), dn = parseFloat(riskDown);
+    const hasUp = !isNaN(up), hasDn = !isNaN(dn);
+    if (!hasUp && !hasDn) return true;
+    if (cv == null) return false;
+    return (hasUp && cv >= up) || (hasDn && cv <= -Math.abs(dn));
+  }
   // map each sub-sector (.ind) → its majority GICS sector, for stocks whose own .sec isn't one of the 11 GICS
   let _riskIndParentCache = null, _riskIndParentKey = null;
   function _riskIndParent() {
@@ -1530,7 +1541,7 @@
   }
   function _riskVol() {
     const rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
-    return rows.filter(r => { const a = _riskAtrp(r); return a != null && a >= riskAtrMin && _riskChg(r) != null; });
+    return rows.filter(r => { const a = _riskAtrp(r); return a != null && a >= riskAtrMin && _riskChg(r) != null && _riskMoveMatch(_riskChg(r)); });
   }
   function _riskTiles(stocks) {
     const sorted = stocks.slice().sort((a, b) => { const va = _riskChg(a), vb = _riskChg(b); return (vb == null ? -999 : vb) - (va == null ? -999 : va); });
@@ -1671,7 +1682,14 @@
         '<span class="risk-v-sub"><span class="pos">🟢 ' + up + "</span> · <span class=\"neg\">🔴 " + dn + "</span> · " + tot + " תנודתיות · " + upPct.toFixed(0) + "% ירוקות · " + tfl + "</span></span>";
       const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
         '<button class="flow-tf-btn hm-tf' + (k === riskTf ? " on" : "") + '" data-risktf="' + k + '">' + HM_TFL[k] + "</button>").join("") + "</div>";
-      const ctl = '<div class="hm-controls risk-controls">' + tfBtns +
+      // move% filter — show only gainers ≥ (מעל)% and/or losers ≥ (מתחת)% over the selected TF; the rest are removed
+      const rMfOn = riskUp !== "" || riskDown !== "";
+      const riskMoveFilter = '<div class="hm-movefilter' + (rMfOn ? " on" : "") + '" title="הצג רק מניות שעלו/ירדו מעל האחוז שתמלא — השאר מוסרות מהמפה">' +
+        '<span class="hm-mf-lbl">סינון תנועה %</span>' +
+        '<span class="hm-mf-field hm-mf-up"><span class="hm-mf-ico">▲</span><input type="number" step="0.5" min="0" inputmode="decimal" id="riskMoveUp" placeholder="עולות מעל" value="' + escAttr(riskUp) + '"></span>' +
+        '<span class="hm-mf-field hm-mf-down"><span class="hm-mf-ico">▼</span><input type="number" step="0.5" min="0" inputmode="decimal" id="riskMoveDown" placeholder="יורדות מעל" value="' + escAttr(riskDown) + '"></span>' +
+        (rMfOn ? '<button class="hm-mf-clear" id="riskMoveClear" title="נקה סינון">✕</button>' : "") + "</div>";
+      const ctl = '<div class="hm-controls risk-controls">' + tfBtns + riskMoveFilter +
         '<div class="risk-atr-field"><span class="hm-mf-lbl">תנודתיות מינימלית · ATR%</span>' +
         '<input type="number" step="0.5" min="0" inputmode="decimal" id="riskAtrInput" value="' + escAttr(String(riskAtrMin)) + '">' +
         '<span class="muted" style="font-size:12px">ככל שהסף גבוה יותר → רק המניות הכי תנודתיות</span></div>' +
@@ -1798,6 +1816,9 @@
     // RISK map: modular timeframe + volatility threshold + sector zoom
     document.querySelectorAll("[data-risktf]").forEach(b => b.onclick = () => { riskTf = b.dataset.risktf; try { localStorage.setItem("sn_risk_tf", riskTf); } catch (e) {} reRender(); });
     { const ra = $("#riskAtrInput"); if (ra) ra.onchange = () => { const v = parseFloat(ra.value); if (!isNaN(v) && v >= 0) { riskAtrMin = v; try { localStorage.setItem("sn_risk_atr", String(v)); } catch (e) {} reRender(); } }; }
+    { const ru = $("#riskMoveUp"); if (ru) ru.onchange = () => { riskUp = ru.value.trim(); try { localStorage.setItem("sn_risk_up", riskUp); } catch (e) {} reRender(); }; }
+    { const rd = $("#riskMoveDown"); if (rd) rd.onchange = () => { riskDown = rd.value.trim(); try { localStorage.setItem("sn_risk_down", riskDown); } catch (e) {} reRender(); }; }
+    { const rc = $("#riskMoveClear"); if (rc) rc.onclick = () => { riskUp = ""; riskDown = ""; try { localStorage.removeItem("sn_risk_up"); localStorage.removeItem("sn_risk_down"); } catch (e) {} reRender(); }; }
     document.querySelectorAll("[data-riskzoom]").forEach(el => el.onclick = e => { e.stopPropagation(); riskZoomSec = decodeURIComponent(el.dataset.riskzoom); reRender(); });
     { const rb = $("#riskBack"); if (rb) rb.onclick = () => { riskZoomSec = null; reRender(); }; }
     // S&P heat map: ATR% volatility filter (removes low-volatility names)
