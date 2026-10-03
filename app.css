@@ -20,6 +20,8 @@
    and drop the back-to-top button into its place. The landing page (no sidebar) keeps the floating button. */
 body.in-app #a11yBtn { display: none; }
 body.in-app #backTop { bottom: 18px; }
+/* sidebar accessibility trigger — explicit wheelchair icon (Adi) in accessibility blue */
+#sideA11y .side-a11y-ico { color: #5b9bff; vertical-align: -3px; margin-inline-end: 3px; }
 
 /* back-to-top button — sits just above the accessibility button (bottom-left in RTL) */
 #backTop { position: fixed; bottom: 78px; inset-inline-end: 18px; inset-inline-start: auto; z-index: 3900;

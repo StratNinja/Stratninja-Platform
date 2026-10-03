@@ -6325,9 +6325,10 @@
         : (" data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"');
       const bar = (w, side) => '<div class="ftt-row"><span class="ftt-ic ftt-ic-' + side + '"></span>' +
         '<span class="ftt-bar ftt-' + side + '"><span style="width:' + w + '%"></span></span></div>';
-      return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + (strong ? " · " + Math.round(domShare * 100) + "% " + (domSide === "green" ? "עולה" : "יורדת") : "") + '">' +
+      const subHint = o.strongSub ? '<div class="ftt-substrong ftt-substrong-' + o.strongSub.side + '" title="תת-סקטור חזק בתוך הסקטור — לחץ להיכנס ולבדוק">⚡ ' + escHtml(o.strongSub.name) + " " + Math.round(o.strongSub.share * 100) + "%</div>" : "";
+      return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + (strong ? " · " + Math.round(domShare * 100) + "% " + (domSide === "green" ? "עולה" : "יורדת") : "") + (o.strongSub ? " · ⚡ תת-סקטור חזק: " + o.strongSub.name + " " + Math.round(o.strongSub.share * 100) + "%" : "") + '">' +
         '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</span>" + flag + "</div>" +
-        '<div class="ftt-bars">' + bar(gW, "green") + bar(rW, "red") + "</div></div>";
+        '<div class="ftt-bars">' + bar(gW, "green") + bar(rW, "red") + "</div>" + subHint + "</div>";
     };
     // ladder = one grid; sort by NET continuity ratio (green-heavy first → red-heavy last)
     const _ftfcLadder = arr => {
@@ -6400,6 +6401,14 @@
       (subByParent[parent] = subByParent[parent] || []).push(o);
     });
     Object.keys(subByParent).forEach(p => { _contSubCards[p] = _ftfcLadder(subByParent[p]); _contSubCount[p] = subByParent[p].length; });
+    // EXTERNAL hint on the main sector tile: if ANY of its sub-sectors has >50% of its stocks in one FTFC
+    // direction, surface the strongest one on the sector tile (Adi: know to drill into טכנולוגיה because שבבים is hot)
+    const _subDom = o => { const t = o.tot || 0, n = Math.max(o.fg || 0, o.fr || 0); return { share: t ? n / t : 0, side: (o.fg || 0) >= (o.fr || 0) ? "green" : "red" }; };
+    const secStrongSub = {};
+    Object.keys(subByParent).forEach(p => { let best = null;
+      subByParent[p].forEach(o => { const d = _subDom(o); if (d.share > 0.5 && (!best || d.share > best.share)) best = { name: _cleanNm(o.name), share: d.share, side: d.side }; });
+      if (best) secStrongSub[p] = best; });
+    secArrG.forEach(o => { if (secStrongSub[o.rawname]) o.strongSub = secStrongSub[o.rawname]; });
     // main grid = 11 GICS sectors only (sub-sectors live inside each sector's drawer now)
     const secGrid = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · המשכיות</span></h3>' +
       '<div class="muted tdf-sub">כל אריח = סקטור · <span class="pos">🟢 פס עליון</span> = מניות בהמשכיות עולה · <span class="neg">🔴 פס תחתון</span> = יורדת (' + TFLBL + ') · <b>לחץ סקטור לתתי-הסקטורים שלו</b></div>' +
