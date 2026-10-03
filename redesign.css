@@ -238,8 +238,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* NEW portrait template (1122×1402) — same structure as the breadth card */
 .ftfc-card { width: 1122px; height: 1402px; position: relative; direction: rtl; overflow: hidden;
   background: #0B1020 url("Ftfc_Template.png?v=3") top center / 1122px 1402px no-repeat;
-  font-family: 'Varela Round','Heebo','Rubik',sans-serif; color: #eaf2ff; }
-.ftfc-card .ftc-pct, .ftfc-card .ftc-etf, .ftfc-card .ftc-bval { font-family: 'Varela Round','Rubik',sans-serif; }
+  font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }   /* reverted from Varela Round (400-only) → Heebo so 900 weight is actually BOLD (Adi) */
 .ftfc-card > div { position: absolute; }
 .ftc-date { top: 1.1%; left: 2.6%; font-size: 17px; font-weight: 800; color: #cfe0ff; text-shadow: 0 1px 8px rgba(0,0,0,.8); }
 /* which continuity timeframes the card reflects (M·Q·Y etc.) — top-right, mirrors the date */
@@ -268,6 +267,13 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-pct { order: 2; flex: 0 0 22%; text-align: end; direction: ltr; font-size: 23px; font-weight: 900; font-variant-numeric: tabular-nums; }
 .ftc-pct.pos { color: #2fe08a; } .ftc-pct.neg { color: #ff6b7a; } .ftc-pct.zero { color: #cdd7e6; }
 .ftc-etf { order: 3; flex: 0 0 15%; text-align: center; font-size: 20px; font-weight: 900; color: #eaf2ff; letter-spacing: .3px; }
+/* fine per-element nudges (Adi) — position:relative (html2canvas-safe; NOT transform). px = card px (1122×1402, scale 1) */
+.ftc-sec-red .ftc-etf,  .ftc-sec-green .ftc-etf  { position: relative; left: 3px; top: -3px; }   /* sector ticker: +3 right, +3 up */
+.ftc-sec-red .ftc-pct,  .ftc-sec-green .ftc-pct  { position: relative; top: -3px; }                /* sector %: +3 up */
+.ftc-sec-red .ftc-name, .ftc-sec-green .ftc-name { position: relative; top: -3px; }                /* sector name: +3 up */
+.ftc-sub-red .ftc-etf,  .ftc-sub-green .ftc-etf  { position: relative; left: 3px; top: 3px; }      /* sub-sector ticker: +3 right, +3 down */
+.ftc-sub-red .ftc-pct,  .ftc-sub-green .ftc-pct  { position: relative; top: 3px; }                 /* sub-sector %: +3 down */
+.ftc-sub-red .ftc-name, .ftc-sub-green .ftc-name { position: relative; top: 3px; left: -4px; }     /* sub-sector name: +3 down, +4 left */
 /* ninja insight (bulb + label baked → overlay text below it) — max 2 lines, inside the box */
 .ftc-insight { top: 87.5%; left: 6%; width: 86%; height: 6.5%; font-size: 24px; font-weight: 700; color: #eaf2ff;
   line-height: 1.32; text-align: start; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -291,7 +297,7 @@ body[data-page="sectors"] .cont-right > .td-flow { flex: 0 0 auto; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child { flex: 1 1 auto; display: flex; flex-direction: column; }
 /* auto-fit → tiles STRETCH to fill the whole row (no empty space on the left), per Adi.
    !important: the generic `.td-flow .bcell-list` rule (auto-fill 150px, same specificity, later in file) was winning. */
-body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; gap: 12px; }
+body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)) !important; gap: 10px; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { flex: 1 1 auto; align-content: space-between; }
 .cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important; }
 /* bigger tiles (Adi 2026-10-04) — thicker bars + larger name; rows spread out to fill the height */
