@@ -241,8 +241,11 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
   font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .ftfc-card > div { position: absolute; }
 .ftc-date { top: 1.1%; left: 2.6%; font-size: 17px; font-weight: 800; color: #cfe0ff; text-shadow: 0 1px 8px rgba(0,0,0,.8); }
-/* three top value boxes — labels baked (מצב שוק right · כיוון מוביל center · פוקוס יומי left); emit VALUE only */
-.ftc-box { display: flex; align-items: center; justify-content: center; text-align: center; top: 31.8%; height: 5.6%; }
+/* which continuity timeframes the card reflects (M·Q·Y etc.) — top-right, mirrors the date */
+.ftc-tf { top: 1.1%; right: 2.6%; left: auto; font-size: 17px; font-weight: 900; color: #7fe9ff; letter-spacing: .3px; text-shadow: 0 1px 8px rgba(0,0,0,.85); }
+.ftc-tf b { color: #eaf2ff; }
+/* three top value boxes — labels baked (מצב שוק right · כיוון מוביל center · פוקוס יומי left); emit VALUE only. +5px lower (locked) */
+.ftc-box { display: flex; align-items: center; justify-content: center; text-align: center; top: 32.16%; height: 5.6%; }
 .ftc-tone  { left: 3.5%; width: 29%; }     /* פוקוס יומי (leftmost) */
 .ftc-range { left: 36%;  width: 26%; }      /* כיוון מוביל (center) */
 .ftc-key   { left: 65%;  width: 30%; }      /* מצב שוק (rightmost) */
@@ -251,10 +254,11 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-bval.pos { color: #2fe08a; } .ftc-bval.neg { color: #ff6b7a; } .ftc-bval.zero { color: #f0cc63; }
 /* the four data columns (sectors red/green · sub-sectors red/green) — 3 rows each, stacked */
 .ftc-col { display: flex; flex-direction: column; justify-content: space-between; }
-.ftc-sec-red   { left: 3.5%; width: 45.3%; top: 45.8%; height: 12.3%; }
-.ftc-sec-green { left: 51.2%; width: 45.3%; top: 45.8%; height: 12.3%; }
-.ftc-sub-red   { left: 3.5%; width: 45.3%; top: 65.8%; height: 12.3%; }
-.ftc-sub-green { left: 51.2%; width: 45.3%; top: 65.8%; height: 12.3%; }
+/* +7px lower than first pass (rows sat a touch high vs the baked pills) */
+.ftc-sec-red   { left: 3.5%; width: 45.3%; top: 46.3%; height: 12.3%; }
+.ftc-sec-green { left: 51.2%; width: 45.3%; top: 46.3%; height: 12.3%; }
+.ftc-sub-red   { left: 3.5%; width: 45.3%; top: 66.3%; height: 12.3%; }
+.ftc-sub-green { left: 51.2%; width: 45.3%; top: 66.3%; height: 12.3%; }
 /* FIXED-grid row: [name · right, fills the pill] [% · fixed] [ETF · left, in the small accent box] */
 .ftc-row { display: flex; align-items: center; direction: rtl; height: 30%; }
 .ftc-row.ftc-empty { visibility: hidden; }
@@ -284,15 +288,15 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* sectors panel GROWS to fill the empty space; composites strip keeps its natural height at the bottom */
 body[data-page="sectors"] .cont-right > .td-flow { flex: 0 0 auto; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child { flex: 1 1 auto; display: flex; flex-direction: column; }
-body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 10px; }
+body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 12px; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { flex: 1 1 auto; align-content: space-between; }
-.cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; }
-/* bigger tiles — thicker bars + larger name; rows spread out to fill the height */
-body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 78px; justify-content: center; gap: 9px; padding: 12px 13px; }
-body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 13.5px; }
-body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 8px; margin-top: 9px; }
-body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 11px; }
-body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
+.cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)) !important; }
+/* bigger tiles (Adi 2026-10-04) — thicker bars + larger name; rows spread out to fill the height */
+body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 100px; justify-content: center; gap: 11px; padding: 15px 16px; }
+body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 15.5px; }
+body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 10px; margin-top: 12px; }
+body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 15px; }
+body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 11px; height: 11px; }
 /* narrow candle map on the left (candle types across the top × 5 TFs) — fills the column height */
 .cmap-side { margin: 0; padding: 14px 14px 16px; display: flex; flex-direction: column; height: 100%; box-sizing: border-box; }
 .cmap-side .cmap-head { font-size: 16px; }
@@ -391,6 +395,14 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 9px; height: 9px; }
 .ftt-cpill.ftt-c-up { color: #2fe08a; background: rgba(22,184,119,.15); }
 .ftt-cpill.ftt-c-dn { color: #ff6b7a; background: rgba(229,56,74,.15); }
 .ftt-cpill.ftt-c-mix { color: #9fb0c8; background: rgba(150,160,180,.12); }
+/* >50% of the asset's stocks share ONE FTFC direction → glowing frame + % flag (spot the interesting sector) */
+.ftfc-tile.ftfc-strong { position: relative; }
+.ftfc-tile.ftfc-strong-green { border-color: rgba(34,227,155,.9) !important; box-shadow: 0 0 0 1px rgba(34,227,155,.65), 0 0 16px rgba(34,227,155,.42); }
+.ftfc-tile.ftfc-strong-red   { border-color: rgba(255,107,122,.9) !important; box-shadow: 0 0 0 1px rgba(255,107,122,.65), 0 0 16px rgba(255,107,122,.38); }
+.ftt-50 { margin-inline-start: auto; flex: 0 0 auto; direction: ltr; font-family: 'Rubik', sans-serif;
+  font-size: 12px; font-weight: 900; padding: 2px 7px; border-radius: 7px; white-space: nowrap; }
+.ftt-50-green { color: #22e39b; background: rgba(34,227,155,.16); }
+.ftt-50-red   { color: #ff6b7a; background: rgba(255,107,122,.16); }
 
 /* option current-price source tag (auto CBOE vs manually typed) */
 .opt-src { display: inline-block; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; white-space: nowrap; vertical-align: middle; letter-spacing: .2px; }

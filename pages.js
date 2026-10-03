@@ -617,12 +617,17 @@
   // overview everywhere; switchable from the market page AND a persistent sidebar control (under 🚀 שיא 52ש').
   let marketUniverse = "sp500", _mktFlip = false;
   try { const _mu = localStorage.getItem("sn_mkt_uni"); if (_mu === "sp500" || _mu === "all") marketUniverse = _mu; } catch (e) {}
-  function _syncSideUni() { document.querySelectorAll("#sideUni .side-uni-btn").forEach(b => b.classList.toggle("on", b.dataset.uni === marketUniverse)); }
   function _setUniverse(u) {
     if ((u !== "sp500" && u !== "all") || marketUniverse === u) return;
     marketUniverse = u; _mktFlip = true;
     try { localStorage.setItem("sn_mkt_uni", u); } catch (e) {}
-    _syncSideUni(); reRender();
+    reRender();   // the market overview + Candle Map re-render with the new active state
+  }
+  // shared compact universe toggle — rendered where it's relevant (market overview + continuity Candle Map)
+  function _uniSwitchHtml(extraCls) {
+    return '<span class="uni-switch uni-switch-mini' + (extraCls ? " " + extraCls : "") + '" title="בחר יקום — S&P 500 או כל היקום">' +
+      '<button class="uni-btn' + (marketUniverse === "sp500" ? " on" : "") + '" data-uni="sp500">S&P 500</button>' +
+      '<button class="uni-btn' + (marketUniverse === "all" ? " on" : "") + '" data-uni="all">כל היקום</button></span>';
   }
   // which section of the market-overview page the user chose to share (set by the share-section picker)
   let _mktShareSection = "state";   // "state" | "candlemap" | "leaders" | "movers"
@@ -748,7 +753,7 @@
     const verdict = '<div class="cm-verdict cmw-verdict cms-verdict">' +
       '<span class="cmv-item"><span class="cmv-k">מבנה דומיננטי</span><span class="cmv-v">' + (domB || "—") + "</span></span>" +
       '<span class="cmv-item"><span class="cmv-k">TF חזק</span><span class="cmv-v">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span></div>";
-    return '<div class="panel cmap-side"><h3 class="cmap-head"><span>🗺️ Candle Map</span></h3>' +
+    return '<div class="panel cmap-side"><h3 class="cmap-head"><span>🗺️ Candle Map</span>' + _uniSwitchHtml("cmap-uni") + '</h3>' +
       '<div class="muted cms-note">' + cmRows.length + ' מניות · לחץ מספר לרשימה</div>' +
       '<div class="tablewrap"><table class="cmap-table cmap-table-side">' + head + body + "</table></div>" + verdict + "</div>";
   }
@@ -1032,7 +1037,7 @@
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => { techState.gapDir = "any"; if (!(parseFloat(techState.gapPct) > 0)) techState.gapPct = 3; setPage("scanner"); }; }   // gappers page retired → open the scanner with the gap filter on
     document.querySelectorAll("[data-idxmode]").forEach(b => b.onclick = () => { _idxChartMode = b.dataset.idxmode; reRender(); });
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
-    document.querySelectorAll(".uni-btn[data-uni]").forEach(el => el.onclick = () => _setUniverse(el.dataset.uni));
+    // (universe buttons are wired globally via click delegation in boot — no per-render wiring needed)
     _mktFlip = false;   // one-shot: the flip animation only plays on the switch render
     // rotating "did you know" Candle Map insight
     if (_cmTimer) { clearInterval(_cmTimer); _cmTimer = null; }
@@ -3160,6 +3165,7 @@
     el.className = "ftfc-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
       '<div class="ftc-date">🕐 ' + dateStr + "</div>" +
+      '<div class="ftc-tf">המשכיות <b>' + escHtml(rangeLbl) + "</b></div>" +
       // three top boxes — labels baked in template (RTL right→left: מצב שוק · כיוון מוביל · פוקוס יומי)
       '<div class="ftc-box ftc-key"><span class="ftc-bval ' + toneCls + '">' + tone + "</span></div>" +             /* מצב שוק (rightmost) = overall tone */
       '<div class="ftc-box ftc-range"><span class="ftc-bval pos">' + escHtml(leadSec) + "</span></div>" +          /* כיוון מוביל (center) = leading sector */
@@ -4251,9 +4257,9 @@
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (pg === "sp500") { _captureRedesignCard((sp500View === "heat" || sp500View === "risk") ? buildHeatmapShareCardEl : buildSpMapCardEl); return; }   // heat/risk → treemap card; breadth view → breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
-    if (pg === "sectors") {   // FTFC bull/bear card → chooser (שורי / דובי)
+    if (pg === "sectors") {   // combined FTFC review card (bull/bear chooser retired per Adi 2026-10-03)
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
-      openFtfcShareChooser(); return;
+      _captureRedesignCard(buildFtfcCardEl); return;
     }
     if (pg === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (pg === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
@@ -6309,13 +6315,18 @@
       const rW = fr ? Math.max(4, Math.round(fr / tot * 100)) : 0;
       const net = o.tot ? (fg - fr) / o.tot : 0;
       const tierCls = net > 0.05 ? "t-vg" : net < -0.05 ? "t-vr" : "t-n";
-      const cls = "bc-card ftfc-tile bc-clickable " + tierCls;   // composites look identical to sectors (Adi: "כמו השאר")
+      // dominant-direction share — flag + glowing frame when >50% of THIS asset's stocks share one FTFC direction
+      // (so Adi can spot at a glance which sector / sub-sector is worth drilling into, e.g. שבבים vs תוכנה)
+      const domN = Math.max(fg, fr), domShare = tot ? domN / tot : 0, domSide = fg >= fr ? "green" : "red";
+      const strong = domShare > 0.5;
+      const flag = strong ? '<span class="ftt-50 ftt-50-' + domSide + '">' + Math.round(domShare * 100) + "%</span>" : "";
+      const cls = "bc-card ftfc-tile bc-clickable " + tierCls + (strong ? " ftfc-strong ftfc-strong-" + domSide : "");   // composites look identical to sectors (Adi: "כמו השאר")
       const drill = o.kind ? (' data-compdrill="' + escAttr(o.etf || "") + '" data-compname="' + escAttr(o.name) + '"')
         : (" data-" + (o.isSub ? "subladder" : "secladder") + '="' + encodeURIComponent(o.rawname) + '"');
       const bar = (w, side) => '<div class="ftt-row"><span class="ftt-ic ftt-ic-' + side + '"></span>' +
         '<span class="ftt-bar ftt-' + side + '"><span style="width:' + w + '%"></span></span></div>';
-      return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + '">' +
-        '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</span></div>" +
+      return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + (strong ? " · " + Math.round(domShare * 100) + "% " + (domSide === "green" ? "עולה" : "יורדת") : "") + '">' +
+        '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</span>" + flag + "</div>" +
         '<div class="ftt-bars">' + bar(gW, "green") + bar(rW, "red") + "</div></div>";
     };
     // ladder = one grid; sort by NET continuity ratio (green-heavy first → red-heavy last)
@@ -8595,8 +8606,8 @@
     { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestChooser(); }
     { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
-    // persistent universe selector (under 🚀 שיא 52ש') → sets marketUniverse for the Candle Map + market overview
-    { document.querySelectorAll("#sideUni .side-uni-btn").forEach(b => b.onclick = () => _setUniverse(b.dataset.uni)); _syncSideUni(); }
+    // universe toggle (rendered on the market overview + continuity Candle Map) → delegated so any instance works
+    document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-uni]"); if (b) _setUniverse(b.dataset.uni); });
     // ── floating action dock (theme / share / draw) + collapse ──
     initFloatDock();
     // reveal the admin-only bits for Adi (and whenever auth state changes). Draw is now the DOCK pencil.

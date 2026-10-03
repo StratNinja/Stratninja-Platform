@@ -59,10 +59,13 @@
     document.body.appendChild(btn);
     document.body.appendChild(panel);
     btn.onclick = () => { panel.hidden = !panel.hidden; };
+    // in-app, the trigger lives in the sidebar (under 🚀 שיא 52ש') instead of the floating button — wire it too
+    const sideTrig = document.getElementById("sideA11y");
+    if (sideTrig) sideTrig.onclick = e => { e.preventDefault(); panel.hidden = !panel.hidden; };
     panel.querySelector("#a11yClose").onclick = () => { panel.hidden = true; };
     panel.querySelectorAll("[data-act]").forEach(b => { b.onclick = e => { e.preventDefault(); act(b.dataset.act); }; });
     document.addEventListener("keydown", e => { if (e.key === "Escape") panel.hidden = true; });
-    document.addEventListener("click", e => { if (!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true; });
+    document.addEventListener("click", e => { if (!panel.hidden && !panel.contains(e.target) && e.target !== btn && !(sideTrig && sideTrig.contains(e.target))) panel.hidden = true; });
   }
 
   function boot() { buildUI(); applyAll(); }
