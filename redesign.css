@@ -238,7 +238,8 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* NEW portrait template (1122×1402) — same structure as the breadth card */
 .ftfc-card { width: 1122px; height: 1402px; position: relative; direction: rtl; overflow: hidden;
   background: #0B1020 url("Ftfc_Template.png?v=3") top center / 1122px 1402px no-repeat;
-  font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
+  font-family: 'Varela Round','Heebo','Rubik',sans-serif; color: #eaf2ff; }
+.ftfc-card .ftc-pct, .ftfc-card .ftc-etf, .ftfc-card .ftc-bval { font-family: 'Varela Round','Rubik',sans-serif; }
 .ftfc-card > div { position: absolute; }
 .ftc-date { top: 1.1%; left: 2.6%; font-size: 17px; font-weight: 800; color: #cfe0ff; text-shadow: 0 1px 8px rgba(0,0,0,.8); }
 /* which continuity timeframes the card reflects (M·Q·Y etc.) — top-right, mirrors the date */
@@ -254,11 +255,11 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-bval.pos { color: #2fe08a; } .ftc-bval.neg { color: #ff6b7a; } .ftc-bval.zero { color: #f0cc63; }
 /* the four data columns (sectors red/green · sub-sectors red/green) — 3 rows each, stacked */
 .ftc-col { display: flex; flex-direction: column; justify-content: space-between; }
-/* +7px lower than first pass (rows sat a touch high vs the baked pills) */
-.ftc-sec-red   { left: 3.5%; width: 45.3%; top: 46.3%; height: 12.3%; }
-.ftc-sec-green { left: 51.2%; width: 45.3%; top: 46.3%; height: 12.3%; }
-.ftc-sub-red   { left: 3.5%; width: 45.3%; top: 66.3%; height: 12.3%; }
-.ftc-sub-green { left: 51.2%; width: 45.3%; top: 66.3%; height: 12.3%; }
+/* +27px lower than the original (rows were sitting above the baked pills) — Adi locked this */
+.ftc-sec-red   { left: 3.5%; width: 45.3%; top: 47.7%; height: 12.3%; }
+.ftc-sec-green { left: 51.2%; width: 45.3%; top: 47.7%; height: 12.3%; }
+.ftc-sub-red   { left: 3.5%; width: 45.3%; top: 67.7%; height: 12.3%; }
+.ftc-sub-green { left: 51.2%; width: 45.3%; top: 67.7%; height: 12.3%; }
 /* FIXED-grid row: [name · right, fills the pill] [% · fixed] [ETF · left, in the small accent box] */
 .ftc-row { display: flex; align-items: center; direction: rtl; height: 30%; }
 .ftc-row.ftc-empty { visibility: hidden; }
@@ -288,12 +289,13 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* sectors panel GROWS to fill the empty space; composites strip keeps its natural height at the bottom */
 body[data-page="sectors"] .cont-right > .td-flow { flex: 0 0 auto; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child { flex: 1 1 auto; display: flex; flex-direction: column; }
-body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(205px, 1fr)); gap: 12px; }
+/* auto-fit → tiles STRETCH to fill the whole row (no empty space on the left), per Adi */
+body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { flex: 1 1 auto; align-content: space-between; }
-.cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)) !important; }
+.cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important; }
 /* bigger tiles (Adi 2026-10-04) — thicker bars + larger name; rows spread out to fill the height */
-body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 100px; justify-content: center; gap: 11px; padding: 15px 16px; }
-body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 15.5px; }
+body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 112px; justify-content: center; gap: 9px; padding: 15px 14px; }
+body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 16px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 10px; margin-top: 12px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 15px; }
 body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 11px; height: 11px; }
@@ -376,11 +378,14 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 11px; height: 11px; }
 .ftf-ch-bull:hover { border-color: #22e39b; box-shadow: 0 0 0 2px rgba(34,227,155,.3); }
 .ftf-ch-bear:hover { border-color: #ff6b7a; box-shadow: 0 0 0 2px rgba(255,107,122,.3); }
 
-/* ===== המשכיות tiles — SAME grid/size as money-flow, number-free, TWO bars (green up · red down) ===== */
-/* name: allow up to 2 lines (no "…"), smaller font, reserve 2 lines so all tiles' bars align */
-.ftfc-tile .bcc-head { align-items: flex-start; }
-.ftfc-tile .bcc-name { font-size: 12.5px; line-height: 1.2; white-space: normal; text-overflow: clip;
+/* ===== המשכיות tiles — ETF ticker in a FIXED dedicated top row, Hebrew name centered below it (Adi) ===== */
+.ftfc-tile { position: relative; }
+.ftfc-tile .bcc-top { display: flex; justify-content: center; align-items: center; margin-bottom: 3px; }
+/* name: centered, full (up to 2 lines, no "…"); reserve 2 lines so all tiles' bars align */
+.ftfc-tile .bcc-name { font-size: 12.5px; line-height: 1.2; white-space: normal; text-overflow: clip; text-align: center; width: 100%;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.4em; }
+/* >50% flag → corner badge so it never shifts the ticker's fixed position */
+.ftfc-tile .ftt-50 { position: absolute; top: 9px; inset-inline-end: 11px; margin: 0; z-index: 2; }
 .ftt-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 7px; }
 .ftt-row { display: flex; align-items: center; gap: 6px; }
 .ftt-ic { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }

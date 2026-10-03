@@ -6326,8 +6326,12 @@
       const bar = (w, side) => '<div class="ftt-row"><span class="ftt-ic ftt-ic-' + side + '"></span>' +
         '<span class="ftt-bar ftt-' + side + '"><span style="width:' + w + '%"></span></span></div>';
       const subHint = o.strongSub ? '<div class="ftt-substrong ftt-substrong-' + o.strongSub.side + '" title="תת-סקטור חזק בתוך הסקטור — לחץ להיכנס ולבדוק">⚡ ' + escHtml(o.strongSub.name) + " " + Math.round(o.strongSub.share * 100) + "%</div>" : "";
+      // layout (Adi 2026-10-04): ETF ticker in a FIXED dedicated top row, Hebrew sector name BELOW it (full, no
+      // truncation), then the two bars; the >50% flag is a corner badge so it never shifts the ticker's position.
       return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + (strong ? " · " + Math.round(domShare * 100) + "% " + (domSide === "green" ? "עולה" : "יורדת") : "") + (o.strongSub ? " · ⚡ תת-סקטור חזק: " + o.strongSub.name + " " + Math.round(o.strongSub.share * 100) + "%" : "") + '">' +
-        '<div class="bcc-head">' + chip + '<span class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</span>" + flag + "</div>" +
+        flag +
+        '<div class="bcc-top">' + chip + "</div>" +
+        '<div class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</div>" +
         '<div class="ftt-bars">' + bar(gW, "green") + bar(rW, "red") + "</div>" + subHint + "</div>";
     };
     // ladder = one grid; sort by NET continuity ratio (green-heavy first → red-heavy last)
