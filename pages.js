@@ -1608,7 +1608,7 @@
     return '<div class="sp-heat">' + frames + "</div>";
   }
   // ---- broad-market / thematic COMPOSITES (LIVE.singles) shared across all pulse tabs ----
-  // kind 'macro' → the "מכלולים רחבים" row under the 11 GICS sectors · 'sub' → an extra sub-sector (WGMI).
+  // kind 'macro' → the "מדדים ושונות" row under the 11 GICS sectors · 'sub' → an extra sub-sector (WGMI).
   function _singlesOf(kind) { return (LIVE && LIVE.singles) ? LIVE.singles.filter(s => s.kind === kind) : []; }
   // FTFC direction of a single ETF over the given timeframes (all up / all down / else null)
   function _singleFtfc(s, tfs) {
@@ -1621,7 +1621,7 @@
   // a full-width divider inside a .bcell-list grid, labelling the macro-composites block
   function _bcellDivider(label) { return '<div class="bcell-div"><span>' + label + "</span></div>"; }
   // keep only the 11 real GICS sectors (those with a SPDR sector ETF) — crypto/commodities/אחר are shown
-  // instead as single-ETF composites in the "מכלולים רחבים" row, so they never appear twice.
+  // instead as single-ETF composites in the "מדדים ושונות" row, so they never appear twice.
   function _gicsSecs(arr) { return (arr || []).filter(s => s && s.name !== "אחר" && s.name !== "מדדים" && etfFor(s.name)); }
   // click a broad-market composite → drill into its constituent stocks (from the live scan), sorted by move.
   // ETFs that hold no stocks in our universe (IBIT=bitcoin, COMT=commodity futures) → open the ETF chart.
@@ -1760,7 +1760,7 @@
     const macroCards = _singlesOf("macro").slice().sort((a, c) => ((c.chg == null ? -99 : c.chg)) - ((a.chg == null ? -99 : a.chg))).map(_brdSingle).join("");
     const sectorsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🗂️ עוצמת סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי אחוז המניות מעל הפתיחה · לחץ שורה לכל המניות</div>' +
-      '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs.filter(s => s.name !== "אחר" && s.name !== "מדדים"), false) + (macroCards ? _bcellDivider("מכלולים רחבים") + macroCards : "") + "</div></div>";
+      '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs.filter(s => s.name !== "אחר" && s.name !== "מדדים"), false) + (macroCards ? _bcellDivider("מדדים ושונות") + macroCards : "") + "</div></div>";
     const subsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
       '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
@@ -6338,9 +6338,9 @@
       // layout (Adi 2026-10-04): ETF ticker in a FIXED dedicated top row, Hebrew sector name BELOW it (full, no
       // truncation), then the two bars; the >50% flag is a corner badge so it never shifts the ticker's position.
       return '<div class="' + cls + '"' + drill + ' data-bckey="' + escAttr(o.rawname) + '" title="🟢 בהמשכיות עולה: ' + fg + ' · 🔴 יורדת: ' + fr + (strong ? " · " + Math.round(domShare * 100) + "% " + (domSide === "green" ? "עולה" : "יורדת") : "") + (o.strongSub ? " · ⚡ תת-סקטור חזק: " + o.strongSub.name + " " + Math.round(o.strongSub.share * 100) + "%" : "") + '">' +
-        flag +
         '<div class="bcc-top">' + chip + "</div>" +
         '<div class="bcc-name">' + escHtml(_cleanNm(o.name)) + "</div>" +
+        '<div class="ftt-flag">' + flag + "</div>" +                                   /* self >50% flag — centered UNDER the name (Adi) */
         '<div class="ftt-bars">' + bar(gW, "green") + bar(rW, "red") + "</div>" + subHint + "</div>";
     };
     // ladder = one grid; sort by NET continuity ratio (green-heavy first → red-heavy last)
@@ -6427,7 +6427,7 @@
       '<div class="muted tdf-sub">כל אריח = סקטור · <span class="pos">🟢 פס עליון</span> = מניות בהמשכיות עולה · <span class="neg">🔴 פס תחתון</span> = יורדת (' + TFLBL + ') · <b>לחץ סקטור לתתי-הסקטורים שלו</b></div>' +
       '<div class="bcell-list cont-secgrid" data-ftfcladder="sec">' + _ftfcLadder(secArrG) + "</div></div>";
     const compStrip = macroArr.length
-      ? '<div class="panel td-flow cont-comp"><h3 class="tdf-head"><span>🧩 מכלולים רחבים · המשכיות</span></h3>' +
+      ? '<div class="panel td-flow cont-comp"><h3 class="tdf-head"><span>🧩 מדדים ושונות · המשכיות</span></h3>' +
         '<div class="bcell-list cont-secgrid" data-ftfcladder="macro">' + _ftfcLadder(macroArr) + "</div></div>"
       : "";
     return head + note + '<div class="cont-layout">' +
@@ -6934,7 +6934,7 @@
     let html = flow.length ? flow.map(s => _bcellRowHtml(s, tf, isSub)).join("") : '<div class="muted" style="padding:10px">—</div>';
     if (augment && !isSub) {   // 11 GICS → divider → broad-market composites (MAGS/crypto/commodities/RSP/QQQ/SPY)
       const macro = _bcellSorted(_singlesOf("macro"), tf);
-      if (macro.length) html += _bcellDivider("מכלולים רחבים") + macro.map(s => _bcellRowHtml(s, tf, false)).join("");
+      if (macro.length) html += _bcellDivider("מדדים ושונות") + macro.map(s => _bcellRowHtml(s, tf, false)).join("");
     }
     return html;
   }

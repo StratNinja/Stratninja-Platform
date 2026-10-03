@@ -294,7 +294,7 @@ body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-templa
 body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { flex: 1 1 auto; align-content: space-between; }
 .cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important; }
 /* bigger tiles (Adi 2026-10-04) — thicker bars + larger name; rows spread out to fill the height */
-body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 112px; justify-content: center; gap: 9px; padding: 15px 14px; }
+body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 112px; justify-content: flex-start; gap: 6px; padding: 15px 14px; }
 body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 16px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 10px; margin-top: 12px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 15px; }
@@ -384,8 +384,9 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 11px; height: 11px; }
 /* name: centered, full (up to 2 lines, no "…"); reserve 2 lines so all tiles' bars align */
 .ftfc-tile .bcc-name { font-size: 12.5px; line-height: 1.2; white-space: normal; text-overflow: clip; text-align: center; width: 100%;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.4em; }
-/* >50% flag → corner badge so it never shifts the ticker's fixed position */
-.ftfc-tile .ftt-50 { position: absolute; top: 9px; inset-inline-end: 11px; margin: 0; z-index: 2; }
+/* >50% flag → centered UNDER the sector name (Adi); a fixed-height slot in EVERY tile keeps the bars aligned */
+.ftfc-tile .ftt-flag { min-height: 22px; display: flex; align-items: center; justify-content: center; }
+.ftfc-tile .ftt-50 { position: static; margin: 0; }
 .ftt-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 7px; }
 .ftt-row { display: flex; align-items: center; gap: 6px; }
 .ftt-ic { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
