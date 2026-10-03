@@ -3103,6 +3103,7 @@
     return el;
   }
   // ===== 🖼️ FTFC "המשכיות זמנית" share card — overlays live data on Ftfc_Template.png (Adi's AI design) =====
+  let _ftfcShareInsight = "";   // the FTFC card's Ninja-Insight text, remembered for the share caption
   // Sectors (11 GICS) + sub-sectors (18 SPDR) split into FTFC-GREEN / FTFC-RED columns by NET continuity
   // over the selected TF set; the big number = the asset's daily % move, bar ∝ |daily %|.
   function buildFtfcCardEl() {
@@ -3168,6 +3169,7 @@
     const gSecNames = secP.green.slice(0, 2).map(o => _cardNm(o.he)), rSubNames = subP.red.slice(0, 2).map(o => _cardNm(o.he));
     const insight = (gSecNames.length ? "עוצמה ב" + joinHe(gSecNames) : "המשכיות חיובית מוגבלת")
       + (rSubNames.length ? " · חולשה ב" + joinHe(rSubNames) : "") + ".";
+    _ftfcShareInsight = insight;   // remember it so the share caption copies it too (Adi)
     const now = new Date(), _p2 = x => String(x).padStart(2, "0");
     const dateStr = _p2(now.getHours()) + ":" + _p2(now.getMinutes()) + " | " + now.getDate() + " " + ["ינו'", "פבר'", "מרץ", "אפר'", "מאי", "יוני", "יולי", "אוג'", "ספט'", "אוק'", "נוב'", "דצמ'"][now.getMonth()] + " " + now.getFullYear();
     const el = document.createElement("div");
@@ -4440,7 +4442,7 @@
     } else if (page === "sectors") {
       // match the card: sectors ranked by FTFC net over the SELECTED timeframe set — and name that set in the caption
       const _tfl = _secFtfcLbl();
-      cap = "🗂️ המשכיות זמנית · FTFC " + _tfl + " · StratNinja";
+      cap = "🗂️ המשכיות זמנית · FTFC " + _tfl + " · StratNinja" + (_ftfcShareInsight ? "\n💡 " + _ftfcShareInsight : "");   // copy the Ninja Insight too (Adi)
       const TFS = _secFtfcTfs();
       const bySec = {};
       src.forEach(t => { const s = t.sector; if (!s || s === "אחר" || s === "מדדים") return; const o = bySec[s] = (bySec[s] || { g: 0, r: 0, n: 0 }); o.n++; const d = secFtfcDir(t, TFS); if (d === "up") o.g++; else if (d === "down") o.r++; });
