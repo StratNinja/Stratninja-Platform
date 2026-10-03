@@ -612,6 +612,14 @@
   }
   const _CM_BUCKET_HE = { "3G": "3 ירוק (התרחבות שורית)", "F2D": "היפוך 2D (reclaim)", "2U": "2U (המשך שורי)", "1": "Inside", "2D": "2D (המשך דובי)", "F2U": "היפוך 2U (rejection)", "3R": "3 אדום (התרחבות דובית)" };
   const _CM_TF_HE = { D: "היומי", W: "השבועי", M: "החודשי", Q: "הרבעוני", Y: "השנתי" };
+  // "מבנה דומיננטי" (Adi 2026-10-04) = the single BIGGEST cell (candle type × timeframe), e.g. {b:"1", tf:"Q", n:346}
+  // — not the type summed across all TFs (that old metric wasn't tied to a timeframe and felt unintuitive).
+  function _cmDomCell(counts, cols) {
+    let b = null, tf = null, n = -1;
+    CMAP_ROWS.forEach(([k]) => cols.forEach(t => { const v = (counts[k] && counts[k][t]) || 0; if (v > n) { n = v; b = k; tf = t; } }));
+    return { b: b, tf: tf, n: n };
+  }
+  function _cmDomLabel(d) { return (d && d.b) ? d.b + " · " + (TF_HE[d.tf] || d.tf) + " · " + d.n : "—"; }
   let _cmFacts = [], _cmTimer = null;
   // global universe toggle: "sp500" (default) | "all" (StratNinja world). Controls the Candle Map + market
   // overview everywhere; switchable from the market page AND a persistent sidebar control (under 🚀 שיא 52ש').
@@ -691,8 +699,7 @@
       '<tr><td class="cm-type" title="' + desc + '">' + key + "</td>" +
       cols.map(tf => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + desc + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
     // prominent auto-verdict: dominant candle structure · strongest (most bullish) timeframe · leading sector
-    let domB = null, domN = -1;
-    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    const dom = _cmDomCell(counts, cols);
     let bestTf = null, bestScore = -Infinity;
     cols.forEach(tf => {
       const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0);
@@ -701,7 +708,7 @@
     });
     const cmLead = (mktU().sectorLeaders || [])[0];
     const verdict = '<div class="cm-verdict">' +
-      '<span class="cmv-item"><span class="cmv-k">המבנה הדומיננטי</span><span class="cmv-v">' + (domB || "—") + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">המבנה הדומיננטי</span><span class="cmv-v ' + (_cmBull(dom.b) ? "pos" : _cmBear(dom.b) ? "neg" : "") + '">' + _cmDomLabel(dom) + "</span></span>" +
       '<span class="cmv-item"><span class="cmv-k">הטיימפריים החזק</span><span class="cmv-v">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span>" +
       '<span class="cmv-item"><span class="cmv-k">הסקטור המוביל</span><span class="cmv-v pos">' + (cmLead ? secHe(cmLead.name) : "—") + "</span></span></div>";
     _cmFacts = candleMapFacts();
@@ -724,12 +731,11 @@
     const body = cols.map(tf =>
       '<tr><td class="cm-type">' + tf + "</td>" +
       CMAP_ROWS.map(([key, desc, cls]) => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + escAttr(desc) + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
-    let domB = null, domN = -1;
-    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    const dom = _cmDomCell(counts, cols);
     let bestTf = null, bestScore = -Infinity;
     cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; } });
     const verdict = '<div class="cm-verdict cmw-verdict">' +
-      '<span class="cmv-item"><span class="cmv-k">מבנה דומיננטי</span><span class="cmv-v">' + (domB || "—") + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">מבנה דומיננטי</span><span class="cmv-v ' + (_cmBull(dom.b) ? "pos" : _cmBear(dom.b) ? "neg" : "") + '">' + _cmDomLabel(dom) + "</span></span>" +
       '<span class="cmv-item"><span class="cmv-k">טיימפריים חזק</span><span class="cmv-v">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span></div>";
     return '<div class="panel cmap-wide"><h3 class="cmap-head"><span>🗺️ Candle Map · התפלגות נרות <span class="muted" style="font-size:12px">' + cmRows.length + ' מניות · לחץ על מספר לרשימת המניות</span></span></h3>' +
       '<div class="tablewrap"><table class="cmap-table cmap-table-wide">' + head + body + "</table></div>" + verdict + "</div>";
@@ -746,12 +752,12 @@
     const body = cols.map(tf =>
       '<tr><td class="cm-type">' + tf + "</td>" +
       CMAP_ROWS.map(([key, desc, cls]) => '<td><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + escAttr(desc) + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></td>").join("") + "</tr>").join("");
-    let domB = null, domN = -1;
-    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    const dom = _cmDomCell(counts, cols);   // the single biggest cell (type × TF)
     let bestTf = null, bestScore = -Infinity;
     cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; } });
+    const domCls = _cmBull(dom.b) ? "pos" : _cmBear(dom.b) ? "neg" : "";
     const verdict = '<div class="cm-verdict cmw-verdict cms-verdict">' +
-      '<span class="cmv-item"><span class="cmv-k">מבנה דומיננטי</span><span class="cmv-v">' + (domB || "—") + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">מבנה דומיננטי</span><span class="cmv-v ' + domCls + '">' + _cmDomLabel(dom) + "</span></span>" +
       '<span class="cmv-item"><span class="cmv-k">TF חזק</span><span class="cmv-v">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span></div>";
     return '<div class="panel cmap-side"><h3 class="cmap-head"><span>🗺️ Candle Map</span>' + _uniSwitchHtml("cmap-uni") + '</h3>' +
       '<div class="muted cms-note">' + cmRows.length + ' מניות · לחץ מספר לרשימה</div>' +
@@ -2677,12 +2683,11 @@
     if (!rows.length) return { headline: "🗺️ Candle Map · " + uniLbl, cls: "zero", bodyHtml: '<div class="sc-strip"><span class="sc-idx muted">טוען נתוני סורק…</span></div>' };
     const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
     rows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
-    let domB = null, domN = -1;
-    CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    const dom = _cmDomCell(counts, cols);
     let bestTf = null, bestScore = -Infinity;
     cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; } });
     const lead = (mktU().sectorLeaders || [])[0];
-    const verdict = _shIdx("מבנה דומיננטי", domB || "—", _cmBull(domB) ? "pos" : _cmBear(domB) ? "neg" : "") +
+    const verdict = _shIdx("מבנה דומיננטי", _cmDomLabel(dom), _cmBull(dom.b) ? "pos" : _cmBear(dom.b) ? "neg" : "") +
       _shIdx("טיימפריים חזק", bestTf ? (TF_HE[bestTf] || bestTf) : "—", "") +
       (lead ? _shIdx("סקטור מוביל", secHe(lead.name), "pos") : "");
     const perTf = cols.map(tf => {
@@ -3909,8 +3914,8 @@
     const total = rows.length;
     const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
     rows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
-    // overall dominant structure (summed across timeframes)
-    let domB = null, domN = -1; CMAP_ROWS.forEach(([k]) => { const n = cols.reduce((s, tf) => s + (counts[k][tf] || 0), 0); if (n > domN) { domN = n; domB = k; } });
+    // dominant structure = the single biggest cell (type × timeframe), per Adi
+    const dom = _cmDomCell(counts, cols); const domB = dom.b;
     // strongest timeframe (max bull-bear) + how many timeframes lean bullish
     let bestTf = null, bestScore = -Infinity, tfBull = 0;
     cols.forEach(tf => {
@@ -3949,7 +3954,7 @@
           '<h1 class="' + domCls + '">' + l1 + '</h1><div class="cm2-sub">' + sub + "</div></div>" +
           '<div class="cm2-big"><div class="cm2-kpi">' + tfBull + '<span>/5</span></div><div class="cm2-kpct">' + pct + '%</div><div class="cm2-cap">טווחי זמן חיוביים</div></div></div>' +
         '<div class="cm2-pills">' +
-          '<div class="cm2-pill cm2-pteal"><span class="cm2-pl"><span class="cm2-ico">🕯️</span> מבנה דומיננטי</span><span class="cm2-pv cm2-teal">' + (domB || "—") + ' · ' + domLbl + '</span></div>' +
+          '<div class="cm2-pill cm2-pteal"><span class="cm2-pl"><span class="cm2-ico">🕯️</span> מבנה דומיננטי</span><span class="cm2-pv cm2-teal">' + (domB || "—") + ' · ' + (TF_HE[dom.tf] || dom.tf) + ' · ' + dom.n + '</span></div>' +
           '<div class="cm2-pill cm2-pgold"><span class="cm2-pl"><span class="cm2-ico">⏳</span> טווח הזמן החזק</span><span class="cm2-pv cm2-gold">' + (bestTf ? (TF_HE[bestTf] || bestTf) : "—") + '</span></div>' +
           '<div class="cm2-pill cm2-pgreen"><span class="cm2-pl"><span class="cm2-ico">🏆</span> סקטור מוביל</span><span class="cm2-pv cm2-pos">' + escHtml(secHeLead) + '</span></div>' +
         "</div>" +
