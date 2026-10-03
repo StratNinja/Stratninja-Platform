@@ -802,9 +802,12 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hmsh-box.weak .hmsh-bx-ch { color: #ff5a6a; }
 .hmsh-box.sub .hmsh-bx-ch { color: #8fe3ff; }
 /* heat-map timeframe bar */
-.hm-tfbar { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+.hm-tfbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 8px; }
 .hm-tf { font-size: 12px; font-weight: 700; }
 .hm-tf-soon { opacity: .38; cursor: not-allowed; }
+/* divider before the fixed calendar-range TFs (date filter) */
+.hm-tf-sep { display: inline-flex; align-items: center; padding: 0 4px; font-size: 13px; opacity: .7;
+  border-inline-start: 1px solid var(--line); margin-inline-start: 4px; align-self: stretch; }
 .hm-counts .clickable { cursor: pointer; border-radius: 7px; padding: 2px 8px; transition: background .12s; }
 .hm-counts .clickable:hover { background: rgba(255,255,255,.08); }
 /* collapsing the floating dock also hides the 52-week-high celebration badge */

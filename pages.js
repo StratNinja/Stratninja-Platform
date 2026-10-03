@@ -1387,9 +1387,20 @@
     if (cv == null) return false;
     return (hasUp && cv >= up) || (hasDn && cv <= -Math.abs(dn));   // gainers ≥ up%  OR  losers ≥ down%
   }
-  const HM_TFS = ["1d", "1w", "WTD", "1m", "MTD", "1Q", "QTD", "1Y", "YTD"], HM_TFS_SOON = [];
-  const HM_TFL = { "1d": "1D", "1w": "1W", "WTD": "WTD", "1m": "1M", "MTD": "MTD", "1Q": "1Q", "QTD": "QTD", "1Y": "1Y", "YTD": "YTD" };
-  const HM_TF_KEY = { "1w": "c5", "WTD": "cwtd", "1m": "c20", "MTD": "cmtd", "1Q": "c63", "QTD": "cqtd", "1Y": "c252", "YTD": "cytd" };   // scanner tech field per TF
+  // standard rolling / to-date TFs + FIXED calendar ranges (date filter): current-year quarters + last full year
+  const _hmCYr = new Date().getFullYear(), _hmYY = "'" + String(_hmCYr).slice(-2);
+  const HM_TFS_STD = ["1d", "1w", "WTD", "1m", "MTD", "1Q", "QTD", "1Y", "YTD"];
+  const HM_TFS_CAL = ["cq1", "cq2", "cq3", "cq4", "ply"];   // Q1–Q4 of the current year + the previous full year
+  const HM_TFS = HM_TFS_STD.concat(HM_TFS_CAL), HM_TFS_SOON = [];
+  const HM_TFL = { "1d": "1D", "1w": "1W", "WTD": "WTD", "1m": "1M", "MTD": "MTD", "1Q": "1Q", "QTD": "QTD", "1Y": "1Y", "YTD": "YTD",
+    "cq1": "Q1 " + _hmYY, "cq2": "Q2 " + _hmYY, "cq3": "Q3 " + _hmYY, "cq4": "Q4 " + _hmYY, "ply": String(_hmCYr - 1) };
+  const HM_TF_KEY = { "1w": "c5", "WTD": "cwtd", "1m": "c20", "MTD": "cmtd", "1Q": "c63", "QTD": "cqtd", "1Y": "c252", "YTD": "cytd",
+    "cq1": "cq1", "cq2": "cq2", "cq3": "cq3", "cq4": "cq4", "ply": "ply" };   // scanner tech field per TF
+  // shared TF-bar builder (S&P heat + risk map) — standard TFs, then a 📅 divider, then the fixed calendar ranges
+  function _hmTfButtons(active, attr) {
+    const btn = k => '<button class="flow-tf-btn hm-tf' + (k === active ? " on" : "") + '" ' + attr + '="' + k + '">' + HM_TFL[k] + "</button>";
+    return HM_TFS_STD.map(btn).join("") + '<span class="hm-tf-sep" title="טווחי תאריך קבועים — ביצועים לפי תקופה">📅</span>' + HM_TFS_CAL.map(btn).join("");
+  }
   if (HM_TFS.indexOf(spHeatTf) < 0) spHeatTf = "1d";
   // per-stock change over the selected TF. Everything except 1D is joined from the scanner rows (tech.*) by symbol.
   let _hmScanMap = null, _hmScanKey = null;
@@ -1655,8 +1666,7 @@
           : '<span class="muted">נתוני שיא/שפל נטענים…</span>') +
         '<span class="hm-legend"><span class="hml neg"></span> ירידה<span class="hml zero"></span> ללא שינוי<span class="hml pos"></span> עלייה · הצבע = התנועה ב' + HM_TFL[spHeatTf] + '</span></div>';
       const avgBtn = '<button class="uni-btn hm-avg-toggle' + (spHeatAvg ? " on" : "") + '" id="hmAvgToggle" title="צבע אחד לכל סקטור לפי תנועת תעודת-הסל (XLK/XLF… · משוקלל כמו TradingView) — לראות מיד לאן הכסף נכנס">🌡️ תנועת סקטור</button>';
-      const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
-        '<button class="flow-tf-btn hm-tf' + (k === spHeatTf ? " on" : "") + '" data-hmtf="' + k + '">' + HM_TFL[k] + "</button>").join("") +
+      const tfBtns = '<div class="hm-tfbar">' + _hmTfButtons(spHeatTf, "data-hmtf") +
         HM_TFS_SOON.map(k => '<button class="flow-tf-btn hm-tf hm-tf-soon" disabled title="בקרוב — דורש עדכון שרת">' + k + "</button>").join("") + "</div>";
       // move filter: show only gainers ≥ (מעל)% and/or losers ≥ (מתחת)% — the rest dim out
       const mfOn = spHeatUp !== "" || spHeatDown !== "";
@@ -1691,8 +1701,7 @@
       // verdict sits on the SAME line as the RISK ON/OFF title (Adi) — compact chip
       const verdictInline = '<span class="risk-verdict-chip ' + vcls + '"><span class="risk-v-val">' + verdict + "</span>" +
         '<span class="risk-v-sub"><span class="pos">🟢 ' + up + "</span> · <span class=\"neg\">🔴 " + dn + "</span> · " + tot + " תנודתיות · " + upPct.toFixed(0) + "% ירוקות · " + tfl + "</span></span>";
-      const tfBtns = '<div class="hm-tfbar">' + HM_TFS.map(k =>
-        '<button class="flow-tf-btn hm-tf' + (k === riskTf ? " on" : "") + '" data-risktf="' + k + '">' + HM_TFL[k] + "</button>").join("") + "</div>";
+      const tfBtns = '<div class="hm-tfbar">' + _hmTfButtons(riskTf, "data-risktf") + "</div>";
       // move% filter — show only gainers ≥ (מעל)% and/or losers ≥ (מתחת)% over the selected TF; the rest are removed
       const rMfOn = riskUp !== "" || riskDown !== "";
       const riskMoveFilter = '<div class="hm-movefilter' + (rMfOn ? " on" : "") + '" title="הצג רק מניות שעלו/ירדו מעל האחוז שתמלא — השאר מוסרות מהמפה">' +
