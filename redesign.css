@@ -289,8 +289,9 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* sectors panel GROWS to fill the empty space; composites strip keeps its natural height at the bottom */
 body[data-page="sectors"] .cont-right > .td-flow { flex: 0 0 auto; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child { flex: 1 1 auto; display: flex; flex-direction: column; }
-/* auto-fit → tiles STRETCH to fill the whole row (no empty space on the left), per Adi */
-body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+/* auto-fit → tiles STRETCH to fill the whole row (no empty space on the left), per Adi.
+   !important: the generic `.td-flow .bcell-list` rule (auto-fill 150px, same specificity, later in file) was winning. */
+body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important; gap: 12px; }
 body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { flex: 1 1 auto; align-content: space-between; }
 .cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important; }
 /* bigger tiles (Adi 2026-10-04) — thicker bars + larger name; rows spread out to fill the height */
@@ -410,10 +411,10 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 11px; height: 11px; }
 .ftt-50-green { color: #22e39b; background: rgba(34,227,155,.16); }
 .ftt-50-red   { color: #ff6b7a; background: rgba(255,107,122,.16); }
 /* EXTERNAL hint on a sector tile that one of its SUB-sectors is >50% one-direction (drill in to find it) */
-.ftt-substrong { margin-top: 8px; font-family: 'Rubik', sans-serif; font-size: 11.5px; font-weight: 800;
-  padding: 3px 8px; border-radius: 8px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; }
-.ftt-substrong-green { color: #8ff3c8; background: rgba(34,227,155,.12); border: 1px solid rgba(34,227,155,.38); }
-.ftt-substrong-red   { color: #ffb3bb; background: rgba(255,107,122,.12); border: 1px solid rgba(255,107,122,.34); }
+.ftt-substrong { margin-top: 10px; font-family: 'Rubik', sans-serif; font-size: 13.5px; font-weight: 800;
+  padding: 6px 10px; border-radius: 9px; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; }
+.ftt-substrong-green { color: #a8f7d6; background: rgba(34,227,155,.17); border: 1px solid rgba(34,227,155,.5); box-shadow: 0 0 10px rgba(34,227,155,.18) inset; }
+.ftt-substrong-red   { color: #ffc2c9; background: rgba(255,107,122,.17); border: 1px solid rgba(255,107,122,.46); box-shadow: 0 0 10px rgba(255,107,122,.16) inset; }
 
 /* option current-price source tag (auto CBOE vs manually typed) */
 .opt-src { display: inline-block; font-size: 9.5px; font-weight: 800; padding: 1px 5px; border-radius: 5px; white-space: nowrap; vertical-align: middle; letter-spacing: .2px; }
