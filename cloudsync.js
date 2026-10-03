@@ -88,23 +88,18 @@
       const { data, error } = await client.from(s.table).select("data").eq("user_id", userId).maybeSingle();
       if (error) { console.error("[cloudsync] pull " + s.table + ":", error.message); return; }
       const cloud = data ? data.data : null;
-      // DIRTY GUARD: if this device has LOCAL edits that were never pushed (edit-stamp newer than our last
-      // successful push), a refresh must NOT let the stale cloud overwrite them. Keep the local copy (from the
-      // pre-clear snapshot) and push it UP instead. Purely client-clock based → no server clock-skew issues.
-      const mtime = +(localStorage.getItem(s.key + "__mtime") || 0);
-      const ptime = +(localStorage.getItem(s.key + "__ptime") || 0);
-      // restore the EXACT pre-clear local (reflects DELETIONS) — never the "richest" autobak, which would
-      // resurrect presets the user just deleted and then push them back to the cloud.
-      const pre = safeParse(localStorage.getItem(s.key + "__preclear"));
-      if (mtime > ptime && pre && pre.data) {
-        origSet(s.key, JSON.stringify(pre.data));   // honor the user's latest local state (incl. deletions)
-        s._pulled = true; s.rerender();
-        pushOne(s);                                 // push it up so the cloud matches
-        return;
-      }
-      // cloud is authoritative — set local to cloud (or empty). NO local→cloud migration.
-      snapshot(s);   // keep a recoverable copy of whatever local held before the cloud replaces it
+      // THE CLOUD IS THE SINGLE SOURCE OF TRUTH. A pull only ever runs at boot / auth-change — never mid-edit —
+      // so there is no legitimate "unpushed local edit" to protect here: the keepalive flush (optimistic ptime)
+      // already pushes every edit UP before the page unloads. The old per-device dirty-guard (mtime>ptime →
+      // restore local + push up) could not tell "my own unpushed edit" from "the OTHER device's newer change",
+      // so a device stuck with mtime>ptime re-pushed its stale local on EVERY load and clobbered the other
+      // device → that was the real cause of phone≠computer preset divergence. So: ALWAYS adopt the cloud here
+      // (a snapshot is kept for manual recovery). Only an in-session USER edit changes the cloud afterwards.
+      snapshot(s);   // keep a recoverable copy of whatever local held before the cloud replaces it (📂 autobak)
       origSet(s.key, JSON.stringify(s.hasData(cloud) ? cloud : s.empty));
+      // this device is now in sync with the cloud → clear the dirty stamps so nothing re-pushes stale local
+      origSet(s.key + "__mtime", "0"); origSet(s.key + "__ptime", "0");
+      origSet(s.key + "__preclear", JSON.stringify({ ts: Date.now(), data: (s.hasData(cloud) ? cloud : s.empty) }));
       s._pulled = true;                 // pull confirmed → writes may now sync up safely
       s.rerender();
     } catch (e) { console.error("[cloudsync] pull exception " + s.table + ":", e); }
