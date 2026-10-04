@@ -4724,7 +4724,7 @@
       '<div class="alc-sector">' + (secLine || "—") + "</div>" +
       presetBoxes + dots + tfVals +
       '<div class="alc-time">' + dm + " • " + tm + "</div>" +
-      '<div class="alc-cta">לעוד הזדמנויות הצטרפו אלינו לקהילה</div>';
+      '<div class="alc-cta">לעוד הזדמנויות<br>הצטרפו אלינו לקהילה</div>';
     document.body.appendChild(el);
     return el;
   }
