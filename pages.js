@@ -4750,8 +4750,10 @@
     snToast("מכין כרטיס…");
     _prepHeroSquare(() => {
       const el = buildAlertCardEl(_alertRowFor(sym), names);
-      // caption for an alert share = ONLY the alerted ticker (not the whole watchlist)
-      const acCap = "🔔 התראה: $" + sym + " · StratNinja\n\n$" + sym + "\n\nstratninja.win";
+      // caption for an alert share = the alerted ticker + which scans flagged it (the "why")
+      const _acNames = (Array.isArray(names) ? names : [names]).map(_acStrip).filter(Boolean).slice(0, 3);
+      const _acScans = _acNames.length ? "\n\n📍 נמצא בסריקות:\n" + _acNames.map(n => "• " + n).join("\n") : "";
+      const acCap = "🔔 התראה: $" + sym + " · StratNinja" + _acScans + "\n\n$" + sym + "\n\nstratninja.win";
       const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv, acCap); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
