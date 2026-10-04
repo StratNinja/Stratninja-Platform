@@ -3741,7 +3741,8 @@
     { // ===== premium Trade-Share card overlaid on Tradeshare_Template.png (1254² baked frame) — returns early; old jrn2 render below is retained as a fallback but unreached =====
       const _updT = _mfIlTime();
       const _sign = v => v > 0 ? "tsc-pos" : v < 0 ? "tsc-neg" : "tsc-z";
-      const subLine = n ? (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + fmt(avgPer) + " לעסקה") : "אין עסקאות סגורות בטווח שנבחר";
+      const subA = n ? (n + " עסקאות · " + st.winRate + "% הצלחה") : "אין עסקאות סגורות בטווח שנבחר";
+      const subB = n ? ("ממוצע " + fmt(avgPer) + " לעסקה") : "";
       // left panel (מאפייני ביצוע) — 5 values matching the baked labels
       const charVals = [
         { v: wins ? iso(fmt(D.avgWin)) : "—", c: wins ? "tsc-pos" : "" },
@@ -3775,10 +3776,11 @@
         (_updT ? '<div class="tsc-upd">עודכן ' + _updT + "</div>" : "") +
         '<div class="tsc-pertag">תקופה נוכחית</div>' +
         '<div class="tsc-date">' + dayHe + "</div>" +
-        '<div class="tsc-subline">' + subLine + "</div>" +
+        '<div class="tsc-sub-a">' + subA + "</div>" + (subB ? '<div class="tsc-sub-b">' + subB + "</div>" : "") +
         '<div class="tsc-hero ' + _sign(net) + '">' + (n ? iso(fmt(net)) : "—") + "</div>" +
         '<div class="tsc-herolbl">' + (pctMode ? "תשואה כוללת בתקופה" : "רווח/הפסד כולל בתקופה") + "</div>" +
         charHtml + tradeHtml + distHtml + tilesHtml +
+        '<div class="tsc-cta">הצטרפו אלינו לקהילה עכשיו !</div>' +
         '<div class="tsc-insight">' + insTxt + "</div>";
       document.body.appendChild(el);
       return el;
