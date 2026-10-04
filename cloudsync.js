@@ -193,21 +193,42 @@
   // ---- MANUAL sync API (deterministic "sweeping" control for the UI buttons, bypasses the auto-logic) ----
   // PUSH = force THIS device's local → the cloud (make the cloud match me). PULL = force the cloud → local
   // (make me match the cloud). Lets the user fix a divergence by hand: push from the correct device, pull on the other.
+  // acquire client/userId straight from SNAuth if cloudsync's onUser callback was missed (timing race on load) —
+  // this was the real bug behind "presets don't sync": client/userId stayed null, so nothing ever pushed/pulled.
+  function _acquire() {
+    if (client && userId) return true;
+    try {
+      const u = window.SNAuth && window.SNAuth.user && window.SNAuth.user();
+      const c = window.SNAuth && window.SNAuth.getClient && window.SNAuth.getClient();
+      if (u && c) { client = c; userId = u.id; currentUserId = u.id; SYNCS.forEach(s => { s._pulled = true; }); return true; }
+    } catch (e) {}
+    return false;
+  }
   async function pushAllNow() {
-    if (!client || !userId) return { ok: false, msg: "צריך להתחבר כדי לסנכרן" };
+    if (!_acquire()) return { ok: false, msg: "צריך להתחבר כדי לסנכרן" };
     try { for (const s of SYNCS) { await pushOne(s); origSet(s.key + "__mtime", "0"); origSet(s.key + "__ptime", "0"); } return { ok: true }; }
     catch (e) { return { ok: false, msg: "שגיאה בדחיפה לענן" }; }
   }
   async function pullAllNow() {
-    if (!client || !userId) return { ok: false, msg: "צריך להתחבר כדי לסנכרן" };
+    if (!_acquire()) return { ok: false, msg: "צריך להתחבר כדי לסנכרן" };
     try { await pullAll(); rerenderAll(); return { ok: true }; }
     catch (e) { return { ok: false, msg: "שגיאה במשיכה מהענן" }; }
   }
-  window.SNCloud = { push: pushAllNow, pull: pullAllNow, ready: function () { return !!(client && userId); } };
+  window.SNCloud = { push: pushAllNow, pull: pullAllNow,
+    ready: function () { return !!((client && userId) || (window.SNAuth && window.SNAuth.user && window.SNAuth.user() && window.SNAuth.getClient && window.SNAuth.getClient())); } };
 
   function boot() {
     if (!window.SN_CLOUD || !window.SNAuth) return;
     window.SNAuth.onChange(onUser);
+    // safety net: if the onChange/auth-state callback was missed on load (race), ACQUIRE the user so the manual
+    // sync + auto-push work — WITHOUT auto-pulling (that could wipe local-only presets with an empty/stale cloud).
+    // The user adopts the cloud deliberately via the ⬇️ "משוך מהענן" button. Retry a few times while auth resolves.
+    let _tries = 0;
+    const _iv = setInterval(() => {
+      _tries++;
+      try { _acquire(); } catch (e) {}
+      if ((client && userId) || _tries >= 12) clearInterval(_iv);
+    }, 1000);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
