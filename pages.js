@@ -4717,6 +4717,7 @@
     // template bakes everything (header / labels / icons / community CTA / footer) — overlay DATA only
     const el = document.createElement("div"); el.className = "alert-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
+      '<div class="alc-title"><span class="alc-title-pill">התראה חדשה</span></div>' +
       '<div class="alc-ticker" style="font-size:' + tsz + 'px">' + escHtml(sym) + "</div>" +
       '<div class="alc-price">' + money(t.price) + "</div>" +
       '<div class="alc-chg ' + (chg >= 0 ? "pos" : "neg") + '">' + chgTxt + " " + chgArrow + "</div>" +
