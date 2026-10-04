@@ -2130,6 +2130,33 @@
     r.readAsText(file);
   }
   function openPresetManager() { modal("↕️ נהל וסדר סריקות", '<div id="pmBody">' + pmBodyHtml() + "</div>"); pmWire(); }
+  // ☁️ manual device sync — deterministic push/pull, accessible straight from the sidebar
+  function openCloudSync() {
+    const on = !!(window.SNCloud && window.SNCloud.ready && window.SNCloud.ready());
+    const body = on
+      ? '<div class="cloudsync-modal">' +
+          '<p class="cs-intro">הפריסטים, המועדפים וההתראות מסונכרנים אוטומטית בין המכשירים. אם משהו לא תואם בין הטלפון למחשב — סנכרן ידנית:</p>' +
+          '<div class="cs-btns">' +
+            '<button class="btn primary cs-push" id="csPush">⬆️ דחוף לענן<small>המכשיר הזה ← הענן · עשה זאת במכשיר עם המצב הנכון</small></button>' +
+            '<button class="btn cs-pull" id="csPull">⬇️ משוך מהענן<small>הענן ← המכשיר הזה · דורס את המקומי</small></button>' +
+          '</div>' +
+          '<p class="cs-tip">💡 לתיקון אי-התאמה: לחץ <b>"דחוף לענן"</b> במכשיר הנכון, ואז <b>"משוך מהענן"</b> בשני.</p></div>'
+      : '<div class="cloudsync-modal"><p class="cs-intro">כדי לסנכרן בין מכשירים צריך להתחבר לחשבון. התחבר (כפתור ההתחברות למעלה) ונסה שוב.</p></div>';
+    modal("☁️ סנכרון בין מכשירים", body);
+    if (!on) return;
+    { const pb = document.getElementById("csPush"); if (pb) pb.onclick = async () => {
+        if (!confirm("לדחוף את המצב של המכשיר הזה לענן?\nהמכשירים האחרים יתעדכנו כשתמשוך בהם.")) return;
+        pb.disabled = true; const _t = pb.innerHTML; pb.innerHTML = "⏳ דוחף…";
+        let r = {}; try { r = await window.SNCloud.push(); } catch (e) {}
+        snToast(r && r.ok ? "✅ נדחף לענן — עכשיו \"⬇️ משוך מהענן\" במכשיר השני" : "❌ " + ((r && r.msg) || "שגיאה"));
+        pb.disabled = false; pb.innerHTML = _t; }; }
+    { const pl = document.getElementById("csPull"); if (pl) pl.onclick = async () => {
+        if (!confirm("למשוך מהענן?\nהמצב במכשיר הזה יוחלף במה שנמצא בענן.")) return;
+        pl.disabled = true; const _t = pl.innerHTML; pl.innerHTML = "⏳ מושך…";
+        let r = {}; try { r = await window.SNCloud.pull(); } catch (e) {}
+        snToast(r && r.ok ? "✅ נמשך מהענן בהצלחה" : "❌ " + ((r && r.msg) || "שגיאה"));
+        pl.disabled = false; pl.innerHTML = _t; closeModal(); reRender(); }; }
+  }
   function panelVis() {
     // All four filter panels are ALWAYS visible now — the compact filter-bar makes them cheap,
     // so the show/hide toggles were removed (Adi 2026-09-29). (Ignores any legacy saved scanPanels.)
@@ -8654,6 +8681,7 @@
     { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed(); }
     // merged "בקשות והצעות" — one entry that offers both the feature-request form and the suggest-ticker flow
     { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestChooser(); }
+    { const sy = document.getElementById("sideSync"); if (sy) sy.onclick = () => openCloudSync(); }
     { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
     { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
     // universe toggle (rendered on the market overview + continuity Candle Map) → delegated so any instance works

@@ -253,6 +253,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .pm-btn { font-size:12px; padding:4px 9px; }
 .pm-btn:disabled { opacity:.35; cursor:default; }
 .pm-io { display:flex; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); flex-wrap:wrap; align-items:center; }
+/* ☁️ device-sync modal (opened from the sidebar) */
+.cloudsync-modal { max-width: 440px; }
+.cloudsync-modal .cs-intro { margin: 0 0 14px; line-height: 1.55; color: var(--ink); }
+.cloudsync-modal .cs-btns { display: flex; flex-direction: column; gap: 10px; }
+.cloudsync-modal .cs-btns .btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 12px 16px; font-size: 16px; font-weight: 800; text-align: start; width: 100%; }
+.cloudsync-modal .cs-btns .btn small { font-size: 12px; font-weight: 500; opacity: .85; }
+.cloudsync-modal .cs-pull { background: rgba(34,227,155,.14); border: 1px solid rgba(34,227,155,.5); color: #8ff3c8; }
+.cloudsync-modal .cs-tip { margin: 14px 0 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
 /* manual cloud-sync buttons in the preset manager */
 .pm-syncbar { display:inline-flex; align-items:center; gap:6px; margin-inline-start:auto; padding-inline-start:10px; flex-wrap:wrap; }
 .pm-sync-lbl { font-size:12px; color:var(--muted); }
