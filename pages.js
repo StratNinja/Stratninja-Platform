@@ -4688,6 +4688,14 @@
       return e ? { tm: e.tm, px: e.px } : null;
     } catch (e) { return null; }
   }
+  // FTFC state derived from the 5 candle cells SHOWN on the card (D/W/M/Q/Y) so the label is always
+  // consistent with the tiles. "מלא" = all five point the same non-neutral direction; else "חלקי".
+  function _acFtfc(t) {
+    const dirs = ["D", "W", "M", "Q", "Y"].map(k => ((t && t[k]) || {}).c);
+    const allUp = dirs.every(d => d === "up");
+    const allDn = dirs.every(d => d === "down");
+    return { full: allUp || allDn, up: allUp, down: allDn };
+  }
   function buildAlertCardEl(t, names) {
     let rawNames = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3);
     names = rawNames.map(_acStrip).filter(Boolean);
@@ -4702,7 +4710,8 @@
     let secLine = "";
     if (t.sector && t.sector !== "אחר") { const etf = etfFor(t.sector); secLine = escHtml(secHe(t.sector)) + (etf ? ' <span class="alc-etf">' + escHtml(etf) + "</span>" : ""); }
     const meta = _acMeta(sym);
-    const ftfcTxt = t.ftfc ? "🟢 FTFC מלא" : "FTFC חלקי";
+    const _ftfc = _acFtfc(t);
+    const ftfcTxt = _ftfc.full ? ((_ftfc.down ? "🔴" : "🟢") + " FTFC מלא") : "FTFC חלקי";
     // up to 3 preset names in fixed slots + the "max 3" dots
     const P = [names[0] || "", names[1] || "", names[2] || ""];
     // force a long preset name onto 2 lines (font-independent — natural wrapping is unreliable when the baked font is narrow)
@@ -4755,7 +4764,7 @@
       // 🔔 $SYM נכנסה לסריקות StratNinja  / • scan bullets + FTFC  / $SYM | ETF  / hashtags  / site
       const _acNames = (Array.isArray(names) ? names : [names]).map(_acStrip).filter(Boolean).slice(0, 3);
       const _acBul = _acNames.map(n => "• " + n);
-      _acBul.push("• " + (_acRow.ftfc ? "FTFC מלא" : "FTFC חלקי"));
+      _acBul.push("• " + (_acFtfc(_acRow).full ? "FTFC מלא" : "FTFC חלקי"));
       const _acEtf = (_acRow.sector && _acRow.sector !== "אחר") ? etfFor(_acRow.sector) : "";
       const _acSymLine = "$" + sym + (_acEtf ? " | " + _acEtf : "");
       const acCap = "🔔 $" + sym + " נכנסה לסריקות StratNinja\n" + _acBul.join("\n") + "\n" + _acSymLine + "\n#Trading #TheStrat #StratNinja\nstratninja.win";
