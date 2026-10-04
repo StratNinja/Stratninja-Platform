@@ -7230,6 +7230,7 @@
   let favPresetFilter = [];   // active preset NAMES filtering favorites — a stock must match ALL of them (AND); [] = show all
   let favLayout = "cards"; try { const _fl = localStorage.getItem("sn_fav_layout"); if (_fl === "cards" || _fl === "table") favLayout = _fl; } catch (e) {}
   let favPresetDropOpen = false;   // keep the preset multi-select dropdown open across re-renders
+  let _favOutsideBound = false;    // bind the "click-outside closes the dropdown" listener only once
   let favViewOrder = [];      // the favorites rows in their CURRENT displayed order → copy follows the table
   function favSortVal(t, col) {
     if (col === "sym") return t.sym;
@@ -7320,13 +7321,19 @@
   function favPresetDropdown(names) {
     if (!names.length) return "";
     const n = favPresetFilter.length;
-    const sum = n ? ("🔎 מסונן · " + n + " סריקות" + (n > 1 ? " (AND)" : "")) : "🔎 סנן לפי סריקה";
     const items = names.map(nm => { const on = favPresetFilter.indexOf(nm) >= 0;
       return '<label class="fpd-item' + (on ? " on" : "") + '"><input type="checkbox" data-favpreset="' + escAttr(nm) + '"' + (on ? " checked" : "") + "><span>" + escHtml(nm) + "</span></label>"; }).join("");
     return '<details class="fav-pdrop"' + (favPresetDropOpen ? " open" : "") + '>' +
-      '<summary class="fav-pdrop-sum' + (n ? " on" : "") + '">' + sum + ' <span class="fpd-caret">▾</span></summary>' +
+      '<summary class="fav-pdrop-sum' + (n ? " on" : "") + '">🔎 סנן לפי סריקה <span class="fpd-caret">▾</span></summary>' +
       '<div class="fav-pdrop-body"><div class="fpd-list">' + items + "</div>" +
       (n ? '<button class="btn ghost fpd-clear" id="favPresetClear">✕ נקה סינון</button>' : "") + "</div></details>";
+  }
+  // the currently-selected presets as removable chips (shown beside the dropdown so the selection is always visible)
+  function favSelectedChips() {
+    if (!favPresetFilter.length) return "";
+    return '<span class="fav-selchips">' + (favPresetFilter.length > 1 ? '<span class="fav-seland">AND</span>' : "") +
+      favPresetFilter.map(nm => '<span class="fav-selchip" title="' + escAttr(nm) + '">' + escHtml(nm) +
+        '<button class="fav-selx" data-favpreset="' + escAttr(nm) + '" title="הסר סינון">✕</button></span>').join("") + "</span>";
   }
   function favCardHtml(t, pmatch, staleMatch, jsyms) {
     const pm = pmatch[t.sym] || [], stale = staleMatch[t.sym];
@@ -7460,7 +7467,7 @@
       const favLayoutTgl = '<span class="fav-layout-tgl">' +
         '<button class="fav-lt-btn' + (favLayout === "cards" ? " on" : "") + '" data-favlayout="cards" title="תצוגת כרטיסים">🃏 כרטיסים</button>' +
         '<button class="fav-lt-btn' + (favLayout === "table" ? " on" : "") + '" data-favlayout="table" title="תצוגת טבלה">📋 טבלה</button></span>';
-      const favToolbar = '<div class="panel fav-toolbar"><div class="fav-tb-left">' + favPresetDropdown(presetNames) +
+      const favToolbar = '<div class="panel fav-toolbar"><div class="fav-tb-left">' + favPresetDropdown(presetNames) + favSelectedChips() +
         '<span class="fav-count muted">' + favs.length + ' מניות' + (favPresetFilter.length ? ' · ' + viewList.length + ' מסוננות' : "") + '</span></div>' +
         '<div class="fav-tb-right">' + favLayoutTgl + favActions + "</div></div>";
       if (favLayout === "cards") {
@@ -7509,9 +7516,19 @@
       const v = b.dataset.favpreset;
       if (!v) favPresetFilter = [];
       else { const i = favPresetFilter.indexOf(v); if (i >= 0) favPresetFilter.splice(i, 1); else favPresetFilter.push(v); }
-      favPresetDropOpen = true; reRender();
+      favPresetDropOpen = !!(b.closest && b.closest(".fav-pdrop"));   // keep the dropdown open only if toggled from INSIDE it (not the ✕ chip)
+      reRender();
     });
     { const dd = document.querySelector(".fav-pdrop"); if (dd) dd.addEventListener("toggle", () => { favPresetDropOpen = dd.open; }); }
+    // click OUTSIDE the dropdown → close it. Capture phase so e.target is intact BEFORE a checkbox click re-renders.
+    if (!_favOutsideBound) {
+      _favOutsideBound = true;
+      document.addEventListener("click", e => {
+        const open = document.querySelector(".fav-pdrop[open]"); if (!open) return;
+        if (e.target && e.target.closest && e.target.closest(".fav-pdrop") === open) return;   // inside → keep open
+        open.open = false; favPresetDropOpen = false;
+      }, true);
+    }
     { const pc = $("#favPresetClear"); if (pc) pc.onclick = () => { favPresetFilter = []; favPresetDropOpen = true; reRender(); }; }
     document.querySelectorAll("[data-favlayout]").forEach(b => b.onclick = () => { favLayout = b.dataset.favlayout; try { localStorage.setItem("sn_fav_layout", favLayout); } catch (e) {} reRender(); });
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }

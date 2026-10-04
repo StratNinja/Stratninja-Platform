@@ -294,6 +294,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .fpd-item.on { background:rgba(136,120,255,.14); color:#cdc6ff; }
 .fpd-item input { width:16px; height:16px; accent-color:#8878ff; flex:none; }
 .fpd-clear { width:100%; margin-top:6px; font-size:12px; font-weight:700; }
+/* selected-preset chips beside the dropdown */
+.fav-selchips { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.fav-seland { font-size:10px; font-weight:800; color:var(--muted); background:rgba(255,255,255,.06); padding:2px 6px; border-radius:6px; }
+.fav-selchip { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:700; color:#cdc6ff; background:rgba(136,120,255,.16); border:1px solid rgba(136,120,255,.42); padding:3px 4px 3px 9px; border-radius:8px; white-space:nowrap; }
+.fav-selx { cursor:pointer; border:none; background:rgba(255,255,255,.1); color:#cdc6ff; border-radius:5px; font-size:10px; line-height:1; padding:3px 5px; }
+.fav-selx:hover { background:rgba(255,90,106,.32); color:#fff; }
 /* opportunity sections */
 .fav-section { margin-bottom:16px; }
 .fav-sec-hdr { font-size:15px; font-weight:800; margin:0 0 10px; padding-inline-start:10px; border-inline-start:3px solid var(--line); }
