@@ -4695,39 +4695,34 @@
     const primary = names[0], single = names.length === 1;
     const sym = String(t.sym || "");
     // dynamic ticker size — short tickers smaller so they don't feel empty; long ones a touch smaller to fit
-    const tsz = sym.length <= 1 ? 56 : sym.length === 2 ? 66 : sym.length <= 4 ? 78 : sym.length === 5 ? 68 : 58;
+    const tsz = sym.length <= 2 ? 100 : sym.length <= 4 ? 90 : sym.length === 5 ? 76 : 64;   // big ticker for the template slot
     const chg = t.chg == null ? 0 : Number(t.chg);
     const chgTxt = (chg >= 0 ? "+" : "−") + Math.abs(chg).toFixed(2) + "%";
-    const photo = _heroSquare ? '<img class="ac2-photo" src="' + _heroSquare + '">' : '<img class="ac2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
+    const chgArrow = chg >= 0 ? "▲" : "▼";
     let secLine = "";
-    if (t.sector && t.sector !== "אחר") { const etf = etfFor(t.sector); secLine = escHtml(secHe(t.sector)) + (etf ? ' <span class="ac2-etf">' + escHtml(etf) + "</span>" : ""); }
-    const coName = _acCleanName(t.name);
-    const nameLine = coName ? '<div class="ac2-name"><span dir="ltr" style="unicode-bidi:isolate">' + escHtml(coName) + "</span></div>" : "";
+    if (t.sector && t.sector !== "אחר") { const etf = etfFor(t.sector); secLine = escHtml(secHe(t.sector)) + (etf ? ' <span class="alc-etf">' + escHtml(etf) + "</span>" : ""); }
     const meta = _acMeta(sym);
-    const metaLine = meta ? '<div class="ac2-alertmeta">התקבלה התראה ב-<b>' + escHtml(meta.tm || "") + "</b>" + (meta.px != null ? " · במחיר <b>" + money(meta.px) + "</b>" : "") + "</div>" : "";
-    const sigRows = names.map((nm, i) => i === 0
-      ? '<div class="ac2-sig ac2-topsig"><span class="ac2-ic">' + _acIcon(rawNames[i]) + '</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-tbadge">איתות מוביל</span></div>'
-      : '<div class="ac2-sig"><span class="ac2-ic">' + _acIcon(rawNames[i]) + '</span><span class="ac2-nm">' + escHtml(nm) + '</span><span class="ac2-chk">✓ פעיל</span></div>').join("")
-      + (single ? '<div class="ac2-sig ac2-empty"><span class="ac2-nm">אין כרגע איתותים משניים פעילים</span></div>' : "");
-    const map = ["D", "W", "M", "Q", "Y"].map(k => { const c = t[k] || {}, v = c.t || "1"; const cls = c.c === "up" ? "ac2-up" : c.c === "down" ? "ac2-down" : "ac2-n"; return '<div class="ac2-tf"><span class="ac2-k">' + k + '</span><span class="ac2-v ' + cls + '">' + v + "</span></div>"; }).join("");
-    const ftfcBadge = t.ftfc ? '<span class="ac2-ftfcbadge">🟢 FTFC מלא</span>' : '<span class="ac2-ftfcbadge ac2-partial">FTFC חלקי</span>';
-    const ftfcTxt = t.ftfc ? "FTFC מלא" : "FTFC חלקי";
-    const microTxt = single
-      ? "ההתראה מופעלת על בסיס <b>" + escHtml(primary) + "</b>, עם <b>" + ftfcTxt + "</b>."
-      : "ההתראה נתמכת ב-<b>" + names.map(escHtml).join("</b> וב-<b>") + "</b>, עם <b>" + ftfcTxt + "</b>.";
-    const el = document.createElement("div"); el.className = "ac2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    const ftfcTxt = t.ftfc ? "🟢 FTFC מלא" : "FTFC חלקי";
+    // up to 3 preset names in fixed slots + the "max 3" dots
+    const P = [names[0] || "", names[1] || "", names[2] || ""];
+    const presetBoxes = P.map((nm, i) => '<div class="alc-preset alc-p' + (i + 1) + (nm ? "" : " alc-pempty") + '" title="' + escAttr(nm) + '">' + escHtml(nm) + "</div>").join("");
+    const dots = '<div class="alc-dots">' + [0, 1, 2].map(i => '<span class="alc-dot' + (i < names.length ? " on" : "") + '"></span>').join("") + "</div>";
+    // D/W/M/Q/Y candle type per timeframe, coloured by direction
+    const tfVals = ["D", "W", "M", "Q", "Y"].map((k, i) => { const c = t[k] || {}, v = c.t || "1"; const cls = c.c === "up" ? "up" : c.c === "down" ? "down" : "n"; return '<div class="alc-tf alc-tf' + i + " " + cls + '">' + v + "</div>"; }).join("");
+    // alert time DD.MM • HH:MM
+    const _now = new Date(), _p2 = x => String(x).padStart(2, "0");
+    const dm = _p2(_now.getDate()) + "." + _p2(_now.getMonth() + 1);
+    const tm = (meta && meta.tm) ? meta.tm : (_p2(_now.getHours()) + ":" + _p2(_now.getMinutes()));
+    // template bakes everything (header / labels / icons / community CTA / footer) — overlay DATA only
+    const el = document.createElement("div"); el.className = "alert-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
-      '<div class="ac2-hd">' + photo + '<div><div class="ac2-bt">StratNinja <span>Scanner</span></div><div class="ac2-bs">The Strat · התראת סורק</div></div>' +
-        '<div class="ac2-badge"><span class="ac2-d"></span> התראה חדשה</div></div>' +
-      '<div class="ac2-ct">' +
-        '<div class="ac2-top"><div><div class="ac2-sym" style="font-size:' + tsz + 'px">' + escHtml(sym) + "</div>" + nameLine +
-          (secLine ? '<div class="ac2-sec">' + secLine + "</div>" : "") + "</div>" +
-          '<div class="ac2-px"><div class="ac2-price">' + money(t.price) + '</div><div class="ac2-chg ' + (chg >= 0 ? "ac2-pos" : "ac2-neg") + '">' + chgTxt + "</div>" + metaLine + "</div></div>" +
-        '<div class="ac2-block"><div class="ac2-lbl">האיתותים הפעילים</div><div class="ac2-stack">' + sigRows + "</div></div>" +
-        '<div class="ac2-block"><div class="ac2-lblrow"><span class="ac2-lbl">FTFC לפי טווחי זמן</span>' + ftfcBadge + '</div><div class="ac2-map">' + map + "</div></div>" +
-        '<div class="ac2-bottom"><div class="ac2-micro"><span class="ac2-mi">i</span><div>' + microTxt + '</div></div><div class="ac2-cta">לסריקה המלאה →</div></div>' +
-      "</div>" +
-      '<div class="ac2-ft"><span><b>stratninja.win</b> · התראה בזמן אמת</span><span>Adi Koriat · @KoriatTrade</span></div>';
+      '<div class="alc-ticker" style="font-size:' + tsz + 'px">' + escHtml(sym) + "</div>" +
+      '<div class="alc-price">' + money(t.price) + "</div>" +
+      '<div class="alc-chg ' + (chg >= 0 ? "pos" : "neg") + '">' + chgTxt + " " + chgArrow + "</div>" +
+      '<div class="alc-ftfc">' + ftfcTxt + "</div>" +
+      '<div class="alc-sector">' + (secLine || "—") + "</div>" +
+      presetBoxes + dots + tfVals +
+      '<div class="alc-time">' + dm + " • " + tm + "</div>";
     document.body.appendChild(el);
     return el;
   }

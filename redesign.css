@@ -284,6 +284,29 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .ftc-insight { top: 87.5%; left: 6%; width: 86%; height: 6.5%; font-size: 24px; font-weight: 700; color: #eaf2ff;
   line-height: 1.32; text-align: start; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
+/* ===== alert share card — overlay data on ShareAlert_Template.png (1254×1254). Header/labels/icons/footer baked ===== */
+.alert-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden;
+  background: #0B1020 url("ShareAlert_Template.png?v=1") top center / 1254px 1254px no-repeat;
+  font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
+.alert-card > div { position: absolute; }
+.alc-ticker { top: 24.5%; left: 11%; width: 42%; text-align: left; direction: ltr; font-family: 'Rubik',sans-serif; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.5); }
+.alc-price { top: 36.5%; left: 14%; font-size: 48px; font-weight: 900; direction: ltr; color: #fff; }
+.alc-chg { top: 44.5%; left: 14.5%; font-size: 40px; font-weight: 900; direction: ltr; }
+.alc-chg.pos { color: #22e39b; } .alc-chg.neg { color: #ff6b7a; }
+.alc-ftfc { top: 55.8%; left: 13%; width: 33%; text-align: center; font-size: 30px; font-weight: 900; color: #eaf2ff; }
+.alc-sector { top: 55.8%; right: 7%; width: 35%; text-align: center; font-size: 25px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }
+.alc-etf { color: #7fe9ff; margin-inline-start: 6px; }
+/* presets — 3 fixed slots + the max-3 dots */
+.alc-preset { top: 67%; height: 5.2%; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }
+.alc-p1 { right: 11%; width: 25%; } .alc-p2 { right: 38.5%; width: 24%; } .alc-p3 { left: 11%; width: 25%; }
+.alc-pempty { display: none; }
+.alc-dots { display: none; }   /* the empty template has no dots indicator — preset boxes already show the count */
+/* D W M Q Y values */
+.alc-tf { top: 78.2%; width: 15%; text-align: center; font-size: 32px; font-weight: 900; direction: ltr; }
+.alc-tf.up { color: #22e39b; } .alc-tf.down { color: #ff6b7a; } .alc-tf.n { color: #9fb0c8; }
+.alc-tf0 { right: 8%; } .alc-tf1 { right: 26.5%; } .alc-tf2 { right: 45%; } .alc-tf3 { left: 26.5%; } .alc-tf4 { left: 8%; }
+.alc-time { top: 86.5%; left: 10%; width: 32%; text-align: center; font-size: 27px; font-weight: 900; direction: ltr; color: #eaf2ff; }
+
 /* ===== wide/compact Candle Map at the bottom of the continuity tab (transposed: TFs × bucket types) ===== */
 .cmap-wide { margin-top: 16px; }
 .cmap-table-wide { border-spacing: 5px 5px; table-layout: fixed; }
