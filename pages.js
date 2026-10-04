@@ -3762,15 +3762,21 @@
       }
       // dynamic distribution bar + 3 count labels (wins / losses / break-even)
       const distHtml = '<div class="tsc-bar"><span class="tsc-bg" style="width:' + bg + '%"></span><span class="tsc-br" style="width:' + brr + '%"></span><span class="tsc-bn" style="width:' + bn + '%"></span></div>' +
-        '<div class="tsc-dl tsc-dl0"><span class="tsc-dpct tsc-pos">' + bg + '%</span><span class="tsc-dsub">' + wins + " עסקאות מוצלחות</span></div>" +
-        '<div class="tsc-dl tsc-dl1"><span class="tsc-dpct tsc-neg">' + brr + '%</span><span class="tsc-dsub">' + losses + " עסקאות מפסידות</span></div>" +
-        '<div class="tsc-dl tsc-dl2"><span class="tsc-dpct tsc-z">' + bn + '%</span><span class="tsc-dsub">' + be + " עסקאות ללא שינוי</span></div>";
+        '<div class="tsc-dl tsc-dl0"><span class="tsc-dsub">' + wins + ' עסקאות מוצלחות</span><span class="tsc-dpct tsc-pos">' + bg + "%</span></div>" +
+        '<div class="tsc-dl tsc-dl1"><span class="tsc-dsub">' + losses + ' עסקאות מפסידות</span><span class="tsc-dpct tsc-neg">' + brr + "%</span></div>" +
+        '<div class="tsc-dl tsc-dl2"><span class="tsc-dsub">' + be + ' עסקאות ללא שינוי</span><span class="tsc-dpct tsc-z">' + bn + "%</span></div>";
       // 4 bottom tiles (icons baked): best · profit factor · avg/trade · win rate
       const tilesHtml =
         '<div class="tsc-tile tsc-tile0"><span class="tsc-tv tsc-pos">' + bestV + '</span><span class="tsc-tl">העסקה הטובה</span></div>' +
         '<div class="tsc-tile tsc-tile1"><span class="tsc-tv">' + pf + '</span><span class="tsc-tl">Profit Factor</span></div>' +
         '<div class="tsc-tile tsc-tile2"><span class="tsc-tv ' + _sign(avgPer) + '">' + (n ? iso(fmt(avgPer)) : "—") + '</span><span class="tsc-tl">ממוצע לעסקה</span></div>' +
         '<div class="tsc-tile tsc-tile3"><span class="tsc-tv">' + st.winRate + '%</span><span class="tsc-tl">אחוז הצלחה</span></div>';
+      // short single-line Ninja Insight (the long one wrapped badly)
+      const _prefix = isDay ? "יום" : "תקופה";
+      const _tscIns = n === 0 ? "אין עדיין עסקאות סגורות"
+        : net > 0 ? (_prefix + (isDay ? " ירוק" : " ירוקה") + " · " + wins + " מתוך " + n + " ברווח")
+        : net < 0 ? (_prefix + (isDay ? " אדום" : " אדומה") + " · " + losses + " מתוך " + n + " בהפסד")
+        : (_prefix + (isDay ? " מאוזן" : " מאוזנת") + " · רווח והפסד מתקזזים");
       const el = document.createElement("div"); el.className = "trade-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
       el.innerHTML =
         (_updT ? '<div class="tsc-upd">עודכן ' + _updT + "</div>" : "") +
@@ -3781,7 +3787,7 @@
         '<div class="tsc-herolbl">' + (pctMode ? "תשואה כוללת בתקופה" : "רווח/הפסד כולל בתקופה") + "</div>" +
         charHtml + tradeHtml + distHtml + tilesHtml +
         '<div class="tsc-cta">הצטרפו אלינו לקהילה עכשיו !</div>' +
-        '<div class="tsc-insight">' + insTxt + "</div>";
+        '<div class="tsc-insight">' + _tscIns + "</div>";
       document.body.appendChild(el);
       return el;
     }
