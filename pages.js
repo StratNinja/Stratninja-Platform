@@ -4695,7 +4695,7 @@
     const primary = names[0], single = names.length === 1;
     const sym = String(t.sym || "");
     // dynamic ticker size — short tickers smaller so they don't feel empty; long ones a touch smaller to fit
-    const tsz = sym.length <= 2 ? 100 : sym.length <= 4 ? 90 : sym.length === 5 ? 76 : 64;   // big ticker for the template slot
+    const tsz = sym.length <= 2 ? 150 : sym.length <= 4 ? 135 : sym.length === 5 ? 112 : 94;   // big ticker (×1.5 per Adi)
     const chg = t.chg == null ? 0 : Number(t.chg);
     const chgTxt = (chg >= 0 ? "+" : "−") + Math.abs(chg).toFixed(2) + "%";
     const chgArrow = chg >= 0 ? "▲" : "▼";
@@ -4707,8 +4707,9 @@
     const P = [names[0] || "", names[1] || "", names[2] || ""];
     const presetBoxes = P.map((nm, i) => '<div class="alc-preset alc-p' + (i + 1) + (nm ? "" : " alc-pempty") + '" title="' + escAttr(nm) + '">' + escHtml(nm) + "</div>").join("");
     const dots = '<div class="alc-dots">' + [0, 1, 2].map(i => '<span class="alc-dot' + (i < names.length ? " on" : "") + '"></span>').join("") + "</div>";
-    // D/W/M/Q/Y candle type per timeframe, coloured by direction
-    const tfVals = ["D", "W", "M", "Q", "Y"].map((k, i) => { const c = t[k] || {}, v = c.t || "1"; const cls = c.c === "up" ? "up" : c.c === "down" ? "down" : "n"; return '<div class="alc-tf alc-tf' + i + " " + cls + '">' + v + "</div>"; }).join("");
+    // D/W/M/Q/Y per timeframe — Hebrew TF name on top + candle type below (coloured by direction)
+    const _TFHE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+    const tfVals = ["D", "W", "M", "Q", "Y"].map((k, i) => { const c = t[k] || {}, v = c.t || "1"; const cls = c.c === "up" ? "up" : c.c === "down" ? "down" : "n"; return '<div class="alc-tf alc-tf' + i + '"><span class="alc-tfk">' + _TFHE[k] + '</span><span class="alc-tfv ' + cls + '">' + v + "</span></div>"; }).join("");
     // alert time DD.MM • HH:MM
     const _now = new Date(), _p2 = x => String(x).padStart(2, "0");
     const dm = _p2(_now.getDate()) + "." + _p2(_now.getMonth() + 1);
@@ -4722,7 +4723,8 @@
       '<div class="alc-ftfc">' + ftfcTxt + "</div>" +
       '<div class="alc-sector">' + (secLine || "—") + "</div>" +
       presetBoxes + dots + tfVals +
-      '<div class="alc-time">' + dm + " • " + tm + "</div>";
+      '<div class="alc-time">' + dm + " • " + tm + "</div>" +
+      '<div class="alc-cta">לעוד הזדמנויות הצטרפו אלינו לקהילה</div>';
     document.body.appendChild(el);
     return el;
   }
