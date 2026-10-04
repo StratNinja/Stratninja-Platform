@@ -7258,6 +7258,7 @@
   // ---- favorites table sorting (self-contained; null col = default alert-grouped order) ----
   const favSort = { col: null, dir: -1 };
   let favPresetFilter = [];   // active preset NAMES filtering favorites — a stock must match ALL of them (AND); [] = show all
+  let favPosOnly = false; try { favPosOnly = localStorage.getItem("sn_fav_posonly") === "1"; } catch (e) {}   // show ONLY tickers with an open journal position (incl. ones that also have an alert)
   let favLayout = "cards"; try { const _fl = localStorage.getItem("sn_fav_layout"); if (_fl === "cards" || _fl === "table") favLayout = _fl; } catch (e) {}
   let favPresetDropOpen = false;   // keep the preset multi-select dropdown open across re-renders
   let _favOutsideBound = false;    // bind the "click-outside closes the dropdown" listener only once
@@ -7477,7 +7478,9 @@
       // annotate each row for sorting (alert count / names / open-position) + the default grouping
       list.forEach(t => { t._alertNames = pmatch[t.sym] || []; t._alertN = t._alertNames.length; t._hasPos = jsyms.has(String(t.sym).toUpperCase()); const f = _favFireMap[t.sym]; t._alertTs = f ? f.ts : null; t._alertTmStr = f ? f.tm : ""; });
       // when a preset filter is active, show only favorites matching ALL selected presets
-      const viewList = favPresetFilter.length ? list.filter(t => favPresetFilter.every(pn => (pmatch[t.sym] || []).indexOf(pn) >= 0)) : list;
+      let viewList = favPresetFilter.length ? list.filter(t => favPresetFilter.every(pn => (pmatch[t.sym] || []).indexOf(pn) >= 0)) : list;
+      // "בפוזיציה בלבד" — keep only tickers with an open journal position (even if they also have an alert)
+      if (favPosOnly) viewList = viewList.filter(t => t._hasPos);
       // grouped order (🔔 alert → 💼 position → 👀 rest) — used by the cards view + the copy buttons
       const _grp = [[], [], []];
       viewList.forEach(t => _grp[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
@@ -7501,12 +7504,18 @@
       const favLayoutTgl = '<span class="fav-layout-tgl">' +
         '<button class="fav-lt-btn' + (favLayout === "cards" ? " on" : "") + '" data-favlayout="cards" title="תצוגת כרטיסים">🃏 כרטיסים</button>' +
         '<button class="fav-lt-btn' + (favLayout === "table" ? " on" : "") + '" data-favlayout="table" title="תצוגת טבלה">📋 טבלה</button></span>';
-      const favToolbar = '<div class="panel fav-toolbar"><div class="fav-tb-left">' + favPresetDropdown(presetNames) + favSelectedChips() +
-        '<span class="fav-count muted">' + favs.length + ' מניות' + (favPresetFilter.length ? ' · ' + viewList.length + ' מסוננות' : "") + '</span></div>' +
+      const _posN = list.filter(t => t._hasPos).length;   // how many favorites you currently hold
+      const favPosTgl = '<button class="btn ghost fav-posfilter' + (favPosOnly ? " on" : "") + '" id="favPosOnly" title="הצג רק מניות שאתה בפוזיציה עליהן ביומן המסחר — גם אם יש עליהן התראה פעילה">💼 בפוזיציה' + (_posN ? ' <span class="fav-posn">' + _posN + "</span>" : "") + (favPosOnly ? " ✓" : "") + "</button>";
+      const _favFiltered = favPresetFilter.length || favPosOnly;
+      const favToolbar = '<div class="panel fav-toolbar"><div class="fav-tb-left">' + favPresetDropdown(presetNames) + favPosTgl + favSelectedChips() +
+        '<span class="fav-count muted">' + favs.length + ' מניות' + (_favFiltered ? ' · ' + viewList.length + ' מסוננות' : "") + '</span></div>' +
         '<div class="fav-tb-right">' + favLayoutTgl + favActions + "</div></div>";
+      const favEmptyNote = (favPosOnly && !viewList.length)
+        ? '<div class="panel" style="text-align:center;padding:26px;color:var(--muted)">💼 אין כרגע מניות מהמועדפים שאתה בפוזיציה עליהן.<br><span style="font-size:12px">הפוזיציות נקבעות לפי עסקאות פתוחות ביומן המסחר.</span></div>'
+        : "";
       if (favLayout === "cards") {
         favViewOrder = groupedOrder;   // copy buttons follow the displayed (grouped) order
-        body = favToolbar + favCardsBody(viewList, pmatch, staleMatch, jsyms) + otherPanel;
+        body = favToolbar + (favEmptyNote || favCardsBody(viewList, pmatch, staleMatch, jsyms)) + otherPanel;
       } else {
         // classic dense table (kept for sorting / full data)
         let rows = "", ordered;
@@ -7518,7 +7527,7 @@
           _grp.forEach((g, i) => { if (!g.length) return; if (nonEmpty > 1) rows += '<tr class="fav-grouphdr"><td colspan="20">' + GHDR[i] + ' <span class="muted">(' + g.length + ")</span></td></tr>"; rows += g.map(rowHtml).join(""); });
         }
         favViewOrder = ordered;
-        body = favToolbar + '<div class="panel"><h3><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + " מניות</span></span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th>" + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("💼 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
+        body = favToolbar + favEmptyNote + '<div class="panel"' + (favEmptyNote ? ' style="display:none"' : "") + '><h3><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + " מניות</span></span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th>" + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("💼 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
       }
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
@@ -7565,6 +7574,7 @@
     }
     { const pc = $("#favPresetClear"); if (pc) pc.onclick = () => { favPresetFilter = []; favPresetDropOpen = true; reRender(); }; }
     document.querySelectorAll("[data-favlayout]").forEach(b => b.onclick = () => { favLayout = b.dataset.favlayout; try { localStorage.setItem("sn_fav_layout", favLayout); } catch (e) {} reRender(); });
+    { const po = $("#favPosOnly"); if (po) po.onclick = () => { favPosOnly = !favPosOnly; try { localStorage.setItem("sn_fav_posonly", favPosOnly ? "1" : "0"); } catch (e) {} reRender(); }; }
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
     { const rn = $("#pushRenew"); if (rn) rn.onclick = async () => { rn.disabled = true; rn.textContent = "🔄 מחדש…"; await renewPush(); }; }
     { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
