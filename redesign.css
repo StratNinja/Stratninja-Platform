@@ -291,10 +291,10 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .alert-card > div { position: absolute; }
 .alc-ticker { top: 24.5%; left: 16%; width: 42%; text-align: left; direction: ltr; font-family: 'Rubik',sans-serif; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.5); }  /* ×1.5 via inline font-size, shifted right (Adi) */
 .alc-price { top: 36.2%; left: 14%; font-size: 62px; font-weight: 900; direction: ltr; color: #fff; }   /* ×1.3 */
-.alc-chg { top: 42.0%; left: 14.5%; font-size: 72px; font-weight: 900; direction: ltr; }   /* raised more + ×0.9 */
+.alc-chg { top: 42.0%; left: 14.5%; font-size: 58px; font-weight: 900; direction: ltr; }   /* ×0.8 */
 .alc-chg.pos { color: #22e39b; } .alc-chg.neg { color: #ff6b7a; }
-.alc-ftfc { top: 54.5%; left: 13%; width: 36%; text-align: center; font-size: 56px; font-weight: 900; color: #eaf2ff; }   /* ×2 font, raised */
-.alc-sector { top: 54.5%; right: 6%; width: 37%; text-align: center; font-size: 46px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }   /* ×2 font, raised */
+.alc-ftfc { top: 53.7%; left: 13%; width: 36%; text-align: center; font-size: 56px; font-weight: 900; color: #eaf2ff; }   /* raised +10px */
+.alc-sector { top: 53.7%; right: 6%; width: 37%; text-align: center; font-size: 46px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }   /* raised +10px */
 .alc-etf { color: #7fe9ff; margin-inline-start: 6px; }
 /* presets — 3 fixed slots */
 .alc-preset { top: 66.5%; height: 5.2%; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }   /* raised 6px */
@@ -306,10 +306,10 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .alc-tfk { font-size: 23px; font-weight: 800; color: #9fb6d8; }
 .alc-tfv { font-size: 38px; font-weight: 900; direction: ltr; }
 .alc-tfv.up { color: #22e39b; } .alc-tfv.down { color: #ff6b7a; } .alc-tfv.n { color: #9fb0c8; }
-.alc-tf0 { right: 8%; } .alc-tf1 { right: 26.5%; } .alc-tf2 { right: 43.8%; } .alc-tf3 { left: 26.5%; } .alc-tf4 { left: 8%; }   /* חודשי +15px right */
+.alc-tf0 { right: 8%; } .alc-tf1 { right: 26.5%; } .alc-tf2 { right: 43.8%; } .alc-tf3 { left: 27.1%; } .alc-tf4 { left: 8.6%; }   /* חודשי +15px right; שנתי(tf4)+רבעוני(tf3) +7px right */
 .alc-time { top: 86.0%; left: 10%; width: 32%; text-align: center; font-size: 32px; font-weight: 900; direction: ltr; color: #eaf2ff; }   /* ×1.2, raised 6px */
 /* community CTA text inside the baked green bar — white, bigger, may wrap to 2 lines */
-.alc-cta { top: 84.3%; right: 9%; width: 43%; height: 7.4%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 28px; font-weight: 900; color: #ffffff; line-height: 1.18; text-shadow: 0 1px 4px rgba(0,0,0,.45); }
+.alc-cta { top: 83.7%; right: 9%; width: 43%; height: 7.4%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 28px; font-weight: 900; color: #ffffff; line-height: 1.18; text-shadow: 0 1px 4px rgba(0,0,0,.45); }   /* raised 8px */
 
 /* ===== wide/compact Candle Map at the bottom of the continuity tab (transposed: TFs × bucket types) ===== */
 .cmap-wide { margin-top: 16px; }
