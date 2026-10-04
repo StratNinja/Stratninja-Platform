@@ -190,6 +190,21 @@
   document.addEventListener("visibilitychange", () => { if (document.hidden) flushPending(); });
   window.addEventListener("pagehide", flushPending);
 
+  // ---- MANUAL sync API (deterministic "sweeping" control for the UI buttons, bypasses the auto-logic) ----
+  // PUSH = force THIS device's local → the cloud (make the cloud match me). PULL = force the cloud → local
+  // (make me match the cloud). Lets the user fix a divergence by hand: push from the correct device, pull on the other.
+  async function pushAllNow() {
+    if (!client || !userId) return { ok: false, msg: "צריך להתחבר כדי לסנכרן" };
+    try { for (const s of SYNCS) { await pushOne(s); origSet(s.key + "__mtime", "0"); origSet(s.key + "__ptime", "0"); } return { ok: true }; }
+    catch (e) { return { ok: false, msg: "שגיאה בדחיפה לענן" }; }
+  }
+  async function pullAllNow() {
+    if (!client || !userId) return { ok: false, msg: "צריך להתחבר כדי לסנכרן" };
+    try { await pullAll(); rerenderAll(); return { ok: true }; }
+    catch (e) { return { ok: false, msg: "שגיאה במשיכה מהענן" }; }
+  }
+  window.SNCloud = { push: pushAllNow, pull: pullAllNow, ready: function () { return !!(client && userId); } };
+
   function boot() {
     if (!window.SN_CLOUD || !window.SNAuth) return;
     window.SNAuth.onChange(onUser);

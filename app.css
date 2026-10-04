@@ -252,7 +252,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .pm-acts { display:flex; gap:5px; }
 .pm-btn { font-size:12px; padding:4px 9px; }
 .pm-btn:disabled { opacity:.35; cursor:default; }
-.pm-io { display:flex; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); flex-wrap:wrap; }
+.pm-io { display:flex; gap:8px; margin-top:14px; padding-top:12px; border-top:1px solid var(--line); flex-wrap:wrap; align-items:center; }
+/* manual cloud-sync buttons in the preset manager */
+.pm-syncbar { display:inline-flex; align-items:center; gap:6px; margin-inline-start:auto; padding-inline-start:10px; flex-wrap:wrap; }
+.pm-sync-lbl { font-size:12px; color:var(--muted); }
+.pm-sync-push.btn.ghost { border-color:rgba(91,155,255,.55); color:#9cc2ff; }
+.pm-sync-push.btn.ghost:hover { background:rgba(91,155,255,.14); }
+.pm-sync-pull.btn.ghost { border-color:rgba(34,227,155,.55); color:#8ff3c8; }
+.pm-sync-pull.btn.ghost:hover { background:rgba(34,227,155,.14); }
 /* green halo around every control that is actively filtering (non-neutral value) */
 .filter-on { border-color:var(--green) !important;
   box-shadow:0 0 0 1.5px rgba(22,184,119,.5), 0 0 11px 1px rgba(22,184,119,.42) !important;

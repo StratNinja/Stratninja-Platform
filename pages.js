@@ -2017,11 +2017,17 @@
     let _ab = null; try { _ab = JSON.parse(localStorage.getItem((window.Prefs.KEY || "stratninja_prefs_v1") + "__autobak") || "null"); } catch (e) {}
     const _abN = (_ab && _ab.data && (_ab.data.scanPresets || []).length) || 0;
     const abBtn = _abN ? '<button class="btn ghost" id="pmAutoBak" title="שחזר מהגיבוי האוטומטי האחרון (' + (function () { try { return new Date(_ab.ts).toLocaleString("he-IL"); } catch (e) { return ""; } })() + ') — נשמר אוטומטית לפני כל סנכרון">♻️ גיבוי אוטומטי (' + _abN + ")</button>" : "";
+    const _cloudOn = !!(window.SNCloud && window.SNCloud.ready && window.SNCloud.ready());
+    const syncBar = _cloudOn
+      ? '<span class="pm-syncbar"><b class="pm-sync-lbl">☁️ סנכרון:</b>' +
+        '<button class="btn ghost pm-sync-push" id="pmCloudPush" title="דחוף את הפריסטים של המכשיר הזה לענן — הענן יתעדכן למצב של המכשיר הזה (עשה זאת במכשיר עם הפריסטים הנכונים)">⬆️ דחוף לענן</button>' +
+        '<button class="btn ghost pm-sync-pull" id="pmCloudPull" title="משוך מהענן — המכשיר הזה יתעדכן למצב שבענן (דורס את המקומי)">⬇️ משוך מהענן</button></span>'
+      : "";
     const ioBar = '<div class="pm-io">' +
         (list.length ? '<button class="btn ghost" id="pmExport" title="שמור את כל הסריקות לקובץ במחשב">💾 גבה לקובץ</button>' : "") +
         '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
         (list.length ? '<button class="btn ghost" id="pmDedupe" title="הסר סריקות כפולות (הגדרה זהה) — שומר את השם הנקי">🧹 נקה כפילויות</button>' : "") +
-        abBtn +
+        abBtn + syncBar +
         '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
     if (!list.length) return ioBar + '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף — או שחזר מקובץ גיבוי למעלה.</div>';
     return ioBar + '<div class="pm-list">' + list.map((p, i) =>
@@ -2040,6 +2046,21 @@
   function pmRefresh() { const b = document.getElementById("pmBody"); if (b) { b.innerHTML = pmBodyHtml(); pmWire(); } }
   function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender(); }
   function pmWire() {
+    // manual cloud sync — deterministic push/pull (fixes a phone↔PC divergence by hand)
+    { const pb = document.getElementById("pmCloudPush"); if (pb) pb.onclick = async () => {
+        if (!confirm("לדחוף את הפריסטים של המכשיר הזה לענן?\nהמכשירים האחרים יתעדכנו למצב הזה כשתמשוך בהם / בטעינה הבאה.\n(עשה זאת במכשיר עם הפריסטים הנכונים.)")) return;
+        pb.disabled = true; const _t = pb.textContent; pb.textContent = "⏳ דוחף…";
+        let r = {}; try { r = await window.SNCloud.push(); } catch (e) {}
+        snToast(r && r.ok ? "✅ נדחף לענן — עכשיו לחץ \"⬇️ משוך מהענן\" במכשיר השני" : "❌ " + ((r && r.msg) || "שגיאה"));
+        pb.disabled = false; pb.textContent = _t;
+      }; }
+    { const pl = document.getElementById("pmCloudPull"); if (pl) pl.onclick = async () => {
+        if (!confirm("למשוך מהענן?\nהפריסטים במכשיר הזה יוחלפו במה שנמצא בענן.")) return;
+        pl.disabled = true; const _t = pl.textContent; pl.textContent = "⏳ מושך…";
+        let r = {}; try { r = await window.SNCloud.pull(); } catch (e) {}
+        snToast(r && r.ok ? "✅ נמשך מהענן בהצלחה" : "❌ " + ((r && r.msg) || "שגיאה"));
+        pmRefresh(); if (state.page === "scanner" || state.page === "favorites") reRender();
+      }; }
     document.querySelectorAll("[data-pmup]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmup); if (i > 0) { ids.splice(i - 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
     document.querySelectorAll("[data-pmdn]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmdn); if (i >= 0 && i < ids.length - 1) { ids.splice(i + 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
     document.querySelectorAll("[data-pmshare]").forEach(b => b.onclick = () => { const p = (window.Prefs.scanPresets() || []).find(x => x.id === b.dataset.pmshare); sharePreset(p); });
