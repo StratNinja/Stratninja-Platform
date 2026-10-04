@@ -4749,11 +4749,16 @@
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     snToast("מכין כרטיס…");
     _prepHeroSquare(() => {
-      const el = buildAlertCardEl(_alertRowFor(sym), names);
-      // caption for an alert share = the alerted ticker + which scans flagged it (the "why")
+      const _acRow = _alertRowFor(sym);
+      const el = buildAlertCardEl(_acRow, names);
+      // sharp alert-style caption (less duplication, tuned for an automated feed on X/Discord):
+      // 🔔 $SYM נכנסה לסריקות StratNinja  / • scan bullets + FTFC  / $SYM | ETF  / hashtags  / site
       const _acNames = (Array.isArray(names) ? names : [names]).map(_acStrip).filter(Boolean).slice(0, 3);
-      const _acScans = _acNames.length ? "\n\n📍 נמצא בסריקות:\n" + _acNames.map(n => "• " + n).join("\n") : "";
-      const acCap = "🔔 התראה: $" + sym + " · StratNinja" + _acScans + "\n\n$" + sym + "\n\nstratninja.win";
+      const _acBul = _acNames.map(n => "• " + n);
+      _acBul.push("• " + (_acRow.ftfc ? "FTFC מלא" : "FTFC חלקי"));
+      const _acEtf = (_acRow.sector && _acRow.sector !== "אחר") ? etfFor(_acRow.sector) : "";
+      const _acSymLine = "$" + sym + (_acEtf ? " | " + _acEtf : "");
+      const acCap = "🔔 $" + sym + " נכנסה לסריקות StratNinja\n" + _acBul.join("\n") + "\n" + _acSymLine + "\n#Trading #TheStrat #StratNinja\nstratninja.win";
       const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv, acCap); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
