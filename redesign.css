@@ -311,7 +311,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* community CTA text inside the baked green bar — white, bigger, may wrap to 2 lines */
 .alc-cta { top: 82.9%; right: 9%; width: 43%; height: 7.4%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 28px; font-weight: 900; color: #ffffff; line-height: 1.18; text-shadow: 0 1px 4px rgba(0,0,0,.45); }   /* raised +18px total */
 /* "new alert" text — placed INSIDE the baked red neon pill (top-left), no own pill decoration */
-.alc-title { top: 13.6%; left: 6.56%; width: 36%; height: 6%; display: flex; align-items: center; justify-content: center; }   /* +10px down, +7px right total */
+.alc-title { top: 14.0%; left: 6.96%; width: 36%; height: 6%; display: flex; align-items: center; justify-content: center; }   /* +15px down, +12px right total */
 .alc-title-pill { font-size: 40px; font-weight: 900; color: #fff; white-space: nowrap; letter-spacing: .5px;
   text-shadow: 0 0 12px rgba(255,45,69,.95), 0 2px 6px rgba(0,0,0,.6); }
 
