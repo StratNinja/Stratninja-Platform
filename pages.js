@@ -4705,7 +4705,23 @@
     const ftfcTxt = t.ftfc ? "🟢 FTFC מלא" : "FTFC חלקי";
     // up to 3 preset names in fixed slots + the "max 3" dots
     const P = [names[0] || "", names[1] || "", names[2] || ""];
-    const presetBoxes = P.map((nm, i) => '<div class="alc-preset alc-p' + (i + 1) + (nm ? "" : " alc-pempty") + '" title="' + escAttr(nm) + '">' + escHtml(nm) + "</div>").join("");
+    // force a long preset name onto 2 lines (font-independent — natural wrapping is unreliable when the baked font is narrow)
+    const _acPresetHtml = (nm) => {
+      nm = String(nm || "");
+      if (nm.length <= 16) return escHtml(nm);
+      let sep = -1; const seps = [" - ", " – ", " · ", " | ", " / "];
+      for (let s = 0; s < seps.length; s++) { const i = nm.indexOf(seps[s]); if (i > 2 && i < nm.length - 2) { sep = i; break; } }
+      let a, b;
+      if (sep >= 0) { a = nm.slice(0, sep).trim(); b = nm.slice(sep + 1).replace(/^[\-–·|\/]\s*/, "").trim(); }
+      else {
+        const mid = Math.floor(nm.length / 2); let best = -1, bestD = 1e9;
+        for (let i = 0; i < nm.length; i++) { if (nm[i] === " ") { const d = Math.abs(i - mid); if (d < bestD) { bestD = d; best = i; } } }
+        if (best < 0) return escHtml(nm);
+        a = nm.slice(0, best).trim(); b = nm.slice(best).trim();
+      }
+      return escHtml(a) + "<br>" + escHtml(b);
+    };
+    const presetBoxes = P.map((nm, i) => '<div class="alc-preset alc-p' + (i + 1) + (nm ? "" : " alc-pempty") + '" title="' + escAttr(nm) + '">' + _acPresetHtml(nm) + "</div>").join("");
     const dots = '<div class="alc-dots">' + [0, 1, 2].map(i => '<span class="alc-dot' + (i < names.length ? " on" : "") + '"></span>').join("") + "</div>";
     // D/W/M/Q/Y per timeframe — Hebrew TF name on top + candle type below (coloured by direction)
     const _TFHE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
