@@ -329,23 +329,23 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .tsc-sub-a { top: 25.06%; right: 5%; width: 30%; text-align: center; font-size: 24px; font-weight: 700; color: #bcd3f0; }   /* N עסקאות · X% הצלחה — +15px right, +3px up */
 .tsc-sub-b { top: 25.06%; right: 37%; width: 19%; text-align: center; font-size: 24px; font-weight: 700; color: #bcd3f0; }   /* ממוצע Y לעסקה — +4px right, +3px up */
 /* hero net P&L (top-left) */
-.tsc-hero { top: 18.04%; left: 2.52%; width: 40%; height: 8.6%; display: flex; align-items: center; justify-content: center; font-size: 104px; font-weight: 900; direction: ltr; line-height: 1; }   /* +2px up, +6px left */
-.tsc-herolbl { top: 26.76%; left: 2.52%; width: 40%; text-align: center; font-size: 23px; font-weight: 700; color: #9fb6d8; }   /* +3px up */
+.tsc-hero { top: 18.04%; left: 1.96%; width: 40%; height: 8.6%; display: flex; align-items: center; justify-content: center; font-size: 94px; font-weight: 900; direction: ltr; line-height: 1; }   /* font ×0.9, +7px left more */
+.tsc-herolbl { top: 26.52%; left: 1.96%; width: 40%; text-align: center; font-size: 23px; font-weight: 700; color: #9fb6d8; }   /* +3px up more */
 /* shared row y-offsets (left panel values + right panel trade rows align) */
 .tsc-row0 { top: 34.7%; } .tsc-row1 { top: 39.75%; } .tsc-row2 { top: 44.8%; } .tsc-row3 { top: 49.85%; } .tsc-row4 { top: 54.9%; }
 /* left panel: 5 characteristic value chips */
 .tsc-cv { left: 6%; width: 11%; height: 3.9%; margin-top: -2px; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: 800; border-radius: 10px; direction: ltr; }   /* all chips +2px up */
 .tsc-cv.tsc-pos { background: rgba(34,227,155,.12); } .tsc-cv.tsc-neg { background: rgba(255,107,122,.12); }
-.tsc-cv.tsc-row1, .tsc-cv.tsc-row3 { width: 9.9%; height: 3.705%; }   /* avgLoss + managed chips shrunk ×0.9 w / ×0.95 h (Adi) */
+.tsc-cv.tsc-row1, .tsc-cv.tsc-row3 { width: 9.2%; height: 3.52%; left: 6.4%; }   /* avgLoss + managed chips shrunk more + nudged right */
 /* right panel: P&L + ticker + direction per row */
-.tsc-rp { left: 52.1%; width: 12%; height: 3.9%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; direction: ltr; }   /* +5px left */
-.tsc-rt { right: 15.5%; width: 12%; height: 3.9%; margin-top: -1px; display: flex; align-items: center; justify-content: center; font-size: 27px; font-weight: 900; color: #fff; direction: ltr; }   /* tickers +1px up */
-.tsc-rd { right: 6.74%; width: 8.5%; height: 3.9%; display: flex; align-items: center; justify-content: center; }   /* +3px left */
+.tsc-rp { left: 51.78%; width: 12%; height: 3.9%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; direction: ltr; }   /* +9px left total */
+.tsc-rt { right: 15.5%; width: 12%; height: 3.9%; margin-top: -1px; display: flex; align-items: center; justify-content: center; font-size: 27px; font-weight: 900; color: #fff; direction: ltr; }   /* tickers locked */
+.tsc-rd { right: 7.6%; width: 8.5%; height: 3.9%; display: flex; align-items: center; justify-content: center; }   /* לונג/שורט clearly left */
 .tsc-dir { padding: 3px 11px; border-radius: 7px; font-size: 18px; font-weight: 800; white-space: nowrap; }
 .tsc-dir.tsc-lo { background: rgba(34,227,155,.16); color: #22e39b; }
 .tsc-dir.tsc-sh { background: rgba(255,107,122,.16); color: #ff6b7a; }
 /* distribution bar (dynamic) + 3 labels */
-.tsc-bar { top: 64.7%; left: 3.3%; width: 93.4%; height: 2.35%; border-radius: 999px; overflow: hidden; display: flex; direction: rtl; }   /* aligned onto the baked track */
+.tsc-bar { top: 64.46%; left: 3.3%; width: 93.4%; height: 2.35%; border-radius: 999px; overflow: hidden; display: flex; direction: rtl; }   /* aligned onto the baked track, +3px up more */
 .tsc-bar .tsc-bg { background: #12e070; } .tsc-bar .tsc-br { background: #ff5a6a; } .tsc-bar .tsc-bn { background: #596b86; }
 .tsc-dl { top: 70.46%; width: 28%; height: 4%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }   /* +2px down */
 .tsc-dl0 { right: 5%; } .tsc-dl1 { right: 36%; } .tsc-dl2 { left: 5%; }
@@ -353,14 +353,14 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .tsc-dsub { font-size: 17px; font-weight: 600; color: #9fb6d8; }
 /* 4 bottom tiles (icons baked at the tile's right edge; value+label fill the left area) */
 .tsc-tile { top: 76.46%; height: 7.2%; width: 18%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }   /* +2px down */
-.tsc-tile0 { left: 10.7%; } .tsc-tile1 { left: 33.2%; } .tsc-tile2 { left: 57.2%; } .tsc-tile3 { left: 79.7%; }   /* all +10px left */
+.tsc-tile0 { left: 9.5%; } .tsc-tile1 { left: 32%; } .tsc-tile2 { left: 56%; } .tsc-tile3 { left: 78.5%; }   /* all +25px left total (win-rate tile still overflowed) */
 .tsc-tv { font-size: 34px; font-weight: 900; direction: ltr; line-height: 1.05; }
 .tsc-tl { font-size: 18px; font-weight: 600; color: #9fb6d8; margin-top: 2px; }
 /* ninja insight (bottom-right) */
-.tsc-insight { top: 86.4%; right: 17.3%; width: 29%; height: 5.4%; display: flex; align-items: center; justify-content: flex-start; text-align: right; font-size: 18px; font-weight: 600; color: #cdd8ea; line-height: 1.25; }   /* +10px left */
+.tsc-insight { top: 86.4%; right: 19.5%; width: 30%; height: 5.4%; display: flex; align-items: center; justify-content: flex-start; text-align: right; font-size: 18px; font-weight: 600; color: #cdd8ea; line-height: 1.25; }   /* clearly left of the baked label */
 .tsc-insight b { color: #eaf2ff; }
 /* blue community CTA button (bottom-left) — text overlay (arrow baked) */
-.tsc-cta { top: 86.4%; left: 2.5%; width: 41%; height: 5.4%; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: 800; color: #eaf2ff; }
+.tsc-cta { top: 86.0%; left: 2.5%; width: 41%; height: 5.4%; display: flex; align-items: center; justify-content: center; font-size: 30px; font-weight: 800; color: #eaf2ff; }   /* font ×1.2, +5px up */
 
 /* ===== wide/compact Candle Map at the bottom of the continuity tab (transposed: TFs × bucket types) ===== */
 .cmap-wide { margin-top: 16px; }
