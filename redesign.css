@@ -291,7 +291,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .alert-card > div { position: absolute; }
 .alc-ticker { top: 24.5%; left: 16%; width: 42%; text-align: left; direction: ltr; font-family: 'Rubik',sans-serif; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.5); }  /* ×1.5 via inline font-size, shifted right (Adi) */
 .alc-price { top: 36.2%; left: 14%; font-size: 62px; font-weight: 900; direction: ltr; color: #fff; }   /* ×1.3 */
-.alc-chg { top: 41.92%; left: 14.5%; font-size: 58px; font-weight: 900; direction: ltr; }   /* ×0.8, net +1px up */
+.alc-chg { top: 42.16%; left: 14.5%; font-size: 58px; font-weight: 900; direction: ltr; }   /* ×0.8, lowered 3px */
 .alc-chg.pos { color: #22e39b; } .alc-chg.neg { color: #ff6b7a; }
 .alc-ftfc { top: 52.74%; left: 13%; width: 36%; text-align: center; font-size: 56px; font-weight: 900; color: #eaf2ff; }   /* raised +22px total */
 .alc-sector { top: 53.06%; right: 6%; width: 37%; text-align: center; font-size: 46px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }   /* raised +18px total (lowered 2px) */
@@ -303,7 +303,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .alc-dots { display: none; }   /* the empty template has no dots indicator — preset boxes already show the count */
 /* D W M Q Y cells — Hebrew TF name on top + candle type below (raised 5px, font +20%) */
 .alc-tf { top: 72.6%; width: 15%; height: 9.6%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }   /* raised +5px */
-.alc-tfk { font-size: 23px; font-weight: 800; color: #9fb6d8; }
+.alc-tfk { font-size: 23px; font-weight: 800; color: #9fb6d8; position: relative; top: 3px; }   /* labels lowered 3px */
 .alc-tfv { font-size: 55px; font-weight: 900; direction: ltr; }   /* candle font ×1.44 (1.2²) */
 .alc-tfv.up { color: #22e39b; } .alc-tfv.down { color: #ff6b7a; } .alc-tfv.n { color: #9fb0c8; }
 .alc-tf0 { right: 8.32%; } .alc-tf1 { right: 26.5%; } .alc-tf2 { right: 43.56%; } .alc-tf3 { left: 26.78%; } .alc-tf4 { left: 8.84%; }   /* יומי(tf0)+רבעוני(tf3) 4px left; חודשי(tf2)+שנתי(tf4) 3px right */
@@ -311,7 +311,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* community CTA text inside the baked green bar — white, bigger, may wrap to 2 lines */
 .alc-cta { top: 82.9%; right: 9%; width: 43%; height: 7.4%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 28px; font-weight: 900; color: #ffffff; line-height: 1.18; text-shadow: 0 1px 4px rgba(0,0,0,.45); }   /* raised +18px total */
 /* "new alert" text — placed INSIDE the baked red neon pill (top-left), no own pill decoration */
-.alc-title { top: 13.28%; left: 6.24%; width: 36%; height: 6%; display: flex; align-items: center; justify-content: center; }   /* +6px down, +3px right */
+.alc-title { top: 13.6%; left: 6.56%; width: 36%; height: 6%; display: flex; align-items: center; justify-content: center; }   /* +10px down, +7px right total */
 .alc-title-pill { font-size: 40px; font-weight: 900; color: #fff; white-space: nowrap; letter-spacing: .5px;
   text-shadow: 0 0 12px rgba(255,45,69,.95), 0 2px 6px rgba(0,0,0,.6); }
 
