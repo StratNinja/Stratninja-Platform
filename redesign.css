@@ -290,26 +290,26 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
   font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
 .alert-card > div { position: absolute; }
 .alc-ticker { top: 24.5%; left: 16%; width: 42%; text-align: left; direction: ltr; font-family: 'Rubik',sans-serif; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 2px 14px rgba(0,0,0,.5); }  /* ×1.5 via inline font-size, shifted right (Adi) */
-.alc-price { top: 36.5%; left: 14%; font-size: 48px; font-weight: 900; direction: ltr; color: #fff; }
-.alc-chg { top: 43.5%; left: 14.5%; font-size: 80px; font-weight: 900; direction: ltr; }   /* daily change ×2 */
+.alc-price { top: 36.2%; left: 14%; font-size: 62px; font-weight: 900; direction: ltr; color: #fff; }   /* ×1.3 */
+.alc-chg { top: 42.7%; left: 14.5%; font-size: 80px; font-weight: 900; direction: ltr; }   /* daily change ×2, raised 10px */
 .alc-chg.pos { color: #22e39b; } .alc-chg.neg { color: #ff6b7a; }
-.alc-ftfc { top: 55.3%; left: 13%; width: 33%; text-align: center; font-size: 30px; font-weight: 900; color: #eaf2ff; }   /* raised 6px */
-.alc-sector { top: 55.3%; right: 7%; width: 35%; text-align: center; font-size: 25px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }
+.alc-ftfc { top: 54.5%; left: 13%; width: 36%; text-align: center; font-size: 56px; font-weight: 900; color: #eaf2ff; }   /* ×2 font, raised */
+.alc-sector { top: 54.5%; right: 6%; width: 37%; text-align: center; font-size: 46px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }   /* ×2 font, raised */
 .alc-etf { color: #7fe9ff; margin-inline-start: 6px; }
 /* presets — 3 fixed slots */
 .alc-preset { top: 66.5%; height: 5.2%; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: 800; color: #eaf2ff; white-space: nowrap; overflow: hidden; }   /* raised 6px */
 .alc-p1 { right: 11%; width: 25%; } .alc-p2 { right: 38.5%; width: 24%; } .alc-p3 { left: 11%; width: 25%; }
 .alc-pempty { display: none; }
 .alc-dots { display: none; }   /* the empty template has no dots indicator — preset boxes already show the count */
-/* D W M Q Y cells — Hebrew TF name on top + candle type below (raised 6px) */
-.alc-tf { top: 73.4%; width: 15%; height: 9.6%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-.alc-tfk { font-size: 19px; font-weight: 800; color: #9fb6d8; }
-.alc-tfv { font-size: 32px; font-weight: 900; direction: ltr; }
+/* D W M Q Y cells — Hebrew TF name on top + candle type below (raised 5px, font +20%) */
+.alc-tf { top: 73.0%; width: 15%; height: 9.6%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.alc-tfk { font-size: 23px; font-weight: 800; color: #9fb6d8; }
+.alc-tfv { font-size: 38px; font-weight: 900; direction: ltr; }
 .alc-tfv.up { color: #22e39b; } .alc-tfv.down { color: #ff6b7a; } .alc-tfv.n { color: #9fb0c8; }
 .alc-tf0 { right: 8%; } .alc-tf1 { right: 26.5%; } .alc-tf2 { right: 45%; } .alc-tf3 { left: 26.5%; } .alc-tf4 { left: 8%; }
-.alc-time { top: 86.5%; left: 10%; width: 32%; text-align: center; font-size: 27px; font-weight: 900; direction: ltr; color: #eaf2ff; }
-/* community CTA text inside the baked green bar (centered on the time/CTA row) */
-.alc-cta { top: 85.1%; right: 9%; width: 44%; height: 5.4%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 23px; font-weight: 900; color: #06260f; line-height: 1.15; }
+.alc-time { top: 86.0%; left: 10%; width: 32%; text-align: center; font-size: 32px; font-weight: 900; direction: ltr; color: #eaf2ff; }   /* ×1.2, raised 6px */
+/* community CTA text inside the baked green bar — white, bigger, may wrap to 2 lines */
+.alc-cta { top: 84.3%; right: 9%; width: 43%; height: 7.4%; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 28px; font-weight: 900; color: #ffffff; line-height: 1.18; text-shadow: 0 1px 4px rgba(0,0,0,.45); }
 
 /* ===== wide/compact Candle Map at the bottom of the continuity tab (transposed: TFs × bucket types) ===== */
 .cmap-wide { margin-top: 16px; }
