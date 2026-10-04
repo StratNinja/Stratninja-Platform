@@ -7312,8 +7312,12 @@
   // ===== NEW favorites UI (Adi 2026-10-05): visual cards grouped by opportunity + multi-select preset dropdown =====
   const _FAV_TFO = ["Y", "Q", "M", "W", "D"];
   function _favFtfcStrip(t) {
+    // colour by the candle's DIRECTION (closed up=green / down=red), matching FTFC — not the Strat bar-type
+    // (an Inside "1" bar that closed up is still "green" for FTFC; bucket-based colouring wrongly greyed it out).
     return '<div class="fc-ftfc">' + _FAV_TFO.map(tf => {
-      const b = candleBucket(t[tf]); const cls = _cmBull(b) ? "fcf-up" : _cmBear(b) ? "fcf-dn" : "fcf-flat";
+      const cell = t[tf] || {}, c = cell.c;
+      const cls = c === "up" ? "fcf-up" : c === "down" ? "fcf-dn" : "fcf-flat";
+      const b = candleBucket(cell);
       return '<span class="fcf ' + cls + '" title="' + tf + ": " + escAttr(_CM_BUCKET_HE[b] || b) + '">' + tf + "</span>";
     }).join("") + "</div>";
   }
