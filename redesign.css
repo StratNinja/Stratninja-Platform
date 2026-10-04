@@ -315,6 +315,48 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .alc-title-pill { font-size: 40px; font-weight: 900; color: #fff; white-space: nowrap; letter-spacing: .5px;
   text-shadow: 0 0 12px rgba(255,45,69,.95), 0 2px 6px rgba(0,0,0,.6); }
 
+/* ===== premium Trade-Share (journal performance) card — overlay data on Tradeshare_Template.png (1254²). Header/labels/icons/CTA/footer baked ===== */
+.trade-card { width: 1254px; height: 1254px; position: relative; direction: rtl; overflow: hidden;
+  background: #070a12 url("Tradeshare_Template.png?v=1") top center / 1254px 1254px no-repeat;
+  font-family: 'Heebo','Rubik',sans-serif; color: #eaf2ff; }
+.trade-card > div { position: absolute; }
+.tsc-pos { color: #22e39b; } .tsc-neg { color: #ff6b7a; } .tsc-z { color: #cdd8ea; }
+/* header */
+.tsc-upd { top: 5.0%; left: 5.5%; width: 12%; height: 3.0%; display: flex; align-items: center; justify-content: center; font-size: 21px; font-weight: 800; color: #d7ffe9; }
+.tsc-pertag { top: 14.2%; right: 5.5%; width: 13%; height: 3.6%; display: flex; align-items: center; justify-content: center; font-size: 23px; font-weight: 800; color: #ff9aa6; }
+.tsc-date { top: 14.2%; right: 20.5%; width: 29%; height: 3.6%; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: 800; color: #eaf2ff; direction: ltr; }
+.tsc-subline { top: 25.3%; right: 5%; width: 52%; text-align: center; font-size: 24px; font-weight: 700; color: #bcd3f0; }
+/* hero net P&L (top-left) */
+.tsc-hero { top: 18.2%; left: 3%; width: 40%; height: 8.6%; display: flex; align-items: center; justify-content: center; font-size: 104px; font-weight: 900; direction: ltr; line-height: 1; }
+.tsc-herolbl { top: 27.0%; left: 3%; width: 40%; text-align: center; font-size: 23px; font-weight: 700; color: #9fb6d8; }
+/* shared row y-offsets (left panel values + right panel trade rows align) */
+.tsc-row0 { top: 34.7%; } .tsc-row1 { top: 39.75%; } .tsc-row2 { top: 44.8%; } .tsc-row3 { top: 49.85%; } .tsc-row4 { top: 54.9%; }
+/* left panel: 5 characteristic value chips */
+.tsc-cv { left: 6%; width: 11%; height: 3.9%; display: flex; align-items: center; justify-content: center; font-size: 25px; font-weight: 800; border-radius: 10px; direction: ltr; }
+.tsc-cv.tsc-pos { background: rgba(34,227,155,.12); } .tsc-cv.tsc-neg { background: rgba(255,107,122,.12); }
+/* right panel: P&L + ticker + direction per row */
+.tsc-rp { left: 52.5%; width: 12%; height: 3.9%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; direction: ltr; }
+.tsc-rt { right: 15.5%; width: 12%; height: 3.9%; display: flex; align-items: center; justify-content: center; font-size: 27px; font-weight: 900; color: #fff; direction: ltr; }
+.tsc-rd { right: 6.5%; width: 8.5%; height: 3.9%; display: flex; align-items: center; justify-content: center; }
+.tsc-dir { padding: 3px 11px; border-radius: 7px; font-size: 18px; font-weight: 800; white-space: nowrap; }
+.tsc-dir.tsc-lo { background: rgba(34,227,155,.16); color: #22e39b; }
+.tsc-dir.tsc-sh { background: rgba(255,107,122,.16); color: #ff6b7a; }
+/* distribution bar (dynamic) + 3 labels */
+.tsc-bar { top: 66.4%; left: 3.3%; width: 93.4%; height: 2.1%; border-radius: 999px; overflow: hidden; display: flex; direction: rtl; }
+.tsc-bar .tsc-bg { background: #12e070; } .tsc-bar .tsc-br { background: #ff5a6a; } .tsc-bar .tsc-bn { background: #596b86; }
+.tsc-dl { top: 70.3%; width: 28%; height: 4%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }
+.tsc-dl0 { right: 5%; } .tsc-dl1 { right: 36%; } .tsc-dl2 { left: 5%; }
+.tsc-dpct { font-size: 28px; font-weight: 900; }
+.tsc-dsub { font-size: 17px; font-weight: 600; color: #9fb6d8; }
+/* 4 bottom tiles (icons baked at the tile's right edge; value+label fill the left area) */
+.tsc-tile { top: 76.3%; height: 7.2%; width: 18%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.tsc-tile0 { left: 11.5%; } .tsc-tile1 { left: 34%; } .tsc-tile2 { left: 58%; } .tsc-tile3 { left: 80.5%; }
+.tsc-tv { font-size: 34px; font-weight: 900; direction: ltr; line-height: 1.05; }
+.tsc-tl { font-size: 18px; font-weight: 600; color: #9fb6d8; margin-top: 2px; }
+/* ninja insight (bottom-right) */
+.tsc-insight { top: 86.4%; right: 16.5%; width: 29%; height: 5.4%; display: flex; align-items: center; justify-content: flex-start; text-align: right; font-size: 18px; font-weight: 600; color: #cdd8ea; line-height: 1.25; }
+.tsc-insight b { color: #eaf2ff; }
+
 /* ===== wide/compact Candle Map at the bottom of the continuity tab (transposed: TFs × bucket types) ===== */
 .cmap-wide { margin-top: 16px; }
 .cmap-table-wide { border-spacing: 5px 5px; table-layout: fixed; }

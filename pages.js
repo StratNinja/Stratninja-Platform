@@ -3738,6 +3738,51 @@
     else if (net > 0) insTxt = "יום ירוק — <b>" + wins + "</b> מתוך <b>" + n + "</b> עסקאות ברווח" + (reflected.length && emoExits === 0 ? ", ללא יציאות רגשיות" : "") + ".";
     else if (net < 0) insTxt = "יום אדום — הרוב בהפסד; שווה לעבור על העסקאות ולזהות מה חזר על עצמו.";
     else insTxt = "יום מאוזן — הרווחים וההפסדים כמעט מתקזזים.";
+    { // ===== premium Trade-Share card overlaid on Tradeshare_Template.png (1254² baked frame) — returns early; old jrn2 render below is retained as a fallback but unreached =====
+      const _updT = _mfIlTime();
+      const _sign = v => v > 0 ? "tsc-pos" : v < 0 ? "tsc-neg" : "tsc-z";
+      const subLine = n ? (n + " עסקאות · " + st.winRate + "% הצלחה · ממוצע " + fmt(avgPer) + " לעסקה") : "אין עסקאות סגורות בטווח שנבחר";
+      // left panel (מאפייני ביצוע) — 5 values matching the baked labels
+      const charVals = [
+        { v: wins ? iso(fmt(D.avgWin)) : "—", c: wins ? "tsc-pos" : "" },
+        { v: losses ? iso(fmt(-Math.abs(D.avgLoss))) : "—", c: losses ? "tsc-neg" : "" },
+        { v: reflected.length ? String(emoExits) : "—", c: "" },
+        { v: reflected.length ? (managedOk + "/" + reflected.length) : "—", c: reflected.length ? "tsc-pos" : "" },
+        { v: reflected.length ? String(tgtExits) : "—", c: "" }
+      ];
+      const charHtml = charVals.map((x, i) => '<div class="tsc-cv tsc-row' + i + (x.c ? " " + x.c : "") + '">' + x.v + "</div>").join("");
+      // right panel (ביצועי העסקאות) — 5 rows: P&L + ticker + direction (middle intentionally empty per Adi)
+      const tscDir = t => t.direction === "short" ? '<span class="tsc-dir tsc-sh">שורט</span>' : '<span class="tsc-dir tsc-lo">לונג</span>';
+      let tradeHtml = "";
+      for (let i = 0; i < 5; i++) { const t = day5[i]; if (!t) continue;
+        tradeHtml += '<div class="tsc-rp tsc-row' + i + " " + _sign(tv(t)) + '">' + iso(fmt(tv(t))) + "</div>" +
+          '<div class="tsc-rt tsc-row' + i + '">' + escHtml(String(t.symbol || "—").split(" ")[0]) + "</div>" +
+          '<div class="tsc-rd tsc-row' + i + '">' + tscDir(t) + "</div>";
+      }
+      // dynamic distribution bar + 3 count labels (wins / losses / break-even)
+      const distHtml = '<div class="tsc-bar"><span class="tsc-bg" style="width:' + bg + '%"></span><span class="tsc-br" style="width:' + brr + '%"></span><span class="tsc-bn" style="width:' + bn + '%"></span></div>' +
+        '<div class="tsc-dl tsc-dl0"><span class="tsc-dpct tsc-pos">' + bg + '%</span><span class="tsc-dsub">' + wins + " עסקאות מוצלחות</span></div>" +
+        '<div class="tsc-dl tsc-dl1"><span class="tsc-dpct tsc-neg">' + brr + '%</span><span class="tsc-dsub">' + losses + " עסקאות מפסידות</span></div>" +
+        '<div class="tsc-dl tsc-dl2"><span class="tsc-dpct tsc-z">' + bn + '%</span><span class="tsc-dsub">' + be + " עסקאות ללא שינוי</span></div>";
+      // 4 bottom tiles (icons baked): best · profit factor · avg/trade · win rate
+      const tilesHtml =
+        '<div class="tsc-tile tsc-tile0"><span class="tsc-tv tsc-pos">' + bestV + '</span><span class="tsc-tl">העסקה הטובה</span></div>' +
+        '<div class="tsc-tile tsc-tile1"><span class="tsc-tv">' + pf + '</span><span class="tsc-tl">Profit Factor</span></div>' +
+        '<div class="tsc-tile tsc-tile2"><span class="tsc-tv ' + _sign(avgPer) + '">' + (n ? iso(fmt(avgPer)) : "—") + '</span><span class="tsc-tl">ממוצע לעסקה</span></div>' +
+        '<div class="tsc-tile tsc-tile3"><span class="tsc-tv">' + st.winRate + '%</span><span class="tsc-tl">אחוז הצלחה</span></div>';
+      const el = document.createElement("div"); el.className = "trade-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+      el.innerHTML =
+        (_updT ? '<div class="tsc-upd">עודכן ' + _updT + "</div>" : "") +
+        '<div class="tsc-pertag">תקופה נוכחית</div>' +
+        '<div class="tsc-date">' + dayHe + "</div>" +
+        '<div class="tsc-subline">' + subLine + "</div>" +
+        '<div class="tsc-hero ' + _sign(net) + '">' + (n ? iso(fmt(net)) : "—") + "</div>" +
+        '<div class="tsc-herolbl">' + (pctMode ? "תשואה כוללת בתקופה" : "רווח/הפסד כולל בתקופה") + "</div>" +
+        charHtml + tradeHtml + distHtml + tilesHtml +
+        '<div class="tsc-insight">' + insTxt + "</div>";
+      document.body.appendChild(el);
+      return el;
+    }
     const photo = _heroSquare ? '<img class="jrn2-photo" src="' + _heroSquare + '">' : '<img class="jrn2-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     const upd = _mfIlTime();
     const el = document.createElement("div"); el.className = "jrn2-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
