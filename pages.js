@@ -8360,6 +8360,11 @@
       const j = await r.json();
       if (j && j[0] && j[0].data) {
         SCAN = j[0].data;
+        // merge the SMA-flatness map (pushed as a separate "flat" row to keep the main feed small) by symbol
+        try {
+          const fr = await fetch(cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.flat&select=data", { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+          if (fr.ok) { const fj = await fr.json(); const fm = fj && fj[0] && fj[0].data && fj[0].data.flat; if (fm && SCAN && SCAN.rows) SCAN.rows.forEach(row => { if (row.tech && fm[row.s]) row.tech.flat = fm[row.s]; }); }
+        } catch (e) { /* flat map optional — filter just shows "—" until present */ }
         applyLivePrices();     // overlay the live price/% onto the fresh scan (Strat cells untouched)
         if (state.page === "pulse" || state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "favorites") reRender();
         checkPresetAlerts();   // fire preset × favorites alerts on fresh scan data
