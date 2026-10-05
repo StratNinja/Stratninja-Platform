@@ -40,7 +40,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Varela+Round&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="landing.css">
-<link rel="stylesheet" href="app.css?v=1005b">
+<link rel="stylesheet" href="app.css?v=1005c">
 <link rel="stylesheet" href="share-fonts.css"><!-- embedded Heebo+Inter for share-card PNGs (html2canvas) -->
 <link rel="stylesheet" href="redesign.css?v=1005e"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
 <!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
@@ -214,8 +214,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <button id="backTop" aria-label="חזרה למעלה" title="חזרה למעלה">↑</button>
 <!-- once-a-day peeking ninja → exclusive insider-deal popup (site-only, not promoted in lives) -->
 <div id="ninjaDeal" class="ninja-deal" role="button" tabindex="0" aria-label="הטבה מיוחדת לגולשי האתר">
-  <span class="nd-bubble">🎁 לחצו עליי להטבה!</span>
-  <img class="nd-ninja" src="ninja-icon.png" alt="StratNinja">
+  <img class="nd-ninja" src="Press_Code.png" alt="StratNinja — לחצו עליי להטבה">
 </div>
 <script>
 (function () {
@@ -243,11 +242,11 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   function today() { var d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
   var seen = null; try { seen = localStorage.getItem(KEY); } catch (e) {}
   function openDeal() {
-    el.classList.remove("show");
+    el.classList.remove("show"); document.body.classList.remove("ninja-peeking");
     var m = document.createElement("div"); m.className = "nd-modal";
     m.innerHTML = '<div class="nd-card" role="dialog" aria-modal="true">' +
       '<button class="nd-close" type="button" aria-label="סגירה">✕</button>' +
-      '<div class="nd-big">🥷</div>' +
+      '<div class="nd-big"><img src="ninja-icon.png" alt="StratNinja"></div>' +
       '<h3 class="nd-h">🎁 הטבת גולשי האתר</h3>' +
       '<p class="nd-p"><b>35% הנחה</b> לשנה הראשונה<br><span class="nd-small">מנוי שנתי · Advanced/Pro · בלעדי לגולשי האתר (לא מפורסם בלייבים)</span></p>' +
       '<div class="nd-codebox"><span class="nd-codelbl">קוד בלעדי</span><span class="nd-code">IWUSTRAT</span></div>' +
@@ -263,8 +262,8 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   el.addEventListener("click", openDeal);
   el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDeal(); } });
   if (seen !== today()) {
-    setTimeout(function () { el.classList.add("show"); try { localStorage.setItem(KEY, today()); } catch (e) {} }, 3500);
-    setTimeout(function () { el.classList.remove("show"); }, 20000);   // auto-tuck if ignored (strip stays as fallback)
+    setTimeout(function () { el.classList.add("show"); document.body.classList.add("ninja-peeking"); try { localStorage.setItem(KEY, today()); } catch (e) {} }, 3500);
+    setTimeout(function () { el.classList.remove("show"); document.body.classList.remove("ninja-peeking"); }, 20000);   // auto-tuck if ignored (strip stays as fallback)
   }
 })();
 </script>

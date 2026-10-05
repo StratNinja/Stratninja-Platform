@@ -1623,18 +1623,20 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .insider-deal .idl-copy:hover { background: #ffcf4d; }
 @media (max-width: 600px) { .insider-deal { font-size: 12px; padding: 8px 12px; } .insider-deal .idl-copy { width: 100%; } }
 /* once-a-day peeking ninja → exclusive deal popup */
-.ninja-deal { position: fixed; bottom: -160px; right: 18px; left: auto; z-index: 3950; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: bottom .6s cubic-bezier(.34,1.56,.64,1); }
-.ninja-deal.show { bottom: 16px; }
-.ninja-deal .nd-bubble { background: linear-gradient(90deg,#f0b429,#ffcf4d); color: #1a1205; font-weight: 800; font-size: 13px; padding: 7px 13px; border-radius: 12px; white-space: nowrap; box-shadow: 0 4px 14px rgba(0,0,0,.4); position: relative; animation: ndWiggle 1.8s ease-in-out infinite; }
-.ninja-deal .nd-bubble::after { content: ""; position: absolute; bottom: -6px; right: 30px; border: 6px solid transparent; border-top-color: #ffcf4d; border-bottom: 0; }
-.ninja-deal .nd-ninja { width: 78px; height: 78px; border-radius: 50%; object-fit: cover; border: 3px solid #f0b429; box-shadow: 0 0 20px rgba(240,180,41,.55), 0 6px 18px rgba(0,0,0,.5); background: #0b0f17; }
-@keyframes ndWiggle { 0%,100%{transform:rotate(-3deg) translateY(0)} 50%{transform:rotate(3deg) translateY(-3px)} }
+.ninja-deal { position: fixed; bottom: -260px; left: -46px; right: auto; z-index: 3950; cursor: pointer; transition: bottom .55s cubic-bezier(.34,1.56,.64,1); }
+.ninja-deal.show { bottom: -20px; }
+.ninja-deal .nd-ninja { width: 210px; height: auto; display: block; filter: drop-shadow(0 6px 14px rgba(0,0,0,.5)); animation: ndFloat 2.6s ease-in-out infinite; transform-origin: bottom center; }
+.ninja-deal:hover .nd-ninja { filter: drop-shadow(0 8px 18px rgba(240,180,41,.4)); }
+@keyframes ndFloat { 0%,100%{transform:translateY(0) rotate(-1deg)} 50%{transform:translateY(-5px) rotate(1deg)} }
+body.ninja-peeking #backTop { display: none; }
+@media (max-width: 600px) { .ninja-deal .nd-ninja { width: 126px; } .ninja-deal { left: -6px; } }
 .nd-modal { position: fixed; inset: 0; z-index: 4000; background: rgba(5,8,14,.72); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; animation: ndFade .2s ease; }
 @keyframes ndFade { from{opacity:0} to{opacity:1} }
 .nd-card { position: relative; width: 100%; max-width: 380px; text-align: center; background: linear-gradient(180deg, rgba(240,180,41,.1), transparent), var(--panel); border: 1px solid rgba(240,180,41,.5); border-radius: 18px; padding: 26px 24px 22px; box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 40px rgba(240,180,41,.12); animation: ndPop .3s cubic-bezier(.34,1.56,.64,1); }
 @keyframes ndPop { from{transform:scale(.85);opacity:0} to{transform:scale(1);opacity:1} }
 .nd-card .nd-close { position: absolute; top: 10px; inset-inline-start: 12px; background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; line-height: 1; }
-.nd-card .nd-big { font-size: 46px; line-height: 1; margin-bottom: 6px; }
+.nd-card .nd-big { margin-bottom: 8px; line-height: 0; }
+.nd-card .nd-big img { width: 74px; height: 74px; border-radius: 50%; border: 2px solid rgba(240,180,41,.6); box-shadow: 0 0 18px rgba(240,180,41,.35); }
 .nd-card .nd-h { margin: 4px 0 8px; font-size: 20px; color: #ffcf4d; }
 .nd-card .nd-p { margin: 0 0 16px; font-size: 14px; color: var(--ink); line-height: 1.5; }
 .nd-card .nd-small { color: var(--muted); font-size: 11.5px; }
