@@ -1622,6 +1622,9 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .insider-deal .idl-copy { background: #f0b429; color: #1a1205; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: .15s; }
 .insider-deal .idl-copy:hover { background: #ffcf4d; }
 @media (max-width: 600px) { .insider-deal { font-size: 12px; padding: 8px 12px; } .insider-deal .idl-copy { width: 100%; } }
+/* subtle daily-ninja teaser line (no code — just tells visitors the deal exists & recurs) */
+.ninja-teaser { text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); margin: -10px 0 16px; padding: 4px 8px; opacity: .9; }
+.ninja-teaser b { color: #ffcf4d; }
 /* once-a-day peeking ninja → exclusive deal popup */
 .ninja-deal { position: fixed; bottom: -260px; left: -46px; right: auto; z-index: 3950; cursor: pointer; transition: bottom .55s cubic-bezier(.34,1.56,.64,1); }
 .ninja-deal.show { bottom: -20px; }
