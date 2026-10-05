@@ -1697,7 +1697,11 @@
       const vol = _riskVol();
       const up = vol.filter(r => (_riskChg(r) || 0) > 0).length, dn = vol.filter(r => (_riskChg(r) || 0) < 0).length, tot = vol.length;
       const upPct = tot ? up / tot * 100 : 0;
-      const _extOn = _riskExt() && riskTf === "1d";
+      // only claim "⚡פרה-מרקט / ⚡אחרי-סגירה" when real extended-hours data actually drives a meaningful
+      // share of the tiles — otherwise most tiles show the last completed session's close and the label lies.
+      const _extMap = _extChgMap();
+      const _extN = vol.filter(r => _extMap[r.s] != null).length;
+      const _extOn = _riskExt() && riskTf === "1d" && _extN >= Math.max(3, Math.ceil(vol.length * 0.15));
       const tfl = (HM_TFL[riskTf] || riskTf) + (_extOn ? (LIVE.extWin === "pre" ? " ⚡פרה-מרקט" : " ⚡אחרי-סגירה") : "");
       let verdict, vcls;
       if (tot < 5) { verdict = "מעט מדי מניות תנודתיות"; vcls = "risk-mid"; }
