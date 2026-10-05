@@ -329,7 +329,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .tsc-sub-a { top: 24.9%; right: 3.8%; width: 30%; text-align: center; font-size: 24px; font-weight: 700; color: #bcd3f0; }   /* +15px right more, +2px up */
 .tsc-sub-b { top: 24.9%; right: 36.2%; width: 19%; text-align: center; font-size: 24px; font-weight: 700; color: #bcd3f0; }   /* +10px right more, +2px up */
 /* hero net P&L (top-left) */
-.tsc-hero { top: 18.04%; left: 1.96%; width: 40%; height: 8.6%; display: flex; align-items: center; justify-content: center; font-size: 94px; font-weight: 900; direction: ltr; line-height: 1; }   /* font ×0.9, +7px left more */
+.tsc-hero { top: 18.04%; left: 1.16%; width: 40%; height: 8.6%; display: flex; align-items: center; justify-content: center; font-size: 75px; font-weight: 900; direction: ltr; line-height: 1; }   /* font ×0.72, +17px left total (fits big numbers) */
 .tsc-herolbl { top: 26.52%; left: 1.96%; width: 40%; text-align: center; font-size: 23px; font-weight: 700; color: #9fb6d8; }   /* +3px up more */
 /* shared row y-offsets (left panel values + right panel trade rows align) */
 .tsc-row0 { top: 34.7%; } .tsc-row1 { top: 39.75%; } .tsc-row2 { top: 44.8%; } .tsc-row3 { top: 49.85%; } .tsc-row4 { top: 54.9%; }
@@ -338,7 +338,7 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 .tsc-cv.tsc-pos { background: rgba(34,227,155,.12); } .tsc-cv.tsc-neg { background: rgba(255,107,122,.12); }
 .tsc-cv.tsc-row0, .tsc-cv.tsc-row1, .tsc-cv.tsc-row3 { width: 9.2%; height: 3.52%; left: 6.4%; }   /* avgWin + avgLoss + managed chips shrunk + nudged right */
 /* right panel: P&L + ticker + direction per row */
-.tsc-rp { left: 51.46%; width: 12%; height: 3.9%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; direction: ltr; }   /* +13px left total */
+.tsc-rp { left: 53.46%; width: 12%; height: 3.9%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; direction: ltr; }   /* moved +25px right into its proper cell */
 .tsc-rt { right: 15.5%; width: 12%; height: 3.9%; margin-top: -1px; display: flex; align-items: center; justify-content: center; font-size: 27px; font-weight: 900; color: #fff; direction: ltr; }   /* tickers locked */
 .tsc-rd { right: 7.44%; width: 8.5%; height: 3.9%; margin-top: -2px; display: flex; align-items: center; justify-content: center; }   /* לונג/שורט +2px up, +2px right */
 .tsc-dir { padding: 3px 11px; border-radius: 7px; font-size: 18px; font-weight: 800; white-space: nowrap; }
@@ -347,10 +347,10 @@ html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(
 /* distribution bar (dynamic) + 3 labels */
 .tsc-bar { top: 64.46%; left: 3.3%; width: 93.4%; height: 2.35%; border-radius: 999px; overflow: hidden; display: flex; direction: rtl; }   /* aligned onto the baked track, +3px up more */
 .tsc-bar .tsc-bg { background: #12e070; } .tsc-bar .tsc-br { background: #ff5a6a; } .tsc-bar .tsc-bn { background: #596b86; }
-.tsc-dl { top: 70.46%; width: 28%; height: 4%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; }   /* +2px down */
+.tsc-dl { top: 70.0%; width: 28%; height: 5.6%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }   /* count above % — taller block so count clears the baked dot */
 .tsc-dl0 { right: 5%; } .tsc-dl1 { right: 36%; } .tsc-dl2 { left: 5%; }
 .tsc-dpct { font-size: 28px; font-weight: 900; }
-.tsc-dsub { font-size: 17px; font-weight: 600; color: #9fb6d8; }
+.tsc-dsub { font-size: 15px; font-weight: 600; color: #9fb6d8; }
 /* 4 bottom tiles (icons baked at the tile's right edge; value+label fill the left area) */
 .tsc-tile { top: 76.62%; height: 7.2%; width: 18%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }   /* +2px down more */
 .tsc-tile0 { left: 9.02%; } .tsc-tile1 { left: 32%; } .tsc-tile2 { left: 55.36%; } .tsc-tile3 { left: 77.7%; }   /* best +6px, avg +8px, win-rate +10px left */
