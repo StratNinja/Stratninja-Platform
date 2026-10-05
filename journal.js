@@ -203,6 +203,10 @@
     if (px == null || isNaN(+px)) delete m[occ]; else m[occ] = +px;
     d.optAuto = m; Store._write(d);
   }
+  // theta (time-decay per share/day) per OCC contract + the underlying STOCK price per symbol,
+  // both pulled free from CBOE alongside the premium — powers the breakeven / daily-decay columns.
+  function _optTheta() { const d = Store._read(); return (d && d.optTheta) || {}; }
+  function _optUnder() { const d = Store._read(); return (d && d.optUnder) || {}; }
   // OCC option symbol: UNDERLYING + YYMMDD + C/P + strike×1000 (8 digits). null when strike/expiry missing.
   function _occSymbol(t) {
     if (!t || t.assetType !== "option" || t.strike == null || !t.expiry) return null;
@@ -226,17 +230,19 @@
     const btn = document.getElementById("optRefreshBtn"); if (btn) { btn.disabled = true; btn.textContent = "🔄 מושך…"; }
     try {
       const unders = Array.from(new Set(withOcc.map(x => String(x.t.symbol || "").split(" ")[0].toUpperCase())));
-      const chains = {};
+      const chains = {}, underPx = {};
       await Promise.all(unders.map(async function (u) {
-        try { const r = await fetch("/api/options?sym=" + encodeURIComponent(u)); if (r.ok) { const j = await r.json(); const map = {}; (j.opts || []).forEach(o => { map[o.o] = o; }); chains[u] = map; } else chains[u] = null; }
+        try { const r = await fetch("/api/options?sym=" + encodeURIComponent(u)); if (r.ok) { const j = await r.json(); const map = {}; (j.opts || []).forEach(o => { map[o.o] = o; }); chains[u] = map; if (j.px != null && +j.px > 0) underPx[u] = +j.px; } else chains[u] = null; }
         catch (e) { chains[u] = null; }
       }));
       let filled = 0, missing = 0;
-      const dd = Store._read(); dd.optAuto = dd.optAuto || {}; dd.optCur = dd.optCur || {};
+      const dd = Store._read(); dd.optAuto = dd.optAuto || {}; dd.optCur = dd.optCur || {}; dd.optTheta = dd.optTheta || {}; dd.optUnder = dd.optUnder || {};
+      Object.keys(underPx).forEach(u => { dd.optUnder[u] = underPx[u]; });   // live STOCK price per underlying (for breakeven gap)
       withOcc.forEach(function (x) {
         const u = String(x.t.symbol || "").split(" ")[0].toUpperCase();
         const c = chains[u] && chains[u][x.occ];
         if (c) {
+          if (c.th != null && !isNaN(+c.th)) dd.optTheta[x.occ] = +c.th;   // theta (per share/day) for the decay column
           const b = +c.b, a = +c.a, l = +c.l;
           const px = (b > 0 && a > 0) ? (b + a) / 2 : (l > 0 ? l : (a > 0 ? a : (b > 0 ? b : null)));
           if (px != null) {
@@ -470,6 +476,39 @@
     const pctCell = (un, posVal) => (un != null && posVal > 0)
       ? '<td class="' + cls(un) + '">' + (un >= 0 ? "+" : "") + (un / posVal * 100).toFixed(2) + "%</td>"
       : '<td class="muted">—</td>';
+    // ── option-only columns (Adi) ──────────────────────────────────────────────
+    // breakeven-at-expiry GAP: how far the STOCK must move from here to break even if held to
+    // expiry. BE = strike + premium paid (call) / strike − premium paid (put); gap = BE − stock price.
+    const _theta = _optTheta(), _under = _optUnder();
+    function _beCell(t) {
+      if (t.assetType !== "option" || t.strike == null || t.strike === "" || t.entryPrice == null) return "<td class='muted'>—</td>";
+      const u = String(t.symbol || "").split(" ")[0].toUpperCase();
+      const under = _under[u];
+      if (under == null || !(+under > 0)) return "<td class='muted' title='לחץ 🔄 מחירי אופציות כדי למשוך את מחיר המניה מ-CBOE'>—</td>";
+      const isPut = t.optType === "put";
+      const be = isPut ? (+t.strike - +t.entryPrice) : (+t.strike + +t.entryPrice);
+      const gap = be - under;                        // breakeven − current stock price ($)
+      const movePct = (be / under - 1) * 100;        // signed % the stock must move to reach BE
+      const past = isPut ? (under <= be) : (under >= be);   // already beyond breakeven = cushion
+      const arrow = isPut ? "↓" : "↑";
+      const main = past
+        ? "<span class='pos'>✓ מעבר ל-BE</span>"
+        : "<span class='" + (Math.abs(movePct) > 8 ? "neg" : "") + "'>" + arrow + " " + Math.abs(movePct).toFixed(1) + "%</span>";
+      return "<td style='white-space:nowrap' title='Breakeven בפקיעה = $" + be.toFixed(2) + " · מחיר מניה $" + (+under).toFixed(2) + "'>" + main +
+        "<div class='muted' style='font-size:11px'>BE $" + be.toFixed(2) + " · פער $" + Math.abs(gap).toFixed(2) + "</div></td>";
+    }
+    // daily time-decay ($/day): theta × 100 × contracts. LONG premium = loss (red); SHORT = gain (green).
+    function _thetaCell(t) {
+      if (t.assetType !== "option") return "<td class='muted'>—</td>";
+      const occ = _occSymbol(t);
+      const th = occ ? _theta[occ] : null;
+      if (th == null || isNaN(+th)) return "<td class='muted' title='לחץ 🔄 מחירי אופציות כדי למשוך Theta מ-CBOE'>—</td>";
+      const qty = Math.abs(+t.qty || 0), m = (+t.mult || (t.assetType === "option" ? 100 : 1));
+      const perDay = (+th) * m * qty * (t.direction === "short" ? -1 : 1);
+      const cl = perDay >= 0 ? "pos" : "neg";
+      return "<td class='" + cl + "' style='white-space:nowrap' title='Theta " + (+th).toFixed(4) + " × " + m + " × " + qty + " חוזים" + (t.direction === "short" ? " (שורט — לטובתך)" : "") + "'>" +
+        (perDay >= 0 ? "+" : "−") + "$" + Math.abs(perDay).toFixed(2) + "<span class='muted' style='font-size:11px'>/יום</span></td>";
+    }
     const rows = items.map(function (it) {
       const t = it.t, isOpt = it.isOpt, cp = it.cp, posVal = posValOf(t);
       const merged = (t._n || 1) > 1;   // aggregated row (several lots of the same ticker)
@@ -537,12 +576,12 @@
         "<td class='muted' style='white-space:nowrap'>" + (t.entryDate || "—") + "</td>" +
         "<td class='sym'>" + favBtn + chartSym(t.symbol) + nBadge +
         '<span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '" style="margin-inline-start:6px">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span>" + sigBadge(t) + "</td>" +
-        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td>" + stopHtml + riskHtml + "<td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td>" + dayChgHtml + "<td>" + pnlHtml + "</td>" + pctHtml +
+        "<td>" + (t.direction === "long" ? "🟢 לונג" : "🔴 שורט") + "</td><td>" + t.qty + "</td><td>" + money(t.entryPrice, 2) + "</td>" + stopHtml + riskHtml + "<td>" + money(posVal, 0) + "</td><td>" + cpHtml + "</td>" + _beCell(t) + _thetaCell(t) + dayChgHtml + "<td>" + pnlHtml + "</td>" + pctHtml +
         "<td>" + actions + "</td></tr>";
     }).join("");
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
-    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("stop", "סטופ") + _sh("risk", "סיכון") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + _sh("daychg", "תנועת היום") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
+    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("stop", "סטופ") + _sh("risk", "סיכון") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + "<th title='כמה המניה צריכה לזוז עד הפקיעה כדי לצאת באפס (Breakeven − מחיר המניה הנוכחי) · רק אופציות · מבוסס CBOE'>פער ל-BE</th>" + "<th title='כמה שווי האופציה נשחק בכל יום שעובר (Theta × 100 × חוזים) · רק אופציות · מבוסס CBOE'>שחיקה ליום ⏳</th>" + _sh("daychg", "תנועת היום") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
     const labelSpan = 5 + (showAcct ? 1 : 0);   // entryDate..entryPrice (before the חשיפה column)
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
@@ -576,6 +615,8 @@
           "<td style='padding-top:10px'></td>" +
           "<td class='risk-cell' style='font-weight:800;padding-top:10px' title='סך הסיכון בכל הפוזיציות · באחוזים משווי התיק הפתוח כרגע'>" + totRiskHtml + "</td>" +
           "<td style='font-weight:800;padding-top:10px' title='סך שווי הפוזיציות הפתוחות'>" + money(totPosVal, 0) + "</td>" +
+          "<td style='padding-top:10px'></td>" +
+          "<td style='padding-top:10px'></td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totHtml + "</td>" +

@@ -18,7 +18,9 @@ export default async function handler(req, res) {
     if (!r.ok) { res.status(502).json({ error: "cboe_http_" + r.status, sym }); return; }
     const j = await r.json();
     const data = (j && j.data) || {};
-    const opts = (data.options || []).map((o) => ({ o: o.option, b: o.bid, a: o.ask, l: o.last_trade_price }));
+    // th = theta (time decay per share per day), d = delta — carried through for the journal's
+    // breakeven / daily-decay columns. Greeks come free in the same CBOE payload.
+    const opts = (data.options || []).map((o) => ({ o: o.option, b: o.bid, a: o.ask, l: o.last_trade_price, th: o.theta, d: o.delta }));
     // cache at Vercel's edge so ALL viewers of the same ticker share ONE upstream CBOE hit per window.
     // CBOE quotes are ~15-min delayed, so a 15-min edge cache costs ZERO freshness and caps upstream
     // hits at ~4/hour per ticker no matter how many users/refreshes — the strongest guard against blocks.
