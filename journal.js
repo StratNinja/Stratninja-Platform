@@ -458,6 +458,7 @@
     }
     let totUn = 0, totInv = 0, totPosVal = 0, haveAll = true, hasOpt = false;
     let totRisk = 0, totCurVal = 0, noStopCount = 0;   // risk column + live portfolio value (for "% מהתיק")
+    let totThetaDay = 0, haveTheta = false;            // sum of daily time-decay across option positions
     // alerts ↔ open positions: which saved scans each position currently matches (+ direction conflicts)
     const posSignals = (window._snPositionSignals) ? window._snPositionSignals(openTrades.map(t => ({ sym: String(t.symbol || "").split(" ")[0], direction: t.direction }))) : {};
     const sigBadge = t => {
@@ -497,22 +498,48 @@
       return "<td style='white-space:nowrap' title='Breakeven בפקיעה = $" + be.toFixed(2) + " · מחיר מניה $" + (+under).toFixed(2) + "'>" + main +
         "<div class='muted' style='font-size:11px'>BE $" + be.toFixed(2) + " · פער $" + Math.abs(gap).toFixed(2) + "</div></td>";
     }
-    // daily time-decay ($/day): theta × 100 × contracts. LONG premium = loss (red); SHORT = gain (green).
-    function _thetaCell(t) {
-      if (t.assetType !== "option") return "<td class='muted'>—</td>";
+    // daily time-decay ($/day) as a number: theta × 100 × contracts. LONG premium = loss (−); SHORT = gain (+).
+    function _thetaPerDay(t) {
+      if (t.assetType !== "option") return null;
       const occ = _occSymbol(t);
       const th = occ ? _theta[occ] : null;
-      if (th == null || isNaN(+th)) return "<td class='muted' title='לחץ 🔄 מחירי אופציות כדי למשוך Theta מ-CBOE'>—</td>";
-      const qty = Math.abs(+t.qty || 0), m = (+t.mult || (t.assetType === "option" ? 100 : 1));
-      const perDay = (+th) * m * qty * (t.direction === "short" ? -1 : 1);
+      if (th == null || isNaN(+th)) return null;
+      const qty = Math.abs(+t.qty || 0), m = (+t.mult || 100);
+      return (+th) * m * qty * (t.direction === "short" ? -1 : 1);
+    }
+    // calendar days left to expiry (null for non-options / no expiry). ≤7 → paints red (expiry risk).
+    function _dte(t) {
+      if (t.assetType !== "option" || !t.expiry) return null;
+      const m = String(t.expiry).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return null;
+      const exp = new Date(+m[1], +m[2] - 1, +m[3]), today = new Date(); today.setHours(0, 0, 0, 0);
+      return Math.round((exp - today) / 86400000);
+    }
+    function _thetaCell(t) {
+      if (t.assetType !== "option") return "<td class='muted'>—</td>";
+      const perDay = _thetaPerDay(t);
+      // days-to-expiry sub-line: red in the final week (≤7 days), muted otherwise.
+      const d = _dte(t);
+      let dteSub = "";
+      if (d != null) {
+        const txt = d < 0 ? "פג" : d === 0 ? "פוקע היום" : d + " ימים לפקיעה";
+        dteSub = "<div class='" + (d <= 7 ? "neg" : "muted") + "' style='font-size:11px'>⏳ " + txt + "</div>";
+      }
+      if (perDay == null) {
+        const occ = _occSymbol(t);
+        const hint = occ ? "לחץ 🔄 מחירי אופציות כדי למשוך Theta מ-CBOE" : "הוסף סטרייק + תאריך פקיעה";
+        return "<td class='muted' style='white-space:nowrap' title='" + hint + "'>—" + dteSub + "</td>";
+      }
+      const occ = _occSymbol(t), th = occ ? _theta[occ] : null, qty = Math.abs(+t.qty || 0), m = (+t.mult || 100);
       const cl = perDay >= 0 ? "pos" : "neg";
-      return "<td class='" + cl + "' style='white-space:nowrap' title='Theta " + (+th).toFixed(4) + " × " + m + " × " + qty + " חוזים" + (t.direction === "short" ? " (שורט — לטובתך)" : "") + "'>" +
-        (perDay >= 0 ? "+" : "−") + "$" + Math.abs(perDay).toFixed(2) + "<span class='muted' style='font-size:11px'>/יום</span></td>";
+      return "<td class='" + cl + "' style='white-space:nowrap' title='Theta " + (th != null ? (+th).toFixed(4) : "") + " × " + m + " × " + qty + " חוזים" + (t.direction === "short" ? " (שורט — לטובתך)" : "") + "'>" +
+        (perDay >= 0 ? "+" : "−") + "$" + Math.abs(perDay).toFixed(2) + "<span class='muted' style='font-size:11px'>/יום</span>" + dteSub + "</td>";
     }
     const rows = items.map(function (it) {
       const t = it.t, isOpt = it.isOpt, cp = it.cp, posVal = posValOf(t);
       const merged = (t._n || 1) > 1;   // aggregated row (several lots of the same ticker)
       totPosVal += posVal;
+      { const _tpd = _thetaPerDay(t); if (_tpd != null) { totThetaDay += _tpd; haveTheta = true; } }   // daily-decay total
       const mult = (t.mult || 1);
       totCurVal += (cp != null ? cp * (+t.qty || 0) * mult : posVal);   // live portfolio value (falls back to entry notional)
       // stop-loss column (was an inline badge) + $ risked per trade
@@ -617,7 +644,7 @@
           "<td style='font-weight:800;padding-top:10px' title='סך שווי הפוזיציות הפתוחות'>" + money(totPosVal, 0) + "</td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='padding-top:10px'></td>" +
-          "<td style='padding-top:10px'></td>" +
+          "<td class='" + (totThetaDay >= 0 ? "pos" : "neg") + "' style='font-weight:800;padding-top:10px' title='סך שחיקת הזמן היומית של כל פוזיציות האופציה הפתוחות'>" + (haveTheta ? (totThetaDay >= 0 ? "+" : "−") + "$" + Math.abs(totThetaDay).toFixed(2) + "<span class='muted' style='font-size:11px'>/יום</span>" : "") + "</td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totHtml + "</td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totPct + "</td>" +
