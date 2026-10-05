@@ -258,8 +258,11 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   el.addEventListener("click", openDeal);
   el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDeal(); } });
   if (seen !== today()) {
-    setTimeout(function () { el.classList.add("show"); document.body.classList.add("ninja-peeking"); try { localStorage.setItem(KEY, today()); } catch (e) {} }, 3500);
-    setTimeout(function () { el.classList.remove("show"); document.body.classList.remove("ninja-peeking"); }, 20000);   // auto-tuck if ignored (strip stays as fallback)
+    setTimeout(function () {
+      el.classList.add("show"); document.body.classList.add("ninja-peeking");
+      try { localStorage.setItem(KEY, today()); } catch (e) {}
+      setTimeout(function () { el.classList.remove("show"); document.body.classList.remove("ninja-peeking"); }, 90000);   // stays ~90s then tucks away (not all day)
+    }, 3500);
   }
 })();
 </script>
