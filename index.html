@@ -40,7 +40,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Varela+Round&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="landing.css">
-<link rel="stylesheet" href="app.css?v=1004g">
+<link rel="stylesheet" href="app.css?v=1005a">
 <link rel="stylesheet" href="share-fonts.css"><!-- embedded Heebo+Inter for share-card PNGs (html2canvas) -->
 <link rel="stylesheet" href="redesign.css?v=1005e"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
 <!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
@@ -161,6 +161,12 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
         <span class="cta-text" id="ctaText"><span class="cta-trophy">🏆</span> הצטרף לקהילת הדיסקורד של StratNinja</span>
         <span class="cta-arrow">הצטרפות →</span>
       </a>
+      <!-- exclusive site-only insider discount (not promoted in lives — discovered on the site) -->
+      <div class="insider-deal">
+        <span class="idl-badge">🎁 הטבת גולשי האתר</span>
+        <span class="idl-text">קוד בלעדי: <b class="idl-code">IWUSTRAT</b> · <b>35% הנחה</b> לשנה הראשונה <span class="idl-sub">(מנוי שנתי · Advanced/Pro · הקלידו בצ׳קאאוט)</span></span>
+        <button class="idl-copy" type="button" onclick="(function(b){try{navigator.clipboard.writeText('IWUSTRAT');b.textContent='✓ הועתק';setTimeout(function(){b.textContent='📋 העתק קוד';},1600);}catch(e){b.textContent='IWUSTRAT';}})(this)">📋 העתק קוד</button>
+      </div>
       <!-- scanner pages render here -->
       <div id="page"></div>
 

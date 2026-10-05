@@ -1610,6 +1610,18 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 
 /* ===== community CTA — sticky so it follows on scroll + confetti animation ===== */
 .community-cta { position: sticky; top: 44px; z-index: 30; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+/* exclusive site-only insider discount strip (amber "reward" accent, distinct from the green join CTA) */
+.insider-deal { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  background: linear-gradient(90deg, rgba(240,180,41,.12), rgba(255,207,77,.05)), var(--panel);
+  border: 1px solid rgba(240,180,41,.45); border-radius: 12px; padding: 9px 16px; margin: -8px 0 18px;
+  font-size: 13px; color: var(--ink); box-shadow: 0 0 16px rgba(240,180,41,.08); }
+.insider-deal .idl-badge { font-weight: 800; color: #ffcf4d; white-space: nowrap; }
+.insider-deal .idl-text { flex: 1; min-width: 170px; font-weight: 600; }
+.insider-deal .idl-code { background: rgba(240,180,41,.18); color: #ffdd80; border: 1px dashed rgba(240,180,41,.6); border-radius: 6px; padding: 1px 8px; letter-spacing: .5px; font-family: 'Rubik',monospace; font-weight: 800; }
+.insider-deal .idl-sub { color: var(--muted); font-weight: 500; font-size: 11px; }
+.insider-deal .idl-copy { background: #f0b429; color: #1a1205; border: none; border-radius: 8px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap; transition: .15s; }
+.insider-deal .idl-copy:hover { background: #ffcf4d; }
+@media (max-width: 600px) { .insider-deal { font-size: 12px; padding: 8px 12px; } .insider-deal .idl-copy { width: 100%; } }
 /* persistent live price ticker (SPY / QQQ / BTC) */
 .live-ticker { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 5px 14px; margin-bottom: 6px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px; position: sticky; top: 0; z-index: 32; min-height: 30px; }
