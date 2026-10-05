@@ -1397,15 +1397,18 @@
   const _hmCYr = new Date().getFullYear(), _hmYY = "'" + String(_hmCYr).slice(-2);
   const HM_TFS_STD = ["1d", "1w", "WTD", "1m", "MTD", "1Q", "QTD", "1Y", "YTD"];
   const HM_TFS_CAL = ["cq1", "cq2", "cq3", "cq4", "ply"];   // Q1–Q4 of the current year + the previous full year
-  const HM_TFS = HM_TFS_STD.concat(HM_TFS_CAL), HM_TFS_SOON = [];
+  const HM_TFS = HM_TFS_STD.concat(["ext"], HM_TFS_CAL), HM_TFS_SOON = [];
   const HM_TFL = { "1d": "1D", "1w": "1W", "WTD": "WTD", "1m": "1M", "MTD": "MTD", "1Q": "1Q", "QTD": "QTD", "1Y": "1Y", "YTD": "YTD",
+    "ext": "⚡ פרה/אפטר",
     "cq1": "Q1 " + _hmYY, "cq2": "Q2 " + _hmYY, "cq3": "Q3 " + _hmYY, "cq4": "Q4 " + _hmYY, "ply": String(_hmCYr - 1) };
   const HM_TF_KEY = { "1w": "c5", "WTD": "cwtd", "1m": "c20", "MTD": "cmtd", "1Q": "c63", "QTD": "cqtd", "1Y": "c252", "YTD": "cytd",
     "cq1": "cq1", "cq2": "cq2", "cq3": "cq3", "cq4": "cq4", "ply": "ply" };   // scanner tech field per TF
   // shared TF-bar builder (S&P heat + risk map) — standard TFs, then a 📅 divider, then the fixed calendar ranges
   function _hmTfButtons(active, attr) {
-    const btn = k => '<button class="flow-tf-btn hm-tf' + (k === active ? " on" : "") + '" ' + attr + '="' + k + '">' + HM_TFL[k] + "</button>";
-    return HM_TFS_STD.map(btn).join("") + '<span class="hm-tf-sep" title="טווחי תאריך קבועים — ביצועים לפי תקופה">📅</span>' + HM_TFS_CAL.map(btn).join("");
+    const _ew = (typeof LIVE !== "undefined" && LIVE) ? LIVE.extWin : null;
+    const extLbl = _ew === "post" ? "⚡ אפטר-מרקט" : _ew === "pre" ? "⚡ פרה-מרקט" : "⚡ פרה/אפטר";
+    const btn = (k, lbl) => '<button class="flow-tf-btn hm-tf' + (k === active ? " on" : "") + '" ' + attr + '="' + k + '">' + (lbl || HM_TFL[k]) + "</button>";
+    return HM_TFS_STD.map(k => btn(k)).join("") + btn("ext", extLbl) + '<span class="hm-tf-sep" title="טווחי תאריך קבועים — ביצועים לפי תקופה">📅</span>' + HM_TFS_CAL.map(k => btn(k)).join("");
   }
   if (HM_TFS.indexOf(spHeatTf) < 0) spHeatTf = "1d";
   // per-stock change over the selected TF. Everything except 1D is joined from the scanner rows (tech.*) by symbol.
@@ -1418,6 +1421,7 @@
   }
   function _hmChg(x) {
     if (spHeatTf === "1d") return x.c;
+    if (spHeatTf === "ext") { const e = _extChgMap()[x.s]; return e != null ? e : 0; }   // extended-hours move; no ext trade = flat (no movement)
     const t = _hmSMap()[x.s]; if (!t) return null;
     const v = t[HM_TF_KEY[spHeatTf]];
     return v == null ? null : v;
@@ -1536,10 +1540,10 @@
   // the move over the selected risk-map timeframe. 1D = extended-hours move (pre/post, full universe) when
   // an extended session is live, else the live RTH move (S&P) / scanner change. Other TFs = scanner tech.
   function _riskChg(x) {
+    if (riskTf === "ext") { const e = _extChgMap()[x.s]; return e != null ? e : 0; }   // dedicated pre/after tab; no ext trade = flat (no movement)
     if (riskTf === "1d") {
-      const ec = _extChgMap()[x.s]; if (ec != null) return ec;                 // pre/post move (all names)
-      const lc = _liveChgMap()[x.s]; if (lc != null) return lc;                // live RTH move (S&P)
-      return x.c != null ? x.c : null;                                          // scanner change (fallback)
+      const lc = _liveChgMap()[x.s]; if (lc != null) return lc;                // live RTH move (S&P) during market hours
+      return x.c != null ? x.c : null;                                          // scanner change = last completed session (clean 1D, no pre/post mixing)
     }
     const t = x.tech || _hmSMap()[x.s]; if (!t) return null; const v = t[HM_TF_KEY[riskTf]]; return v == null ? null : v;
   }
@@ -1695,16 +1699,17 @@
     if (sp500View === "risk") {
       const rowsN = (SCAN && SCAN.rows) ? SCAN.rows.length : 0;
       const vol = _riskVol();
-      const up = vol.filter(r => (_riskChg(r) || 0) > 0).length, dn = vol.filter(r => (_riskChg(r) || 0) < 0).length, tot = vol.length;
+      const up = vol.filter(r => (_riskChg(r) || 0) > 0).length, dn = vol.filter(r => (_riskChg(r) || 0) < 0).length;
+      // in the ⚡ ext tab, flat (no-trade) names shouldn't dilute the verdict — count only names actually moving extended-hours
+      const tot = riskTf === "ext" ? (up + dn) : vol.length;
       const upPct = tot ? up / tot * 100 : 0;
-      // only claim "⚡פרה-מרקט / ⚡אחרי-סגירה" when real extended-hours data actually drives a meaningful
-      // share of the tiles — otherwise most tiles show the last completed session's close and the label lies.
-      const _extMap = _extChgMap();
-      const _extN = vol.filter(r => _extMap[r.s] != null).length;
-      const _extOn = _riskExt() && riskTf === "1d" && _extN >= Math.max(3, Math.ceil(vol.length * 0.15));
-      const tfl = (HM_TFL[riskTf] || riskTf) + (_extOn ? (LIVE.extWin === "pre" ? " ⚡פרה-מרקט" : " ⚡אחרי-סגירה") : "");
+      // pre/post now has its own "⚡ פרה/אפטר" tab, so 1D is a clean daily move (no pre-market mislabel).
+      const tfl = riskTf === "ext"
+        ? ((LIVE && LIVE.extWin === "post") ? "⚡ אפטר-מרקט" : "⚡ פרה-מרקט")
+        : (HM_TFL[riskTf] || riskTf);
       let verdict, vcls;
-      if (tot < 5) { verdict = "מעט מדי מניות תנודתיות"; vcls = "risk-mid"; }
+      if (riskTf === "ext" && tot < 5) { verdict = "אין מסחר מורחב משמעותי כעת"; vcls = "risk-mid"; }
+      else if (tot < 5) { verdict = "מעט מדי מניות תנודתיות"; vcls = "risk-mid"; }
       else if (upPct >= 60) { verdict = "RISK ON 🟢"; vcls = "risk-on"; }
       else if (upPct <= 40) { verdict = "RISK OFF 🔴"; vcls = "risk-off"; }
       else { verdict = "מעורב · זהירות 🟡"; vcls = "risk-mid"; }
