@@ -3305,7 +3305,7 @@
       '<button class="ftf-ch-btn ftf-ch-full" data-ftfside="full">📊 <b>סקירת FTFC מלאה</b><span>סקטורים ותתי-סקטורים · ירוק/אדום</span></button>' +
       '<button class="ftf-ch-btn ftf-ch-bull" data-ftfside="bull">🐂 <b>שורי</b><span>איפה להיות כרגע</span></button>' +
       '<button class="ftf-ch-btn ftf-ch-bear" data-ftfside="bear">🐻 <b>דובי</b><span>איפה לא להיות כרגע</span></button></div>';
-    modal("🥷 כרטיס FTFC — בחר תצוגה", body);
+    modal("📇 כרטיס FTFC — בחר תצוגה", body);
     document.querySelectorAll("[data-ftfside]").forEach(b => b.onclick = () => { const s = b.dataset.ftfside; closeModal();
       _captureRedesignCard(s === "full" ? buildFtfcCardEl : () => buildFtfcSideCardEl(s)); });
   }
@@ -8422,7 +8422,10 @@
       const lp = PRICES[row.s];
       if (lp && lp[0]) {
         row.p = lp[0];
-        if (lp[1] != null) row.c = lp[1];
+        // guard a split / ticker-change discontinuity (e.g. PSKY = Paramount Skydance): the live % is
+        // computed vs a prev-close on a different (unadjusted) price scale than the live quote → an absurd
+        // ~100% reading. Trust the feed's own daily chg (from self-consistent aggregates) when they disagree wildly.
+        if (lp[1] != null && !(Math.abs(lp[1]) > 50 && row.c != null && Math.abs(lp[1] - row.c) > 40)) row.c = lp[1];
         if (row.D) {   // keep the daily wick extremes in sync with the live price (for the period-open "wick touch" test)
           if (row.D.hi != null && lp[0] > row.D.hi) row.D.hi = lp[0];
           if (row.D.lo != null && lp[0] < row.D.lo) row.D.lo = lp[0];
@@ -8942,7 +8945,7 @@
     "חדשות בוקר, סורקים וכלים אוטומטיים — הכל במקום אחד 🚀",
     "השוק לא מחכה לאף אחד — אתה עדיין בחוץ? ⏰",
     "המנויים כבר בפנים. אתה עדיין קורא באנרים 👀",
-    "🥷 פספסתם את הנינג׳ה שמחלק הטבה בלעדית? הוא יקפוץ שוב מחר 🎁",
+    "🎁 פספסתם את הנינג׳ה שמחלק הטבה בלעדית? הוא יקפוץ שוב מחר",
   ];
   function startCtaRotator() {
     const el = document.getElementById("ctaText");
