@@ -8946,6 +8946,7 @@
   // rotating motivational lines in the "join community" banner
   const CTA_MSGS = [
     '<span class="cta-trophy">🏆</span> הצטרף לקהילת הדיסקורד של StratNinja',
+    '<span style="color:#ffcf40;font-weight:800;text-shadow:0 0 12px rgba(255,200,60,.6),0 0 4px rgba(255,170,30,.9);letter-spacing:.3px">🎁 פספסתם את הנינג׳ה שמחלק הטבה בלעדית? הוא יקפוץ שוב מחר ✨</span>',
     "רוצה סוף־סוף להבין מה באמת קורה בגרפים? 📊",
     "לסחור לבד זה יקר — טעות אחת מכסה שנה של קהילה 🤝",
     "עוד מתלבט על העסקה? תשמע דעה שנייה לפני שתלחץ 💬",
@@ -8954,7 +8955,6 @@
     "חדשות בוקר, סורקים וכלים אוטומטיים — הכל במקום אחד 🚀",
     "השוק לא מחכה לאף אחד — אתה עדיין בחוץ? ⏰",
     "המנויים כבר בפנים. אתה עדיין קורא באנרים 👀",
-    "🎁 פספסתם את הנינג׳ה שמחלק הטבה בלעדית? הוא יקפוץ שוב מחר",
   ];
   function startCtaRotator() {
     const el = document.getElementById("ctaText");
