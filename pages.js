@@ -5348,6 +5348,12 @@
         ? '<div class="note" style="margin-top:6px">⏳ הנתונים הטכניים ייטענו בהרצת הסורק הבאה בשרת.</div>'
         : '<div class="frow tech-row">' +
             '<div class="fgrp"><label>📉 דחיסת ממוצעים ≤ % <span class="muted" style="font-size:10px">(SMA 20/50/100/200)</span></label><input id="tCompMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.compMax + '"></div>' +
+            '<div class="fgrp"><label>🔒 ממוצע שטוח / דחיסה <span class="muted" style="font-size:10px">(ה-SMA הנבחר זז ≤ % בטווח הימים — דשדוש / קפיץ דרוך)</span></label>' +
+              '<div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">' +
+                '<select id="tFlatSma" title="איזה ממוצע">' + [10, 20, 50, 100, 150, 200].map(p => opt(String(p), techState.flatSma, "SMA " + p)).join("") + "</select>" +
+                '<select id="tFlatDays" title="כמות ימים">' + [5, 10, 15, 20, 25, 30, 35, 40, 45, 50].map(d => opt(String(d), techState.flatDays, d + " ימים")).join("") + "</select>" +
+                '<input id="tFlatMax" type="number" step="0.5" min="0.5" max="10" placeholder="≤ %" style="width:64px" value="' + techState.flatMax + '">' +
+              "</div></div>" +
             '<div class="fgrp"><label>🎈 תקופת בולינגר</label><select id="tBbPeriod">' + opt("20", techState.bbPeriod, "20 (קלאסי)") + opt("50", techState.bbPeriod, "50 (ארוך)") + "</select></div>" +
             '<div class="fgrp"><label>🎈 בולינגר דחיסה ≤ <span class="muted" style="font-size:10px">(אחוזון 0–100, יחסי למניה)</span></label><input id="tBbSqMax" type="number" step="5" min="0" max="100" placeholder="—" style="width:70px" value="' + techState.bbSqMax + '"></div>' +
             '<div class="fgrp"><label>🎈 רוחב בולינגר ≤ <span class="muted" style="font-size:10px">(% אבסולוטי — צר ממש)</span></label><input id="tBbwMax" type="number" step="0.5" min="0" placeholder="—" style="width:70px" value="' + techState.bbwMax + '"></div>' +
@@ -5413,6 +5419,7 @@
       { key: "dma", th: "Δ " + maLabel, tip: "מרחק המחיר (%) מהממוצע-הנע שבחרת בפילטר הטכני", cell: (k, dma) => "<td>" + dPct(dma) + "</td>", active: techState.maRel !== "off" },
       { key: "dhi52", th: "Δ שיא52", tip: "מרחק המחיר משיא 52 השבועות (0% = בשיא)", cell: k => "<td>" + dPct(k.dhi52) + "</td>", active: techState.ext52 !== "off" },
       { key: "comp", th: "דחיסת MA", tip: "דחיסת ממוצעים: כמה הממוצעים הנעים צפופים זה לזה — נמוך = קפיץ דחוס לפני פריצה", cell: k => { const sp = _compSpread(k); return '<td class="sma-spread">' + (sp == null ? "—" : sp.toFixed(2) + "%") + "</td>"; }, active: _compActive() },
+      { key: "flat", th: "SMA שטוח", tip: "כמה ה-SMA הנבחר זז (%) בטווח הימים שבחרת — נמוך = ממוצע שטוח / דשדוש צר", cell: k => { const v = _flatVal(k); return '<td class="sma-spread">' + (v == null ? "—" : v.toFixed(2) + "%") + "</td>"; }, active: _flatActive() },
       { key: "bbsq", th: "BB דחיסה" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "דחיסת בולינגר (יחסי): אחוז הימים (~חצי שנה) עם רצועות צרות יותר — נמוך = הכי דחוס שהמניה הייתה. תופס גם מניות תנודתיות בקפיץ יחסי", cell: k => { const v = _bbVal(k, "bbsq"); return "<td>" + (v == null ? "—" : v.toFixed(0)) + "</td>"; }, active: _bbActive() },
       { key: "bbw", th: "רוחב BB" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "רוחב רצועות בולינגר כאחוז מהמחיר (אבסולוטי): נמוך = רצועות צרות ממש עכשיו. p25 של השוק ≈ 10%", cell: k => { const v = _bbVal(k, "bbw"); return "<td>" + (v == null ? "—" : v.toFixed(1) + "%") + "</td>"; }, active: _bbwActive() },
       { key: "bbp", th: "%B" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => { const v = _bbVal(k, "bbp"); return "<td>" + (v == null ? "—" : v <= 0 ? '<b class="pos">' + v.toFixed(0) + " ▲</b>" : v >= 100 ? '<b class="neg">' + v.toFixed(0) + " ▼</b>" : v.toFixed(0)) + "</td>"; }, active: _bbPosActive() },
@@ -5670,10 +5677,11 @@
         if (_pextActive() && !_pextTest(t)) return false;     // price must be within pextPct% of a Y/Q/M high/low
       }
       // indicator scanners (compression / Bollinger / swing / trend-lines / Fibonacci) — own collapsible panel, stack AND independently
-      if (_compActive() || _bbActive() || _bbwActive() || _bbPosActive() || _swActive() || _pivActive() || _trendActive() || _fibActive()) {
+      if (_compActive() || _flatActive() || _bbActive() || _bbwActive() || _bbPosActive() || _swActive() || _pivActive() || _trendActive() || _fibActive()) {
         const k = t.tech;
         if (!k) return false;
         if (_compActive()) { const sp = _compSpread(k); if (sp == null || sp > parseFloat(techState.compMax)) return false; }
+        if (_flatActive()) { const v = _flatVal(k); if (v == null || v > parseFloat(techState.flatMax)) return false; }
         if (_bbActive()) { const v = _bbVal(k, "bbsq"); if (v == null || v > parseFloat(techState.bbSqMax)) return false; }
         if (_bbwActive()) { const v = _bbVal(k, "bbw"); if (v == null || v > parseFloat(techState.bbwMax)) return false; }
         if (_bbPosActive()) { const b = _bbVal(k, "bbp"); if (b == null) return false;
@@ -5939,6 +5947,9 @@
     bind("tExtMove", "onchange", e => { techState.extMove = e.target.value; reRender(); });
     bind("tExtPct", "onchange", e => { techState.extPct = parseFloat(e.target.value) || 0; reRender(); });
     bind("tCompMax", "onchange", e => { techState.compMax = e.target.value; reRender(); });
+    bind("tFlatSma", "onchange", e => { techState.flatSma = e.target.value; reRender(); });
+    bind("tFlatDays", "onchange", e => { techState.flatDays = e.target.value; reRender(); });
+    bind("tFlatMax", "onchange", e => { techState.flatMax = e.target.value; reRender(); });
     bind("tBbSqMax", "onchange", e => { techState.bbSqMax = e.target.value; reRender(); });
     bind("tBbwMax", "onchange", e => { techState.bbwMax = e.target.value; reRender(); });
     bind("tBbPeriod", "onchange", e => { techState.bbPeriod = e.target.value; reRender(); });
@@ -6021,6 +6032,7 @@
     gid("tExtMove", _extActive());
     // ---- indicator panel ----
     gid("tCompMax", _compActive());
+    gid("tFlatMax", _flatActive());
     gid("tBbSqMax", _bbActive());
     gid("tBbwMax", _bbwActive());
     gid("tSwSide", _swActive());
@@ -6059,6 +6071,8 @@
     gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
     extMove: "off", extPct: 3,   // extended-hours (pre/post market) move ≥ % — reads LIVE.ext (fresh during off-hours)
     compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
+    flatSma: "20", flatDays: "40", flatMax: "",   // flat-SMA / compression: chosen SMA moved ≤ flatMax% over flatDays (5..50) days
+
     bbSqMax: "",                 // Bollinger squeeze percentile ≤ (relative to the stock's own history)
     bbwMax: "",                  // Bollinger bandwidth % ≤ (absolute — objectively narrow bands)
     bbPeriod: "20",              // Bollinger MA period: "20" (classic) or "50"
@@ -6093,6 +6107,15 @@
     return Math.max.apply(null, vals) - Math.min.apply(null, vals);
   }
   function _compActive() { return techState.compMax !== "" && !isNaN(parseFloat(techState.compMax)); }
+  // flat-SMA / compression filter: the chosen SMA's |%move| over flatDays(5..50) ≤ flatMax
+  function _flatActive() { return techState.flatMax !== "" && !isNaN(parseFloat(techState.flatMax)); }
+  function _flatVal(k) {
+    if (!k || !k.flat) return null;
+    const arr = k.flat[techState.flatSma]; if (!arr || !arr.length) return null;
+    const idx = Math.round((parseInt(techState.flatDays, 10) || 40) / 5) - 1;
+    const v = arr[Math.max(0, Math.min(arr.length - 1, idx))];
+    return v == null ? null : v;
+  }
   function _bbActive() { return techState.bbSqMax !== "" && !isNaN(parseFloat(techState.bbSqMax)); }
   function _bbwActive() { return techState.bbwMax !== "" && !isNaN(parseFloat(techState.bbwMax)); }
   // Bollinger period selector (20 classic / 50 longer) — picks which precomputed field to read
@@ -6160,7 +6183,7 @@
       default:     return inBand(k.fibr);   // "any" — close near the level, either direction
     }
   }
-  function indActiveCount() { return (_compActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_bbwActive() ? 1 : 0) + (_bbPosActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
+  function indActiveCount() { return (_compActive() ? 1 : 0) + (_flatActive() ? 1 : 0) + (_bbActive() ? 1 : 0) + (_bbwActive() ? 1 : 0) + (_bbPosActive() ? 1 : 0) + (_swActive() ? 1 : 0) + (_trendActive() ? 1 : 0) + (_fibActive() ? 1 : 0); }
   function _rv() { const v = parseFloat(techState.rvolMin); return isNaN(v) ? 0 : v; }
   function _atrp() { const v = parseFloat(techState.atrpMin); return isNaN(v) ? 0 : v; }
   function _atrpMax() { const v = parseFloat(techState.atrpMax); return isNaN(v) ? null : v; }
@@ -6306,7 +6329,7 @@
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = ""; techState.earnDir = "far";
     techState.ext52 = "off"; techState.ext52Pct = 3;
     techState.atrpMin = ""; techState.atrpMax = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3; techState.extMove = "off"; techState.extPct = 3;
-    techState.compMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2; techState.swK = "5"; techState.pivRev = "off"; techState.pivPct = 2; techState.pivK = "5";
+    techState.compMax = ""; techState.flatSma = "20"; techState.flatDays = "40"; techState.flatMax = ""; techState.bbSqMax = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2; techState.swK = "5"; techState.pivRev = "off"; techState.pivPct = 2; techState.pivK = "5";
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
     techState.popenTest = "off"; techState.popenMult = 0.5; techState.popenTfs = ["Y", "Q", "M"]; techState.popenTouch = "price";
