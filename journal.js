@@ -495,7 +495,7 @@
       const main = past
         ? "<span class='pos'>✓ מעבר ל-BE</span>"
         : "<span class='" + (Math.abs(movePct) > 8 ? "neg" : "") + "'>" + arrow + " " + Math.abs(movePct).toFixed(1) + "%</span>";
-      return "<td style='white-space:nowrap' title='Breakeven בפקיעה = " + money(be, 2) + " · מחיר מניה " + money(+under, 2) + "'>" + main +
+      return "<td style='white-space:nowrap;font-family:Heebo,Rubik,sans-serif' title='Breakeven בפקיעה = " + money(be, 2) + " · מחיר מניה " + money(+under, 2) + "'>" + main +
         "<div class='muted' style='font-size:11px'>BE " + money(be, 2) + " · פער " + money(Math.abs(gap), 2) + "</div></td>";
     }
     // daily time-decay ($/day) as a number: theta × 100 × contracts. LONG premium = loss (−); SHORT = gain (+).
@@ -528,11 +528,11 @@
       if (perDay == null) {
         const occ = _occSymbol(t);
         const hint = occ ? "לחץ 🔄 מחירי אופציות כדי למשוך Theta מ-CBOE" : "הוסף סטרייק + תאריך פקיעה";
-        return "<td class='muted' style='white-space:nowrap' title='" + hint + "'>—" + dteSub + "</td>";
+        return "<td class='muted' style='white-space:nowrap;font-family:Heebo,Rubik,sans-serif' title='" + hint + "'>—" + dteSub + "</td>";
       }
       const occ = _occSymbol(t), th = occ ? _theta[occ] : null, qty = Math.abs(+t.qty || 0), m = (+t.mult || 100);
       const cl = perDay >= 0 ? "pos" : "neg";
-      return "<td class='" + cl + "' style='white-space:nowrap' title='Theta " + (th != null ? (+th).toFixed(4) : "") + " × " + m + " × " + qty + " חוזים" + (t.direction === "short" ? " (שורט — לטובתך)" : "") + "'>" +
+      return "<td class='" + cl + "' style='white-space:nowrap;font-family:Heebo,Rubik,sans-serif' title='Theta " + (th != null ? (+th).toFixed(4) : "") + " × " + m + " × " + qty + " חוזים" + (t.direction === "short" ? " (שורט — לטובתך)" : "") + "'>" +
         (perDay >= 0 ? "+" : "") + money(perDay, 2) + "<span class='muted' style='font-size:11px'>/יום</span>" + dteSub + "</td>";
     }
     const rows = items.map(function (it) {
@@ -644,7 +644,7 @@
           "<td style='font-weight:800;padding-top:10px' title='סך שווי הפוזיציות הפתוחות'>" + money(totPosVal, 0) + "</td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='padding-top:10px'></td>" +
-          "<td class='" + (totThetaDay >= 0 ? "pos" : "neg") + "' style='font-weight:800;padding-top:10px' title='סך שחיקת הזמן היומית של כל פוזיציות האופציה הפתוחות'>" + (haveTheta ? (totThetaDay >= 0 ? "+" : "") + money(totThetaDay, 2) + "<span class='muted' style='font-size:11px'>/יום</span>" : "") + "</td>" +
+          "<td class='" + (totThetaDay >= 0 ? "pos" : "neg") + "' style='font-weight:800;padding-top:10px;font-family:Heebo,Rubik,sans-serif' title='סך שחיקת הזמן היומית של כל פוזיציות האופציה הפתוחות'>" + (haveTheta ? (totThetaDay >= 0 ? "+" : "") + money(totThetaDay, 2) + "<span class='muted' style='font-size:11px'>/יום</span>" : "") + "</td>" +
           "<td style='padding-top:10px'></td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totHtml + "</td>" +
           "<td style='font-weight:800;padding-top:10px'>" + totPct + "</td>" +
