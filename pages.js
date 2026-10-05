@@ -5532,6 +5532,10 @@
     const tfs = scanState.tfs.length ? scanState.tfs : ["D"];
     const techOn = techActive();
     return all.filter(t => {
+      // hide "pinned" names — frozen M&A / take-private targets (abnormally low ATR% + tight range), dead
+      // price action the server keeps in the feed (for S&P breadth) but shouldn't clutter the scanner.
+      // Exception: when the trader explicitly types a symbol, don't hide it.
+      if (t.tech && t.tech.pin && !scanState.sym) return false;
       if (scanState.universe === "sp500" && !t.sp) return false;
       if (scanState.universe === "comm" && !t.comm) return false;
       if (scanState.sector.length && scanState.sector.indexOf(t.sector) < 0) return false;
