@@ -8228,6 +8228,7 @@
         '<div class="panel"><h3>📄 עמודים הכי נצפים</h3><div id="anaPages">—</div></div>' +
         '<div class="panel"><h3>🖱️ פיצ׳רים הכי בשימוש</h3><div id="anaClicks">—</div></div>' +
         '<div class="panel"><h3>👤 משתמשים פעילים</h3><div id="anaUsers">—</div></div>' +
+        '<div class="panel"><h3>🎁 הטבת גולשים (קוד קהילה)</h3><div id="anaNinja">—</div></div>' +
       "</div>";
   }
   async function wireAnalytics() {
@@ -8237,6 +8238,22 @@
     const setTxt = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
     let client = null; try { client = window.SNAuth && SNAuth.getClient && SNAuth.getClient(); } catch (e) {}
     if (!client) { setTxt("anaSummary", "צריך להיות מחובר כאדמין כדי לראות נתונים."); return; }
+    // all-visitors ninja-deal counters (a separate server counter — counts logged-OUT visitors too,
+    // unlike usage_events). Runs independently so it shows even when usage_events is empty.
+    (async () => {
+      try {
+        const { data: cdata } = await client.from("counters").select("name,n");
+        const cm = {}; (cdata || []).forEach(r => cm[r.name] = +r.n || 0);
+        const opens = cm["ninja_deal_open"] || 0, copies = cm["ninja_code_copy"] || 0;
+        setTxt("anaNinja",
+          '<div style="display:flex;flex-direction:column;gap:9px">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center"><span>👀 לחיצות על הנינג׳ה</span><b style="font-size:20px">' + opens + "</b></div>" +
+            '<div style="display:flex;justify-content:space-between;align-items:center"><span>📋 העתקות הקוד</span><b style="font-size:20px">' + copies + "</b></div>" +
+            (opens ? '<div class="muted" style="font-size:11px">יחס העתקה ' + Math.round(copies / opens * 100) + '% · סה״כ מאז ההשקה · כל הגולשים</div>'
+                   : '<div class="muted" style="font-size:11px">סה״כ מאז ההשקה · כל הגולשים</div>') +
+          "</div>");
+      } catch (e) { setTxt("anaNinja", '<div class="muted" style="font-size:12px">אין נתונים עדיין — ודא שהרצת את counters.sql ב-Supabase</div>'); }
+    })();
     const since = new Date(Date.now() - _anaDays * 86400000).toISOString();
     let rows = [];
     try {

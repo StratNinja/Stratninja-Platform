@@ -196,7 +196,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <script src="engine.js"></script>
 <script src="journal.js?v=1005r"></script>
 <script src="prefs.js"></script>
-<script src="pages.js?v=1005n"></script>
+<script src="pages.js?v=1005s"></script>
 <script src="platform.js"></script>
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>
@@ -235,7 +235,20 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   var KEY = "sn_ninjadeal_day";
   function today() { var d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
   var seen = null; try { seen = localStorage.getItem(KEY); } catch (e) {}
+  // site-wide click counter (ALL visitors, incl. logged-out) via an atomic Supabase RPC — fire-and-forget.
+  // Admin sees the totals in "מטריצת שימוש". Needs counters.sql (counters table + bump_counter RPC) run once.
+  function bump(name) {
+    try {
+      var c = window.SN_CONFIG; if (!c || !c.SUPABASE_URL || !c.SUPABASE_ANON_KEY) return;
+      fetch(c.SUPABASE_URL + "/rest/v1/rpc/bump_counter", {
+        method: "POST", keepalive: true,
+        headers: { apikey: c.SUPABASE_ANON_KEY, Authorization: "Bearer " + c.SUPABASE_ANON_KEY, "Content-Type": "application/json" },
+        body: JSON.stringify({ cname: name })
+      }).catch(function () {});
+    } catch (e) {}
+  }
   function openDeal() {
+    bump("ninja_deal_open");
     el.classList.remove("show"); document.body.classList.remove("ninja-peeking");
     var m = document.createElement("div"); m.className = "nd-modal";
     m.innerHTML = '<div class="nd-card" role="dialog" aria-modal="true">' +
@@ -251,7 +264,8 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
     function close() { m.remove(); }
     m.addEventListener("click", function (e) { if (e.target === m) close(); });
     m.querySelector(".nd-close").addEventListener("click", close);
-    m.querySelector(".nd-copy").addEventListener("click", function () { var b = this; try { navigator.clipboard.writeText("IWUSTRAT"); b.textContent = "✓ הועתק"; setTimeout(function () { b.textContent = "📋 העתק קוד"; }, 1600); } catch (e) {} });
+    var copied = false;
+    m.querySelector(".nd-copy").addEventListener("click", function () { var b = this; try { navigator.clipboard.writeText("IWUSTRAT"); if (!copied) { copied = true; bump("ninja_code_copy"); } b.textContent = "✓ הועתק"; setTimeout(function () { b.textContent = "📋 העתק קוד"; }, 1600); } catch (e) {} });
   }
   el.addEventListener("click", openDeal);
   el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openDeal(); } });
