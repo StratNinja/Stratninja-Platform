@@ -7639,9 +7639,9 @@
       const _posN = list.filter(t => t._hasPos).length;   // how many favorites you currently hold
       const favPosTgl = '<button class="btn ghost fav-posfilter' + (favPosOnly ? " on" : "") + '" id="favPosOnly" title="הצג רק מניות שאתה בפוזיציה עליהן ביומן המסחר — גם אם יש עליהן התראה פעילה">💼 בפוזיציה' + (_posN ? ' <span class="fav-posn">' + _posN + "</span>" : "") + (favPosOnly ? " ✓" : "") + "</button>";
       const _favFiltered = favPresetFilter.length || favPosOnly;
-      const favToolbar = '<div class="panel fav-toolbar"><div class="fav-tb-left">' + favPresetDropdown(presetNames) + favPosTgl + favSelectedChips() +
+      const favToolbar = '<div class="panel fav-toolbar"><div class="fav-tb-left">' + favPosTgl +
         '<span class="fav-count muted">' + favs.length + ' מניות' + (_favFiltered ? ' · ' + viewList.length + ' מסוננות' : "") + '</span></div>' +
-        '<div class="fav-tb-right">' + favLayoutTgl + favActions + "</div></div>";
+        '<div class="fav-tb-right">' + favLayoutTgl + favActions + favSelectedChips() + favPresetDropdown(presetNames) + "</div></div>";
       const favEmptyNote = (favPosOnly && !viewList.length)
         ? '<div class="panel" style="text-align:center;padding:26px;color:var(--muted)">💼 אין כרגע מניות מהמועדפים שאתה בפוזיציה עליהן.<br><span style="font-size:12px">הפוזיציות נקבעות לפי עסקאות פתוחות ביומן המסחר.</span></div>'
         : "";
