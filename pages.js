@@ -2422,6 +2422,15 @@
       if (b) { b.textContent = n ? n : ""; b.style.display = n ? "inline-flex" : "none"; }
     });
   }
+  // auto-detect an alert's DIRECTION (bull/bear/neutral) from its preset name, so a flood of alerts
+  // can be triaged by side. Reads the 🟢/🔴 + ▲/▼ markers and Strat keywords the presets already carry.
+  let _alFeedDir = "all";   // alerts-center direction filter: all / bull / bear
+  function _alertDir(name) {
+    const l = String(name || "").toLowerCase();
+    if (/🔴|🔻|🔽|▼|⬇|\bred\b|down|shooter|ירידה|שורט|\bbear/.test(l)) return "bear";
+    if (/🟢|🔺|🔼|▲|⬆|\bgreen\b|\bup\b|hammer|עלייה|לונג|\bbull/.test(l)) return "bull";
+    return "neutral";
+  }
   function openAlertsFeed() {
     if (!window.Prefs) return;
     Prefs.feedMarkRead(); updateAlertBell();
@@ -2438,11 +2447,21 @@
       : '<div class="muted">אין עדיין סריקות שמורות. שמור פריסט בסורק העסקאות כדי להפעיל עליו התראה.</div>';
     const feedById = {}; presets.forEach(p => { feedById[p.id] = p; });
     const _p2 = n => String(n).padStart(2, "0");
-    const flistRows = feed.map(e => { const p = feedById[e.pid]; if (!p) return ""; /* preset gone → hide stale alert */
+    const _dcol = { bull: "#16b877", bear: "#e0524f", neutral: "#5a6678" };
+    const _feedItems = feed.map(e => { const p = feedById[e.pid]; if (!p) return null; /* preset gone → hide stale alert */
+      const dir = _alertDir(p.name);
       const d = new Date(e.ts), when = d.getDate() + "." + (d.getMonth() + 1) + " " + _p2(d.getHours()) + ":" + _p2(d.getMinutes());   // compact date+time, one line
-      return '<div class="al-frow"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted al-fname" title="' + escAttr(p.name) + '">' + escHtml(p.name) + '</span><span class="muted al-time">' + when + "</span></div>";
-    }).filter(Boolean).slice(0, 80).join("");
-    const flist = flistRows || '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>';
+      const html = '<div class="al-frow" style="border-inline-start:3px solid ' + _dcol[dir] + ';padding-inline-start:8px"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted al-fname" title="' + escAttr(p.name) + '">' + escHtml(p.name) + '</span><span class="muted al-time">' + when + "</span></div>";
+      return { dir: dir, html: html };
+    }).filter(Boolean);
+    const _dcnt = { bull: 0, bear: 0, neutral: 0 };
+    _feedItems.forEach(it => _dcnt[it.dir]++);
+    const _dchip = (dir, lbl, cnt, col) => '<button data-aldir="' + dir + '" class="btn ghost" style="font-size:11px;font-weight:700;padding:3px 9px' + (_alFeedDir === dir ? ";border-color:" + col + ";background:" + col + "22;color:#fff" : "") + '">' + lbl + " <b>" + cnt + "</b></button>";
+    const dirChips = _feedItems.length ? '<span style="display:inline-flex;gap:5px;flex-wrap:wrap;margin-inline-start:6px">' + _dchip("all", "הכל", _feedItems.length, "#8878ff") + _dchip("bull", "🟢 בוליש", _dcnt.bull, "#16b877") + _dchip("bear", "🔴 בריש", _dcnt.bear, "#e0524f") + "</span>" : "";
+    const flistRows = (_alFeedDir === "all" ? _feedItems : _feedItems.filter(it => it.dir === _alFeedDir)).slice(0, 80).map(it => it.html).join("");
+    const flist = flistRows || (_feedItems.length
+      ? '<div class="muted">אין התראות ' + (_alFeedDir === "bull" ? "בוליש 🟢" : "בריש 🔴") + " כרגע.</div>"
+      : '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>');
     const pushOn = !!(window.Prefs && Prefs.pushSubs().length);
     const pushBtn = pushOn ? '<span class="pos" style="font-weight:600">✓ התראות פלאפון פעילות</span>'
       : '<button class="btn primary" id="alPushSub" style="font-size:12px">📱 הפעל התראות לפלאפון</button>';
@@ -2463,7 +2482,7 @@
         '<button class="btn ghost" id="alTestAlert" style="font-size:12px;font-weight:600">🧪 בדוק התראה</button></div>' +
       '<div class="al-cols">' +
         '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">🎯 הסריקות שלי <button class="btn ghost" id="alManagePresets" style="font-size:12px;font-weight:600" title="נהל, סדר, שתף וגבה את הסריקות לקובץ (או שחזר מגיבוי)">🗂️ נהל / גבה</button> <span class="muted" style="font-size:11px;font-weight:600">🔔 התראה (מחשב) · 📱 גם לפלאפון</span></h3><div class="al-plist">' + plist + "</div></div>" +
-        '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px">🔔 התראות אחרונות ' + (feed.length ? '<button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div></div>" +
+        '<div class="al-col"><h3 style="margin:6px 0 8px;font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">🔔 התראות אחרונות ' + dirChips + (feed.length ? ' <button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + '</h3><div class="al-flist">' + flist + "</div></div>" +
       "</div>";
     modal("🔔 מרכז ההתראות", body, "al-modal");
     { const mp = $("#alManagePresets"); if (mp) mp.onclick = () => openPresetManager(); }
@@ -2481,6 +2500,7 @@
     document.querySelectorAll(".al-style").forEach(b => b.onclick = () => { _setAlertStyle(b.dataset.style); _primeAudio(); openAlertsFeed(); });
     { const ta = $("#alTestAlert"); if (ta) ta.onclick = () => { _primeAudio(); _fireAlert([{ sym: "TSLA", preset: "בדיקה", pid: "test" }]); }; }
     { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); openAlertsFeed(); }; }
+    document.querySelectorAll("[data-aldir]").forEach(b => b.onclick = () => { _alFeedDir = b.dataset.aldir; openAlertsFeed(); });
     wireCharts(document.getElementById("pgModal") || document);
   }
   window._snOpenAlerts = openAlertsFeed;
