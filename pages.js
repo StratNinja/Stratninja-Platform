@@ -5322,7 +5322,9 @@
               opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
               "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>ATR% <span class="muted" style="font-size:10px">(תנודתיות · מ-עד)</span></label><div class="chips" style="align-items:center"><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="מ-" style="width:60px" value="' + techState.atrpMin + '"><span class="muted">–</span><input id="tAtrpMax" type="number" step="0.5" min="0" placeholder="עד" style="width:60px" value="' + techState.atrpMax + '"></div></div>' +
-            '<div class="fgrp"><label>תנועה יומית %</label><div class="chips" style="align-items:center"><input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
+            '<div class="fgrp"><label>תנועה % <span class="muted" style="font-size:10px">(לפי מסגרת זמן)</span></label><div class="chips" style="align-items:center">' +
+              '<select id="tChgTf" title="מסגרת הזמן של התנועה">' + opt("1d", techState.chgTf, "יומי") + opt("1w", techState.chgTf, "שבועי") + opt("1m", techState.chgTf, "חודשי") + opt("1q", techState.chgTf, "רבעוני") + opt("1y", techState.chgTf, "שנתי") + "</select>" +
+              '<input id="tChgMin" type="number" step="0.5" placeholder="מ-" style="width:60px" value="' + techState.chgMin + '"><span class="muted">–</span><input id="tChgMax" type="number" step="0.5" placeholder="עד" style="width:60px" value="' + techState.chgMax + '"></div></div>' +
             '<div class="fgrp"><label>גאפ (פתיחה מול אתמול)</label><div class="chips" style="align-items:center"><select id="tGapDir">' +
               opt("off", techState.gapDir, "— הכל") + opt("up", techState.gapDir, "גאפ אפ ↑") + opt("down", techState.gapDir, "גאפ דאון ↓") + opt("any", techState.gapDir, "⚡ שניהם") +
               "</select>" + (_gapActive() ? '<span class="muted">≥</span><input id="tGapPct" type="number" step="0.5" min="0" style="width:56px" value="' + techState.gapPct + '"><span class="muted">%</span>' : "") + "</div></div>" +
@@ -5569,9 +5571,13 @@
           if (cMin != null && mc < cMin) return false;
           if (cMax != null && mc > cMax) return false;
         } }
-      // daily % move (signed, from–to) — uses the always-present change field, not the tech block
+      // % move (signed, from–to) over the chosen timeframe. 1D = the always-present change field;
+      // 1W/1M/1Q/1Y = the scanner tech block (c5/c20/c63/c252).
       if (_chgActive()) {
-        const cg = t.chg == null ? (t.tech ? t.tech.chg : null) : t.chg;
+        const _ctf = techState.chgTf || "1d";
+        let cg;
+        if (_ctf === "1d") cg = t.chg == null ? (t.tech ? t.tech.chg : null) : t.chg;
+        else { const _f = { "1w": "c5", "1m": "c20", "1q": "c63", "1y": "c252" }[_ctf]; cg = (t.tech && _f) ? t.tech[_f] : null; }
         if (cg == null) return false;
         if (techState.chgMin !== "" && cg < parseFloat(techState.chgMin)) return false;
         if (techState.chgMax !== "" && cg > parseFloat(techState.chgMax)) return false;
@@ -5962,6 +5968,7 @@
     });
     bind("tAtrpMin", "onchange", e => { techState.atrpMin = e.target.value; reRender(); });
     bind("tAtrpMax", "onchange", e => { techState.atrpMax = e.target.value; reRender(); });
+    bind("tChgTf", "onchange", e => { techState.chgTf = e.target.value; reRender(); });
     bind("tChgMin", "onchange", e => { techState.chgMin = e.target.value; reRender(); });
     bind("tChgMax", "onchange", e => { techState.chgMax = e.target.value; reRender(); });
     bind("tGapDir", "onchange", e => { techState.gapDir = e.target.value; reRender(); });
@@ -6050,6 +6057,7 @@
     gid("tPextTest", _pextActive());
     gid("tAtrpMin", techState.atrpMin !== "");
     gid("tAtrpMax", techState.atrpMax !== "");
+    gid("tChgTf", _chgActive() && techState.chgTf !== "1d");
     gid("tChgMin", techState.chgMin !== "");
     gid("tChgMax", techState.chgMax !== "");
     gid("tGapDir", techState.gapDir !== "off");
@@ -6093,7 +6101,7 @@
     avgVolPeriod: "30", avgVolMin: 0,
     ext52: "off", ext52Pct: 3,
     atrpMin: "", atrpMax: "",     // ATR as % of price — from/to range (from alone = X%+, to alone = ≤Y%, both = range)
-    chgMin: "", chgMax: "",      // daily % move, from–to (signed)
+    chgMin: "", chgMax: "", chgTf: "1d",   // % move, from–to (signed), over chgTf (1d/1w/1m/1q/1y → chg/c5/c20/c63/c252)
     gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
     extMove: "off", extPct: 3,   // extended-hours (pre/post market) move ≥ % — reads LIVE.ext (fresh during off-hours)
     compMax: "",                 // SMA-compression: spread across COMP_MAS ≤ %
@@ -6356,7 +6364,7 @@
     techState.volAvgDir = "off"; techState.volAvgDays = 3;
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = ""; techState.earnDir = "far";
     techState.ext52 = "off"; techState.ext52Pct = 3;
-    techState.atrpMin = ""; techState.atrpMax = ""; techState.chgMin = ""; techState.chgMax = ""; techState.gapDir = "off"; techState.gapPct = 3; techState.extMove = "off"; techState.extPct = 3;
+    techState.atrpMin = ""; techState.atrpMax = ""; techState.chgMin = ""; techState.chgMax = ""; techState.chgTf = "1d"; techState.gapDir = "off"; techState.gapPct = 3; techState.extMove = "off"; techState.extPct = 3;
     techState.compMax = ""; techState.flatSma = "20"; techState.flatDays = "40"; techState.flatMax = ""; techState.bbSqMax = ""; techState.sqzMode = "off"; techState.sqzMinBars = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2; techState.swK = "5"; techState.pivRev = "off"; techState.pivPct = 2; techState.pivK = "5";
     techState.trendMode = "off"; techState.trendPct = 1.5;
     techState.fibLevel = "off"; techState.fibDir = "any"; techState.fibTol = 5;
