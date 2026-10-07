@@ -270,7 +270,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .pm-sync-pull.btn.ghost:hover { background:rgba(34,227,155,.14); }
 
 /* ===== favorites — visual cards grouped by opportunity (Adi 2026-10-05) ===== */
-.fav-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 14px; }
+.fav-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 14px; position:relative; }
 .fav-tb-left { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .fav-tb-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .fav-count { font-size:12px; }
@@ -284,13 +284,13 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .fav-posfilter.on { background:rgba(168,85,247,.18); border-color:#a855f7; color:#e9d5ff; }
 .fav-posn { display:inline-block; min-width:16px; padding:0 5px; margin-inline-start:4px; border-radius:999px; background:rgba(168,85,247,.32); color:#f3e8ff; font-size:11px; font-weight:800; line-height:16px; text-align:center; }
 /* preset multi-select dropdown */
-.fav-pdrop { position:relative; }
+.fav-pdrop { position:static; }   /* panel positions against .fav-toolbar so it can open on the LEFT, keeping the right-side results visible (Adi) */
 .fav-pdrop-sum { list-style:none; cursor:pointer; font-size:13px; font-weight:700; padding:7px 12px; border:1px solid var(--line); border-radius:9px; background:rgba(255,255,255,.04); color:var(--ink); white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
 .fav-pdrop-sum::-webkit-details-marker { display:none; }
 .fav-pdrop-sum.on { border-color:#8878ff; color:#cdc6ff; background:rgba(136,120,255,.12); }
 .fav-pdrop[open] .fpd-caret { transform:rotate(180deg); }
 .fpd-caret { transition:transform .15s; font-size:10px; }
-.fav-pdrop-body { position:absolute; z-index:40; margin-top:6px; min-width:260px; max-width:340px; max-height:60vh; overflow:auto;
+.fav-pdrop-body { position:absolute; z-index:40; top:100%; left:14px; right:auto; margin-top:6px; min-width:260px; max-width:340px; max-height:60vh; overflow:auto;
   background:var(--panel); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 34px rgba(0,0,0,.5); padding:8px; }
 .fpd-list { display:flex; flex-direction:column; gap:2px; }
 .fpd-item { display:flex; align-items:center; gap:9px; padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; color:var(--ink); }
