@@ -1075,10 +1075,7 @@
     try {
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL) return;
-      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.breadth&select=data",
-        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-      if (!r.ok) return;
-      const j = await r.json();
+      const j = await snCachedFetch("market_snapshot", "breadth");
       const d = j && j[0] && j[0].data;
       if (d && (d.sp || d.ndx)) { BREADTH_DATA = d; if (state.page === "breadth") reRender(); }
     } catch (e) { /* keep last / fall back to TV */ }
@@ -8454,14 +8451,27 @@
   }
   window.setPageExternal = setPage;
 
+  // read a big PUBLIC Supabase row through the Vercel edge-cache proxy (/api/feed) so Supabase is hit
+  // ~once per cache window GLOBALLY, not once per visitor. Falls back to a DIRECT Supabase read on any
+  // failure (proxy down/cold/not-yet-deployed). Returns the PostgREST array [{data}] — same shape as direct.
+  async function snCachedFetch(table, id) {
+    try {
+      const r = await fetch("/api/feed?t=" + table + "&id=" + id);
+      if (r.ok) return await r.json();
+    } catch (e) {}
+    try {
+      const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return null;
+      const r2 = await fetch(cfg.SUPABASE_URL + "/rest/v1/" + table + "?id=eq." + id + "&select=data",
+        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (r2.ok) return await r2.json();
+    } catch (e) {}
+    return null;
+  }
   async function loadLive() {
     try {
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return;
-      const url = cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.latest&select=data";
-      const r = await fetch(url, { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-      if (!r.ok) return;
-      const j = await r.json();
+      const j = await snCachedFetch("market_snapshot", "latest");
       if (j && j[0] && j[0].data) { LIVE = j[0].data; _liveTs = Date.now(); updateTicker(); if (state.page === "pulse" || state.page === "market" || state.page === "today") reRender(); }
     } catch (e) { /* keep demo data */ }
   }
@@ -8471,16 +8481,13 @@
     try {
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL) return;
-      const url = cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.latest&select=data";
-      const r = await fetch(url, { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-      if (!r.ok) return;
-      const j = await r.json();
+      const j = await snCachedFetch("scanner_data", "latest");
       if (j && j[0] && j[0].data) {
         SCAN = j[0].data;
         // merge the SMA-flatness map (pushed as a separate "flat" row to keep the main feed small) by symbol
         try {
-          const fr = await fetch(cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.flat&select=data", { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-          if (fr.ok) { const fj = await fr.json(); const fm = fj && fj[0] && fj[0].data && fj[0].data.flat; if (fm && SCAN && SCAN.rows) SCAN.rows.forEach(row => { if (row.tech && fm[row.s]) row.tech.flat = fm[row.s]; }); }
+          const fj = await snCachedFetch("scanner_data", "flat");
+          const fm = fj && fj[0] && fj[0].data && fj[0].data.flat; if (fm && SCAN && SCAN.rows) SCAN.rows.forEach(row => { if (row.tech && fm[row.s]) row.tech.flat = fm[row.s]; });
         } catch (e) { /* flat map optional — filter just shows "—" until present */ }
         applyLivePrices();     // overlay the live price/% onto the fresh scan (Strat cells untouched)
         if (state.page === "pulse" || state.page === "scanner" || state.page === "sectors" || state.page === "market" || state.page === "today" || state.page === "favorites") reRender();
@@ -8501,10 +8508,7 @@
     try {
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL) return;
-      const url = cfg.SUPABASE_URL + "/rest/v1/scanner_data?id=eq.yesterday&select=data";
-      const r = await fetch(url, { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-      if (!r.ok) return;
-      const j = await r.json();
+      const j = await snCachedFetch("scanner_data", "yesterday");
       if (j && j[0] && j[0].data) SCAN_YDAY = j[0].data;
       _ydayLoaded = true;
       if (state.page === "scanner" && scanView === "yday") reRender();
@@ -8552,10 +8556,7 @@
     try {
       const cfg = window.SN_CONFIG;
       if (!cfg || !cfg.SUPABASE_URL) return;
-      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.prices&select=data",
-        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-      if (!r.ok) return;
-      const j = await r.json();
+      const j = await snCachedFetch("market_snapshot", "prices");
       const prices = j && j[0] && j[0].data && j[0].data.prices;
       if (!prices || !Object.keys(prices).length) return;
       PRICES = prices;
@@ -8664,10 +8665,7 @@
   async function loadFlow() {
     try {
       const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return;
-      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.flow&select=data",
-        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-      if (!r.ok) return;
-      const j = await r.json();
+      const j = await snCachedFetch("market_snapshot", "flow");
       if (j && j[0] && j[0].data) { FLOW = j[0].data; if (state.page === "today") reRender(); }
     } catch (e) {}
   }
@@ -8676,10 +8674,7 @@
   async function loadNews() {
     try {
       const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return;
-      const r = await fetch(cfg.SUPABASE_URL + "/rest/v1/market_snapshot?id=eq.news&select=data",
-        { cache: "no-store", headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
-      if (!r.ok) return;
-      const j = await r.json();
+      const j = await snCachedFetch("market_snapshot", "news");
       if (j && j[0] && j[0].data) { NEWS = j[0].data; if (_newsOpen) renderNewsFeed(); updateNewsNav(); }
     } catch (e) {}
   }
