@@ -7546,7 +7546,7 @@
     if (alerted.length) {
       let bu = 0, be = 0;
       alerted.forEach(r => (r._alertNames || []).forEach(nm => { const d = _alertDir(nm); if (d === "bull") bu++; else if (d === "bear") be++; }));
-      f.push({ i: "🔔", t: "<b>" + alerted.length + "</b> מהמעקב בהתראה פעילה כרגע" + (bu || be ? ' <span class="muted">· 🟢 ' + bu + " בוליש · 🔴 " + be + " בריש</span>" : "") });
+      f.push({ i: "🔔", t: "<b>" + alerted.length + "</b> מהמעקב בהתראה פעילה כרגע" + (bu || be ? '<div class="muted" style="margin-top:3px"><span style="white-space:nowrap">🟢 ' + bu + " בוליש</span> · <span style=\"white-space:nowrap\">🔴 " + be + " בריש</span></div>" : "") });
     }
     const pos = rows.filter(r => r._hasPos).length;
     if (pos) f.push({ i: "💼", t: "אתה בפוזיציה על <b>" + pos + "</b> מהמעקב (" + pctOf(pos) + "%)" });
