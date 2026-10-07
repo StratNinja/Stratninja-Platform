@@ -1342,8 +1342,11 @@
       const dpath = smooth(P);
       const apath = dpath + " L" + X(n - 1).toFixed(1) + " " + Y(minY).toFixed(1) + " L" + X(0).toFixed(1) + " " + Y(minY).toFixed(1) + " Z";
       const zeroY = Y(0), last = eq[n - 1];
-      // headline (right edge) = RETURN OVER THE VISIBLE WINDOW: change from the leftmost visible point to now
-      const first = eq[0], winRet = last - first;
+      // headline (right edge) = TRUE P&L OVER THE VISIBLE WINDOW = now minus the equity JUST BEFORE the window
+      // begins (0 before the first-ever trade). Measuring from the pre-window baseline — NOT eq[0], which already
+      // includes the first visible day — makes "השנה"/"הכל" equal the calendar's realized total for that span.
+      const base0 = toVal(winA > 0 ? allPts[winA - 1].equity : 0);
+      const winRet = last - base0;
       const retStr = pctMode ? (winRet >= 0 ? "+" : "") + winRet.toFixed(2) + "%" : (winRet >= 0 ? "+" : "-") + money(Math.abs(winRet), 0);
       const pivMark = (arr, cls, dy) => arr.map(i =>
         '<g class="eq-piv ' + cls + '"><circle cx="' + X(i).toFixed(1) + '" cy="' + Y(eq[i]).toFixed(1) + '" r="4"/>' +
