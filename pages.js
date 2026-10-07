@@ -8983,18 +8983,21 @@
     document.addEventListener("keydown", e => { if (e.key === "Escape" && document.getElementById("pgModal")) closeModal(); });
     _setupStarDrag();   // drag over stars to mark/unmark many at once
   }
-  // rotating motivational lines in the "join community" banner
+  // rotating motivational lines in the "join community" banner.
+  // The ninja-deal teaser appears TWICE per cycle (positions 5 & 11) so it's caught more often (Adi).
+  const _ctaNinja = '<span style="color:#e8c877;font-weight:600;text-shadow:0 0 5px rgba(255,205,80,.28);letter-spacing:.2px">🎁 פספסתם את הנינג׳ה שמחלק הטבה בלעדית? הוא יקפוץ שוב מחר ✨</span>';
   const CTA_MSGS = [
     '<span class="cta-trophy">🏆</span> הצטרף לקהילת הדיסקורד של StratNinja',
-    '<span style="color:#e8c877;font-weight:600;text-shadow:0 0 5px rgba(255,205,80,.28);letter-spacing:.2px">🎁 פספסתם את הנינג׳ה שמחלק הטבה בלעדית? הוא יקפוץ שוב מחר ✨</span>',
     "רוצה סוף־סוף להבין מה באמת קורה בגרפים? 📊",
     "לסחור לבד זה יקר — טעות אחת מכסה שנה של קהילה 🤝",
     "עוד מתלבט על העסקה? תשמע דעה שנייה לפני שתלחץ 💬",
+    _ctaNinja,                                                     // appearance #1 (~position 5)
     "סטאפים, ניתוחים ולייבים — כל יום, בזמן אמת",
     "נינג׳ות לא סוחרות לבד ⚔️ בוא תצטרף",
     "חדשות בוקר, סורקים וכלים אוטומטיים — הכל במקום אחד 🚀",
     "השוק לא מחכה לאף אחד — אתה עדיין בחוץ? ⏰",
     "המנויים כבר בפנים. אתה עדיין קורא באנרים 👀",
+    _ctaNinja,                                                     // appearance #2 (~position 11)
   ];
   function startCtaRotator() {
     const el = document.getElementById("ctaText");
