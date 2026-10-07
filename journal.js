@@ -86,7 +86,7 @@
 
   // ---- App state ---------------------------------------------------------
   const ALL = "__ALL__";    // pseudo-account: combined view of every account
-  const state = { account: null, tab: "calendar", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
+  const state = { account: null, tab: "positions", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
     aggTrades: (function () { try { return localStorage.getItem("sn_agg_trades") !== "0"; } catch (e) { return true; } })(),
     calGran: (function () { try { return localStorage.getItem("sn_cal_gran") || "month"; } catch (e) { return "month"; } })(),
     calYear: null, calQ: null };   // anchor for the quarterly / yearly calendar views
