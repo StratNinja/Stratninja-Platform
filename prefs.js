@@ -113,6 +113,8 @@ window.Prefs = (function () {
     // scheduled reminder pushes (pre-market 11:30 + market-open 16:30). Default ON; users can opt out.
     pushSchedule() { const v = read().pushSchedule; return v !== false; },
     setPushSchedule(on) { const d = read(); d.pushSchedule = !!on; write(d); },
+    sqzAlert() { return !!read().sqzAlert; },                         // 🧨 push when a favorite's TTM Squeeze FIRES (opt-in, default off)
+    setSqzAlert(on) { const d = read(); d.sqzAlert = !!on; write(d); },
     onChange(f) { listeners.push(f); },
     notify() { listeners.forEach(f => { try { f(); } catch (e) {} }); },  // used by cloudsync after a pull
   };
