@@ -7391,6 +7391,7 @@
   const favSort = { col: null, dir: -1 };
   let favPresetFilter = [];   // active preset NAMES filtering favorites — a stock must match ALL of them (AND); [] = show all
   let favPosOnly = false; try { favPosOnly = localStorage.getItem("sn_fav_posonly") === "1"; } catch (e) {}   // show ONLY tickers with an open journal position (incl. ones that also have an alert)
+  let favDirFilter = "all";   // click a bull/bear count in the insights panel → filter the watchlist by alert direction
   let favLayout = "cards"; try { const _fl = localStorage.getItem("sn_fav_layout"); if (_fl === "cards" || _fl === "table") favLayout = _fl; } catch (e) {}
   let favPresetDropOpen = false;   // keep the preset multi-select dropdown open across re-renders
   let _favOutsideBound = false;    // bind the "click-outside closes the dropdown" listener only once
@@ -7544,9 +7545,10 @@
     const f = [], pctOf = k => Math.round(k / n * 100);
     const alerted = rows.filter(r => (r._alertN || 0) > 0);
     if (alerted.length) {
-      let bu = 0, be = 0;
-      alerted.forEach(r => (r._alertNames || []).forEach(nm => { const d = _alertDir(nm); if (d === "bull") bu++; else if (d === "bear") be++; }));
-      f.push({ i: "🔔", t: "<b>" + alerted.length + "</b> מהמעקב בהתראה פעילה כרגע" + (bu || be ? '<div class="muted" style="margin-top:3px"><span style="white-space:nowrap">🟢 ' + bu + " בוליש</span> · <span style=\"white-space:nowrap\">🔴 " + be + " בריש</span></div>" : "") });
+      let bu = 0, be = 0;   // count FAVORITES per direction (a stock with ≥1 bull alert counts as bull), so the number matches the filtered list
+      alerted.forEach(r => { const dirs = (r._alertNames || []).map(_alertDir); if (dirs.indexOf("bull") >= 0) bu++; if (dirs.indexOf("bear") >= 0) be++; });
+      const _dchip = (dir, emo, cnt, lbl, col) => '<span data-favdir="' + dir + '" class="fav-ins-dir' + (favDirFilter === dir ? " on" : "") + '" style="white-space:nowrap;cursor:pointer;padding:2px 7px;border-radius:7px;border:1px solid ' + col + (favDirFilter === dir ? ";background:" + col + "22;color:#fff" : "55") + '" title="לחץ לסינון המעקב ל' + lbl + ' · לחיצה שוב = ביטול">' + emo + " <b>" + cnt + "</b> " + lbl + "</span>";
+      f.push({ i: "🔔", t: "<b>" + alerted.length + "</b> מהמעקב בהתראה פעילה כרגע" + (bu || be ? '<div style="margin-top:5px;display:flex;gap:7px;flex-wrap:wrap">' + _dchip("bull", "🟢", bu, "בוליש", "#16b877") + _dchip("bear", "🔴", be, "בריש", "#e0524f") + "</div>" : "") });
     }
     const pos = rows.filter(r => r._hasPos).length;
     if (pos) f.push({ i: "💼", t: "אתה בפוזיציה על <b>" + pos + "</b> מהמעקב (" + pctOf(pos) + "%)" });
@@ -7642,12 +7644,16 @@
       let viewList = favPresetFilter.length ? list.filter(t => favPresetFilter.every(pn => (pmatch[t.sym] || []).indexOf(pn) >= 0)) : list;
       // "בפוזיציה בלבד" — keep only tickers with an open journal position (even if they also have an alert)
       if (favPosOnly) viewList = viewList.filter(t => t._hasPos);
+      // 🧠 insights from the preset/position-filtered list, computed BEFORE the direction filter so the
+      // bull/bear counts stay stable and clickable (click toggles the filter).
+      const _favFacts = favInsights(viewList);
+      if (favDirFilter === "bull") viewList = viewList.filter(t => (t._alertNames || []).some(n => _alertDir(n) === "bull"));
+      else if (favDirFilter === "bear") viewList = viewList.filter(t => (t._alertNames || []).some(n => _alertDir(n) === "bear"));
       // grouped order (🔔 alert → 💼 position → 👀 rest) — used by the cards view + the copy buttons
       const _grp = [[], [], []];
       viewList.forEach(t => _grp[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
       const groupedOrder = _grp[0].concat(_grp[1], _grp[2]);
       // 🧠 watchlist insights panel (left side, 300px — mirrors the scanner's `.scan-layout`)
-      const _favFacts = favInsights(viewList);
       const favInsightsPanel = '<div class="panel scan-insights"><h3>🧠 תובנות על המעקב</h3>' +
         (_favFacts.length
           ? _favFacts.map(f => '<div class="insight"><span class="ins-ico">' + f.i + '</span><span>' + f.t + "</span></div>").join("")
@@ -7673,7 +7679,7 @@
         '<button class="fav-lt-btn' + (favLayout === "table" ? " on" : "") + '" data-favlayout="table" title="תצוגת טבלה">📋 טבלה</button></span>';
       const _posN = list.filter(t => t._hasPos).length;   // how many favorites you currently hold
       const favPosTgl = '<button class="btn ghost fav-posfilter' + (favPosOnly ? " on" : "") + '" id="favPosOnly" title="הצג רק מניות שאתה בפוזיציה עליהן ביומן המסחר — גם אם יש עליהן התראה פעילה">💼 בפוזיציה' + (_posN ? ' <span class="fav-posn">' + _posN + "</span>" : "") + (favPosOnly ? " ✓" : "") + "</button>";
-      const _favFiltered = favPresetFilter.length || favPosOnly;
+      const _favFiltered = favPresetFilter.length || favPosOnly || favDirFilter !== "all";
       const favToolbar = '<div class="panel fav-toolbar"><div class="fav-tb-left">' + favPosTgl +
         '<span class="fav-count muted">' + favs.length + ' מניות' + (_favFiltered ? ' · ' + viewList.length + ' מסוננות' : "") + '</span></div>' +
         '<div class="fav-tb-right">' + favLayoutTgl + favActions + favSelectedChips() + favPresetDropdown(presetNames) + "</div></div>";
@@ -7746,6 +7752,8 @@
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
     { const rn = $("#pushRenew"); if (rn) rn.onclick = async () => { rn.disabled = true; rn.textContent = "🔄 מחדש…"; await renewPush(); }; }
     { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
+    // click a bull/bear count in the insights panel → filter the watchlist by alert direction (click again = clear)
+    document.querySelectorAll("[data-favdir]").forEach(b => b.onclick = () => { const d = b.dataset.favdir; favDirFilter = (favDirFilter === d) ? "all" : d; reRender(); });
     { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ התזכורות היומיות הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
