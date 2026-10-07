@@ -7537,11 +7537,40 @@
         '<div class="fav-cardgrid">' + g.map(t => favCardHtml(t, pmatch, staleMatch, jsyms)).join("") + "</div></div>"; });
     return html || '<div class="panel"><div class="muted" style="padding:14px">אין מניות שתואמות לסינון הנבחר.</div></div>';
   }
+  // 🧠 insights on the watchlist — computed facts (like the scanner's), + favorites-specific:
+  // active alerts (with bull/bear split via _alertDir), positions held, squeeze count. rows = viewList.
+  function favInsights(rows) {
+    const n = rows.length; if (!n) return [];
+    const f = [], pctOf = k => Math.round(k / n * 100);
+    const alerted = rows.filter(r => (r._alertN || 0) > 0);
+    if (alerted.length) {
+      let bu = 0, be = 0;
+      alerted.forEach(r => (r._alertNames || []).forEach(nm => { const d = _alertDir(nm); if (d === "bull") bu++; else if (d === "bear") be++; }));
+      f.push({ i: "🔔", t: "<b>" + alerted.length + "</b> מהמעקב בהתראה פעילה כרגע" + (bu || be ? ' <span class="muted">· 🟢 ' + bu + " בוליש · 🔴 " + be + " בריש</span>" : "") });
+    }
+    const pos = rows.filter(r => r._hasPos).length;
+    if (pos) f.push({ i: "💼", t: "אתה בפוזיציה על <b>" + pos + "</b> מהמעקב (" + pctOf(pos) + "%)" });
+    const sec = {}; rows.forEach(r => { if (r.sector) sec[r.sector] = (sec[r.sector] || 0) + 1; });
+    const topSec = Object.keys(sec).map(k => [k, sec[k]]).sort((a, b) => b[1] - a[1])[0];
+    if (topSec && topSec[1] >= 2) f.push({ i: "🗂️", t: pctOf(topSec[1]) + "% מהמעקב בסקטור <b>" + secHe(topSec[0]) + "</b> (" + topSec[1] + ")" });
+    const green = rows.filter(r => (r.D || {}).c === "up").length, red = rows.filter(r => (r.D || {}).c === "down").length;
+    if (green || red) f.push({ i: green >= red ? "🟢" : "🔴", t: pctOf(green >= red ? green : red) + "% מהנרות היומיים " + (green > red ? "ירוקים (הטיה שורית)" : red > green ? "אדומים (הטיה דובית)" : "מאוזנים") });
+    const ftfc = rows.filter(r => r.ftfc).length;
+    if (ftfc) f.push({ i: "🎯", t: pctOf(ftfc) + "% ב-<b>FTFC</b> מלא (יישור טיימפריימים)" });
+    const sqz = rows.filter(r => r.tech && r.tech.sqz && r.tech.sqz[0] === 1).length;
+    if (sqz) f.push({ i: "🧨", t: "<b>" + sqz + "</b> מהמעקב בדחיסה (TTM Squeeze — קפיץ דרוך)" });
+    const pat = {}; rows.forEach(r => { const t = (r.D || {}).t; if (t) pat[t] = (pat[t] || 0) + 1; });
+    const topPat = Object.keys(pat).map(k => [k, pat[k]]).sort((a, b) => b[1] - a[1])[0];
+    if (topPat && topPat[1] >= 2) f.push({ i: "📊", t: "התבנית היומית הנפוצה: <b>" + topPat[0] + "</b> (" + pctOf(topPat[1]) + "%)" });
+    const conflict = rows.filter(r => { const d = r.D || {}; return (d.t === "2U" && d.c === "down") || (d.t === "2D" && d.c === "up"); }).length;
+    if (conflict) f.push({ i: "⚔️", t: "<b>" + conflict + "</b> נרות בקונפליקט (2U אדום / 2D ירוק) — היפוך אפשרי" });
+    return f;
+  }
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
     const list = favs.map(sym => {
       const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;    // prefer LIVE scan data (sector/sub-sector)
-      if (r) return { sym: sym, name: "", sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D };
+      if (r) return { sym: sym, name: "", sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0), chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0), Y: r.Y, Q: r.Q, M: r.M, W: r.W, D: r.D, ftfc: r.ftfc, tech: r.tech };
       return TICKERS.find(t => t.sym === sym) || { sym: sym, name: "", sector: "", ind: "", price: 0, chg: 0, Y: cell("1", "doji"), Q: cell("1", "doji"), M: cell("1", "doji"), W: cell("1", "doji"), D: cell("1", "doji") };
     });
     let body;
@@ -7617,6 +7646,12 @@
       const _grp = [[], [], []];
       viewList.forEach(t => _grp[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
       const groupedOrder = _grp[0].concat(_grp[1], _grp[2]);
+      // 🧠 watchlist insights panel (left side, 300px — mirrors the scanner's `.scan-layout`)
+      const _favFacts = favInsights(viewList);
+      const favInsightsPanel = '<div class="panel scan-insights"><h3>🧠 תובנות על המעקב</h3>' +
+        (_favFacts.length
+          ? _favFacts.map(f => '<div class="insight"><span class="ins-ico">' + f.i + '</span><span>' + f.t + "</span></div>").join("")
+          : '<div class="ins-empty">הוסף מניות למעקב (⭐) או נקה סינון — ותקבל כאן תמונת-מצב: כמה בהתראה (בוליש/בריש), פוזיציות, ריכוז סקטור, דחיסה ועוד. 🔍</div>') + "</div>";
       // when filtering by preset(s), discover OTHER stocks matching ALL selected scans (not already favorites)
       let otherPanel = "";
       if (favPresetFilter.length) {
@@ -7647,7 +7682,7 @@
         : "";
       if (favLayout === "cards") {
         favViewOrder = groupedOrder;   // copy buttons follow the displayed (grouped) order
-        body = favToolbar + (favEmptyNote || favCardsBody(viewList, pmatch, staleMatch, jsyms)) + otherPanel;
+        body = favToolbar + (favEmptyNote || ('<div class="scan-layout"><div style="min-width:0">' + favCardsBody(viewList, pmatch, staleMatch, jsyms) + "</div>" + favInsightsPanel + "</div>")) + otherPanel;
       } else {
         // classic dense table (kept for sorting / full data)
         let rows = "", ordered;
@@ -7659,7 +7694,8 @@
           _grp.forEach((g, i) => { if (!g.length) return; if (nonEmpty > 1) rows += '<tr class="fav-grouphdr"><td colspan="20">' + GHDR[i] + ' <span class="muted">(' + g.length + ")</span></td></tr>"; rows += g.map(rowHtml).join(""); });
         }
         favViewOrder = ordered;
-        body = favToolbar + favEmptyNote + '<div class="panel"' + (favEmptyNote ? ' style="display:none"' : "") + '><h3><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + " מניות</span></span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th>" + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("💼 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>" + otherPanel;
+        const _favTablePanel = '<div class="panel"' + (favEmptyNote ? ' style="display:none"' : "") + '><h3><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + " מניות</span></span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th>" + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("💼 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
+        body = favToolbar + favEmptyNote + '<div class="scan-layout">' + _favTablePanel + favInsightsPanel + "</div>" + otherPanel;
       }
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
