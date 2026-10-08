@@ -245,7 +245,12 @@
         if (c) {
           if (c.th != null && !isNaN(+c.th)) dd.optTheta[x.occ] = +c.th;   // theta (per share/day) for the decay column
           const b = +c.b, a = +c.a, l = +c.l;
-          const px = (b > 0 && a > 0) ? (b + a) / 2 : (l > 0 ? l : (a > 0 ? a : (b > 0 ? b : null)));
+          // REALISTIC exit value (matches the broker): a LONG is marked at the BID (what you'd get selling),
+          // a SHORT at the ASK (what you'd pay to buy back). Fall back to last / the other side when a quote is 0.
+          const _short = x.t.direction === "short";
+          const px = _short
+            ? (a > 0 ? a : (l > 0 ? l : (b > 0 ? b : null)))
+            : (b > 0 ? b : (l > 0 ? l : (a > 0 ? a : null)));
           if (px != null) {
             dd.optAuto[x.occ] = Math.round(px * 100) / 100;
             // an explicit 🔄 refresh is AUTHORITATIVE → drop any manual override (raw id + aggregated id)
