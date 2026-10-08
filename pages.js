@@ -7500,6 +7500,14 @@
       favPresetFilter.map(nm => '<span class="fav-selchip" title="' + escAttr(nm) + '">' + escHtml(nm) +
         '<button class="fav-selx" data-favpreset="' + escAttr(nm) + '" title="הסר סינון">✕</button></span>').join("") + "</span>";
   }
+  // 🧨 TTM-Squeeze badge for a favorite — 🧨 = in a squeeze (coiled), 💥 = just released. "" if neither.
+  function _favSqzBadge(t) {
+    const s = t.tech && t.tech.sqz;
+    if (!s || !s.length) return "";
+    if (s[0] === 1) return ' <span class="fav-sqz-badge" title="בדחיסה ' + (s[1] || 0) + ' ימים — TTM Squeeze (קפיץ דרוך)">🧨</span>';
+    if (s[0] === 2) return ' <span class="fav-sqz-badge fired" title="שחרור דחיסה — TTM Squeeze (קפיץ שהשתחרר)">💥</span>';
+    return "";
+  }
   function favCardHtml(t, pmatch, staleMatch, jsyms) {
     const pm = pmatch[t.sym] || [], stale = staleMatch[t.sym];
     const hasTrade = jsyms.has(String(t.sym).toUpperCase());
@@ -7518,7 +7526,7 @@
     return '<div class="' + cls.join(" ") + '">' +
       '<span class="fc-star">' + star(t.sym) + "</span>" +
       '<div class="fc-head"><span class="fc-sym tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span>" +
-        (hasTrade ? '<span class="fc-jtag" title="פוזיציה פעילה ביומן">💼</span>' : "") +
+        (hasTrade ? '<span class="fc-jtag" title="פוזיציה פעילה ביומן">💼</span>' : "") + _favSqzBadge(t) +
         '<a class="tvlink fc-tv" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener" title="TradingView">📈</a></div>' +
       '<div class="fc-pricerow"><span class="fc-price">' + money(t.price) + '</span><span class="fc-chg ' + chgCls + '">' + pct(t.chg) + "</span></div>" +
       _favFtfcStrip(t) +
@@ -7628,7 +7636,7 @@
         else if (stale) cls.push("fav-stale");
         if (hasTrade) cls.push("fav-journal");
         return "<tr" + (cls.length ? ' class="' + cls.join(" ") + '"' : "") + '><td><span class="fav-starcell">' + star(t.sym) + "</span></td>" +
-          '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span>" + jtag + "</td>" +
+          '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span>" + jtag + _favSqzBadge(t) + "</td>" +
           alertCell + atimeCell +
           '<td class="tname" style="text-align:start">' + (t.sector ? secHe(t.sector) : "—") + "</td>" +
           '<td class="tname" style="text-align:start">' + (t.ind ? t.ind + (subEtfFor(t.ind) ? ' <span class="muted">· ' + subEtfFor(t.ind) + "</span>" : "") : "—") + "</td>" +
