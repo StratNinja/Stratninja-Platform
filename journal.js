@@ -1322,7 +1322,12 @@
       winA = Math.max(0, Math.min(winA, total - 2));
       winB = Math.max(winA + 2, Math.min(winB, total));
       const pts = allPts.slice(winA, winB);
-      const eq = pts.map(p => toVal(p.equity));
+      // RE-BASE the whole curve to the window start: equity JUST BEFORE the first visible point (0 before any
+      // trade). So the line, pivots, Y-axis AND headline all read as P&L SINCE the filtered start date — a
+      // date-filtered view shows that window's performance, consistently (Adi: pivots were absolute cumulative
+      // equity while the headline showed the window return → confusing).
+      const _base0raw = winA > 0 ? allPts[winA - 1].equity : 0;
+      const eq = pts.map(p => toVal(p.equity - _base0raw));
       const n = pts.length;
       const minY = Math.min(0, Math.min.apply(null, eq)), maxY = Math.max(0, Math.max.apply(null, eq));
       const rng = (maxY - minY) || 1;
@@ -1342,11 +1347,8 @@
       const dpath = smooth(P);
       const apath = dpath + " L" + X(n - 1).toFixed(1) + " " + Y(minY).toFixed(1) + " L" + X(0).toFixed(1) + " " + Y(minY).toFixed(1) + " Z";
       const zeroY = Y(0), last = eq[n - 1];
-      // headline (right edge) = TRUE P&L OVER THE VISIBLE WINDOW = now minus the equity JUST BEFORE the window
-      // begins (0 before the first-ever trade). Measuring from the pre-window baseline — NOT eq[0], which already
-      // includes the first visible day — makes "השנה"/"הכל" equal the calendar's realized total for that span.
-      const base0 = toVal(winA > 0 ? allPts[winA - 1].equity : 0);
-      const winRet = last - base0;
+      // eq is already re-based to the window start, so the last point IS the P&L over the visible window.
+      const winRet = last;
       const retStr = pctMode ? (winRet >= 0 ? "+" : "") + winRet.toFixed(2) + "%" : (winRet >= 0 ? "+" : "-") + money(Math.abs(winRet), 0);
       const pivMark = (arr, cls, dy) => arr.map(i =>
         '<g class="eq-piv ' + cls + '"><circle cx="' + X(i).toFixed(1) + '" cy="' + Y(eq[i]).toFixed(1) + '" r="4"/>' +
