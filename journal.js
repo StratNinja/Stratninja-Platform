@@ -217,9 +217,10 @@
   }
   // fetch delayed premiums from the CBOE proxy and fill every open option position that has strike+expiry.
   // One fetch per underlying (edge-cached), price = bid/ask midpoint (else last). Re-renders when done.
-  let _optFetchBusy = false;
+  let _optFetchBusy = false, _optAutoTs = 0;
   async function refreshOptionPrices(silent) {
     if (_optFetchBusy) return;
+    _optAutoTs = Date.now();   // throttle clock for the silent auto-refresh (set before the await so re-renders don't re-trigger)
     const all = tradesForAccount();
     const opens = (all.manualOpen || []).concat(all.openPositions || []);
     const optPos = opens.filter(t => t.assetType === "option");
@@ -353,11 +354,23 @@
     if (anyOpen) {
       if (!livePrices) ensureLivePrices().then(m => { if (m && Object.keys(m).length) render(); });
       if (!_openPriceTimer) _openPriceTimer = setInterval(refreshOpenPrices, 30000);
+      _autoRefreshOpts();   // keep CBOE option premiums fresh on open (the 30s interval refreshes them too)
     } else if (_openPriceTimer) { clearInterval(_openPriceTimer); _openPriceTimer = null; }
+  }
+  // silently pull fresh CBOE option premiums so they don't go stale between manual 🔄 clicks (Adi). Throttled
+  // to ~2 min (CBOE quotes are ~15-min delayed + edge-cached → cheap, and this keeps the journal current).
+  function _autoRefreshOpts() {
+    try {
+      if (_optFetchBusy || (Date.now() - _optAutoTs) < 120000) return;
+      const all = tradesForAccount();
+      const opens = (all.manualOpen || []).concat(all.openPositions || []);
+      if (opens.some(t => t.assetType === "option" && _occSymbol(t))) refreshOptionPrices(true);
+    } catch (e) {}
   }
   function refreshOpenPrices() {
     const jc = document.getElementById("journalContainer");
     if (!jc || jc.classList.contains("hidden") || document.getElementById("modalBg")) return;  // not visible / mid-edit
+    _autoRefreshOpts();   // also refresh option premiums (throttled)
     const prev = _feedUpdated;
     livePricesTs = 0;                                    // force a fresh fetch (bypass the cache)
     // re-render only when the SERVER feed actually advanced (cheap timestamp check, not a 12k-ticker diff)
