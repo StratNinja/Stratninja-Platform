@@ -7564,8 +7564,12 @@
     if (green || red) f.push({ i: green >= red ? "🟢" : "🔴", t: pctOf(green >= red ? green : red) + "% מהנרות היומיים " + (green > red ? "ירוקים (הטיה שורית)" : red > green ? "אדומים (הטיה דובית)" : "מאוזנים") });
     const ftfc = rows.filter(r => r.ftfc).length;
     if (ftfc) f.push({ i: "🎯", t: pctOf(ftfc) + "% ב-<b>FTFC</b> מלא (יישור טיימפריימים)" });
+    // clickable filter chip (reuses the [data-favdir] toggle handler)
+    const _fchip = (dir, inner, col, hint) => '<span data-favdir="' + dir + '" class="fav-ins-dir' + (favDirFilter === dir ? " on" : "") + '" style="cursor:pointer;padding:2px 7px;border-radius:7px;border:1px solid ' + col + (favDirFilter === dir ? "22;background:" + col + "22;color:#fff" : "55") + '" title="' + hint + '">' + inner + "</span>";
     const sqz = rows.filter(r => r.tech && r.tech.sqz && r.tech.sqz[0] === 1).length;
-    if (sqz) f.push({ i: "🧨", t: "<b>" + sqz + "</b> מהמעקב בדחיסה (TTM Squeeze — קפיץ דרוך)" });
+    if (sqz) f.push({ i: "🧨", t: _fchip("sqz", "<b>" + sqz + "</b> בדחיסה 🧨", "#d9a441", "לחץ לסינון: רק מניות בדחיסת TTM Squeeze · שוב = ביטול") + ' <span class="muted" style="font-size:11px">קפיץ דרוך</span>' });
+    const brk = rows.filter(r => r.tech && r.tech.bbp != null && r.tech.bbp >= 100).length;
+    if (brk) f.push({ i: "🚀", t: _fchip("breakout", "<b>" + brk + "</b> בפריצה 🚀", "#8878ff", "לחץ לסינון: רק מניות שסגרו מעל רצועת בולינגר העליונה · שוב = ביטול") + ' <span class="muted" style="font-size:11px">סגרו מעל הבולינגר</span>' });
     const pat = {}; rows.forEach(r => { const t = (r.D || {}).t; if (t) pat[t] = (pat[t] || 0) + 1; });
     const topPat = Object.keys(pat).map(k => [k, pat[k]]).sort((a, b) => b[1] - a[1])[0];
     if (topPat && topPat[1] >= 2) f.push({ i: "📊", t: "התבנית היומית הנפוצה: <b>" + topPat[0] + "</b> (" + pctOf(topPat[1]) + "%)" });
@@ -7654,6 +7658,8 @@
       const _favFacts = favInsights(viewList);
       if (favDirFilter === "bull") viewList = viewList.filter(t => (t._alertNames || []).some(n => _alertDir(n) === "bull"));
       else if (favDirFilter === "bear") viewList = viewList.filter(t => (t._alertNames || []).some(n => _alertDir(n) === "bear"));
+      else if (favDirFilter === "sqz") viewList = viewList.filter(t => t.tech && t.tech.sqz && t.tech.sqz[0] === 1);                 // in a TTM squeeze
+      else if (favDirFilter === "breakout") viewList = viewList.filter(t => t.tech && t.tech.bbp != null && t.tech.bbp >= 100);     // closed ABOVE the upper Bollinger band
       // grouped order (🔔 alert → 💼 position → 👀 rest) — used by the cards view + the copy buttons
       const _grp = [[], [], []];
       viewList.forEach(t => _grp[t._alertN > 0 ? 0 : t._hasPos ? 1 : 2].push(t));
