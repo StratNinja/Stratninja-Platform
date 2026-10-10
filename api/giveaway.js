@@ -100,6 +100,19 @@ export default async function handler(req, res) {
   if (!SVC) { res.status(500).json({ error: "missing_service_key" }); return; }
 
   const action = String((req.query && req.query.action) || "");
+
+  // TEMPORARY diagnostic (no admin gate) — returns the raw liveChatMessages error, no message content. Remove after.
+  if (action === "diag") {
+    if (!SVC) { res.status(500).json({ error: "no_svc" }); return; }
+    let at2; try { at2 = await getAccessToken(); } catch (e) { res.status(200).json({ step: "token", err: String(e.message || e) }); return; }
+    const row = await getRow();
+    if (!row || !row.yt_live_chat_id) { res.status(200).json({ step: "row", chatId: row && row.yt_live_chat_id, status: row && row.status, videoId: row && row.yt_video_id }); return; }
+    const rr = await yt("liveChatMessages?part=snippet,authorDetails&maxResults=2000&liveChatId=" + encodeURIComponent(row.yt_live_chat_id), at2);
+    const rv = await resolveVideo(at2, row.yt_video_id || "");
+    res.status(200).json({ ok: rr.ok, status: rr.status, chatId: row.yt_live_chat_id, raw: JSON.stringify(rr.j).slice(0, 700), count: rr.ok ? (rr.j.items || []).length : undefined, resolvedChat: rv && rv.live_chat_id, resolveErr: rv && rv.error });
+    return;
+  }
+
   if (!(await verifyAdmin(req))) { res.status(403).json({ error: "forbidden" }); return; }
 
   let at;
