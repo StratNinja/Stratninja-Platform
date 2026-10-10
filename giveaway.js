@@ -132,7 +132,7 @@ window.Giveaway = (function () {
       ".gvw-aw .aw-row{display:flex;justify-content:space-between;gap:10px;padding:8px 13px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--panel);font-size:14px}",
       ".gvw-aw .aw-row.new{border-color:var(--accent);box-shadow:0 0 12px rgba(99,102,241,.3)}",
       ".gvw-ov-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}",
-      ".gvw-timer{display:inline-block;font-size:30px;font-weight:900;color:var(--accent);margin:4px 0 2px;letter-spacing:1px;min-height:38px}",
+      ".gvw-timer{display:block;width:100%;text-align:center;font-size:30px;font-weight:900;color:var(--accent);margin:4px 0 2px;letter-spacing:1px;min-height:38px;font-variant-numeric:tabular-nums}",
       ".gvw-reveal{animation:gvwReveal .5s ease}",
       ".gvw-wheelwrap.spinning svg{filter:drop-shadow(0 0 22px rgba(34,197,94,.6)) drop-shadow(0 0 34px rgba(220,38,38,.4))}",
     ].join("");
