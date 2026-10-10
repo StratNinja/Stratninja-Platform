@@ -354,7 +354,10 @@ window.Giveaway = (function () {
       ov.id = "gvwOv"; ov.className = "gvw-ov";
       ov.innerHTML = '<button class="gvw-ov-close" id="gvwOvClose" title="סגור">✕</button><div class="gvw-ov-inner" id="gvwOvBody"></div>';
       document.body.appendChild(ov);
-      var cl = $("gvwOvClose"); if (cl) cl.onclick = function () { var o = $("gvwOv"); if (o) o.style.display = "none"; };
+      var cl = $("gvwOvClose"); if (cl) cl.onclick = function () {
+        if (isAdmin() && _row && _row.status === "drawing") { _admAction("cancelDraw"); return; }   // mid-draw → abort it
+        var o = $("gvwOv"); if (o) o.style.display = "none";
+      };
     }
     ov.style.display = "flex";
     var cl2 = $("gvwOvClose"); if (cl2) cl2.style.display = isAdmin() ? "" : "none";
@@ -381,7 +384,9 @@ window.Giveaway = (function () {
     var pIdx = 0; for (var i = 0; i < prizes.length; i++) { if (prizes[i].label === (last.prize && last.prize.label)) { pIdx = i; break; } }
     var n = prizes.length || 1, center = (pIdx + 0.5) * (360 / n), total = 360 * SPINS + (360 - center);
     body.innerHTML = '<h2 style="color:#818cf8">🥁 מגרילים את ההטבה…</h2><div class="gvw-timer" id="gvwTimer"></div>' +
-      _wheelBlock(prizes.length ? prizes.map(function (p) { return (p.emoji ? p.emoji + " " : "") + p.label; }) : ["🎁"]);
+      _wheelBlock(prizes.length ? prizes.map(function (p) { return (p.emoji ? p.emoji + " " : "") + p.label; }) : ["🎁"]) +
+      (isAdmin() ? '<div class="gvw-ov-btns"><button class="btn ghost" data-gadm="cancelDraw">✕ עצור / בטל</button></div>' : "");
+    if (isAdmin()) body.querySelectorAll("[data-gadm]").forEach(function (b) { b.onclick = function () { _admAction(b.dataset.gadm); }; });
     var g = $("gvwWheelRot"); if (g) g.style.transition = "none";
     var wrap = body.querySelector(".gvw-wheelwrap"); if (wrap) wrap.classList.add("spinning");
     _runAnim(pstart, function (e, secs) {
@@ -413,7 +418,9 @@ window.Giveaway = (function () {
     body.innerHTML = '<h2 style="color:var(--green)">🎯 ומי הזוכה?</h2>' +
       (pz ? '<div style="font-size:15px;color:var(--muted);margin-bottom:2px">על ההטבה: <b>' + esc(pz) + "</b></div>" : "") +
       '<div class="gvw-timer" id="gvwTimer"></div>' +
-      '<div class="gvw-roller"><div class="gvw-roller-sel"></div><div class="gvw-roller-strip" id="gvwRoller"></div></div>';
+      '<div class="gvw-roller"><div class="gvw-roller-sel"></div><div class="gvw-roller-strip" id="gvwRoller"></div></div>' +
+      (isAdmin() ? '<div class="gvw-ov-btns"><button class="btn ghost" data-gadm="cancelDraw">✕ עצור / בטל</button></div>' : "");
+    if (isAdmin()) body.querySelectorAll("[data-gadm]").forEach(function (b) { b.onclick = function () { _admAction(b.dataset.gadm); }; });
     var strip = $("gvwRoller");
     if (strip) { strip.innerHTML = reel.map(function (nm) { return '<div class="gvw-roller-row">' + esc(nm.length > 22 ? nm.slice(0, 21) + "…" : nm) + "</div>"; }).join(""); strip.style.transition = "none"; }
     _runAnim(pstart, function (e, secs) {
@@ -519,6 +526,7 @@ window.Giveaway = (function () {
     if (act === "close") return _patch({ status: "closed", closed_at: new Date().toISOString() });
     if (act === "draw") return _startDraw();
     if (act === "reveal") { _cancelAnim(); _draw.key = ""; return _patch({ winner: Object.assign({}, _row.winner, { phase: "winner", pstart: Date.now() }) }); }
+    if (act === "cancelDraw") { _cancelAnim(); _draw.key = ""; return _patch({ status: "closed", winner: { awarded: _awarded().slice(0, -1), last: null } }); }   // abort this draw, return the entrant+prize to the pool
     if (act === "demo") return _addDemo();
     if (act === "manual") return _addManual();
     if (act === "reset") { _closeOverlay(); return _patch({ status: "idle", winner: null, draw_until: null }); }
@@ -594,25 +602,27 @@ window.Giveaway = (function () {
   function _addDemo() {
     var c = supa(); if (!c || !_row) return;
     var NM = ["דני כהן", "Rachel_T", "משה לוי", "TraderMike", "נועה בר", "StratFan99", "Yossi_K", "ליאת אבני", "BullRunner", "דוד ישראלי"];
-    var rows = NM.map(function (nm, i) { return { round: _row.round, source: "youtube", user_key: "demo:" + now() + ":" + i, name: nm }; });
+    var rows = NM.map(function (nm) { return { round: _row.round, source: "youtube", user_key: "name:" + _normName(nm), name: nm }; });
     _busy = true;
-    c.from("giveaway_entries").insert(rows).then(function (r) {
+    c.from("giveaway_entries").upsert(rows, { onConflict: "round,user_key", ignoreDuplicates: true }).then(function (r) {
       _busy = false;
       if (r.error) { toast("הוספת דמה נכשלה (הרשאות?)"); return; }
       toast("נוספו " + rows.length + " משתתפי דמה 🧪"); _fetch().then(_paint);
     }).catch(function () { _busy = false; toast("הוספת דמה נכשלה"); });
   }
 
+  function _normName(s) { return (s || "").trim().replace(/\s+/g, " ").toLowerCase(); }
   // admin — add participants by hand in a loop: type name → Enter → added → prompts again; Cancel to stop
   function _addManual() {
     var c = supa(); if (!c || !_row) return;
     function step() {
       var nm = window.prompt("הוספת משתתף ידנית — הקלד שם ו-Enter (ביטול = סיום):", "");
       if (nm === null) return;                 // Cancel → exit the loop
-      nm = (nm || "").trim();
+      nm = (nm || "").trim().replace(/\s+/g, " ");
       if (!nm) { step(); return; }             // empty → ask again
-      var key = "manual:" + now() + ":" + Math.random().toString(36).slice(2, 7);
-      c.from("giveaway_entries").insert({ round: _row.round, source: "manual", user_key: key, name: nm.slice(0, 40) })
+      if (_entries.some(function (e) { return _normName(e.name) === _normName(nm); })) { toast('"' + nm + '" כבר ברשימה'); step(); return; }
+      var key = "name:" + _normName(nm);       // key = the NAME → one entry per name
+      c.from("giveaway_entries").upsert({ round: _row.round, source: "manual", user_key: key, name: nm.slice(0, 40) }, { onConflict: "round,user_key", ignoreDuplicates: true })
         .then(function (r) {
           if (!r.error) { _entries.push({ user_key: key, name: nm.slice(0, 40), source: "manual" }); _paint(); toast("נוסף: " + nm); }
           else { toast("ההוספה נכשלה (הרשאות?)"); }

@@ -163,10 +163,11 @@ export default async function handler(req, res) {
         const pubMs = it.snippet && it.snippet.publishedAt ? new Date(it.snippet.publishedAt).getTime() : Date.now();
         if (openedMs && pubMs < openedMs - 60000) return;          // ignore chatter from well before the window opened (60s grace)
         if (msg.toUpperCase().indexOf(kw) < 0) return;             // must contain the keyword
-        const ch = it.authorDetails && it.authorDetails.channelId;
-        if (!ch || seen[ch]) return;
-        seen[ch] = 1;
-        rows.push({ round: row.round, source: "youtube", user_key: "yt:" + ch, name: (it.authorDetails && it.authorDetails.displayName) || "צופה" });
+        const nm = (it.authorDetails && it.authorDetails.displayName) || "צופה";
+        const norm = nm.trim().replace(/\s+/g, " ").toLowerCase();  // ONE entry per NAME (key = the name)
+        if (!norm || seen[norm]) return;
+        seen[norm] = 1;
+        rows.push({ round: row.round, source: "youtube", user_key: "name:" + norm, name: nm });
       });
 
       let added = 0, writeErr = null;
