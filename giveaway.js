@@ -94,7 +94,6 @@ window.Giveaway = (function () {
       ".gvw-prz input{flex:1}",
       ".gvw-prz input.w{flex:0 0 64px;text-align:center}",
       ".gvw-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}",
-      'body[data-page="giveaway"] #ninjaDeal{display:none!important}',   // hide the peeking-ninja coupon on the giveaway page
     ].join("");
     document.head.appendChild(s);
   }
@@ -146,7 +145,7 @@ window.Giveaway = (function () {
     _fetch().then(function () {
       if (!_row) {   // table missing / backend hiccup → don't spin forever
         var pl = $("gvwPill"); if (pl) { pl.className = "gvw-pill idle"; pl.textContent = "לא זמין"; }
-        var st = $("gvwStage"); if (st) st.innerHTML = '<div class="note">שירות ההגרלות בהכנה — נסו שוב בקרוב. 🥷</div>';
+        var st = $("gvwStage"); if (st) st.innerHTML = '<div class="note">שירות ההגרלות בהכנה — נסו שוב בקרוב. 🎁</div>';
         return;
       }
       _paint();
@@ -206,7 +205,7 @@ window.Giveaway = (function () {
     var s = _row.status;
 
     if (s === "idle") {
-      el.innerHTML = '<div class="note">אין הגרלה פעילה כרגע. עקבו אחרי הלייבים — ההגרלה הבאה בקרוב! 🥷</div>';
+      el.innerHTML = '<div class="note">אין הגרלה פעילה כרגע. עקבו אחרי הלייבים — ההגרלה הבאה בקרוב! 🎁</div>';
       return;
     }
     if (s === "open") {
@@ -264,7 +263,7 @@ window.Giveaway = (function () {
       '<div style="font-size:18px;color:var(--muted)">🎊 הזוכה בהגרלה הוא 🎊</div>' +
       '<div class="wn-name">' + esc(w.name || "—") + '</div>' +
       '<div class="wn-prize">' + esc(prize.emoji || "🎁") + " זכה ב: <b>" + esc(prize.label || "פרס") + "</b></div>" +
-      '<div class="muted" style="margin-top:10px">מזל טוב! 🥷 (צור קשר עם המנהל לקבלת הפרס)</div>' +
+      '<div class="muted" style="margin-top:10px">מזל טוב! 🎁 (צור קשר עם המנהל לקבלת הפרס)</div>' +
     '</div>';
     try { if (window.snConfetti) window.snConfetti(); } catch (e) {}
   }
