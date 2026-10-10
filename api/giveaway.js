@@ -121,12 +121,36 @@ export default async function handler(req, res) {
       const row = await getRow();
       if (!row) { res.status(200).json({ error: "no_row" }); return; }
       if (row.status !== "open") { res.status(200).json({ skip: true, status: row.status }); return; }
-      if (!row.yt_live_chat_id) { res.status(200).json({ error: "no_chat" }); return; }
+      let chatId = row.yt_live_chat_id;
+      if (!chatId) { res.status(200).json({ error: "no_chat" }); return; }
 
-      let url = "liveChatMessages?part=snippet,authorDetails&maxResults=2000&liveChatId=" + encodeURIComponent(row.yt_live_chat_id);
-      if (row.yt_page_token) url += "&pageToken=" + encodeURIComponent(row.yt_page_token);
-      const { ok, status, j } = await yt(url, at);
-      if (!ok) { res.status(200).json({ error: "chat_" + status, ended: status === 403 || status === 404, detail: (j.error && j.error.message || "").slice(0, 160) }); return; }
+      function reasonOf(jj) { return (jj && jj.error && jj.error.errors && jj.error.errors[0] && jj.error.errors[0].reason) || ""; }
+      async function doPoll(cid, token) {
+        let url = "liveChatMessages?part=snippet,authorDetails&maxResults=2000&liveChatId=" + encodeURIComponent(cid);
+        if (token) url += "&pageToken=" + encodeURIComponent(token);
+        return yt(url, at);
+      }
+
+      let token = row.yt_page_token;
+      let r1 = await doPoll(chatId, token);
+      // stale/expired chat id (or bad page token) → re-resolve the CURRENT active chat from the video, retry fresh
+      if (!r1.ok) {
+        const reason = reasonOf(r1.j);
+        if ((r1.status === 404 || reason === "liveChatNotFound" || reason === "pageTokenInvalid" || reason === "liveChatEnded") && row.yt_video_id) {
+          const rv = await resolveVideo(at, row.yt_video_id);
+          if (rv && rv.live_chat_id && rv.live_chat_id !== chatId) {
+            chatId = rv.live_chat_id; token = null;
+            await patchRow({ yt_live_chat_id: chatId, yt_page_token: null });
+            r1 = await doPoll(chatId, null);
+          }
+        }
+        if (!r1.ok) {
+          const r2 = reasonOf(r1.j);
+          res.status(200).json({ error: "chat_" + r1.status, reason: r2, ended: r2 === "liveChatEnded", detail: (r1.j.error && r1.j.error.message || "").slice(0, 200) });
+          return;
+        }
+      }
+      const j = r1.j;
 
       const kw = String(row.keyword || "NINJA").toUpperCase();
       const openedMs = row.opened_at ? new Date(row.opened_at).getTime() : 0;
@@ -134,7 +158,7 @@ export default async function handler(req, res) {
       (j.items || []).forEach(function (it) {
         const msg = (it.snippet && (it.snippet.displayMessage || it.snippet.textMessageDetails && it.snippet.textMessageDetails.messageText)) || "";
         const pubMs = it.snippet && it.snippet.publishedAt ? new Date(it.snippet.publishedAt).getTime() : Date.now();
-        if (openedMs && pubMs < openedMs) return;                  // ignore chatter from before the window opened
+        if (openedMs && pubMs < openedMs - 60000) return;          // ignore chatter from well before the window opened (60s grace)
         if (msg.toUpperCase().indexOf(kw) < 0) return;             // must contain the keyword
         const ch = it.authorDetails && it.authorDetails.channelId;
         if (!ch || seen[ch]) return;
@@ -142,13 +166,13 @@ export default async function handler(req, res) {
         rows.push({ round: row.round, source: "youtube", user_key: "yt:" + ch, name: (it.authorDetails && it.authorDetails.displayName) || "צופה" });
       });
 
-      let added = 0;
+      let added = 0, writeErr = null;
       if (rows.length) {
         const ins = await sb("giveaway_entries", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify(rows) });
-        added = ins.ok ? rows.length : 0;
+        if (ins.ok) added = rows.length; else writeErr = (await ins.text().catch(function () { return ""; })).slice(0, 160);
       }
-      await patchRow({ yt_page_token: j.nextPageToken || row.yt_page_token, updated_at: new Date().toISOString() });
-      res.status(200).json({ added: added, scanned: (j.items || []).length, pollingIntervalMillis: j.pollingIntervalMillis || 5000 });
+      await patchRow({ yt_page_token: j.nextPageToken || token, updated_at: new Date().toISOString() });
+      res.status(200).json({ added: added, scanned: (j.items || []).length, matched: rows.length, writeErr: writeErr, chatId: chatId, pollingIntervalMillis: j.pollingIntervalMillis || 5000 });
       return;
     }
     res.status(400).json({ error: "bad_action" });

@@ -17,6 +17,9 @@ window.Giveaway = (function () {
   var _chatTimer = null;    // youtube chat poll interval (admin only, while open)
   var _busy = false;
   var _anim = { round: -1, iv: null, done: false };   // draw-animation bookkeeping
+  var _wheel = { round: -1, n: -1, spun: false };      // wheel render/spin bookkeeping
+  var _stageSig = "";                                  // memoize the stage render to avoid flicker / preserve the spin
+  var WHEEL_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6", "#14b8a6", "#f97316", "#06b6d4"];
 
   // ---- tiny helpers (this file has its own scope — don't rely on pages.js closures) ----
   function supa() { try { return window.SNAuth && SNAuth.getClient && SNAuth.getClient(); } catch (e) { return null; } }
@@ -46,12 +49,20 @@ window.Giveaway = (function () {
     });
   }
   // start/stop the YouTube chat polling loop (admin only, while a giveaway is open)
+  var _endedToasted = false;
   function _startChatPoll() {
     if (_chatTimer) return;
     var tick = function () {
       if (!$("gvwRoot") || !_row || _row.status !== "open") { _stopChatPoll(); return; }
       _apiCall("poll").then(function (r) {
-        if (r && r.ended) { toast("צ׳אט הלייב הסתיים — אפשר לסגור ולהגריל"); }
+        var cs = $("gvwChatStat");
+        if (r && r.error) {
+          if (cs) cs.innerHTML = '🔴 קריאת צ׳אט: ' + esc(r.reason || r.error) + (r.detail ? " · " + esc(r.detail) : "");
+          if (r.ended && !_endedToasted) { _endedToasted = true; toast("צ׳אט הלייב הסתיים — אפשר לסגור ולהגריל"); }   // toast ONCE, not every poll
+        } else if (r && !r.skip) {
+          if (cs) cs.innerHTML = '🟢 קורא צ׳אט · נסרקו ' + (r.scanned || 0) + " · נוספו " + (r.added || 0) +
+            (r.writeErr ? ' · <span style="color:var(--red)">כתיבה נכשלה: ' + esc(r.writeErr) + "</span>" : "");
+        }
         // new entrants surface via the normal Supabase poll (_fetch → _paint)
       }).catch(function () {});
     };
@@ -94,6 +105,10 @@ window.Giveaway = (function () {
       ".gvw-prz input{flex:1}",
       ".gvw-prz input.w{flex:0 0 64px;text-align:center}",
       ".gvw-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}",
+      ".gvw-wheelwrap{position:relative;display:inline-block;margin:6px auto 0}",
+      ".gvw-wheel-rot{transform-origin:50% 50%;transition:none}",
+      ".gvw-ptr{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));z-index:2;line-height:1}",
+      ".gvw-wheel-cap{font-size:16px;color:var(--muted);margin-bottom:4px}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -124,6 +139,7 @@ window.Giveaway = (function () {
       '<button class="btn ghost" id="gvwAddPrize" style="font-size:12px;margin-top:4px">➕ הוסף פרס</button>' +
       '<div class="gvw-btnrow" id="gvwAdmBtns"></div>' +
       '<div class="muted" style="font-size:11px;margin-top:8px" id="gvwAdmHint"></div>' +
+      '<div class="muted" style="font-size:11px;margin-top:4px" id="gvwChatStat"></div>' +
     '</div>';
   }
 
@@ -203,6 +219,13 @@ window.Giveaway = (function () {
   function _paintStage() {
     var el = $("gvwStage"); if (!el) return;
     var s = _row.status;
+    // memoize: rebuild only when something visible changed — keeps the wheel spin alive across polls
+    var sig = s + "|" + _entries.length + "|" + (_row.winner ? 1 : 0) + "|" + _row.round + "|" + (me() ? (_iJoined() ? "in" : "out") : "anon");
+    if (sig === _stageSig && el.children.length) {
+      if (s === "drawing" && !_wheel.spun) { _wheel.spun = true; setTimeout(_spinWheel, 60); }
+      return;
+    }
+    _stageSig = sig;
 
     if (s === "idle") {
       el.innerHTML = '<div class="note">אין הגרלה פעילה כרגע. עקבו אחרי הלייבים — ההגרלה הבאה בקרוב! 🎁</div>';
@@ -217,14 +240,22 @@ window.Giveaway = (function () {
       el.innerHTML =
         '<div style="font-size:20px;font-weight:800;color:var(--green);margin-bottom:6px">🎉 ההרשמה פתוחה!</div>' +
         '<div class="muted" style="margin-bottom:12px">כתבו <b>"' + kw + '"</b> בצ׳אט של הלייב — או לחצו כאן באתר:</div>' +
-        join;
+        join +
+        (_entries.length ? '<div class="gvw-wheel-cap" style="margin-top:14px">🎡 הגלגל מתמלא… ' + _entries.length + ' משתתפים</div>' + _wheelBlock() : "");
       return;
     }
     if (s === "closed") {
-      el.innerHTML = '<div style="font-size:20px;font-weight:800;color:#eab308">🔒 ההרשמה נסגרה</div><div class="muted">מכינים את ההגרלה… בהצלחה לכולם!</div>';
+      el.innerHTML = '<div style="font-size:20px;font-weight:800;color:#eab308;margin-bottom:2px">🔒 ההרשמה נסגרה</div>' +
+        '<div class="gvw-wheel-cap">הגלגל מוכן — ' + _entries.length + ' משתתפים · לחץ "הגרל זוכה"!</div>' +
+        (_entries.length ? _wheelBlock() : '<div class="note">אין משתתפים.</div>');
       return;
     }
-    if (s === "drawing") { _runSpinner(el); return; }
+    if (s === "drawing") {
+      el.innerHTML = '<div class="gvw-wheel-cap" style="color:#818cf8;font-weight:700">🥁 מגרילים…</div>' + _wheelBlock();
+      _wheel.round = _row.round; _wheel.spun = true;
+      setTimeout(_spinWheel, 60);
+      return;
+    }
     if (s === "done") { _showWinner(el); return; }
   }
 
@@ -233,26 +264,54 @@ window.Giveaway = (function () {
     return _entries.some(function (e) { return e.user_key === uid; });
   }
 
-  // ---- the 30s slot-machine spinner (synced to draw_until across all clients) ----
-  function _runSpinner(el) {
-    var until = _row.draw_until ? new Date(_row.draw_until).getTime() : (now() + 30000);
-    if (_anim.round === _row.round && _anim.iv) return;   // already spinning for this round
-    if (_anim.iv) { clearInterval(_anim.iv); _anim.iv = null; }
-    _anim.round = _row.round; _anim.done = false;
-    el.innerHTML = '<div class="gvw-spin-ico">🎰</div><div class="gvw-slot" id="gvwSlot">—</div><div class="muted">בוחרים זוכה…</div>';
-    var slot = $("gvwSlot");
-    var names = _entries.map(function (e) { return e.name; });
-    if (!names.length) names = ["…"];
-    _anim.iv = setInterval(function () {
-      if (!$("gvwSlot") || !_row || _row.status !== "drawing") { clearInterval(_anim.iv); _anim.iv = null; return; }
-      var left = until - now();
-      if (left <= 0) {   // time's up — if WE are admin, finalize the draw; others wait for the 'done' poll
-        clearInterval(_anim.iv); _anim.iv = null;
-        if (isAdmin()) _finalizeDraw();
-        return;
+  // ---- prize-wheel: a static wheel of all entrants, ready to spin 20-30s onto the winner ----
+  function _wheelBlock() {
+    var names = _entries.map(function (e) { return e.name || "צופה"; });
+    if (!names.length) names = ["—"];
+    _wheel.n = names.length;
+    return '<div class="gvw-wheelwrap"><div class="gvw-ptr">🔻</div>' + _wheelSVG(names) + "</div>";
+  }
+  function _wheelSVG(names) {
+    var n = names.length, cx = 160, cy = 160, r = 152;
+    var fs = n > 30 ? 8 : n > 18 ? 10 : n > 10 ? 12 : 14;
+    var segs = "", labels = "";
+    for (var i = 0; i < n; i++) {
+      var a0 = (i / n) * 2 * Math.PI - Math.PI / 2;
+      var a1 = ((i + 1) / n) * 2 * Math.PI - Math.PI / 2;
+      var col = WHEEL_COLORS[i % WHEEL_COLORS.length];
+      if (n === 1) { segs += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + col + '"/>'; }
+      else {
+        var x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+        var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+        var large = (a1 - a0) > Math.PI ? 1 : 0;
+        segs += '<path d="M' + cx + ',' + cy + ' L' + x0.toFixed(1) + ',' + y0.toFixed(1) + ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' Z" fill="' + col + '" stroke="rgba(0,0,0,.28)" stroke-width="1"/>';
       }
-      slot.textContent = names[Math.floor(Math.random() * names.length)];
-    }, left < 4000 ? 180 : 80);   // slow down near the end
+      var am = (a0 + a1) / 2, lr = r * 0.6;
+      var lx = cx + lr * Math.cos(am), ly = cy + lr * Math.sin(am);
+      var deg = am * 180 / Math.PI;
+      var nm = names[i]; if (nm.length > 14) nm = nm.slice(0, 13) + "…";
+      labels += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#fff" font-size="' + fs + '" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="rotate(' + deg.toFixed(1) + " " + lx.toFixed(1) + " " + ly.toFixed(1) + ')">' + esc(nm) + "</text>";
+    }
+    return '<svg viewBox="0 0 320 320" width="330" height="330" style="max-width:88vw;height:auto">' +
+      '<g class="gvw-wheel-rot" id="gvwWheelRot">' + segs + labels + "</g>" +
+      '<circle cx="160" cy="160" r="30" fill="var(--panel)" stroke="var(--border)" stroke-width="3"/>' +
+      '<text x="160" y="160" font-size="26" text-anchor="middle" dominant-baseline="central">🎁</text>' +
+      "</svg>";
+  }
+  function _spinWheel() {
+    var g = $("gvwWheelRot"); if (!g || !_row) return;
+    var n = _entries.length || 1, w = -1;
+    for (var i = 0; i < _entries.length; i++) { if (_row.winner && _entries[i].user_key === _row.winner.user_key) { w = i; break; } }
+    if (w < 0) w = 0;
+    var seg = 360 / n;
+    var center = (w + 0.5) * seg + (Math.random() - 0.5) * seg * 0.5;   // winner-center angle (clockwise from the top pointer)
+    var dur = _row.draw_until ? Math.max(3000, new Date(_row.draw_until).getTime() - now() - 500) : 25000;
+    var target = 360 * 6 + (360 - center);   // several full turns, then land the winner under the top pointer
+    g.style.transition = "none";
+    g.style.transform = "rotate(0deg)";
+    void g.getBoundingClientRect();           // reflow so the transition animates from 0
+    g.style.transition = "transform " + dur + "ms cubic-bezier(.13,.66,.1,1)";
+    g.style.transform = "rotate(" + target + "deg)";
   }
 
   function _showWinner(el) {
@@ -396,27 +455,26 @@ window.Giveaway = (function () {
       status: "open", round: round, winner: null, draw_until: null, prizes: prizes, title: title, keyword: kw,
       yt_video_id: live.video_id || null, yt_live_chat_id: live.live_chat_id || null, yt_page_token: null,
       opened_at: new Date().toISOString(),
-    }).then(function () { _entries = []; _paint(); toast("ההרשמה נפתחה 🎉 — " + (live.title || "לייב") + " (כתבו " + kw + " בצ׳אט)"); });
+    }).then(function () { _entries = []; _endedToasted = false; _stageSig = ""; _paint(); toast("ההרשמה נפתחה 🎉 — " + (live.title || "לייב") + " (כתבו " + kw + " בצ׳אט)"); });
   }
 
+  var DRAW_MS = 26000;   // wheel-spin duration
   function _startDraw() {
-    if (!_entries.length) { toast("אין משתתפים עדיין"); return; }
-    _patch({ status: "drawing", draw_until: new Date(now() + 30000).toISOString(), winner: null });
-    // the spinner runs on every client; when draw_until passes, the admin client finalizes (see _runSpinner)
-  }
-
-  function _finalizeDraw() {
     if (_busy) return;
     var prizes = (_row.prizes || []).filter(function (p) { return (p.label || "").trim(); });
-    if (!_entries.length || !prizes.length) { _patch({ status: "closed", draw_until: null }); return; }
+    if (!_entries.length) { toast("אין משתתפים עדיין"); return; }
+    if (!prizes.length) { toast("אין פרסים מוגדרים"); return; }
+    // pick the winner + a weighted-random prize UP FRONT so every client's wheel lands on the same spot
     var winnerEntry = _entries[Math.floor(Math.random() * _entries.length)];
-    // weighted prize pick
     var total = prizes.reduce(function (a, p) { return a + (+p.weight || 1); }, 0);
-    var r = Math.random() * total, prize = prizes[0];
-    for (var i = 0; i < prizes.length; i++) { r -= (+prizes[i].weight || 1); if (r <= 0) { prize = prizes[i]; break; } }
+    var rnd = Math.random() * total, prize = prizes[0];
+    for (var i = 0; i < prizes.length; i++) { rnd -= (+prizes[i].weight || 1); if (rnd <= 0) { prize = prizes[i]; break; } }
+    _wheel.round = -1; _wheel.spun = false; _stageSig = "";   // force a fresh wheel + spin
     _patch({
-      status: "done", draw_until: null,
+      status: "drawing", draw_until: new Date(now() + DRAW_MS).toISOString(),
       winner: { name: winnerEntry.name, user_key: winnerEntry.user_key, prize: { emoji: prize.emoji || "🎁", label: prize.label } },
+    }).then(function () {
+      setTimeout(function () { if (_row && _row.status === "drawing") _patch({ status: "done" }); }, DRAW_MS + 500);   // reveal after the spin
     });
   }
 
