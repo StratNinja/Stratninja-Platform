@@ -9,7 +9,7 @@ create table if not exists public.giveaways (
   status     text not null default 'idle',            -- idle | open | closed | drawing | done
   round      bigint not null default 0,               -- bumps each "open"; entries are filtered by it
   title      text not null default 'הגרלת StratNinja',
-  keyword    text not null default 'אני בפנים',        -- the YouTube-chat trigger word (stage 2)
+  keyword    text not null default 'NINJA',             -- the YouTube-chat trigger word
   prizes     jsonb not null default '[]'::jsonb,       -- [{id,emoji,label,weight}]
   winner     jsonb,                                    -- {name,user_key,prize:{emoji,label}}
   draw_until timestamptz,                              -- when the 30s spinner ends (all clients sync to it)

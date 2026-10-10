@@ -13,7 +13,8 @@ window.Giveaway = (function () {
 
   var _row = null;          // the giveaways 'current' row
   var _entries = [];        // entries of the current round
-  var _timer = null;        // poll interval
+  var _timer = null;        // supabase poll interval (state + live list)
+  var _chatTimer = null;    // youtube chat poll interval (admin only, while open)
   var _busy = false;
   var _anim = { round: -1, iv: null, done: false };   // draw-animation bookkeeping
 
@@ -30,6 +31,34 @@ window.Giveaway = (function () {
   function toast(msg) { try { if (window.snToast) return window.snToast(msg); } catch (e) {} try { console.log("[giveaway]", msg); } catch (e) {} }
   function $(id) { return document.getElementById(id); }
   function now() { return Date.now(); }
+
+  // ---- call the admin-only server poller (/api/giveaway) with the user's Supabase token ----
+  function _accessToken() {
+    var c = supa(); if (!c) return Promise.resolve(null);
+    return c.auth.getSession().then(function (r) { return (r.data && r.data.session && r.data.session.access_token) || null; }).catch(function () { return null; });
+  }
+  function _apiCall(action, extra) {
+    return _accessToken().then(function (tok) {
+      if (!tok) return { error: "no_token" };
+      var qs = "action=" + encodeURIComponent(action);
+      if (extra) Object.keys(extra).forEach(function (k) { qs += "&" + k + "=" + encodeURIComponent(extra[k]); });
+      return fetch("/api/giveaway?" + qs, { headers: { Authorization: "Bearer " + tok } }).then(function (r) { return r.json(); });
+    });
+  }
+  // start/stop the YouTube chat polling loop (admin only, while a giveaway is open)
+  function _startChatPoll() {
+    if (_chatTimer) return;
+    var tick = function () {
+      if (!$("gvwRoot") || !_row || _row.status !== "open") { _stopChatPoll(); return; }
+      _apiCall("poll").then(function (r) {
+        if (r && r.ended) { toast("צ׳אט הלייב הסתיים — אפשר לסגור ולהגריל"); }
+        // new entrants surface via the normal Supabase poll (_fetch → _paint)
+      }).catch(function () {});
+    };
+    tick();
+    _chatTimer = setInterval(tick, 5000);
+  }
+  function _stopChatPoll() { if (_chatTimer) { clearInterval(_chatTimer); _chatTimer = null; } }
 
   function _injectCss() {
     if ($("gvwCss")) return;
@@ -89,7 +118,7 @@ window.Giveaway = (function () {
     return '<div class="gvw-admin" id="gvwAdmin">' +
       '<h3>🛠️ ניהול הגרלה (אדמין)</h3>' +
       '<div class="fgrp"><label>כותרת</label><input id="gvwAdmTitle" type="text" placeholder="הגרלת StratNinja"></div>' +
-      '<div class="fgrp"><label>מילת-קסם לצ׳אט (שלב 2)</label><input id="gvwAdmKw" type="text" placeholder="אני בפנים"></div>' +
+      '<div class="fgrp"><label>מילת-קסם לצ׳אט הלייב</label><input id="gvwAdmKw" type="text" placeholder="NINJA"></div>' +
       '<label style="font-size:12px;color:var(--muted)">פרסים (תווית · משקל הסיכוי)</label>' +
       '<div id="gvwPrizes"></div>' +
       '<button class="btn ghost" id="gvwAddPrize" style="font-size:12px;margin-top:4px">➕ הוסף פרס</button>' +
@@ -123,7 +152,7 @@ window.Giveaway = (function () {
     });
     if (_timer) clearInterval(_timer);
     _timer = setInterval(function () {
-      if (!$("gvwRoot")) { clearInterval(_timer); _timer = null; return; }   // left the page → stop polling
+      if (!$("gvwRoot")) { clearInterval(_timer); _timer = null; _stopChatPoll(); return; }   // left the page → stop polling
       _fetch().then(_paint);
     }, POLL_MS);
   }
@@ -154,7 +183,11 @@ window.Giveaway = (function () {
     if (cnt) cnt.innerHTML = (_row.status === "idle") ? "" : ('<b>' + _entries.length + "</b> משתתפים בהגרלה");
     _paintList();
     _paintStage();
-    if (isAdmin()) _paintAdminBtns();
+    if (isAdmin()) {
+      _paintAdminBtns();
+      // drive the YouTube chat reader only while open + a live chat is linked
+      if (_row.status === "open" && _row.yt_live_chat_id) _startChatPoll(); else _stopChatPoll();
+    }
   }
 
   function _paintList() {
@@ -176,7 +209,7 @@ window.Giveaway = (function () {
       return;
     }
     if (s === "open") {
-      var kw = esc(_row.keyword || "אני בפנים");
+      var kw = esc(_row.keyword || "NINJA");
       var join;
       if (!me()) join = '<button class="btn primary gvw-join" data-gvw-login>🔓 התחבר כדי להשתתף</button>';
       else if (_iJoined()) join = '<div class="note" style="color:var(--green);font-weight:700">✅ אתה בפנים! בהצלחה 🍀</div>';
@@ -329,7 +362,7 @@ window.Giveaway = (function () {
   function _save() {
     _ensureDraft();
     var title = ($("gvwAdmTitle") || {}).value || "הגרלת StratNinja";
-    var kw = ($("gvwAdmKw") || {}).value || "אני בפנים";
+    var kw = ($("gvwAdmKw") || {}).value || "NINJA";
     var prizes = _przDraft.filter(function (p) { return (p.label || "").trim(); });
     _patch({ title: title.trim(), keyword: kw.trim(), prizes: prizes }).then(function () { toast("ההגדרות נשמרו ✅"); });
   }
@@ -339,11 +372,31 @@ window.Giveaway = (function () {
     _ensureDraft();
     var prizes = _przDraft.filter(function (p) { return (p.label || "").trim(); });
     if (!prizes.length) { toast("הוסף לפחות פרס אחד לפני פתיחה"); return; }
-    var title = ($("gvwAdmTitle") || {}).value || _row.title || "הגרלת StratNinja";
-    var kw = ($("gvwAdmKw") || {}).value || _row.keyword || "אני בפנים";
+    var title = (($("gvwAdmTitle") || {}).value || _row.title || "הגרלת StratNinja").trim();
+    var kw = (($("gvwAdmKw") || {}).value || _row.keyword || "NINJA").trim();
+    _busy = true; toast("מחפש לייב פעיל…");
+    _apiCall("find").then(function (r) {
+      _busy = false;
+      var live = r && r.live;
+      if (live && live.live_chat_id) { _doOpen(live, prizes, title, kw); return; }
+      // auto-detect failed → manual fallback: paste the live URL/ID
+      var url = window.prompt("לא נמצא לייב פעיל אוטומטית.\nהדבק כאן קישור או מזהה של הלייב ב-YouTube (אפשר Unlisted):", "");
+      if (!url) { toast("בוטל — אין לייב פעיל"); return; }
+      _busy = true;
+      _apiCall("resolve", { video: url }).then(function (rr) {
+        _busy = false;
+        if (rr && rr.live_chat_id) { _doOpen(rr, prizes, title, kw); }
+        else { toast("לא אותר צ׳אט חי בקישור הזה (ודא שהלייב משודר כרגע)"); }
+      });
+    }).catch(function () { _busy = false; toast("שגיאה בחיפוש הלייב — נסה שוב"); });
+  }
+  function _doOpen(live, prizes, title, kw) {
     var round = (_row.round || 0) + 1;
-    _patch({ status: "open", round: round, winner: null, draw_until: null, prizes: prizes, title: title.trim(), keyword: kw.trim(), opened_at: new Date().toISOString() })
-      .then(function () { _entries = []; _paint(); toast("ההרשמה נפתחה — סבב #" + round); });
+    _patch({
+      status: "open", round: round, winner: null, draw_until: null, prizes: prizes, title: title, keyword: kw,
+      yt_video_id: live.video_id || null, yt_live_chat_id: live.live_chat_id || null, yt_page_token: null,
+      opened_at: new Date().toISOString(),
+    }).then(function () { _entries = []; _paint(); toast("ההרשמה נפתחה 🎉 — " + (live.title || "לייב") + " (כתבו " + kw + " בצ׳אט)"); });
   }
 
   function _startDraw() {
