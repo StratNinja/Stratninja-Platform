@@ -8408,6 +8408,7 @@
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
     learn: { render: renderLearn, wire: wireLearn },
+    giveaway: { render: function () { return window.Giveaway ? window.Giveaway.render() : '<div class="page-head"><h1>🎁 הגרלות</h1></div>'; }, wire: function () { if (window.Giveaway) window.Giveaway.wire(); } },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
   };
   const state = { page: "market" };
@@ -8658,6 +8659,7 @@
     try { await client.from("usage_events").insert(batch); } catch (e) { /* table missing / offline → drop silently */ }
   }
   window.snTrack = snTrack;                                          // so other modules (journal) can log too
+  window.snToast = snToast;                                          // so other modules (giveaway) can toast too
   document.addEventListener("visibilitychange", () => { if (document.hidden) _flushTrack(); });
   window.addEventListener("pagehide", _flushTrack);
   // curated feature-click tracking (page views are logged in setPage). Names stay stable for the dashboard.
