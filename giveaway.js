@@ -94,6 +94,7 @@ window.Giveaway = (function () {
       ".gvw-prz input{flex:1}",
       ".gvw-prz input.w{flex:0 0 64px;text-align:center}",
       ".gvw-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}",
+      'body[data-page="giveaway"] #ninjaDeal{display:none!important}',   // hide the peeking-ninja coupon on the giveaway page
     ].join("");
     document.head.appendChild(s);
   }
