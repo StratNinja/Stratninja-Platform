@@ -308,10 +308,12 @@ window.Giveaway = (function () {
       txt += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#fff" font-size="' + fs + '" font-weight="800" text-anchor="middle" dominant-baseline="central" transform="rotate(' + deg.toFixed(1) + " " + lx.toFixed(1) + " " + ly.toFixed(1) + ')">' + esc(nm) + "</text>";
     }
     return '<svg viewBox="0 0 320 320" width="340" height="340" style="max-width:90vw;height:auto">' +
+      '<defs><clipPath id="gvwHubClip"><circle cx="160" cy="160" r="32"/></clipPath></defs>' +
       '<circle cx="160" cy="160" r="157" fill="none" stroke="#0c0c0c" stroke-width="8"/>' +
       '<g class="gvw-wheel-rot" id="gvwWheelRot">' + segs + txt + "</g>" +
       '<circle cx="160" cy="160" r="35" fill="#07120b" stroke="#22c55e" stroke-width="3"/>' +
-      '<image href="ninja-icon.png" x="134" y="134" width="52" height="52"/>' +
+      '<image href="ninja-icon.png" x="127" y="127" width="66" height="66" preserveAspectRatio="xMidYMid slice" clip-path="url(#gvwHubClip)"/>' +
+      '<circle cx="160" cy="160" r="32" fill="none" stroke="#22c55e" stroke-width="1.5" opacity=".6"/>' +
       "</svg>";
   }
   // animation engine — rAF, speed profile slow→fast→slow (easeInOutCubic), synced to a shared start time
