@@ -536,9 +536,9 @@ window.Giveaway = (function () {
       _busy = false;
       var live = r && r.live;
       if (live && live.live_chat_id) { _doOpen(live, prizes, title, kw); return; }
-      // auto-detect failed → manual fallback: paste the live URL/ID
-      var url = window.prompt("לא נמצא לייב פעיל אוטומטית.\nהדבק כאן קישור או מזהה של הלייב ב-YouTube (אפשר Unlisted):", "");
-      if (!url) { toast("בוטל — אין לייב פעיל"); return; }
+      // auto-detect failed → manual fallback: paste the live URL/ID (or cancel to open in TEST mode without chat)
+      var url = window.prompt("לא נמצא לייב פעיל.\nהדבק קישור/מזהה של לייב Public ב-YouTube — או בטל כדי לפתוח במצב בדיקה (בלי צ׳אט, עם משתתפי דמה/ידני):", "");
+      if (!url) { _doOpen({ video_id: null, live_chat_id: null, title: "בדיקה (ללא צ׳אט)" }, prizes, title, kw); return; }
       _busy = true;
       _apiCall("resolve", { video: url }).then(function (rr) {
         _busy = false;
