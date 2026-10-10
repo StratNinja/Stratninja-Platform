@@ -146,7 +146,10 @@ export default async function handler(req, res) {
         }
         if (!r1.ok) {
           const r2 = reasonOf(r1.j);
-          res.status(200).json({ error: "chat_" + r1.status, reason: r2, ended: r2 === "liveChatEnded", detail: (r1.j.error && r1.j.error.message || "").slice(0, 200) });
+          const msg = (r1.j.error && r1.j.error.message || "").slice(0, 220);
+          // stash the exact error in the row so it can be inspected without the admin UI
+          try { await patchRow({ winner: { debug: "chat_" + r1.status + " | reason:" + r2 + " | " + msg, at: new Date().toISOString() } }); } catch (e) {}
+          res.status(200).json({ error: "chat_" + r1.status, reason: r2, ended: r2 === "liveChatEnded", detail: msg });
           return;
         }
       }

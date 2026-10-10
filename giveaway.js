@@ -17,9 +17,10 @@ window.Giveaway = (function () {
   var _chatTimer = null;    // youtube chat poll interval (admin only, while open)
   var _busy = false;
   var _anim = { round: -1, iv: null, done: false };   // draw-animation bookkeeping
-  var _wheel = { round: -1, n: -1, spun: false };      // wheel render/spin bookkeeping
+  var _draw = { round: -1 };                           // draw-sequence bookkeeping (runs once per round)
   var _stageSig = "";                                  // memoize the stage render to avoid flicker / preserve the spin
-  var WHEEL_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#3b82f6", "#ef4444", "#8b5cf6", "#14b8a6", "#f97316", "#06b6d4"];
+  var PRIZE_MS = 6000, WINNER_MS = 9000;               // phase 1 = prize wheel, phase 2 = name roller
+  var WHEEL_COLORS = ["#16a34a", "#dc2626", "#22c55e", "#ef4444", "#15803d", "#b91c1c", "#4ade80", "#f87171", "#166534", "#991b1b"];   // trading red/green
 
   // ---- tiny helpers (this file has its own scope — don't rely on pages.js closures) ----
   function supa() { try { return window.SNAuth && SNAuth.getClient && SNAuth.getClient(); } catch (e) { return null; } }
@@ -106,9 +107,14 @@ window.Giveaway = (function () {
       ".gvw-prz input.w{flex:0 0 64px;text-align:center}",
       ".gvw-btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}",
       ".gvw-wheelwrap{position:relative;display:inline-block;margin:6px auto 0}",
+      ".gvw-wheelwrap svg{filter:drop-shadow(0 0 16px rgba(34,197,94,.4)) drop-shadow(0 0 26px rgba(220,38,38,.25))}",
       ".gvw-wheel-rot{transform-origin:50% 50%;transition:none}",
       ".gvw-ptr{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));z-index:2;line-height:1}",
       ".gvw-wheel-cap{font-size:16px;color:var(--muted);margin-bottom:4px}",
+      ".gvw-roller{position:relative;height:322px;overflow:hidden;width:min(440px,92vw);margin:10px auto;-webkit-mask-image:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent);mask-image:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent)}",
+      ".gvw-roller-sel{position:absolute;left:4px;right:4px;top:138px;height:46px;background:var(--panel2);border:2px solid var(--accent);border-radius:12px;z-index:0;box-shadow:0 0 18px rgba(99,102,241,.35)}",
+      ".gvw-roller-strip{position:relative;z-index:1;will-change:transform}",
+      ".gvw-roller-row{height:46px;line-height:46px;text-align:center;font-size:21px;font-weight:800;color:var(--fg)}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -219,12 +225,13 @@ window.Giveaway = (function () {
   function _paintStage() {
     var el = $("gvwStage"); if (!el) return;
     var s = _row.status;
-    // memoize: rebuild only when something visible changed — keeps the wheel spin alive across polls
-    var sig = s + "|" + _entries.length + "|" + (_row.winner ? 1 : 0) + "|" + _row.round + "|" + (me() ? (_iJoined() ? "in" : "out") : "anon");
-    if (sig === _stageSig && el.children.length) {
-      if (s === "drawing" && !_wheel.spun) { _wheel.spun = true; setTimeout(_spinWheel, 60); }
+    if (s === "drawing") {   // two-phase draw runs ONCE per round via its own timers (don't let the poll clobber it)
+      if (_draw.round !== _row.round) { _draw.round = _row.round; _stageSig = "DRAW:" + _row.round; _runDrawSequence(el); }
       return;
     }
+    // memoize: rebuild only when something visible changed (avoids flicker)
+    var sig = s + "|" + _entries.length + "|" + (_row.winner ? 1 : 0) + "|" + _row.round;
+    if (sig === _stageSig && el.children.length) return;
     _stageSig = sig;
 
     if (s === "idle") {
@@ -233,27 +240,19 @@ window.Giveaway = (function () {
     }
     if (s === "open") {
       var kw = esc(_row.keyword || "NINJA");
-      var join;
-      if (!me()) join = '<button class="btn primary gvw-join" data-gvw-login>🔓 התחבר כדי להשתתף</button>';
-      else if (_iJoined()) join = '<div class="note" style="color:var(--green);font-weight:700">✅ אתה בפנים! בהצלחה 🍀</div>';
-      else join = '<button class="btn primary gvw-join" data-gvw-join>🙋 אני בפנים!</button>';
       el.innerHTML =
-        '<div style="font-size:20px;font-weight:800;color:var(--green);margin-bottom:6px">🎉 ההרשמה פתוחה!</div>' +
-        '<div class="muted" style="margin-bottom:12px">כתבו <b>"' + kw + '"</b> בצ׳אט של הלייב — או לחצו כאן באתר:</div>' +
-        join +
-        (_entries.length ? '<div class="gvw-wheel-cap" style="margin-top:14px">🎡 הגלגל מתמלא… ' + _entries.length + ' משתתפים</div>' + _wheelBlock() : "");
+        '<div style="font-size:23px;font-weight:800;color:var(--green);margin-bottom:6px">🎉 ההרשמה פתוחה!</div>' +
+        '<div style="font-size:16px;margin-bottom:10px">כתבו <b style="color:var(--accent);font-size:20px">' + kw + '</b> בצ׳אט של הלייב כדי להיכנס 🎥</div>' +
+        (_entries.length
+          ? '<div class="gvw-wheel-cap">🎡 ' + _entries.length + ' משתתפים בהגרלה</div>' + _wheelBlock(_entries.map(function (e) { return e.name || "צופה"; }))
+          : '<div class="note">ממתינים למשתתפים הראשונים… ✍️</div>');
       return;
     }
     if (s === "closed") {
-      el.innerHTML = '<div style="font-size:20px;font-weight:800;color:#eab308;margin-bottom:2px">🔒 ההרשמה נסגרה</div>' +
-        '<div class="gvw-wheel-cap">הגלגל מוכן — ' + _entries.length + ' משתתפים · לחץ "הגרל זוכה"!</div>' +
-        (_entries.length ? _wheelBlock() : '<div class="note">אין משתתפים.</div>');
-      return;
-    }
-    if (s === "drawing") {
-      el.innerHTML = '<div class="gvw-wheel-cap" style="color:#818cf8;font-weight:700">🥁 מגרילים…</div>' + _wheelBlock();
-      _wheel.round = _row.round; _wheel.spun = true;
-      setTimeout(_spinWheel, 60);
+      var pr = (_row.prizes || []).filter(function (p) { return (p.label || "").trim(); });
+      el.innerHTML = '<div style="font-size:22px;font-weight:800;color:#eab308;margin-bottom:2px">🔒 ההרשמה נסגרה · ' + _entries.length + ' משתתפים</div>' +
+        '<div class="gvw-wheel-cap">🎁 גלגל ההטבות מוכן — לחצו "הגרל זוכה"!</div>' +
+        (pr.length ? _wheelBlock(pr.map(function (p) { return (p.emoji ? p.emoji + " " : "") + p.label; })) : '<div class="note">אין פרסים.</div>');
       return;
     }
     if (s === "done") { _showWinner(el); return; }
@@ -264,17 +263,15 @@ window.Giveaway = (function () {
     return _entries.some(function (e) { return e.user_key === uid; });
   }
 
-  // ---- prize-wheel: a static wheel of all entrants, ready to spin 20-30s onto the winner ----
-  function _wheelBlock() {
-    var names = _entries.map(function (e) { return e.name || "צופה"; });
-    if (!names.length) names = ["—"];
-    _wheel.n = names.length;
-    return '<div class="gvw-wheelwrap"><div class="gvw-ptr">🔻</div>' + _wheelSVG(names) + "</div>";
+  // ---- prize wheel (SVG, red/green trading theme, ninja hub) ----
+  function _wheelBlock(labels) {
+    if (!labels || !labels.length) labels = ["—"];
+    return '<div class="gvw-wheelwrap"><div class="gvw-ptr">🔻</div>' + _wheelSVG(labels) + "</div>";
   }
-  function _wheelSVG(names) {
-    var n = names.length, cx = 160, cy = 160, r = 152;
-    var fs = n > 30 ? 8 : n > 18 ? 10 : n > 10 ? 12 : 14;
-    var segs = "", labels = "";
+  function _wheelSVG(labels) {
+    var n = labels.length, cx = 160, cy = 160, r = 150;
+    var fs = n > 30 ? 8 : n > 18 ? 10 : n > 10 ? 12 : 13;
+    var segs = "", txt = "";
     for (var i = 0; i < n; i++) {
       var a0 = (i / n) * 2 * Math.PI - Math.PI / 2;
       var a1 = ((i + 1) / n) * 2 * Math.PI - Math.PI / 2;
@@ -284,34 +281,67 @@ window.Giveaway = (function () {
         var x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
         var x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
         var large = (a1 - a0) > Math.PI ? 1 : 0;
-        segs += '<path d="M' + cx + ',' + cy + ' L' + x0.toFixed(1) + ',' + y0.toFixed(1) + ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' Z" fill="' + col + '" stroke="rgba(0,0,0,.28)" stroke-width="1"/>';
+        segs += '<path d="M' + cx + ',' + cy + ' L' + x0.toFixed(1) + ',' + y0.toFixed(1) + ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' Z" fill="' + col + '" stroke="rgba(0,0,0,.4)" stroke-width="1.5"/>';
       }
-      var am = (a0 + a1) / 2, lr = r * 0.6;
+      var am = (a0 + a1) / 2, lr = r * 0.62;
       var lx = cx + lr * Math.cos(am), ly = cy + lr * Math.sin(am);
       var deg = am * 180 / Math.PI;
-      var nm = names[i]; if (nm.length > 14) nm = nm.slice(0, 13) + "…";
-      labels += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#fff" font-size="' + fs + '" font-weight="700" text-anchor="middle" dominant-baseline="central" transform="rotate(' + deg.toFixed(1) + " " + lx.toFixed(1) + " " + ly.toFixed(1) + ')">' + esc(nm) + "</text>";
+      var nm = labels[i]; if (nm.length > 15) nm = nm.slice(0, 14) + "…";
+      txt += '<text x="' + lx.toFixed(1) + '" y="' + ly.toFixed(1) + '" fill="#fff" font-size="' + fs + '" font-weight="800" text-anchor="middle" dominant-baseline="central" transform="rotate(' + deg.toFixed(1) + " " + lx.toFixed(1) + " " + ly.toFixed(1) + ')">' + esc(nm) + "</text>";
     }
-    return '<svg viewBox="0 0 320 320" width="330" height="330" style="max-width:88vw;height:auto">' +
-      '<g class="gvw-wheel-rot" id="gvwWheelRot">' + segs + labels + "</g>" +
-      '<circle cx="160" cy="160" r="30" fill="var(--panel)" stroke="var(--border)" stroke-width="3"/>' +
-      '<text x="160" y="160" font-size="26" text-anchor="middle" dominant-baseline="central">🎁</text>' +
+    return '<svg viewBox="0 0 320 320" width="340" height="340" style="max-width:90vw;height:auto">' +
+      '<circle cx="160" cy="160" r="157" fill="none" stroke="#0c0c0c" stroke-width="8"/>' +
+      '<g class="gvw-wheel-rot" id="gvwWheelRot">' + segs + txt + "</g>" +
+      '<circle cx="160" cy="160" r="35" fill="#07120b" stroke="#22c55e" stroke-width="3"/>' +
+      '<image href="ninja-icon.png" x="134" y="134" width="52" height="52"/>' +
       "</svg>";
   }
-  function _spinWheel() {
-    var g = $("gvwWheelRot"); if (!g || !_row) return;
-    var n = _entries.length || 1, w = -1;
-    for (var i = 0; i < _entries.length; i++) { if (_row.winner && _entries[i].user_key === _row.winner.user_key) { w = i; break; } }
-    if (w < 0) w = 0;
+  function _spinTo(targetIndex, n, durMs) {
+    var g = $("gvwWheelRot"); if (!g) return;
+    n = n || 1;
     var seg = 360 / n;
-    var center = (w + 0.5) * seg + (Math.random() - 0.5) * seg * 0.5;   // winner-center angle (clockwise from the top pointer)
-    var dur = _row.draw_until ? Math.max(3000, new Date(_row.draw_until).getTime() - now() - 500) : 25000;
-    var target = 360 * 6 + (360 - center);   // several full turns, then land the winner under the top pointer
-    g.style.transition = "none";
-    g.style.transform = "rotate(0deg)";
-    void g.getBoundingClientRect();           // reflow so the transition animates from 0
-    g.style.transition = "transform " + dur + "ms cubic-bezier(.13,.66,.1,1)";
+    var center = (targetIndex + 0.5) * seg + (Math.random() - 0.5) * seg * 0.4;
+    var target = 360 * 6 + (360 - center);   // several full turns, then land the target under the top pointer
+    g.style.transition = "none"; g.style.transform = "rotate(0deg)";
+    void g.getBoundingClientRect();
+    g.style.transition = "transform " + durMs + "ms cubic-bezier(.13,.66,.08,1)";
     g.style.transform = "rotate(" + target + "deg)";
+  }
+
+  // ---- two-phase draw: (1) prize wheel spins to the won prize, (2) iOS-style name roller lands on the winner ----
+  function _runDrawSequence(el) {
+    var prizes = (_row.prizes || []).filter(function (p) { return (p.label || "").trim(); });
+    var wonLabel = _row.winner && _row.winner.prize && _row.winner.prize.label;
+    var pIdx = 0; for (var i = 0; i < prizes.length; i++) { if (prizes[i].label === wonLabel) { pIdx = i; break; } }
+    var drawEnd = _row.draw_until ? new Date(_row.draw_until).getTime() : (now() + PRIZE_MS + WINNER_MS);
+    var prizeDur = Math.max(1500, (drawEnd - WINNER_MS) - now());
+    el.innerHTML = '<div class="gvw-wheel-cap" style="color:#818cf8;font-weight:800">🥁 מגרילים את ההטבה…</div>' +
+      _wheelBlock(prizes.length ? prizes.map(function (p) { return (p.emoji ? p.emoji + " " : "") + p.label; }) : ["🎁"]);
+    setTimeout(function () { _spinTo(pIdx, prizes.length || 1, prizeDur); }, 60);
+    setTimeout(function () { if (_row && _row.status === "drawing") _winnerPhase(el); }, prizeDur + 250);
+  }
+  function _winnerPhase(el) {
+    var names = _entries.map(function (e) { return e.name || "צופה"; });
+    var wIdx = 0; for (var i = 0; i < _entries.length; i++) { if (_row.winner && _entries[i].user_key === _row.winner.user_key) { wIdx = i; break; } }
+    var drawEnd = _row.draw_until ? new Date(_row.draw_until).getTime() : (now() + WINNER_MS);
+    var dur = Math.max(2500, drawEnd - now());
+    var pz = _row.winner && _row.winner.prize ? ((_row.winner.prize.emoji || "🎁") + " " + _row.winner.prize.label) : "";
+    el.innerHTML = '<div class="gvw-wheel-cap" style="color:var(--green);font-weight:800">🎯 ומי הזוכה?</div>' +
+      (pz ? '<div style="font-size:14px;color:var(--muted);margin-bottom:6px">על ההטבה: <b>' + esc(pz) + "</b></div>" : "") +
+      '<div class="gvw-roller"><div class="gvw-roller-sel"></div><div class="gvw-roller-strip" id="gvwRoller"></div></div>';
+    setTimeout(function () { _spinRoller(names, wIdx, dur); }, 60);
+  }
+  function _spinRoller(names, wIdx, dur) {
+    var strip = $("gvwRoller"); if (!strip) return;
+    var n = names.length || 1, rowH = 46, R = n <= 3 ? 16 : 8;
+    var reel = [];
+    for (var k = 0; k < R + 2; k++) for (var i = 0; i < n; i++) reel.push(names[i]);
+    var targetIdx = R * n + wIdx;   // winner centered at the end
+    strip.innerHTML = reel.map(function (nm) { return '<div class="gvw-roller-row">' + esc(nm.length > 22 ? nm.slice(0, 21) + "…" : nm) + "</div>"; }).join("");
+    strip.style.transition = "none"; strip.style.transform = "translateY(0)";
+    void strip.getBoundingClientRect();
+    strip.style.transition = "transform " + dur + "ms cubic-bezier(.08,.6,.12,1)";   // fast → slow (decelerates to the winner)
+    strip.style.transform = "translateY(" + (-(targetIdx - 3) * rowH) + "px)";
   }
 
   function _showWinner(el) {
@@ -458,23 +488,23 @@ window.Giveaway = (function () {
     }).then(function () { _entries = []; _endedToasted = false; _stageSig = ""; _paint(); toast("ההרשמה נפתחה 🎉 — " + (live.title || "לייב") + " (כתבו " + kw + " בצ׳אט)"); });
   }
 
-  var DRAW_MS = 26000;   // wheel-spin duration
   function _startDraw() {
     if (_busy) return;
     var prizes = (_row.prizes || []).filter(function (p) { return (p.label || "").trim(); });
     if (!_entries.length) { toast("אין משתתפים עדיין"); return; }
     if (!prizes.length) { toast("אין פרסים מוגדרים"); return; }
-    // pick the winner + a weighted-random prize UP FRONT so every client's wheel lands on the same spot
+    // pick the winner + a weighted-random prize UP FRONT so every client's wheel+roller land on the same spot
     var winnerEntry = _entries[Math.floor(Math.random() * _entries.length)];
     var total = prizes.reduce(function (a, p) { return a + (+p.weight || 1); }, 0);
     var rnd = Math.random() * total, prize = prizes[0];
     for (var i = 0; i < prizes.length; i++) { rnd -= (+prizes[i].weight || 1); if (rnd <= 0) { prize = prizes[i]; break; } }
-    _wheel.round = -1; _wheel.spun = false; _stageSig = "";   // force a fresh wheel + spin
+    var DRAW_MS = PRIZE_MS + WINNER_MS;
+    _draw.round = -1; _stageSig = "";   // force a fresh draw sequence
     _patch({
       status: "drawing", draw_until: new Date(now() + DRAW_MS).toISOString(),
       winner: { name: winnerEntry.name, user_key: winnerEntry.user_key, prize: { emoji: prize.emoji || "🎁", label: prize.label } },
     }).then(function () {
-      setTimeout(function () { if (_row && _row.status === "drawing") _patch({ status: "done" }); }, DRAW_MS + 500);   // reveal after the spin
+      setTimeout(function () { if (_row && _row.status === "drawing") _patch({ status: "done" }); }, DRAW_MS + 700);   // reveal after both phases
     });
   }
 
