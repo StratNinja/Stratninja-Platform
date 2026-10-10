@@ -107,9 +107,10 @@ export default async function handler(req, res) {
     let at2; try { at2 = await getAccessToken(); } catch (e) { res.status(200).json({ step: "token", err: String(e.message || e) }); return; }
     const row = await getRow();
     if (!row || !row.yt_live_chat_id) { res.status(200).json({ step: "row", chatId: row && row.yt_live_chat_id, status: row && row.status, videoId: row && row.yt_video_id }); return; }
-    const rr = await yt("liveChatMessages?part=snippet,authorDetails&maxResults=2000&liveChatId=" + encodeURIComponent(row.yt_live_chat_id), at2);
-    const rv = await resolveVideo(at2, row.yt_video_id || "");
-    res.status(200).json({ ok: rr.ok, status: rr.status, chatId: row.yt_live_chat_id, raw: JSON.stringify(rr.j).slice(0, 700), count: rr.ok ? (rr.j.items || []).length : undefined, resolvedChat: rv && rv.live_chat_id, resolveErr: rv && rv.error });
+    const u = "https://www.googleapis.com/youtube/v3/liveChatMessages?part=snippet,authorDetails&maxResults=2000&liveChatId=" + encodeURIComponent(row.yt_live_chat_id);
+    const raw = await fetch(u, { headers: { Authorization: "Bearer " + at2 } });
+    const bodyTxt = await raw.text().catch(function () { return ""; });
+    res.status(200).json({ status: raw.status, ctype: raw.headers.get("content-type"), bodyLen: bodyTxt.length, body: bodyTxt.slice(0, 700), chatId: row.yt_live_chat_id, videoId: row.yt_video_id });
     return;
   }
 
