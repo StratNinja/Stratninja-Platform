@@ -122,7 +122,7 @@ window.Giveaway = (function () {
       ".gvw-ov{position:fixed;inset:0;z-index:99999;background:radial-gradient(circle at 50% 38%,rgba(8,18,12,.98),rgba(0,0,0,.99));display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto}",
       ".gvw-ov-inner{width:100%;max-width:760px;text-align:center;margin:auto}",
       ".gvw-ov h2{font-size:clamp(20px,5vw,30px);margin:0 0 10px;font-weight:900}",
-      ".gvw-ov .gvw-wheelwrap svg{width:min(80vmin,580px);height:auto}",
+      ".gvw-ov .gvw-wheelwrap svg{width:min(90vmin,720px);height:auto}",
       ".gvw-ov .gvw-roller{width:min(92vw,560px)}",
       ".gvw-ov .gvw-roller-row{font-size:clamp(19px,5.5vw,28px)}",
       ".gvw-ov-close{position:absolute;top:14px;inset-inline-start:14px;font-size:20px;background:var(--panel2);border:1px solid var(--border);border-radius:50%;width:44px;height:44px;cursor:pointer;color:var(--fg);line-height:1}",
@@ -333,6 +333,26 @@ window.Giveaway = (function () {
 
   // ---- prize pool (quantities) + eligibility ----
   function _prizeQty(p) { return Math.max(1, p.qty != null ? +p.qty : (p.weight != null ? +p.weight : 1)); }
+  function _isRespin(p) { return p && (p.respin != null ? !!p.respin : /סיבוב\s*נוסף/i.test(p.label || "")); }   // "extra spin" = re-spin the wheel, not a real prize
+  // the prize WHEEL shows one slice per UNIT (expanded by quantity) — e.g. qty 3 → 3 slices.
+  // `seed` (stable per draw) scatters them so identical prizes aren't adjacent + varies between draws; all clients pass the same seed → identical wheel.
+  function _allUnits(seed) {
+    var s = (seed >>> 0) || 123456789;
+    function rnd() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }
+    var buckets = _livePrizes().map(function (p) { return { p: p, n: _prizeQty(p) }; });
+    var total = buckets.reduce(function (a, b) { return a + b.n; }, 0);
+    var out = [], lastLabel = null;
+    for (var k = 0; k < total; k++) {
+      var cand = buckets.filter(function (b) { return b.n > 0 && b.p.label !== lastLabel; });
+      if (!cand.length) cand = buckets.filter(function (b) { return b.n > 0; });
+      var sum = cand.reduce(function (a, b) { return a + b.n; }, 0), r = rnd() * sum, pick = cand[0];
+      for (var i = 0; i < cand.length; i++) { r -= cand[i].n; if (r <= 0) { pick = cand[i]; break; } }
+      out.push(pick.p); pick.n--; lastLabel = pick.p.label;
+    }
+    return out;
+  }
+  function _unitLabel(p) { return (p.emoji ? p.emoji + " " : "") + p.label; }
+  function _respinChance() { return _livePrizes().some(_isRespin) ? 0.3 : 0; }   // odds a draw detours through a "סיבוב נוסף" slice
   function _awarded() { return (_row && _row.winner && _row.winner.awarded) || []; }
   function _livePrizes() { return (_row.prizes || []).filter(function (p) { return (p.label || "").trim(); }); }
   function _remainingUnits() {   // prize objects, each repeated by its REMAINING quantity
@@ -380,11 +400,13 @@ window.Giveaway = (function () {
 
   // ---- phase 1: prize wheel (15s: slow→fast→slow) ----
   function _ovPrizeSpin(body, pstart) {
-    var prizes = _livePrizes(), last = (_row.winner && _row.winner.last) || {};
-    var pIdx = 0; for (var i = 0; i < prizes.length; i++) { if (prizes[i].label === (last.prize && last.prize.label)) { pIdx = i; break; } }
-    var n = prizes.length || 1, center = (pIdx + 0.5) * (360 / n), total = 360 * SPINS + (360 - center);
+    var last = (_row.winner && _row.winner.last) || {};
+    var units = _allUnits(last.arrSeed || 1);
+    var tIdx = last.detour ? (last.respinIdx != null ? last.respinIdx : 0) : (last.realIdx != null ? last.realIdx : 0);
+    if (tIdx < 0 || tIdx >= units.length) tIdx = 0;
+    var n = units.length || 1, center = (tIdx + 0.5) * (360 / n), total = 360 * SPINS + (360 - center);
     body.innerHTML = '<h2 style="color:#818cf8">🥁 מגרילים את ההטבה…</h2><div class="gvw-timer" id="gvwTimer"></div>' +
-      _wheelBlock(prizes.length ? prizes.map(function (p) { return (p.emoji ? p.emoji + " " : "") + p.label; }) : ["🎁"]) +
+      _wheelBlock(units.length ? units.map(_unitLabel) : ["🎁"]) +
       (isAdmin() ? '<div class="gvw-ov-btns"><button class="btn ghost" data-gadm="cancelDraw">✕ עצור / בטל</button></div>' : "");
     if (isAdmin()) body.querySelectorAll("[data-gadm]").forEach(function (b) { b.onclick = function () { _admAction(b.dataset.gadm); }; });
     var g = $("gvwWheelRot"); if (g) g.style.transition = "none";
@@ -396,6 +418,15 @@ window.Giveaway = (function () {
   }
   function _ovPrizeReveal(body) {
     var last = (_row.winner && _row.winner.last) || {}, pz = last.prize || {};
+    if (last.detour) {   // landed on "סיבוב נוסף" → the WHEEL spins again (not a prize)
+      var ctrl = isAdmin()
+        ? '<div class="gvw-ov-btns"><button class="btn primary" data-gadm="respin">🔄 סובב שוב!</button></div>'
+        : '<div class="note" style="margin-top:14px">מסובבים את הגלגל שוב… ⏳</div>';
+      body.innerHTML = '<div class="gvw-ov-win gvw-reveal"><div class="wn-prize" style="font-size:clamp(26px,8vw,46px);color:#818cf8">🔄 סיבוב נוסף!</div>' +
+        '<div style="font-size:16px;color:var(--muted);margin-top:8px">הגלגל מסתובב עוד פעם 🎡</div></div>' + ctrl;
+      if (isAdmin()) body.querySelectorAll("[data-gadm]").forEach(function (b) { b.onclick = function () { _admAction(b.dataset.gadm); }; });
+      return;
+    }
     var ctrls = isAdmin()
       ? '<div class="gvw-ov-btns"><button class="btn primary" data-gadm="reveal">🎯 מי הזוכה?</button></div>'
       : '<div class="note" style="margin-top:14px">ממתינים לחשיפת הזוכה… ⏳</div>';
@@ -430,7 +461,7 @@ window.Giveaway = (function () {
   }
   function _ovWinnerReveal(body) {
     var aw = _awarded(), last = (_row.winner && _row.winner.last) || {}, lastPrize = last.prize || {};
-    var moreLeft = _remainingUnits().length > 0 && _eligibleEntries().length > 0;
+    var moreLeft = _remainingUnits().filter(function (u) { return !_isRespin(u); }).length > 0 && _eligibleEntries().length > 0;
     var awHtml = aw.map(function (w, i) {
       var pr = w.prize || {};
       return '<div class="aw-row' + (i === aw.length - 1 ? " new" : "") + '"><b>' + esc(w.name || "—") + "</b><span>" + esc((pr.emoji || "🎁") + " " + (pr.label || "")) + "</span></div>";
@@ -488,13 +519,15 @@ window.Giveaway = (function () {
       return '<div class="gvw-prz">' +
         '<input type="text" data-pe="' + i + '" value="' + esc(p.emoji || "") + '" style="flex:0 0 46px;text-align:center" maxlength="2">' +
         '<input type="text" data-pl="' + i + '" value="' + esc(p.label || "") + '" placeholder="תיאור הפרס">' +
-        '<input type="number" class="w" data-pw="' + i + '" value="' + _prizeQty(p) + '" min="1" title="כמות זוכים">' +
+        '<input type="number" class="w" data-pw="' + i + '" value="' + _prizeQty(p) + '" min="1" title="כמות סלוטים בגלגל">' +
+        '<label title="סיבוב נוסף — לא פרס, הגלגל מסתובב שוב" style="display:flex;align-items:center;gap:3px;font-size:14px;flex:0 0 auto;cursor:pointer"><input type="checkbox" data-pr="' + i + '"' + (_isRespin(p) ? " checked" : "") + ">🔄</label>" +
         '<button class="btn ghost" data-px="' + i + '" style="padding:4px 9px">✕</button>' +
       '</div>';
     }).join("") || '<div class="muted" style="font-size:12px">אין פרסים — הוסף לפחות אחד.</div>';
     box.querySelectorAll("[data-pe]").forEach(function (el) { el.oninput = function () { _przDraft[+el.dataset.pe].emoji = el.value; }; });
     box.querySelectorAll("[data-pl]").forEach(function (el) { el.oninput = function () { _przDraft[+el.dataset.pl].label = el.value; }; });
     box.querySelectorAll("[data-pw]").forEach(function (el) { el.oninput = function () { var p = _przDraft[+el.dataset.pw]; p.qty = Math.max(1, +el.value || 1); delete p.weight; }; });
+    box.querySelectorAll("[data-pr]").forEach(function (el) { el.onchange = function () { _przDraft[+el.dataset.pr].respin = el.checked; }; });
     box.querySelectorAll("[data-px]").forEach(function (el) { el.onclick = function () { _przDraft.splice(+el.dataset.px, 1); _renderPrizes(); }; });
   }
 
@@ -526,6 +559,7 @@ window.Giveaway = (function () {
     if (act === "close") return _patch({ status: "closed", closed_at: new Date().toISOString() });
     if (act === "draw") return _startDraw();
     if (act === "reveal") { _cancelAnim(); _draw.key = ""; return _patch({ winner: Object.assign({}, _row.winner, { phase: "winner", pstart: Date.now() }) }); }
+    if (act === "respin") { _cancelAnim(); _draw.key = ""; return _patch({ winner: Object.assign({}, _row.winner, { phase: "prize", pstart: Date.now(), last: Object.assign({}, _row.winner.last, { detour: false }) }) }); }   // "סיבוב נוסף" → spin again to the real prize
     if (act === "cancelDraw") { _cancelAnim(); _draw.key = ""; return _patch({ status: "closed", winner: { awarded: _awarded().slice(0, -1), last: null } }); }   // abort this draw, return the entrant+prize to the pool
     if (act === "demo") return _addDemo();
     if (act === "manual") return _addManual();
@@ -586,15 +620,24 @@ window.Giveaway = (function () {
 
   function _startDraw() {
     if (_busy) return;
-    var units = _remainingUnits(), elig = _eligibleEntries();
+    var elig = _eligibleEntries();
+    var remReal = _remainingUnits().filter(function (u) { return !_isRespin(u); });
     if (!elig.length) { toast("אין עוד משתתפים זמינים"); return; }
-    if (!units.length) { toast("כל הפרסים כבר חולקו"); return; }
-    // pick ONE eligible entrant + ONE remaining prize unit UP FRONT so every client's wheel+roller sync
+    if (!remReal.length) { toast("אין עוד פרסים לחלק"); return; }
+    // pick the winner (person) + a remaining REAL prize (qty-weighted), UP FRONT so all clients sync
     var winnerEntry = elig[Math.floor(Math.random() * elig.length)];
-    var prize = units[Math.floor(Math.random() * units.length)];
-    var newWin = { name: winnerEntry.name, user_key: winnerEntry.user_key, prize: { emoji: prize.emoji || "🎁", label: prize.label } };
-    _draw.key = ""; _stageSig = ""; _cancelAnim();   // force a fresh draw sequence
-    // phase 1 = prize wheel; admin clicks "מי הזוכה?" to start phase 2 = name roller
+    var prize = remReal[Math.floor(Math.random() * remReal.length)];
+    // lay out the 15-slice wheel (scattered) and find where to land
+    var arrSeed = (Date.now() ^ (Math.random() * 1e9)) >>> 0;
+    var units = _allUnits(arrSeed), realIdxs = [], respinIdxs = [];
+    units.forEach(function (u, i) { (_isRespin(u) ? respinIdxs : realIdxs).push(i); });
+    var matchReal = realIdxs.filter(function (i) { return units[i].label === prize.label; });
+    var realIdx = (matchReal.length ? matchReal : realIdxs)[Math.floor(Math.random() * (matchReal.length ? matchReal.length : realIdxs.length))];
+    var detour = respinIdxs.length > 0 && Math.random() < _respinChance();
+    var respinIdx = detour ? respinIdxs[Math.floor(Math.random() * respinIdxs.length)] : -1;
+    var newWin = { name: winnerEntry.name, user_key: winnerEntry.user_key, prize: { emoji: prize.emoji || "🎁", label: prize.label }, arrSeed: arrSeed, realIdx: realIdx, respinIdx: respinIdx, detour: detour };
+    _draw.key = ""; _stageSig = ""; _cancelAnim();
+    // phase 1 = prize wheel (maybe a "סיבוב נוסף" detour); then admin clicks → phase 2 = name roller
     _patch({ status: "drawing", winner: { awarded: _awarded().concat([newWin]), last: newWin, phase: "prize", pstart: Date.now() } });
   }
 
