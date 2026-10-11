@@ -85,9 +85,9 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 </div>
 <script>
   (function () {
-    try { if (sessionStorage.getItem("sn_ytnote_x")) { var e = document.getElementById("ytOutage"); if (e) e.style.display = "none"; } } catch (e) {}
+    // always show on every load/refresh — the ✕ only hides it for the current view
     var x = document.getElementById("ytoX");
-    if (x) x.onclick = function () { var e = document.getElementById("ytOutage"); if (e) e.style.display = "none"; try { sessionStorage.setItem("sn_ytnote_x", "1"); } catch (e2) {} };
+    if (x) x.onclick = function () { var e = document.getElementById("ytOutage"); if (e) e.style.display = "none"; };
   })();
 </script>
 
