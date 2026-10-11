@@ -1963,6 +1963,9 @@
     scan3:   { id: "10Z11_k3U7o", t: "הסורק · חלק 3 — התראות" },
     journal: { id: "KauU0b-cBAc", t: "יומן מסחר" },
   };
+  // 2026-10-11: YouTube channel terminated → ALL guide/course videos hidden sitewide until re-recorded.
+  // To restore: set GUIDES_OFF = false and update the video IDs in VID (+ the playlist link in guidesPanel).
+  const GUIDES_OFF = true;
   const GUIDE_BY_PAGE = { market: ["market"], sp500: ["sp500"], sectors: ["sectors"], today: ["today"], scanner: ["scan1", "scan2", "scan3"], favorites: ["scan3"], journal: ["journal"] };
   const GUIDE_ALL = ["intro", "market", "sp500", "sectors", "today", "scan1", "scan2", "scan3", "journal"];
   function ytFacade(key) {
@@ -1976,12 +1979,14 @@
     el.parentElement.innerHTML = '<iframe src="https://www.youtube.com/embed/' + id + '?autoplay=1&rel=0&modestbranding=1" title="StratNinja" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>';
   };
   function guideSection(page) {
+    if (GUIDES_OFF) return "";
     const keys = GUIDE_BY_PAGE[page]; if (!keys || !keys.length) return "";
     const multi = keys.length > 1;
     return '<details class="guide-sec"><summary>🎥 <b>איזור לימוד</b> — צפה במדריך' + (multi ? " (" + keys.length + " חלקים)" : "") + ' לעמוד זה</summary><div class="guide-body' + (multi ? " multi" : "") + '">' + keys.map(ytFacade).join("") + "</div></details>";
   }
   window.snGuide = guideSection;   // exposed so the separate journal module can drop in its own guide
   function guidesPanel() {
+    if (GUIDES_OFF) return "";
     return '<div class="panel lrn-guides"><h3 style="margin:0 0 4px">🎥 סרטוני מדריך — כל הסדרה</h3>' +
       '<div class="muted" style="font-size:13px;margin-bottom:12px">סרטון קצר לכל עמוד באתר — לחץ לצפייה. <a href="https://www.youtube.com/playlist?list=PLduENm0L_4tM" target="_blank" rel="noopener" style="color:var(--accent)">פתח את הפלייליסט המלא ב-YouTube ↗</a></div>' +
       '<div class="guide-grid">' + GUIDE_ALL.map(ytFacade).join("") + "</div></div>";
@@ -7971,7 +7976,7 @@
       '<div class="lrn-body"><div class="lrn-svg" data-cltype="' + type + '" title="לחץ למבט מבפנים 🔬">' + _candleDiagram(type) + "</div><div class=\"lrn-txt\">" + body +
       '<div class="lrn-inscan">בסורק: ' + badge + "</div></div></div></div>";
     const head =
-      '<div class="page-head"><h1>📚 לימוד — יסודות TheStrat</h1><div class="sub">כל החומר הלימודי במרוכז. מתחילים כאן: <b>סוגי הנרות</b> — האלף־בית של השיטה. אחריהם FTFC, IN FORCE, וסרטוני המדריכים.</div></div>';
+      '<div class="page-head"><h1>📚 לימוד — יסודות TheStrat</h1><div class="sub">כל החומר הלימודי במרוכז. מתחילים כאן: <b>סוגי הנרות</b> — האלף־בית של השיטה. אחריהם FTFC ו-IN FORCE.</div></div>';
     const intro =
       '<div class="panel lrn-intro"><div class="lrn-intro-in"><div style="font-size:34px">🕯️</div><div>' +
       '<h2 style="margin:0 0 6px">שלושת סוגי הנרות — ורק הם</h2>' +
@@ -7995,7 +8000,7 @@
       '<div class="lrn-nextgrid">' +
       '<div class="lrn-nextitem"><b>המשכיות טיימפריימים (FTFC)</b><span class="muted">כשכל הזמנים מיושרים לאותו כיוון = אות חזק</span></div>' +
       '<div class="lrn-nextitem"><b>IN FORCE</b><span class="muted">מתי נר מחזיק מעבר לקצה הקודם — טריגר אמיתי</span></div>' +
-      '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">✅ כבר כאן — גלול מטה לכל הסדרה 👇</span></div>' +
+      '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">🔜 בקרוב — סדרה חדשה בהקלטה</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
     const hint = '<div class="lrn-hint">💡 רחף על דיאגרמה כדי לראות איך הנר נוצר · <b>לחץ עליה</b> לזום פנימה ולראות את הנרות הקטנים שמרכיבים אותה 🔬</div>';
