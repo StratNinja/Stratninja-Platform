@@ -35,6 +35,9 @@ self.addEventListener("push", (e) => {
     icon: d.icon || "/ninja-icon.png",     // large logo (candlestick)
     badge: d.badge || "/badge-96.png",   // status-bar candle silhouette (Android tints it white)
     tag: d.tag || "sn-alert",
+    renotify: true,              // re-alert (sound/vibrate) even when a notification with this tag already exists
+    requireInteraction: true,    // stay on screen until the user acts — don't auto-dismiss (so a position alert isn't missed)
+    vibrate: [120, 60, 120],
     dir: "rtl",
     lang: "he",
     data: { url: d.url || "/" },
