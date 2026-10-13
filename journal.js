@@ -97,6 +97,7 @@
   try { openPosMin = localStorage.getItem("sn_openpos_min") === "1"; } catch (e) {}
   let _openSort = { col: null, dir: 1 };   // open-positions table sort (click a header)
   let _openAgg = false;   // aggregate duplicate tickers in the open-positions table (weighted-avg entry)
+  let _periodSort = { col: "date", dir: 1 };   // calendar "period trades" modal sort (click a header)
   try { _openAgg = localStorage.getItem("sn_openpos_agg") === "1"; } catch (e) {}
   // live-stream privacy: hide the trades on entry (toggle persisted); _peek = temporarily revealed
   let _journalPrivate = false;
@@ -1115,12 +1116,16 @@
       .sort((a, b) => (a.exitDate < b.exitDate ? -1 : a.exitDate > b.exitDate ? 1 : 0));
     if (!list.length) { modal(title, '<div class="note">אין עסקאות סגורות בתקופה הזו.</div>', []); return; }
     const posVal = t => Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));
+    // sortable table: value per column + apply the current sort (click a header to change)
+    const PSORT = { date: t => t.exitDate || "", symbol: t => (t.symbol || "").toUpperCase(), direction: t => t.direction || "", qty: t => +t.qty || 0, entry: t => +t.entryPrice || 0, pos: t => posVal(t), exit: t => +t.exitPrice || 0, net: t => t.pnl || 0 };
+    const _pf = PSORT[_periodSort.col] || PSORT.date;
+    const sorted = list.slice().sort((a, b) => { const va = _pf(a), vb = _pf(b); const c = (typeof va === "string") ? (va < vb ? -1 : va > vb ? 1 : 0) : (va - vb); return c * _periodSort.dir; });
     const net = list.reduce((s, t) => s + t.pnl, 0);
     const totalPos = list.reduce((s, t) => s + posVal(t), 0);
     const retPct = totalPos ? net / totalPos * 100 : 0;   // capital-weighted: net ÷ total capital deployed
     const pctS = (retPct >= 0 ? "+" : "−") + Math.abs(retPct).toFixed(1) + "%";
     const dstr = d => (d ? d.split("-").reverse().join(".") : "—");
-    const rows = list.map(t => {
+    const rows = sorted.map(t => {
       const actions =
         '<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
         (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה">🧠</button> ' : "") +
@@ -1135,12 +1140,18 @@
     const body =
       '<div style="margin-bottom:12px" class="' + cls(net) + '"><b style="font-size:18px">' + money(net, 2) + "</b> · " + list.length + " עסקאות · הושקע " + money(totalPos, 0) + " · <b>" + pctS + "</b> תשואה על ההון</div>" +
       '<div class="tablebox" style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table><thead><tr>' +
-      "<th>תאריך</th><th>סימבול</th><th>כיוון</th><th>כמות</th><th>כניסה</th><th>חשיפה</th><th>יציאה</th><th>נטו</th><th></th></tr></thead><tbody>" +
+      [["date", "תאריך"], ["symbol", "סימבול"], ["direction", "כיוון"], ["qty", "כמות"], ["entry", "כניסה"], ["pos", "חשיפה"], ["exit", "יציאה"], ["net", "נטו"]].map(c => "<th class='jsort' data-psort='" + c[0] + "' style='cursor:pointer'>" + c[1] + (_periodSort.col === c[0] ? (_periodSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>").join("") + "<th></th></tr></thead><tbody>" +
       rows + "</tbody>" +
       '<tfoot><tr class="jr-day-total"><td colspan="5" style="text-align:start;font-weight:700">סה"כ · ' + list.length + ' עסקאות</td><td style="font-weight:700">' + money(totalPos, 0) + '</td><td></td><td class="' + cls(net) + '" style="font-weight:700">' + money(net, 2) + ' <span style="font-size:11px;opacity:.85">(' + pctS + ')</span></td><td></td></tr></tfoot>' +
       "</table></div>" +
       '<div class="note">💰 "חשיפה" = ההון שנכנס לכל עסקה (מחיר כניסה × כמות). הסיכום למטה = <b>סך ההון שנכנס לעסקאות בתקופה</b>.</div>';
     modal(title, body, null, "modal-trades");
+    $("#modalBg").querySelectorAll("[data-psort]").forEach(th => th.onclick = () => {
+      const c = th.dataset.psort;
+      if (_periodSort.col === c) _periodSort.dir *= -1;
+      else _periodSort = { col: c, dir: (c === "date" || c === "symbol" || c === "direction") ? 1 : -1 };   // text→A-Z, numbers→high-first
+      openPeriod(fromKey, toKey, title);   // re-render with the new sort
+    });
     wireTradeActions($("#modalBg"), list, () => openPeriod(fromKey, toKey, title));
   }
   const _EXIT_REASON_HE = { stop: "🛑 Stop Loss", target: "🎯 Take Profit", emotion: "😰 רגש", plan: "📋 לפי התוכנית", other: "אחר" };
