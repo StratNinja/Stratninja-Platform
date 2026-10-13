@@ -471,6 +471,7 @@
           case "daychg": { const d = it.isOpt ? null : (liveChg ? liveChg[String(it.t.symbol || "").split(" ")[0]] : null); return d == null ? -Infinity : d; }
           case "dte": { const d = _dte(it.t); return d == null ? Infinity : d; }               // ascending (dir=1) → nearest expiry first; non-options sink to the end
           case "theta": { const p = _thetaPerDay(it.t); return p == null ? -Infinity : Math.abs(p); }   // descending (dir=-1) → biggest daily decay first; non-options sink to the end
+          case "be": { const g = _beGap(it.t); return g == null ? -Infinity : g; }   // descending (dir=-1) → furthest from BE (most to move) first; past-BE cushions sink to the bottom
           case "un": return it.un == null ? -Infinity : it.un;
           case "unpct": { const pv = posValOf(it.t); return (it.un != null && pv > 0) ? it.un / pv * 100 : -Infinity; }
           default: return 0;
@@ -503,6 +504,19 @@
     // breakeven-at-expiry GAP: how far the STOCK must move from here to break even if held to
     // expiry. BE = strike + premium paid (call) / strike − premium paid (put); gap = BE − stock price.
     // (_theta / _under are defined above the sort block so the DTE/theta sort can use them too.)
+    // signed "distance to breakeven" as a number for sorting: + = stock still has to move to reach BE
+    // (higher = further / more at risk), − = already past BE (cushion). null when no option/underlying data.
+    function _beGap(t) {
+      if (t.assetType !== "option" || t.strike == null || t.strike === "" || t.entryPrice == null) return null;
+      const u = String(t.symbol || "").split(" ")[0].toUpperCase();
+      const under = _optUnder()[u];
+      if (under == null || !(+under > 0)) return null;
+      const isPut = t.optType === "put";
+      const be = isPut ? (+t.strike - +t.entryPrice) : (+t.strike + +t.entryPrice);
+      const movePct = (be / under - 1) * 100;
+      const past = isPut ? (+under <= be) : (+under >= be);   // beyond breakeven = cushion
+      return past ? -Math.abs(movePct) : Math.abs(movePct);
+    }
     function _beCell(t) {
       if (t.assetType !== "option" || t.strike == null || t.strike === "" || t.entryPrice == null) return "<td class='muted'>—</td>";
       const u = String(t.symbol || "").split(" ")[0].toUpperCase();
@@ -630,7 +644,7 @@
     }).join("");
     // sortable header (click a column to sort)
     const _sh = (col, label, start) => "<th class='jsort' data-jsort='" + col + "' style='cursor:pointer" + (start ? ";text-align:start" : "") + "'>" + label + (_openSort.col === col ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>";
-    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("stop", "סטופ") + _sh("risk", "סיכון") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + "<th title='כמה המניה צריכה לזוז עד הפקיעה כדי לצאת באפס (Breakeven − מחיר המניה הנוכחי) · רק אופציות · מבוסס CBOE'>פער ל-BE</th>" + "<th class='jsort' data-jsortopt='1' style='cursor:pointer;font-family:Heebo,Rubik,sans-serif' title='לחיצה: מיין לפי ימים לפקיעה · לחיצה נוספת: מיין לפי ההפסד ליום'>שחיקה ליום ⏳" + (_openSort.col === "dte" ? " <span class='muted' style='font-size:10px'>ימים ▲</span>" : _openSort.col === "theta" ? " <span class='muted' style='font-size:10px'>$ ▼</span>" : "") + "</th>" + _sh("daychg", "תנועת היום") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
+    const _thead = "<tr>" + (showAcct ? _sh("account", "חשבון", true) : "") + _sh("entryDate", "תאריך רכישה", true) + _sh("symbol", "סימבול", true) + _sh("direction", "כיוון") + _sh("qty", "כמות") + _sh("entryPrice", "כניסה") + _sh("stop", "סטופ") + _sh("risk", "סיכון") + _sh("posValue", "חשיפה") + _sh("cp", "מחיר נוכחי") + "<th class='jsort' data-jsort='be' style='cursor:pointer' title='כמה המניה צריכה לזוז עד הפקיעה כדי לצאת באפס (Breakeven − מחיר המניה הנוכחי) · רק אופציות · מבוסס CBOE · לחץ למיון מהרחוק ביותר מ-BE לקרוב'>פער ל-BE" + (_openSort.col === "be" ? (_openSort.dir === 1 ? " ▲" : " ▼") : "") + "</th>" + "<th class='jsort' data-jsortopt='1' style='cursor:pointer;font-family:Heebo,Rubik,sans-serif' title='לחיצה: מיין לפי ימים לפקיעה · לחיצה נוספת: מיין לפי ההפסד ליום'>שחיקה ליום ⏳" + (_openSort.col === "dte" ? " <span class='muted' style='font-size:10px'>ימים ▲</span>" : _openSort.col === "theta" ? " <span class='muted' style='font-size:10px'>$ ▼</span>" : "") + "</th>" + _sh("daychg", "תנועת היום") + _sh("un", "Unrealized") + _sh("unpct", "%") + "<th></th></tr>";
     const labelSpan = 5 + (showAcct ? 1 : 0);   // entryDate..entryPrice (before the חשיפה column)
     const totHtml = haveAll ? '<span class="' + cls(totUn) + '">' + money(totUn, 2) + "</span>" : '<span class="muted">—</span>';
     const totPct = (haveAll && totInv > 0) ? '<span class="' + cls(totUn) + '">' + (totUn >= 0 ? "+" : "") + (totUn / totInv * 100).toFixed(2) + "%</span>" : '<span class="muted">—</span>';
