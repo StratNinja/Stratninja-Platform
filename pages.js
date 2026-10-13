@@ -8908,9 +8908,9 @@
   }
   function _athStocks() {
     if (!(SCAN && SCAN.rows && SCAN.rows.length)) return [];
-    // SAME rule as the scanner's 52-week-high filter (within EXT52_PCT of the high) so the sidebar count
-    // matches exactly what the click shows. Sorted closest-to-high first (matches the scanner's sort).
-    return SCAN.rows.filter(r => { const k = r.tech; return k && k.dhi52 != null && k.dhi52 >= -EXT52_PCT; })
+    // S&P 500 only (r.sp) + within EXT52_PCT of the high → the sidebar count now MATCHES the S&P breadth
+    // panel's "בשיא 52ש׳" (Adi 2026-10-13). Sorted closest-to-high first (matches the scanner's sort).
+    return SCAN.rows.filter(r => { const k = r.tech; return r.sp && k && k.dhi52 != null && k.dhi52 >= -EXT52_PCT; })
       .map(r => ({ sym: r.s, sec: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0),
         chg: r.c != null ? r.c : (r.tech ? r.tech.chg : 0), dhi52: r.tech.dhi52 }))
       .sort((a, b) => (b.dhi52 == null ? -999 : b.dhi52) - (a.dhi52 == null ? -999 : a.dhi52));
