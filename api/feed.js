@@ -6,14 +6,19 @@
 //
 // Returns the raw PostgREST array `[{data}]` unchanged, so the client parses it exactly like a direct read.
 // The anon key + URL are PUBLIC (see config.js — browser-side by design; RLS enforces real security).
+import { gzipSync } from "zlib";
+
 const SUPA_URL = process.env.SUPABASE_URL || "https://iujeekdtimlmgwzzlauj.supabase.co";
 const SUPA_KEY = process.env.SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1amVla2R0aW1sbWd3enpsYXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxODg5NTcsImV4cCI6MjA5ODc2NDk1N30.LLF0AJ3rx4Y3NBeLuki6lF6FEPZSWGrTnNsaWWT7ov4";
 
 // allowlist of proxyable PUBLIC rows → edge TTL (seconds). Nothing else is served.
+// TTLs matched to how often the source ACTUALLY changes (the scanner cron runs every 15 min), so the big
+// payloads aren't re-pulled from origin far more often than they change — this slashes Fast Origin Transfer.
+// Small, genuinely-live rows (market_snapshot.prices) stay short so the top strip still feels live.
 const ALLOW = {
-  scanner_data:    { latest: 120, flat: 150, yesterday: 3600 },
-  market_snapshot: { latest: 45, prices: 45, breadth: 300, news: 300, flow: 300 },
+  scanner_data:    { latest: 300, flat: 300, yesterday: 3600 },   // 7.7MB scan — changes ~every 15 min (was 120/150)
+  market_snapshot: { latest: 120, prices: 45, breadth: 300, news: 300, flow: 300 },   // latest 45→120; prices stays live
 };
 
 export default async function handler(req, res) {
@@ -41,7 +46,14 @@ export default async function handler(req, res) {
     // browser always revalidates (max-age=0) but the SHARED edge cache serves cached for `ttl` seconds,
     // so Supabase is hit ~once per ttl across ALL visitors. stale-while-revalidate keeps it snappy on refresh.
     res.setHeader("Cache-Control", "public, max-age=0, s-maxage=" + ttl + ", stale-while-revalidate=" + (ttl * 6));
-    res.status(200).send(body);
+    // gzip the body INSIDE the function → the bytes shipped origin→edge (Fast Origin Transfer) are the
+    // COMPRESSED size, not the raw JSON. Scan JSON compresses ~6-7x (7.7MB → ~1.2MB), and the edge caches
+    // the gzipped object once. We always gzip (every browser/fetch accepts & auto-decompresses it) and skip
+    // `Vary: Accept-Encoding` ON PURPOSE so the cache keeps ONE entry — Vary would fragment it per client
+    // and cause MORE origin pulls. Errors above are sent uncompressed (small, no-store).
+    const gz = gzipSync(Buffer.from(body));
+    res.setHeader("Content-Encoding", "gzip");
+    res.status(200).send(gz);
   } catch (e) {
     res.setHeader("Cache-Control", "no-store");
     res.status(500).json({ error: "fetch_failed", detail: String((e && e.message) || e) });
