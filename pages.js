@@ -3768,7 +3768,10 @@
     else if (net > 0) insTxt = "יום ירוק — <b>" + wins + "</b> מתוך <b>" + n + "</b> עסקאות ברווח" + (reflected.length && emoExits === 0 ? ", ללא יציאות רגשיות" : "") + ".";
     else if (net < 0) insTxt = "יום אדום — הרוב בהפסד; שווה לעבור על העסקאות ולזהות מה חזר על עצמו.";
     else insTxt = "יום מאוזן — הרווחים וההפסדים כמעט מתקזזים.";
-    { // ===== premium Trade-Share card overlaid on Tradeshare_Template.png (1254² baked frame) — returns early; old jrn2 render below is retained as a fallback but unreached =====
+    // Adi 2026-10-14: temporarily REVERTED to the previous (jrn2) summary card. Flip _USE_TSC_SUMMARY back
+    // to true to restore the baked Tradeshare_Template.png version (the tsc block below is otherwise unchanged).
+    const _USE_TSC_SUMMARY = false;
+    if (_USE_TSC_SUMMARY) { // ===== premium Trade-Share card overlaid on Tradeshare_Template.png (1254² baked frame) — old jrn2 render below is the fallback we reverted to =====
       const _updT = _mfIlTime();
       const _sign = v => v > 0 ? "tsc-pos" : v < 0 ? "tsc-neg" : "tsc-z";
       const subA = n ? (n + " עסקאות · " + st.winRate + "% הצלחה") : "אין עסקאות סגורות בטווח שנבחר";
