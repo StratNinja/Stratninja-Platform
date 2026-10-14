@@ -22,9 +22,10 @@ export default async function handler(req, res) {
     // breakeven / daily-decay columns. Greeks come free in the same CBOE payload.
     const opts = (data.options || []).map((o) => ({ o: o.option, b: o.bid, a: o.ask, l: o.last_trade_price, th: o.theta, d: o.delta }));
     // cache at Vercel's edge so ALL viewers of the same ticker share ONE upstream CBOE hit per window.
-    // CBOE quotes are ~15-min delayed, so a 15-min edge cache costs ZERO freshness and caps upstream
-    // hits at ~4/hour per ticker no matter how many users/refreshes — the strongest guard against blocks.
-    res.setHeader("Cache-Control", "s-maxage=900, stale-while-revalidate=1800");
+    // Short 3-min window (was 15): CBOE is already ~15-min delayed, so right after the open the feed is
+    // catching up fast — a long cache ADDED up to 15 more min of staleness on top. 3 min keeps quotes as
+    // fresh as the delayed feed allows while still capping upstream hits at ~20/hour per ticker (safe vs blocks).
+    res.setHeader("Cache-Control", "s-maxage=180, stale-while-revalidate=300");
     res.status(200).json({ sym, px: data.current_price != null ? data.current_price : null, ts: data.last_trade_time || null, opts });
   } catch (e) {
     res.status(500).json({ error: "fetch_failed", detail: String(e && e.message || e), sym });

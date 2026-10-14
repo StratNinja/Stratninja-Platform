@@ -262,6 +262,7 @@
           } else missing++;
         } else missing++;
       });
+      dd.optFetchedAt = Date.now();                 // when these CBOE quotes were pulled (for the freshness label)
       Store._write(dd);
       const noOcc = optPos.length - withOcc.length;
       if (!silent) toast("🔄 עודכנו " + filled + " מחירי אופציות" + (missing ? " · " + missing + " לא נמצאו" : "") + (noOcc ? " · " + noOcc + " חסרי סטרייק/פקיעה" : ""));
@@ -269,6 +270,28 @@
     } finally { _optFetchBusy = false; }
   }
   window.snRefreshOptionPrices = refreshOptionPrices;
+
+  // Option-quote freshness indicator (Adi): CBOE is a FREE feed delayed ~15 min, so option marks lag the
+  // broker — worst in the first ~30 min after the US open (the delayed feed is still showing yesterday's
+  // close/open while the stock already gapped). Show HOW OLD the pull is + a loud warning near the bell so
+  // the trader knows to trust the broker, not the site, at that time.
+  function _optQuoteAgeHtml() {
+    try {
+      const d = Store._read();
+      const fetched = d && d.optFetchedAt;
+      const ageMin = fetched ? Math.max(0, Math.round((Date.now() - fetched) / 60000)) : null;
+      const ageTxt = ageMin == null ? "" : (ageMin < 1 ? "נמשך עכשיו" : "נמשך לפני " + ageMin + " דק׳");
+      let html = "<span class='muted' style='font-size:11px;font-weight:400' title='מחירי האופציות מגיעים מ-CBOE בפיד חינמי המושהה כ-15 דקות — לכן הם מפגרים אחרי הברוקר, במיוחד סמוך לפתיחה'>⏱ אופ׳: CBOE מושהה ~15 דק׳" + (ageTxt ? " · " + ageTxt : "") + "</span>";
+      // US market clock (ET): flag the first 30 minutes after the open, when the delayed feed is least reliable.
+      const et = new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const etMin = et.getHours() * 60 + et.getMinutes(), day = et.getDay();
+      const sinceOpen = etMin - (9 * 60 + 30);
+      if (day >= 1 && day <= 5 && sinceOpen >= 0 && sinceOpen < 30) {
+        html += " <span class='jsl none' style='font-size:11px' title='בחצי השעה הראשונה הפיד המושהה עדיין משקף את מחירי אתמול/הפתיחה. סמוך על הברוקר, או הקלד מחיר ידנית על פוזיציה חשובה'>⚠️ סמוך לפתיחה — ייתכן שהמחירים לא מעודכנים</span>";
+      }
+      return html;
+    } catch (e) { return ""; }
+  }
 
   // ---- Rendering ---------------------------------------------------------
   // clickable ticker → opens the same multi-timeframe chart used across the site (pages.js exposes it)
@@ -670,7 +693,7 @@
     const minSummary = openPosMin ? ' <span class="muted" style="font-size:12px;font-weight:400">· ' + count + " פוזיציות · שווי " + money(totPosVal, 0) + " · סיכון 🛑 " + money(totRisk, 0) + " (" + totRiskPct + "%) · Unrealized " + totHtml + "</span>" : "";
     wrap.innerHTML =
       "<h3 style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'><span>📌 פוזיציות פתוחות" + (openPosMin ? "" : " · Unrealized P&L") + "</span>" +
-        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : (pxTimeHtml + refreshBtn + optRefreshBtn + gridBtn)) + toggleBtn + "</h3>" +
+        (openPosMin ? minSummary : '<span class="muted" style="font-size:12px;font-weight:400">מחיר חי מהסורק (מניות בלבד) · לחץ על שורה לעדכון/סגירה' + optNote + "</span>") + (openPosMin ? "" : (pxTimeHtml + refreshBtn + optRefreshBtn + (hasOpt ? _optQuoteAgeHtml() : "") + gridBtn)) + toggleBtn + "</h3>" +
       (openPosMin ? "" :
         "<div class='tablewrap'><table class='scan-table'><thead>" + _thead + "</thead>" +
         "<tbody>" + rows + "</tbody><tfoot><tr>" +
