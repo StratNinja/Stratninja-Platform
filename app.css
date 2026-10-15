@@ -489,18 +489,19 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 a.ap-sym { text-decoration:none; cursor:pointer; }
 a.ap-sym:hover { text-decoration:underline; }
 /* grouped popup = WIDE, categories as side-by-side columns (RTL: first category rightmost; wraps down at max width) */
-.alert-pop.grouped { width:min(1380px,96vw); }
-.ap-cols { display:flex; flex-flow:row wrap; gap:0 18px; align-items:flex-start; }
-.ap-catcol { flex:1 1 210px; min-width:185px; max-width:300px; }
+.alert-pop.grouped { width:fit-content; max-width:min(1380px,96vw); }   /* shrink to the columns — no dead space */
+.ap-cols { display:flex; flex-flow:row wrap; gap:0 20px; align-items:flex-start; }
+/* each column sizes to its WIDEST row (full names, no needless truncation); ellipsis only kicks in past the cap */
+.ap-catcol { flex:0 0 auto; width:max-content; max-width:440px; }
 .ap-cols .ap-verb { display:none; }                 /* tighter rows in the dense multi-column view */
-/* one tidy line per alert: ticker (right) · scanner name (middle, truncates with …) · price (far left) */
-.ap-cols .ap-row { display:flex; align-items:center; gap:8px; white-space:nowrap; padding:3px 0; font-size:13px; line-height:1.3; }
-.ap-cols .ap-row > b { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-weight:700; }
+/* one tidy line per alert: ticker (right) · scanner name (middle) · price (far left, aligned down the column) */
+.ap-cols .ap-row { display:flex; align-items:center; gap:10px; white-space:nowrap; width:100%; padding:3px 0; font-size:13px; line-height:1.3; }
+.ap-cols .ap-row > b { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-weight:700; }
 .ap-cols .ap-sym { flex:0 0 auto; font-size:13.5px; }
-.ap-cols .ap-px { flex:0 0 auto; margin-inline-start:auto; }
+.ap-cols .ap-px { flex:0 0 auto; margin-inline-start:auto; padding-inline-start:12px; }
 .ap-cols .ap-cathead { position:sticky; top:0; background:linear-gradient(135deg,#1a2138,#232b47); z-index:1; }
-/* one-line Ninja insight footer (only on a big flood >20) — pinned at the bottom, doesn't scroll away */
-.ap-foot { flex-shrink:0; display:flex; align-items:center; gap:7px; padding:9px 15px; font-size:12.5px; font-weight:600; color:#e8c08a; background:rgba(224,162,79,.1); border-top:1px solid rgba(224,162,79,.28); line-height:1.4; }
+/* one-line Ninja insight bar (only on a big flood >20) — pinned at the TOP, under the header */
+.ap-topins { flex-shrink:0; display:flex; align-items:center; gap:7px; padding:8px 15px; font-size:12.5px; font-weight:600; color:#e8c08a; background:rgba(224,162,79,.12); border-bottom:1px solid rgba(224,162,79,.28); line-height:1.4; }
 .ap-foot-ico { font-size:14px; flex-shrink:0; }
 .sn-toast { position:fixed; inset-block-end:24px; inset-inline-start:50%; transform:translate(-50%,20px); z-index:9999;
   background:linear-gradient(90deg, rgba(12,145,96,.97), rgba(23,192,138,.95)); color:#fff; font-weight:700; font-size:14px;

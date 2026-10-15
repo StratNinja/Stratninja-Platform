@@ -2429,8 +2429,8 @@
         '<button class="ap-pin" aria-label="נעל" title="נעל — שהרשימה לא תיעלם">📌</button>' +
         '<button class="ap-x" aria-label="סגור">✕</button>' +
       "</span></div>" +
-      '<div class="ap-body">' + _apBodyHtml(fresh, grouped) + "</div>" +
-      (fresh.length > 20 ? '<div class="ap-foot"><span class="ap-foot-ico">💡</span><span>' + escHtml(_alertInsight(fresh)) + "</span></div>" : "");
+      (fresh.length > 20 ? '<div class="ap-topins"><span class="ap-foot-ico">💡</span><span>' + escHtml(_alertInsight(fresh)) + "</span></div>" : "") +
+      '<div class="ap-body">' + _apBodyHtml(fresh, grouped) + "</div>";
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));
     let pinned = false, timer = null;
