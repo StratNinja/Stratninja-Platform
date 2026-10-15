@@ -2429,7 +2429,8 @@
         '<button class="ap-pin" aria-label="נעל" title="נעל — שהרשימה לא תיעלם">📌</button>' +
         '<button class="ap-x" aria-label="סגור">✕</button>' +
       "</span></div>" +
-      '<div class="ap-body">' + _apBodyHtml(fresh, grouped) + "</div>";
+      '<div class="ap-body">' + _apBodyHtml(fresh, grouped) + "</div>" +
+      (fresh.length > 20 ? '<div class="ap-foot"><span class="ap-foot-ico">💡</span><span>' + escHtml(_alertInsight(fresh)) + "</span></div>" : "");
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));
     let pinned = false, timer = null;
@@ -2560,6 +2561,28 @@
     if (/דיווח|earnings|רווחים|\breport\b|לדיווח/.test(l)) return "earnings";
     if (/מה לא לסחור|avoid|להימנע|⛔|נר פנימי/.test(l)) return "avoid";
     return "";
+  }
+  // one-line DESCRIPTIVE insight for a big alert flood (>20): directional tilt + dominant concentration.
+  // Purely describes the composition of the alerts (like the breadth "Ninja Insight") — not trade advice.
+  function _alertInsight(list) {
+    let bull = 0, bear = 0; const catCnt = {};
+    list.forEach(e => {
+      const d = _alertDir(e.preset);
+      if (d === "bull") bull++; else if (d === "bear") bear++;
+      const c = (e && e.cat) ? e.cat : ""; catCnt[c] = (catCnt[c] || 0) + 1;
+    });
+    const n = list.length, dir = bull + bear;
+    let topCat = "", topN = 0;
+    Object.keys(catCnt).forEach(c => { if (c && catCnt[c] > topN) { topN = catCnt[c]; topCat = c; } });
+    const catTxt = (topCat && topN >= Math.max(3, Math.round(n * 0.25))) ? " הריכוז הגדול ב" + _catLabel(topCat) + "." : "";
+    let lead;
+    if (dir >= 4) {
+      const br = bear / dir;
+      if (br >= 0.65) lead = "הטיה דובית ברורה — " + bear + " מתוך " + dir + " ההתראות הכיווניות בכיוון ירידה.";
+      else if (br <= 0.35) lead = "הטיה שורית ברורה — " + bull + " מתוך " + dir + " ההתראות הכיווניות בכיוון עלייה.";
+      else lead = "תמונה מעורבת — " + bull + " עלייה מול " + bear + " ירידה.";
+    } else lead = n + " התראות פעילות כרגע.";
+    return lead + catTxt;
   }
   function openAlertsFeed() {
     if (!window.Prefs) return;

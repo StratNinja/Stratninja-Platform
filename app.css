@@ -499,6 +499,9 @@ a.ap-sym:hover { text-decoration:underline; }
 .ap-cols .ap-sym { flex:0 0 auto; font-size:13.5px; }
 .ap-cols .ap-px { flex:0 0 auto; margin-inline-start:auto; }
 .ap-cols .ap-cathead { position:sticky; top:0; background:linear-gradient(135deg,#1a2138,#232b47); z-index:1; }
+/* one-line Ninja insight footer (only on a big flood >20) — pinned at the bottom, doesn't scroll away */
+.ap-foot { flex-shrink:0; display:flex; align-items:center; gap:7px; padding:9px 15px; font-size:12.5px; font-weight:600; color:#e8c08a; background:rgba(224,162,79,.1); border-top:1px solid rgba(224,162,79,.28); line-height:1.4; }
+.ap-foot-ico { font-size:14px; flex-shrink:0; }
 .sn-toast { position:fixed; inset-block-end:24px; inset-inline-start:50%; transform:translate(-50%,20px); z-index:9999;
   background:linear-gradient(90deg, rgba(12,145,96,.97), rgba(23,192,138,.95)); color:#fff; font-weight:700; font-size:14px;
   padding:12px 20px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.4); opacity:0; transition:.3s; pointer-events:none; max-width:90vw; }
