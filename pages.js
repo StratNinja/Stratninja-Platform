@@ -2057,47 +2057,51 @@
       _customCats().map(c => '<option value="' + escAttr(c) + '"' + (p.cat === c ? " selected" : "") + ">" + escHtml(_catLabel(c)) + "</option>").join("") +
       '<option value="__new__">➕ קטגוריה חדשה…</option>' + "</select>";
     const _collapsed = _pmCollapsed();
-    const _catSeq = []; list.forEach(p => { const c = p.cat || ""; if (_catSeq.indexOf(c) < 0) _catSeq.push(c); });
-    const _catCnt = {}; list.forEach(p => { const c = p.cat || ""; _catCnt[c] = (_catCnt[c] || 0) + 1; });
-    let _lastCat = "\u0000", rowsHtml = "";   // collapsible category sections + per-category ▲▼ move
-    list.forEach((p, i) => {
-      const c = p.cat || "";
-      if (c !== _lastCat) {
-        const isCol = _collapsed.has(c), ci = _catSeq.indexOf(c);
-        rowsHtml += '<div class="pm-cathead" data-pmcathead="' + escAttr(c) + '" title="לחץ לקיפול/פתיחה">' +
-          '<span class="pm-cat-caret">' + (isCol ? "▸" : "▾") + "</span>" +
-          '<span class="pm-cat-lbl">' + _catLabel(c) + ' <span class="pm-catn">(' + (_catCnt[c] || 0) + ")</span></span>" +
-          '<span class="pm-cat-move">' +
-            '<button class="btn ghost pm-btn" data-pmcatup="' + escAttr(c) + '"' + (ci <= 0 ? " disabled" : "") + ' title="הזז קטגוריה למעלה">▲</button>' +
-            '<button class="btn ghost pm-btn" data-pmcatdn="' + escAttr(c) + '"' + (ci >= _catSeq.length - 1 ? " disabled" : "") + ' title="הזז קטגוריה למטה">▼</button>' +
-            (c ? '<button class="btn ghost pm-btn" data-pmcatren="' + escAttr(c) + '" title="שנה שם קטגוריה">✏️</button>' : "") +
-            (c ? '<button class="btn ghost pm-btn pm-del" data-pmcatdel="' + escAttr(c) + '" title="מחק קטגוריה (הסריקות יעברו ל-ללא קטגוריה)">🗑</button>' : "") +
-          "</span></div>";
-        _lastCat = c;
-      }
-      if (_collapsed.has(c)) return;   // collapsed category → hide its rows (but keep the header)
-      const dupBadge = _dupNum[p.id] ? ' <span class="pm-dupbadge" title="הגדרה זהה לסריקה אחרת בקבוצה זו">כפילות #' + _dupNum[p.id] + "</span>" : "";
-      rowsHtml += '<div class="pm-row' + (_dupNum[p.id] ? " pm-dup" : "") + '" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
-        '<span class="pm-grip" title="גרור לסידור">⠿</span>' +
-        '<span class="pm-tgls">' +
-          '<span class="al-tgl-ico" title="התראה (מחשב)">🔔</span><label class="ios-switch" title="התראה כשמניה מהמועדפים נכנסת לסריקה זו"><input type="checkbox" data-alp="' + escAttr(p.id) + '"' + (p.alert ? " checked" : "") + '><span class="ios-slider"></span></label>' +
-          '<span class="al-phone-wrap"' + (p.alert ? "" : ' style="display:none"') + '><span class="al-tgl-ico" title="גם לפלאפון">📱</span><label class="ios-switch" title="שלח את ההתראה גם לפלאפון"><input type="checkbox" data-alpphone="' + escAttr(p.id) + '"' + (p.phone !== false ? " checked" : "") + '><span class="ios-slider"></span></label></span>' +
-        "</span>" +
-        '<span class="pm-name">' + escHtml(p.name) + dupBadge + "</span>" +
-        _catSel(p) +
-        '<span class="pm-acts">' +
-          '<button class="btn ghost pm-btn" data-pmup="' + escAttr(p.id) + '"' + (i === 0 ? " disabled" : "") + ' title="הזז למעלה">▲</button>' +
-          '<button class="btn ghost pm-btn" data-pmdn="' + escAttr(p.id) + '"' + (i === list.length - 1 ? " disabled" : "") + ' title="הזז למטה">▼</button>' +
-          '<button class="btn ghost pm-btn" data-pmren="' + escAttr(p.id) + '" title="שנה שם">✏️</button>' +
-          '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
-          '<button class="btn ghost pm-btn pm-del" data-pmdel="' + escAttr(p.id) + '" title="מחק סריקה">🗑</button>' +
+    // GROUPED by category (immune to fragmentation when a preset's category changes); category order = first appearance
+    const _catSeq = []; const _byCat = {};
+    list.forEach(p => { const c = p.cat || ""; if (_catSeq.indexOf(c) < 0) _catSeq.push(c); (_byCat[c] = _byCat[c] || []).push(p); });
+    let rowsHtml = "";
+    _catSeq.forEach((c, ci) => {
+      const group = _byCat[c], isCol = _collapsed.has(c);
+      rowsHtml += '<div class="pm-cathead" data-pmcathead="' + escAttr(c) + '" title="לחץ לקיפול/פתיחה">' +
+        '<span class="pm-cat-caret">' + (isCol ? "▸" : "▾") + "</span>" +
+        '<span class="pm-cat-lbl">' + _catLabel(c) + ' <span class="pm-catn">(' + group.length + ")</span></span>" +
+        '<span class="pm-cat-move">' +
+          '<button class="btn ghost pm-btn" data-pmcatup="' + escAttr(c) + '"' + (ci <= 0 ? " disabled" : "") + ' title="הזז קטגוריה למעלה">▲</button>' +
+          '<button class="btn ghost pm-btn" data-pmcatdn="' + escAttr(c) + '"' + (ci >= _catSeq.length - 1 ? " disabled" : "") + ' title="הזז קטגוריה למטה">▼</button>' +
+          (c ? '<button class="btn ghost pm-btn" data-pmcatren="' + escAttr(c) + '" title="שנה שם קטגוריה">✏️</button>' : "") +
+          (c ? '<button class="btn ghost pm-btn pm-del" data-pmcatdel="' + escAttr(c) + '" title="מחק קטגוריה (הסריקות יעברו ל-ללא קטגוריה)">🗑</button>' : "") +
         "</span></div>";
+      if (isCol) return;   // collapsed → header only
+      group.forEach((p, gi) => {
+        const dupBadge = _dupNum[p.id] ? ' <span class="pm-dupbadge" title="הגדרה זהה לסריקה אחרת בקבוצה זו">כפילות #' + _dupNum[p.id] + "</span>" : "";
+        rowsHtml += '<div class="pm-row' + (_dupNum[p.id] ? " pm-dup" : "") + '" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
+          '<span class="pm-grip" title="גרור לסידור">⠿</span>' +
+          '<span class="pm-tgls">' +
+            '<span class="al-tgl-ico" title="התראה (מחשב)">🔔</span><label class="ios-switch" title="התראה כשמניה מהמועדפים נכנסת לסריקה זו"><input type="checkbox" data-alp="' + escAttr(p.id) + '"' + (p.alert ? " checked" : "") + '><span class="ios-slider"></span></label>' +
+            '<span class="al-phone-wrap"' + (p.alert ? "" : ' style="display:none"') + '><span class="al-tgl-ico" title="גם לפלאפון">📱</span><label class="ios-switch" title="שלח את ההתראה גם לפלאפון"><input type="checkbox" data-alpphone="' + escAttr(p.id) + '"' + (p.phone !== false ? " checked" : "") + '><span class="ios-slider"></span></label></span>' +
+          "</span>" +
+          '<span class="pm-name">' + escHtml(p.name) + dupBadge + "</span>" +
+          _catSel(p) +
+          '<span class="pm-acts">' +
+            '<button class="btn ghost pm-btn" data-pmup="' + escAttr(p.id) + '"' + (gi === 0 ? " disabled" : "") + ' title="הזז למעלה">▲</button>' +
+            '<button class="btn ghost pm-btn" data-pmdn="' + escAttr(p.id) + '"' + (gi === group.length - 1 ? " disabled" : "") + ' title="הזז למטה">▼</button>' +
+            '<button class="btn ghost pm-btn" data-pmren="' + escAttr(p.id) + '" title="שנה שם">✏️</button>' +
+            '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
+            '<button class="btn ghost pm-btn pm-del" data-pmdel="' + escAttr(p.id) + '" title="מחק סריקה">🗑</button>' +
+          "</span></div>";
+      });
     });
     return ioBar + dupSummary + '<div class="pm-list">' + rowsHtml + "</div>" +
       '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף · 📂 מיין לפי קטגוריה</div>';
   }
-  function pmRefresh() { const b = document.getElementById("pmBody"); if (b) { b.innerHTML = pmBodyHtml(); pmWire(); } }
-  function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender(); }
+  function pmRefresh() {
+    const b = document.getElementById("pmBody"); if (!b) return;
+    const sc = document.getElementById("hubBody"), y = sc ? sc.scrollTop : 0;   // keep scroll position so reordering doesn't jump to top
+    b.innerHTML = pmBodyHtml(); pmWire();
+    if (sc) sc.scrollTop = y;
+  }
+  function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); }   // scanner (behind the modal) refreshes on its own next render
   function pmWire() {
     // manual cloud sync — deterministic push/pull (fixes a phone↔PC divergence by hand)
     { const pb = document.getElementById("pmCloudPush"); if (pb) pb.onclick = async () => {
@@ -2114,8 +2118,8 @@
         snToast(r && r.ok ? "✅ נמשך מהענן בהצלחה" : "❌ " + ((r && r.msg) || "שגיאה"));
         pmRefresh(); if (state.page === "scanner" || state.page === "favorites") reRender();
       }; }
-    document.querySelectorAll("[data-pmup]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmup); if (i > 0) { ids.splice(i - 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
-    document.querySelectorAll("[data-pmdn]").forEach(b => b.onclick = () => { const ids = _pmIds(), i = ids.indexOf(b.dataset.pmdn); if (i >= 0 && i < ids.length - 1) { ids.splice(i + 1, 0, ids.splice(i, 1)[0]); _pmApply(ids); } });
+    document.querySelectorAll("[data-pmup]").forEach(b => b.onclick = () => { _pmMovePreset(b.dataset.pmup, -1); pmRefresh(); });
+    document.querySelectorAll("[data-pmdn]").forEach(b => b.onclick = () => { _pmMovePreset(b.dataset.pmdn, 1); pmRefresh(); });
     document.querySelectorAll("[data-pmshare]").forEach(b => b.onclick = () => { const p = (window.Prefs.scanPresets() || []).find(x => x.id === b.dataset.pmshare); sharePreset(p); });
     document.querySelectorAll("[data-pmren]").forEach(b => b.onclick = () => {
       const p = (window.Prefs.scanPresets() || []).find(x => x.id === b.dataset.pmren); if (!p) return;
@@ -2162,6 +2166,7 @@
         return;
       }
       window.Prefs.setPresetCat(sel.dataset.pmcat, sel.value);
+      pmRefresh();   // regroup: the preset moves into its new category section (scroll is preserved)
     });
     { const mc = document.getElementById("pmManageCats"); if (mc) mc.onclick = () => openCatManager(); }
     // 📂 reorder the whole list grouped by category (built-in order, then custom, then "ללא קטגוריה"); stable within a category
@@ -2177,8 +2182,8 @@
       _pmToggleCollapse(h.dataset.pmcathead); pmRefresh();
     });
     // move a whole category block up/down (also groups it)
-    document.querySelectorAll("[data-pmcatup]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatup, -1); pmRefresh(); if (state.page === "scanner") reRender(); });
-    document.querySelectorAll("[data-pmcatdn]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatdn, 1); pmRefresh(); if (state.page === "scanner") reRender(); });
+    document.querySelectorAll("[data-pmcatup]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatup, -1); pmRefresh(); });
+    document.querySelectorAll("[data-pmcatdn]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatdn, 1); pmRefresh(); });
     document.querySelectorAll("[data-pmcatren]").forEach(b => b.onclick = (e) => {
       e.stopPropagation();
       const c = b.dataset.pmcatren;
@@ -2648,6 +2653,18 @@
     const t = seq[i]; seq[i] = seq[j]; seq[j] = t;
     const byCat = {}; ps.forEach(p => { const k = p.cat || ""; (byCat[k] = byCat[k] || []).push(p.id); });
     const ids = []; seq.forEach(k => (byCat[k] || []).forEach(id => ids.push(id)));
+    window.Prefs.setScanPresetsOrder(ids);
+  }
+  function _pmMovePreset(id, dir) {   // move a preset up/down WITHIN its own category (grouped rendering)
+    const ps = window.Prefs.scanPresets() || [];
+    const p = ps.find(x => x.id === id); if (!p) return;
+    const cat = p.cat || "";
+    const same = ps.filter(x => (x.cat || "") === cat).map(x => x.id);
+    const si = same.indexOf(id), sj = si + dir;
+    if (sj < 0 || sj >= same.length) return;
+    const ids = ps.map(x => x.id);
+    const i = ids.indexOf(id), j = ids.indexOf(same[sj]);
+    const t = ids[i]; ids[i] = ids[j]; ids[j] = t;
     window.Prefs.setScanPresetsOrder(ids);
   }
   function _pmDeleteCat(c) {   // delete a category: its scans move to "ללא קטגוריה" (NOT deleted); a custom cat is also dropped from the list
