@@ -2070,6 +2070,7 @@
           '<span class="pm-cat-move">' +
             '<button class="btn ghost pm-btn" data-pmcatup="' + escAttr(c) + '"' + (ci <= 0 ? " disabled" : "") + ' title="הזז קטגוריה למעלה">▲</button>' +
             '<button class="btn ghost pm-btn" data-pmcatdn="' + escAttr(c) + '"' + (ci >= _catSeq.length - 1 ? " disabled" : "") + ' title="הזז קטגוריה למטה">▼</button>' +
+            (c ? '<button class="btn ghost pm-btn pm-del" data-pmcatdel="' + escAttr(c) + '" title="מחק קטגוריה (הסריקות יעברו ל-ללא קטגוריה)">🗑</button>' : "") +
           "</span></div>";
         _lastCat = c;
       }
@@ -2177,6 +2178,12 @@
     // move a whole category block up/down (also groups it)
     document.querySelectorAll("[data-pmcatup]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatup, -1); pmRefresh(); if (state.page === "scanner") reRender(); });
     document.querySelectorAll("[data-pmcatdn]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatdn, 1); pmRefresh(); if (state.page === "scanner") reRender(); });
+    document.querySelectorAll("[data-pmcatdel]").forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const c = b.dataset.pmcatdel;
+      if (!confirm('למחוק את הקטגוריה "' + _catLabel(c) + '"?\nהסריקות שבה יעברו ל"ללא קטגוריה" (הן לא יימחקו).')) return;
+      _pmDeleteCat(c); pmRefresh(); if (state.page === "scanner") reRender();
+    });
     // 🪄 auto-suggest a category from each untagged preset's name (non-destructive to ones already tagged)
     { const sc = document.getElementById("pmSuggestCat"); if (sc) sc.onclick = () => {
       const ps = window.Prefs.scanPresets() || []; let n = 0;
@@ -2629,6 +2636,11 @@
     const byCat = {}; ps.forEach(p => { const k = p.cat || ""; (byCat[k] = byCat[k] || []).push(p.id); });
     const ids = []; seq.forEach(k => (byCat[k] || []).forEach(id => ids.push(id)));
     window.Prefs.setScanPresetsOrder(ids);
+  }
+  function _pmDeleteCat(c) {   // delete a category: its scans move to "ללא קטגוריה" (NOT deleted); a custom cat is also dropped from the list
+    if (!c) return;
+    if (_customCats().indexOf(c) >= 0) window.Prefs.removeAlertCat(c);   // removes from list + detaches its presets
+    else (window.Prefs.scanPresets() || []).forEach(p => { if ((p.cat || "") === c) window.Prefs.setPresetCat(p.id, ""); });
   }
   let _hubTab = "feed";   // remembered alerts-hub tab (feed | presets | settings)
   function openAlertsFeed(tab) {
