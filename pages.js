@@ -2188,12 +2188,17 @@
       pmRefresh();   // regroup: the preset moves into its new category section (scroll is preserved)
     });
     { const mc = document.getElementById("pmManageCats"); if (mc) mc.onclick = () => openCatManager(); }
-    // 📂 reorder the whole list grouped by category (built-in order, then custom, then "ללא קטגוריה"); stable within a category
+    // 📂 group the list by category WITHOUT losing the user's arranged order:
+    // category order = the order each category FIRST appears in the current list (his order),
+    // and within a category the existing relative order is kept. Scattered same-category presets
+    // are merged up to that category's first occurrence — "merge only where needed", never a fixed resort.
     { const sb = document.getElementById("pmSortCat"); if (sb) sb.onclick = () => {
-      const ids = (window.Prefs.scanPresets() || []).map((p, i) => ({ id: p.id, o: _catOrder(p.cat || ""), i: i }))
+      const presets = window.Prefs.scanPresets() || [];
+      const firstSeen = {}; presets.forEach((p, i) => { const c = p.cat || ""; if (!(c in firstSeen)) firstSeen[c] = i; });
+      const ids = presets.map((p, i) => ({ id: p.id, o: firstSeen[p.cat || ""], i: i }))
         .sort((a, b) => (a.o - b.o) || (a.i - b.i)).map(x => x.id);
       window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender();
-      snToast("📂 הרשימה סודרה לפי קטגוריה");
+      snToast("📂 הקטגוריות קובצו — הסדר שלך נשמר");
     }; }
     // collapse/expand a category section (click its header) — ▲▼ have their own handlers
     document.querySelectorAll("[data-pmcathead]").forEach(h => h.onclick = (e) => {
@@ -2466,7 +2471,7 @@
             { body: body, icon: "ninja-icon.png", badge: "ninja-icon.png", tag: e.pid + e.sym, dir: "rtl", data: { url: "/" } })).catch(() => {});
         } else {
           const n = new Notification("🔔 התראת StratNinja", { body: body, icon: "ninja-icon.png", tag: e.pid + e.sym });
-          n.onclick = () => { try { window.focus(); } catch (x) {} openAlertsFeed(); n.close(); };
+          n.onclick = () => { try { window.focus(); } catch (x) {} openAlertsFeed("feed"); n.close(); };
         }
       }
     } catch (x) {}
@@ -2706,7 +2711,7 @@
     if (!window.Prefs) return;
     if (tab) _hubTab = tab;
     Prefs.feedMarkRead(); updateAlertBell();
-    const tabs = [["presets", "📋 הסריקות שלי"], ["feed", "🔔 אחרונות"], ["settings", "⚙️ הגדרות"]];
+    const tabs = [["feed", "🔔 אחרונות"], ["presets", "📋 הסריקות שלי"], ["settings", "⚙️ הגדרות"]];
     const tabBar = '<div class="hub-tabs">' + tabs.map(t => '<button class="hub-tab' + (_hubTab === t[0] ? " on" : "") + '" data-hubtab="' + t[0] + '">' + t[1] + "</button>").join("") + "</div>";
     modal("🔔 מרכז ההתראות והסריקות", tabBar + '<div id="hubBody"></div>', "al-modal");
     document.querySelectorAll("[data-hubtab]").forEach(b => b.onclick = () => {
@@ -5383,8 +5388,8 @@
     if (d == null) return false;
     if (rel === "near" && Math.abs(d) > pct) return false;
     if (rel === "far" && Math.abs(d) < pct) return false;
-    if (rel === "farAbove" && d < pct) return false;      // stretched ABOVE (long)
-    if (rel === "farBelow" && d > -pct) return false;     // stretched BELOW (short)
+    if (rel === "farAbove" && d < pct) return false;      // stretched far ABOVE the MA → overextended up (mean-reversion SHORT)
+    if (rel === "farBelow" && d > -pct) return false;     // stretched far BELOW the MA → oversold down (mean-reversion LONG)
     if (rel === "above" && d <= 0) return false;
     if (rel === "below" && d >= 0) return false;
     if (rel === "touchAbove" || rel === "touchBelow") {   // wick "touch" — mirrors the SMA150 Sniper
@@ -5403,8 +5408,8 @@
       case "below": return "מציג רק מניות שהמחיר שלהן <b>מתחת</b> ל-" + ma + " (חולשה / מתחת להתנגדות).";
       case "near":  return "מציג מניות שהמחיר <b>עד " + p + "%</b> מ-" + ma + " — נוגעות/נבחנות מול הממוצע (אזור כניסה).";
       case "far":   return "מציג מניות שהמחיר <b>יותר מ-" + p + "%</b> מ-" + ma + " — מתוחות / רחוקות מהממוצע (שני הכיוונים).";
-      case "farAbove": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מעל</b> " + ma + " — מתוחות כלפי מעלה (מומנטום/מגמת <b>לונג</b>).";
-      case "farBelow": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מתחת</b> ל-" + ma + " — מתוחות כלפי מטה (חולשה/מגמת <b>שורט</b>).";
+      case "farAbove": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מעל</b> " + ma + " — מתוחות <b>יתר על המידה כלפי מעלה</b> (חזרה לממוצע / <b>שורט</b>).";
+      case "farBelow": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מתחת</b> ל-" + ma + " — מתוחות <b>יתר על המידה כלפי מטה</b> (חזרה לממוצע / <b>לונג</b>).";
       case "touchAbove": return "🎯 כמו ה-<b>SMA150 Sniper</b> בדיסקורד: המניה סגרה <b>מעל</b> " + ma + ", וה-<b>נמוך</b> ירד עד <b>" + p + "%</b> מהממוצע (צלפה בו מלמעלה).";
       case "touchBelow": return "🎯 כמו ה-Sniper בדיסקורד: המניה סגרה <b>מתחת</b> ל-" + ma + ", וה-<b>גבוה</b> נגע עד <b>" + p + "%</b> מהממוצע (מלמטה).";
       default: return "";
@@ -5586,7 +5591,7 @@
                 '<span class="ma-and">＋ וגם</span>' +
                 '<select data-maex="type" data-idx="' + i + '">' + opt("SMA", c.type) + opt("EMA", c.type) + opt("WMA", c.type) + '</select>' +
                 '<select data-maex="period" data-idx="' + i + '">' + MA_PERIODS.map(p => opt(p, c.period)).join("") + '</select>' +
-                '<select data-maex="rel" data-idx="' + i + '">' + [["above", "מעל הממוצע"], ["below", "מתחת לממוצע"], ["near", "עד ±% מהממוצע"], ["far", "יותר מ-±% מהממוצע"], ["farAbove", "יותר מ-% מעל ↑ לונג"], ["farBelow", "יותר מ-% מתחת ↓ שורט"], ["touchAbove", "🎯 נגיעה מלמעלה (צל תחתון)"], ["touchBelow", "🎯 נגיעה מלמטה (צל עליון)"]].map(o => opt(o[0], c.rel, o[1])).join("") + '</select>' +
+                '<select data-maex="rel" data-idx="' + i + '">' + [["above", "מעל הממוצע"], ["below", "מתחת לממוצע"], ["near", "עד ±% מהממוצע"], ["far", "יותר מ-±% מהממוצע"], ["farAbove", "יותר מ-% מעל ↓ שורט"], ["farBelow", "יותר מ-% מתחת ↑ לונג"], ["touchAbove", "🎯 נגיעה מלמעלה (צל תחתון)"], ["touchBelow", "🎯 נגיעה מלמטה (צל עליון)"]].map(o => opt(o[0], c.rel, o[1])).join("") + '</select>' +
                 (_maPctShownFor(c.rel) ? '<input type="number" step="0.5" min="0" style="width:54px" data-maex="pct" data-idx="' + i + '" value="' + c.pct + '"><span class="muted">%</span>' : "") +
                 '<button class="ma-del" data-maexdel="' + i + '" title="הסר תנאי" type="button">✕</button>' +
               "</div>"
@@ -5899,10 +5904,11 @@
             if (q.cc.length && q.cc.indexOf(sd[2]) < 0) return false;
           }
           if (q.c2col || q.c1col || q.cccol) {
-            // CC colour = the current candle's OWN close direction (c.c), which is present on EVERY TF
-            // incl. intraday (same field the נר colour filter uses). seq3col holds the 3-bar colour history
-            // but is NOT stored on the compact intraday cells → C2/C1 colours only apply where it exists.
-            const sc = (c.seq3col || "").split("-");   // [C2, C1, CC] colours (up/down/"") — D/W/M/Q/Y only
+            // CC colour = the current candle's OWN close direction (c.c), present on EVERY TF.
+            // seq3col holds the 3-bar colour history and is now stored on intraday cells too, so
+            // C2/C1 colour filters (e.g. "the 2D must be GREEN" = a failed/reversal 2D) work on every
+            // TF. On the rare cell without it (too few bars) hasSc=false → C2/C1 colours fall back to wildcard.
+            const sc = (c.seq3col || "").split("-");   // [C2, C1, CC] colours (up/down/"")
             const hasSc = sc.length >= 3;
             if (q.cccol) { const cc = c.c || (hasSc ? sc[2] : ""); if (cc !== q.cccol) return false; }
             if (hasSc) {                               // C2/C1 need the last-3 history → wildcard on intraday
@@ -6172,7 +6178,7 @@
     { const pdel = $("#presetDel"); if (pdel) pdel.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי למחוק אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); if (p && !confirm('למחוק את הסריקה "' + p.name + '"?')) return; window.Prefs.deleteScanPreset(_selPreset); _selPreset = ""; reRender(); }; }
     { const psh = $("#presetShare"); if (psh) psh.onclick = () => { if (!_selPreset) { alert("בחר סריקה שמורה מהרשימה כדי לשתף אותה."); return; } const p = (window.Prefs.scanPresets() || []).find(x => x.id === _selPreset); sharePreset(p); }; }
     { const por = $("#presetOrder"); if (por) por.onclick = () => openPresetManager(); }
-    { const bell = $("#alertBell"); if (bell) bell.onclick = () => openAlertsFeed(); updateAlertBell(); }
+    { const bell = $("#alertBell"); if (bell) bell.onclick = () => openAlertsFeed("feed"); updateAlertBell(); }
     MTF_TFS.forEach(tf => wireMultiCombo("mtft_" + tf, scanState.mtf[tf].t, reRender));   // multi-select bar-type per timeframe
     document.querySelectorAll("[data-mtfc]").forEach(s => s.onchange = () => { scanState.mtf[s.dataset.mtfc].c = s.value; reRender(); });
     document.querySelectorAll("[data-pat]").forEach(b => b.onclick = () => { const p = b.dataset.pat, i = scanState.patterns.indexOf(p); if (i >= 0) scanState.patterns.splice(i, 1); else scanState.patterns.push(p); reRender(); });
@@ -8070,7 +8076,7 @@
     { const po = $("#favPosOnly"); if (po) po.onclick = () => { favPosOnly = !favPosOnly; try { localStorage.setItem("sn_fav_posonly", favPosOnly ? "1" : "0"); } catch (e) {} reRender(); }; }
     { const ep = $("#favEnablePush"); if (ep) ep.onclick = async () => { await subscribeToPush(); if (state.page === "favorites") reRender(); }; }
     { const rn = $("#pushRenew"); if (rn) rn.onclick = async () => { rn.disabled = true; rn.textContent = "🔄 מחדש…"; await renewPush(); }; }
-    { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed(); }
+    { const ac = $("#favAlertsCenter"); if (ac) ac.onclick = () => openAlertsFeed("feed"); }
     // click a bull/bear count in the insights panel → filter the watchlist by alert direction (click again = clear)
     document.querySelectorAll("[data-favdir]").forEach(b => b.onclick = () => { const d = b.dataset.favdir; favDirFilter = (favDirFilter === d) ? "all" : d; reRender(); });
     { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ התזכורות היומיות הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
@@ -9291,7 +9297,7 @@
     { const t = document.getElementById("snDockTheme"); if (t) t.onclick = () => { try { if (window.snToggleTheme) snToggleTheme(); } catch (e) {} setThemeIcon(); }; }
     { const c = document.getElementById("snDockCam"); if (c) c.onclick = () => captureShare(); }
     { const d = document.getElementById("snDockDraw"); if (d) d.onclick = () => setPage("draw"); }
-    { const bl = document.getElementById("snDockBell"); if (bl) bl.onclick = () => openAlertsFeed(); }
+    { const bl = document.getElementById("snDockBell"); if (bl) bl.onclick = () => openAlertsFeed("feed"); }
     updateAlertBell();   // paint the dock badge on load
     // display density (comfortable / compact / dense) — user-selectable, persisted, applies site-wide
     const DENS = ["comfortable", "compact", "dense"], DENS_HE = { comfortable: "רגיל", compact: "קומפקטי", dense: "צפוף" };
@@ -9327,7 +9333,7 @@
     startCtaRotator();
     { const cam = document.getElementById("sideCam"); if (cam) cam.onclick = () => captureShare(); }
     { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
-    { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed(); }
+    { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed("feed"); }
     // merged "בקשות והצעות" — one entry that offers both the feature-request form and the suggest-ticker flow
     { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestChooser(); }
     { const sy = document.getElementById("sideSync"); if (sy) sy.onclick = () => openCloudSync(); }
