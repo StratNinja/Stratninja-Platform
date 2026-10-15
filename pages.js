@@ -2663,7 +2663,7 @@
     const _dcnt = { bull: 0, bear: 0, neutral: 0 }; _feedItems.forEach(it => _dcnt[it.dir]++);
     const _dchip = (dir, lbl, cnt, col) => '<button data-aldir="' + dir + '" class="btn ghost" style="font-size:11px;font-weight:700;padding:3px 9px' + (_alFeedDir === dir ? ";border-color:" + col + ";background:" + col + "22;color:#fff" : "") + '">' + lbl + " <b>" + cnt + "</b></button>";
     const dirChips = _feedItems.length ? '<span style="display:inline-flex;gap:5px;flex-wrap:wrap">' + _dchip("all", "הכל", _feedItems.length, "#8878ff") + _dchip("bull", "🟢 בוליש", _dcnt.bull, "#16b877") + _dchip("bear", "🔴 בריש", _dcnt.bear, "#e0524f") + "</span>" : "";
-    const flistRows = (_alFeedDir === "all" ? _feedItems : _feedItems.filter(it => it.dir === _alFeedDir)).slice(0, 80).map(it => it.html).join("");
+    const flistRows = (_alFeedDir === "all" ? _feedItems : _feedItems.filter(it => it.dir === _alFeedDir)).slice(0, 500).map(it => it.html).join("");
     const flist = flistRows || (_feedItems.length
       ? '<div class="muted">אין התראות ' + (_alFeedDir === "bull" ? "בוליש 🟢" : "בריש 🔴") + " כרגע.</div>"
       : '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>');

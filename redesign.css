@@ -572,6 +572,8 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 .modal.al-modal { height: 86vh; max-height: 86vh; display: flex; flex-direction: column; overflow: hidden; }
 .modal.al-modal > h2, .modal.al-modal > .hub-tabs { flex: 0 0 auto; }
 .modal.al-modal > #hubBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 -30px -30px; padding: 0 30px 30px; }
+/* feed/list fills the hub and scrolls with the whole body (no tiny inner 230px box) */
+#hubBody .al-flist, #hubBody .al-plist { max-height: none; overflow: visible; }
 /* two roomy columns — presets ("הסריקות שלי") and recent alerts both get real width */
 .al-cols { display: grid; grid-template-columns: minmax(460px, 1.55fr) minmax(0, 1fr); gap: 22px; margin-top: 6px; }
 .al-cols .al-col { min-width: 0; }
