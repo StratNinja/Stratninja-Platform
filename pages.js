@@ -2095,11 +2095,17 @@
     return ioBar + dupSummary + '<div class="pm-list">' + rowsHtml + "</div>" +
       '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף · 📂 מיין לפי קטגוריה</div>';
   }
+  let _pmScanRRTimer = null;
+  function _pmScheduleScanReRender() {   // keep the scanner's "טען פריסט" dropdown order in sync with the hub — debounced, behind the modal
+    if (_pmScanRRTimer) clearTimeout(_pmScanRRTimer);
+    _pmScanRRTimer = setTimeout(() => { if (state.page === "scanner") reRender(); }, 600);
+  }
   function pmRefresh() {
     const b = document.getElementById("pmBody"); if (!b) return;
     const sc = document.getElementById("hubBody"), y = sc ? sc.scrollTop : 0;   // keep scroll position so reordering doesn't jump to top
     b.innerHTML = pmBodyHtml(); pmWire();
     if (sc) sc.scrollTop = y;
+    _pmScheduleScanReRender();
   }
   function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); }   // scanner (behind the modal) refreshes on its own next render
   function pmWire() {
