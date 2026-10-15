@@ -2039,6 +2039,7 @@
         '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
         (list.length ? '<button class="btn ghost" id="pmDedupe" title="הסר סריקות כפולות (הגדרה זהה) — שומר את השם הנקי">🧹 נקה כפילויות</button>' : "") +
         (list.length ? '<button class="btn ghost" id="pmSuggestCat" title="הצע קטגוריה אוטומטית לפי שם הסריקה — רק לסריקות שעוד לא מקוטלגות">🪄 הצע קטגוריות</button>' : "") +
+        '<button class="btn ghost" id="pmManageCats" title="נהל קטגוריות אישיות (הוסף / מחק)">🗂️ קטגוריות</button>' +
         abBtn + syncBar +
         '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
     if (!list.length) return ioBar + '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף — או שחזר מקובץ גיבוי למעלה.</div>';
@@ -2049,6 +2050,8 @@
         '<select class="pm-cat" data-pmcat="' + escAttr(p.id) + '" title="קטגוריה — לקיבוץ ההתראות בפופאפ ובפיד">' +
           '<option value=""' + (!p.cat ? " selected" : "") + ">📂 ללא קטגוריה</option>" +
           ALERT_CATS.map(c => '<option value="' + c.k + '"' + (p.cat === c.k ? " selected" : "") + ">" + c.lbl + "</option>").join("") +
+          _customCats().map(c => '<option value="' + escAttr(c) + '"' + (p.cat === c ? " selected" : "") + ">" + escHtml(c) + "</option>").join("") +
+          '<option value="__new__">➕ קטגוריה חדשה…</option>' +
         "</select>" +
         '<span class="pm-acts">' +
           '<button class="btn ghost pm-btn" data-pmup="' + escAttr(p.id) + '"' + (i === 0 ? " disabled" : "") + ' title="הזז למעלה">▲</button>' +
@@ -2108,8 +2111,18 @@
       snToast(n ? "🧹 הוסרו " + n + " כפילויות" : "אין כפילויות למחיקה");
       pmRefresh(); if (state.page === "scanner") reRender();
     }; }
-    // per-preset category — set without a full re-render so the list doesn't jump
-    document.querySelectorAll("[data-pmcat]").forEach(sel => sel.onchange = () => { window.Prefs.setPresetCat(sel.dataset.pmcat, sel.value); });
+    // per-preset category — set without a full re-render so the list doesn't jump; "➕ קטגוריה חדשה…" prompts + adds
+    document.querySelectorAll("[data-pmcat]").forEach(sel => sel.onchange = () => {
+      if (sel.value === "__new__") {
+        const nm = (prompt("שם קטגוריה חדשה (אפשר להוסיף אימוג׳י):") || "").trim();
+        if (!nm) { sel.value = window.Prefs.presetCat(sel.dataset.pmcat) || ""; return; }   // cancelled → revert
+        window.Prefs.addAlertCat(nm); window.Prefs.setPresetCat(sel.dataset.pmcat, nm);
+        pmRefresh();   // rebuild so the new category appears in every preset's dropdown
+        return;
+      }
+      window.Prefs.setPresetCat(sel.dataset.pmcat, sel.value);
+    });
+    { const mc = document.getElementById("pmManageCats"); if (mc) mc.onclick = () => openCatManager(); }
     // 🪄 auto-suggest a category from each untagged preset's name (non-destructive to ones already tagged)
     { const sc = document.getElementById("pmSuggestCat"); if (sc) sc.onclick = () => {
       const ps = window.Prefs.scanPresets() || []; let n = 0;
@@ -2155,6 +2168,28 @@
     r.readAsText(file);
   }
   function openPresetManager() { modal("↕️ נהל וסדר סריקות", '<div id="pmBody">' + pmBodyHtml() + "</div>"); pmWire(); }
+  // manage CUSTOM alert categories (add / delete). Built-in categories aren't listed here (they're fixed).
+  function openCatManager() {
+    const inpCss = "flex:1;background:#141b30;color:#cfd6e2;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:7px 10px;font-size:13px";
+    const cats = _customCats();
+    const rows = cats.length
+      ? cats.map(c => '<div class="pm-row" style="justify-content:space-between"><span class="pm-name">' + escHtml(c) + '</span><button class="btn ghost pm-del" data-catdel="' + escAttr(c) + '" title="מחק קטגוריה">🗑</button></div>').join("")
+      : '<div class="muted" style="padding:10px">אין עדיין קטגוריות אישיות. הוסף למטה, או דרך בורר הקטגוריה של כל סריקה → "➕ קטגוריה חדשה…".</div>';
+    modal("🗂️ קטגוריות אישיות",
+      '<div class="note" style="margin-bottom:10px">צור קטגוריות משלך לפי השיטה שלך. קטגוריות שתמחק — הסריקות שהשתמשו בהן יחזרו ל"ללא קטגוריה".</div>' +
+      '<div style="display:flex;gap:8px;margin-bottom:12px"><input id="catNewName" placeholder="שם קטגוריה חדשה (אפשר אימוג׳י)" style="' + inpCss + '"><button class="btn primary" id="catAddBtn">➕ הוסף</button></div>' +
+      '<div class="pm-list" id="catList">' + rows + "</div>" +
+      '<div style="margin-top:12px"><button class="btn ghost" id="catBackBtn">← חזרה לניהול הסריקות</button></div>');
+    const add = () => { const inp = document.getElementById("catNewName"); const nm = (inp && inp.value || "").trim(); if (!nm) return; window.Prefs.addAlertCat(nm); openCatManager(); };
+    { const ab = document.getElementById("catAddBtn"); if (ab) ab.onclick = add; }
+    { const inp = document.getElementById("catNewName"); if (inp) { inp.focus(); inp.onkeydown = e => { if (e.key === "Enter") add(); }; } }
+    { const bb = document.getElementById("catBackBtn"); if (bb) bb.onclick = () => openPresetManager(); }
+    document.querySelectorAll("[data-catdel]").forEach(b => b.onclick = () => {
+      const c = b.dataset.catdel;
+      if (!confirm('למחוק את הקטגוריה "' + c + '"?\nסריקות שהשתמשו בה יחזרו ל"ללא קטגוריה".')) return;
+      window.Prefs.removeAlertCat(c); openCatManager();
+    });
+  }
   // ☁️ manual device sync — deterministic push/pull, accessible straight from the sidebar
   function openCloudSync() {
     const on = !!(window.SNCloud && window.SNCloud.ready && window.SNCloud.ready());
@@ -2481,8 +2516,14 @@
   ];
   const _CAT_LBL = (function () { const m = { "": "📂 ללא קטגוריה" }; ALERT_CATS.forEach(c => m[c.k] = c.lbl); return m; })();
   const _CAT_ORDER = (function () { const m = {}; ALERT_CATS.forEach((c, i) => m[c.k] = i); m[""] = ALERT_CATS.length; return m; })();  // "ללא קטגוריה" sorts last
-  function _catLabel(k) { return _CAT_LBL[k || ""] || _CAT_LBL[""]; }
-  function _catOrder(k) { return _CAT_ORDER[k || ""] != null ? _CAT_ORDER[k || ""] : ALERT_CATS.length; }
+  function _customCats() { try { return (window.Prefs && window.Prefs.alertCats) ? (window.Prefs.alertCats() || []) : []; } catch (e) { return []; } }
+  function _catLabel(k) { if (!k) return _CAT_LBL[""]; return _CAT_LBL[k] || k; }   // built-in → its label; custom → the string itself
+  function _catOrder(k) {
+    if (!k) return 99999;                                     // "ללא קטגוריה" always last
+    if (_CAT_ORDER[k] != null) return _CAT_ORDER[k];          // built-ins keep 0..6
+    const ci = _customCats().indexOf(k);                      // custom: after built-ins, in the order they were added
+    return ci >= 0 ? (ALERT_CATS.length + ci) : (ALERT_CATS.length + 9000);
+  }
   // a preset's category — the manually-chosen `cat`; unset → "" (ללא קטגוריה). Kept manual on purpose
   // (the 🪄 button below fills it from the name on demand; grouping stays predictable otherwise).
   function _presetCat(p) { return (p && p.cat) ? p.cat : ""; }

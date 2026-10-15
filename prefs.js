@@ -64,6 +64,21 @@ window.Prefs = (function () {
     // group/triage a flood of alerts in the popup + feed. Stored on the preset so it syncs with the cloud.
     presetCat(id) { const p = (read().scanPresets || []).find(x => x.id === id); return p ? (p.cat || "") : ""; },
     setPresetCat(id, cat) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (!p) return ""; if (cat) p.cat = cat; else delete p.cat; write(d); return p.cat || ""; },
+    // user-defined CUSTOM alert categories (plain strings; the string is both the key and the label).
+    // Stored in the prefs blob so they sync to the cloud alongside the presets.
+    alertCats() { return read().alertCats || []; },
+    addAlertCat(name) {
+      const d = read(); d.alertCats = d.alertCats || [];
+      const nm = String(name || "").trim(); if (!nm) return d.alertCats;
+      if (!d.alertCats.some(c => c === nm)) d.alertCats.push(nm);
+      write(d); return d.alertCats;
+    },
+    removeAlertCat(name) {
+      const d = read(); const nm = String(name || "").trim();
+      d.alertCats = (d.alertCats || []).filter(c => c !== nm);
+      (d.scanPresets || []).forEach(p => { if (p.cat === nm) delete p.cat; });   // detach from presets that used it
+      write(d); return d.alertCats;
+    },
     // reorder presets to the given id order (any id not listed is appended at the end)
     setScanPresetsOrder(ids) {
       const d = read(); const arr = d.scanPresets || []; const byId = {};
