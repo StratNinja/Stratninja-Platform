@@ -568,6 +568,10 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 /* .modal.al-modal (0,2,0) so it beats .modal.wide from app.css (redesign.css loads last) */
 .modal.al-modal { max-width: min(97vw, 1480px); width: min(97vw, 1480px); padding: 26px 30px 30px; }
 .al-modal { max-width: min(97vw, 1480px); width: min(97vw, 1480px); }
+/* FIXED frame size in every tab (Adi): the window stays large & constant — only #hubBody scrolls inside */
+.modal.al-modal { height: 86vh; max-height: 86vh; display: flex; flex-direction: column; overflow: hidden; }
+.modal.al-modal > h2, .modal.al-modal > .hub-tabs { flex: 0 0 auto; }
+.modal.al-modal > #hubBody { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin: 0 -30px -30px; padding: 0 30px 30px; }
 /* two roomy columns — presets ("הסריקות שלי") and recent alerts both get real width */
 .al-cols { display: grid; grid-template-columns: minmax(460px, 1.55fr) minmax(0, 1fr); gap: 22px; margin-top: 6px; }
 .al-cols .al-col { min-width: 0; }
