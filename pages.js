@@ -8300,6 +8300,33 @@
     return _svgWrap(cands.map(c => _cndl(c[0], c[1], c[2], c[3], c[4], c[5]) +
       (c[6] ? '<text x="' + c[0] + '" y="140" fill="#8894b5" font-size="11" text-anchor="middle">' + c[6] + "</text>" : "")).join(""), label || "");
   }
+  function _revDia() {                          // red 2D down, then green 2U reclaiming above it = reversal up
+    const s = _cndl(70, 40, 118, 50, 108, _LC.dn) + _cndl(150, 24, 110, 32, 84, _LC.up) +
+      '<path d="M104 96 L128 60" stroke="#22c55e" stroke-width="2" fill="none" marker-end="url(#arU)"/>' +
+      '<defs><marker id="arU" markerWidth="7" markerHeight="7" refX="3" refY="3" orient="auto"><path d="M0 0 L6 3 L0 6 z" fill="#22c55e"/></marker></defs>' +
+      '<text x="70" y="140" fill="#8894b5" font-size="11" text-anchor="middle">2D</text>' +
+      '<text x="150" y="140" fill="#8894b5" font-size="11" text-anchor="middle">2U · היפוך</text>';
+    return _svgWrap(s, "היפוך — 2D שנרקלם ל-2U");
+  }
+  function _shapeDia() {                        // hammer (long lower wick) + shooter (long upper wick)
+    const s = _cndl(66, 52, 122, 52, 68, _LC.up) +     // hammer: small body top, long lower wick
+      _cndl(150, 28, 98, 82, 98, _LC.dn) +             // shooter: small body bottom, long upper wick
+      '<text x="66" y="140" fill="#8894b5" font-size="11" text-anchor="middle">פטיש 🔨</text>' +
+      '<text x="150" y="140" fill="#8894b5" font-size="11" text-anchor="middle">כוכב ⭐</text>';
+    return _svgWrap(s, "פטיש וכוכב נופל");
+  }
+  function _mmDia() {                           // an up-leg + an equal projected leg above = measured-move target
+    const lo = 118, mid = 74, top = 30;
+    const s = '<line x1="30" y1="' + lo + '" x2="30" y2="' + mid + '" stroke="#22c55e" stroke-width="3"/>' +
+      '<line x1="30" y1="' + mid + '" x2="196" y2="' + mid + '" stroke="#57608a" stroke-width="1" stroke-dasharray="4 4"/>' +
+      '<line x1="30" y1="' + mid + '" x2="30" y2="' + top + '" stroke="#22c55e" stroke-width="3" stroke-dasharray="3 3" opacity=".65"/>' +
+      '<line x1="30" y1="' + top + '" x2="196" y2="' + top + '" stroke="#22c55e" stroke-width="1.5" stroke-dasharray="5 4"/>' +
+      _cndl(70, mid, lo, mid + 6, lo - 4, _LC.up) +
+      '<text x="196" y="' + (mid - 5) + '" fill="#8894b5" font-size="10" text-anchor="end">כניסה</text>' +
+      '<text x="196" y="' + (top - 4) + '" fill="#22c55e" font-size="10.5" text-anchor="end">🎯 יעד (×1)</text>' +
+      '<text x="48" y="' + ((lo + top) / 2) + '" fill="#8894b5" font-size="10">גובה התנועה</text>';
+    return _svgWrap(s, "Measured Move — יעד לפי גודל התנועה");
+  }
   function renderLearn() {
     const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
     // card with a CUSTOM diagram + "open in scanner" button + a video slot (filled later, platform-agnostic)
@@ -8364,20 +8391,34 @@
       '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">🔗 הרצפים הנפוצים — הסטאפים שאתה סוחר</h2>' +
       '<p class="muted" style="margin:4px 0 0;font-size:13.5px">שילוב של 3 נרות לפי הסדר (C2 → C1 → הנר הנוכחי). "פתח בסורק" טוען את בונה-התבנית מוכן.</p></div>' +
       '<div class="lrn-cards">' + comboCards + "</div>";
+    const revCard = card2("🔄", "background:linear-gradient(160deg,#38bdf8,#0284c7);box-shadow:0 3px 10px rgba(56,189,248,.3)",
+      "היפוך מול המשכיות", "מתי המחיר מסתובב — ומתי ממשיך",
+      _revDia(),
+      '<p><b>המשכיות</b> = נר כיווני לאותו כיוון של המגמה (2U אחרי 2U) — רוכבים עליה. <b>היפוך</b> = נר שהולך <b>נגד</b> הקודם: 2D שנשבר ואז נרקלם חזרה מעלה, או 2U שנדחה מלמעלה. ההיפוך הוא נקודת הסיבוב — בדיוק שם נכנסים מוקדם עם סטופ קצר.</p>',
+      "lrnScanRev", "פתח בסורק — היפוכים שוריים");
+    const shapeCard = card2("🔨", "background:linear-gradient(160deg,#f472b6,#be185d);box-shadow:0 3px 10px rgba(244,114,182,.3)",
+      "פטיש / כוכב נופל", "נרות היפוך לפי צורת הגוף והצל",
+      _shapeDia(),
+      '<p><b>פטיש 🔨</b> = צל תחתון ארוך וגוף קטן למעלה — המוכרים ניסו להוריד ונדחו, לחץ קנייה. <b>כוכב נופל ⭐</b> = צל עליון ארוך וגוף קטן למטה — הקונים נדחו, לחץ מכירה. שתי הצורות חזקות כפליים כשהן קורות על רמה חשובה או בסוף תנועה.</p>',
+      "lrnScanHammer", "פתח בסורק — פטיש");
+    const mmCard = card2("🎯", "background:linear-gradient(160deg,#34d399,#059669);box-shadow:0 3px 10px rgba(52,211,153,.3)",
+      "יעד מחיר · Measured Move", "איפה לקחת רווח — לפי גודל התנועה",
+      _mmDia(),
+      '<p>ב-Strat היעד נגזר מ<b>גודל התנועה עצמה</b>: מודדים את גובה הרגל שקדמה לפריצה ומטילים אותה קדימה מנקודת הכניסה (×1, ולעיתים ×2). זה נותן יעד <b>אובייקטיבי</b> לקחת בו רווח — במקום לנחש. הסטופ מנגד = קצה הנר שממנו נכנסת.</p>',
+      "", "");
+    const moreHead = '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">📈 היפוך · צורה · יעד</h2><p class="muted" style="margin:4px 0 0;font-size:13.5px">הכלים שמשלימים כניסה: לזהות את הסיבוב, לקרוא את הנר, ולדעת איפה לצאת.</p></div>';
     const next =
-      '<div class="panel lrn-next"><h3 style="margin:0 0 10px">🎬 עוד בקרוב</h3>' +
-      '<div class="lrn-nextgrid">' +
-      '<div class="lrn-nextitem"><b>היפוכים מול המשכיות</b><span class="muted">מתי לסחור היפוך ומתי להמשיך עם המגמה</span></div>' +
-      '<div class="lrn-nextitem"><b>יעד מחיר (Measured Move)</b><span class="muted">איפה לקחת רווח — לפי גודל התנועה</span></div>' +
-      '<div class="lrn-nextitem"><b>פטיש / כוכב נופל</b><span class="muted">נרות היפוך לפי צורת הגוף והצל</span></div>' +
-      "</div>" +
-      '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
+      '<div class="panel lrn-next"><h3 style="margin:0 0 10px">🎬 סדרת הסרטונים — בקרוב</h3>' +
+      '<p class="muted" style="margin:0 0 12px;font-size:13.5px">סדרת הסברים חדשה בהקלטה. בינתיים — כל שיעור מקושר ישירות לסורק כדי לתרגל על מניות אמיתיות.</p>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
     const hint = '<div class="lrn-hint">💡 רחף על דיאגרמה כדי לראות איך הנר נוצר · <b>לחץ עליה</b> לזום פנימה ולראות את הנרות הקטנים שמרכיבים אותה 🔬</div>';
     const badgeCtl = _newbieHidden() ? "" :
       '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
     return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" +
       ftfcHead + '<div class="lrn-cards">' + ftfcCard + inforceCard + "</div>" +
-      comboSection + guidesPanel() + next;
+      comboSection +
+      moreHead + '<div class="lrn-cards">' + revCard + shapeCard + mmCard + "</div>" +
+      guidesPanel() + next;
   }
   // "התחל כאן" nav badge — shown to everyone, but on the FIRST visit to Learn we ask if they want it gone.
   function _newbieHidden() { try { return localStorage.getItem("sn_newbie_hide") === "1"; } catch (e) { return false; } }
@@ -8410,6 +8451,8 @@
     { const s = $("#lrnSeq212"); if (s) s.onclick = () => _learnScan(() => _seqSet(["2D"], ["1"], ["2U"])); }
     { const s = $("#lrnSeq122"); if (s) s.onclick = () => _learnScan(() => _seqSet(["1"], ["2D"], ["2U"])); }
     { const s = $("#lrnSeq312"); if (s) s.onclick = () => _learnScan(() => _seqSet(["3"], ["1"], ["2U"])); }
+    { const r = $("#lrnScanRev"); if (r) r.onclick = () => _learnScan(() => { scanState.broad = "up"; }); }
+    { const h = $("#lrnScanHammer"); if (h) h.onclick = () => _learnScan(() => { scanState.shape = ["hammer"]; }); }
     document.querySelectorAll("#page [data-cltype]").forEach(el => el.onclick = () => openCandleLesson(el.dataset.cltype));
     setTimeout(_maybeAskNewbie, 450);   // after the page settles, offer to remove the "start here" badge (once)
   }
