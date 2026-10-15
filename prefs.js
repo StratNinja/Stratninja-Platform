@@ -60,6 +60,10 @@ window.Prefs = (function () {
     // backward-compat; turn OFF to keep an alert on the desktop feed only (avoid phone overload).
     presetPhoneOn(id) { const p = (read().scanPresets || []).find(x => x.id === id); return p ? (p.phone !== false) : false; },
     togglePresetPhone(id) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (!p) return false; p.phone = (p.phone === false); write(d); return p.phone !== false; },
+    // manual CATEGORY per preset (reversal/intraday/ftfc/…); "" clears it (→ "ללא קטגוריה"). Used to
+    // group/triage a flood of alerts in the popup + feed. Stored on the preset so it syncs with the cloud.
+    presetCat(id) { const p = (read().scanPresets || []).find(x => x.id === id); return p ? (p.cat || "") : ""; },
+    setPresetCat(id, cat) { const d = read(); const p = (d.scanPresets || []).find(x => x.id === id); if (!p) return ""; if (cat) p.cat = cat; else delete p.cat; write(d); return p.cat || ""; },
     // reorder presets to the given id order (any id not listed is appended at the end)
     setScanPresetsOrder(ids) {
       const d = read(); const arr = d.scanPresets || []; const byId = {};

@@ -244,7 +244,7 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .seqbt.b3 { background:rgba(23,192,138,.2); color:#cfd6e2; }
 /* ---- preset manager (reorder + share) ---- */
 .pm-list { display:flex; flex-direction:column; gap:7px; }
-.pm-row { display:flex; align-items:center; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 12px; }
+.pm-row { display:flex; align-items:center; flex-wrap:wrap; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 12px; }
 .pm-row.pm-dragging { opacity:.45; }
 .pm-row.pm-over { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset; }
 .pm-grip { cursor:grab; color:var(--muted); font-size:16px; user-select:none; letter-spacing:-2px; }
@@ -464,6 +464,21 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ap-row { font-size:14px; padding:6px 0; line-height:1.5; }
 .ap-sym { font-weight:800; color:#9db9ff; margin-inline-end:6px; font-size:15px; }
 .ap-link { color:#7fa8ff; text-decoration:none; margin-inline-start:6px; font-size:12px; }
+/* price at the moment the alert fired (stored on the alert) */
+.ap-px { color:#7ee2b8; font-weight:700; font-size:12.5px; margin-inline-start:5px; font-variant-numeric:tabular-nums; }
+.alert-pop.compact .ap-px { font-size:11.5px; }
+/* group-by-category toggle (same look as the compact button) */
+.ap-grp { background:rgba(23,192,138,.22); border:1px solid rgba(23,192,138,.5); color:#cfd6e2; cursor:pointer; font-size:13px; border-radius:8px; padding:3px 8px; line-height:1; }
+.ap-grp.on { background:#17c08a; border-color:#17c08a; color:#fff; }
+/* category header inside the popup when grouped */
+.ap-cathead { font-size:12px; font-weight:800; color:#aeb8cc; margin:9px 0 3px; padding-block:4px; border-block-start:1px solid rgba(255,255,255,.07); letter-spacing:.2px; }
+.ap-cathead:first-child { border-block-start:none; margin-top:2px; }
+.ap-catn { color:var(--muted); font-weight:600; font-size:11px; }
+/* price at alert time in the alerts feed (bell panel) */
+.al-fpx { color:#7ee2b8; font-weight:700; font-size:12px; margin-inline:6px; font-variant-numeric:tabular-nums; }
+/* per-preset category selector in the preset manager */
+.pm-cat { background:#141b30; color:#cfd6e2; border:1px solid rgba(255,255,255,.14); border-radius:8px; font-size:12px; padding:3px 6px; max-width:150px; cursor:pointer; }
+.pm-cat:hover { border-color:rgba(23,192,138,.55); }
 .sn-toast { position:fixed; inset-block-end:24px; inset-inline-start:50%; transform:translate(-50%,20px); z-index:9999;
   background:linear-gradient(90deg, rgba(12,145,96,.97), rgba(23,192,138,.95)); color:#fff; font-weight:700; font-size:14px;
   padding:12px 20px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.4); opacity:0; transition:.3s; pointer-events:none; max-width:90vw; }

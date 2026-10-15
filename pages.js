@@ -2038,6 +2038,7 @@
         (list.length ? '<button class="btn ghost" id="pmExport" title="שמור את כל הסריקות לקובץ במחשב">💾 גבה לקובץ</button>' : "") +
         '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
         (list.length ? '<button class="btn ghost" id="pmDedupe" title="הסר סריקות כפולות (הגדרה זהה) — שומר את השם הנקי">🧹 נקה כפילויות</button>' : "") +
+        (list.length ? '<button class="btn ghost" id="pmSuggestCat" title="הצע קטגוריה אוטומטית לפי שם הסריקה — רק לסריקות שעוד לא מקוטלגות">🪄 הצע קטגוריות</button>' : "") +
         abBtn + syncBar +
         '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
     if (!list.length) return ioBar + '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף — או שחזר מקובץ גיבוי למעלה.</div>';
@@ -2045,6 +2046,10 @@
       '<div class="pm-row" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
         '<span class="pm-grip" title="גרור לסידור">⠿</span>' +
         '<span class="pm-name">' + escHtml(p.name) + "</span>" +
+        '<select class="pm-cat" data-pmcat="' + escAttr(p.id) + '" title="קטגוריה — לקיבוץ ההתראות בפופאפ ובפיד">' +
+          '<option value=""' + (!p.cat ? " selected" : "") + ">📂 ללא קטגוריה</option>" +
+          ALERT_CATS.map(c => '<option value="' + c.k + '"' + (p.cat === c.k ? " selected" : "") + ">" + c.lbl + "</option>").join("") +
+        "</select>" +
         '<span class="pm-acts">' +
           '<button class="btn ghost pm-btn" data-pmup="' + escAttr(p.id) + '"' + (i === 0 ? " disabled" : "") + ' title="הזז למעלה">▲</button>' +
           '<button class="btn ghost pm-btn" data-pmdn="' + escAttr(p.id) + '"' + (i === list.length - 1 ? " disabled" : "") + ' title="הזז למטה">▼</button>' +
@@ -2102,6 +2107,15 @@
       const n = window.Prefs.dedupeScanPresets ? window.Prefs.dedupeScanPresets() : 0;
       snToast(n ? "🧹 הוסרו " + n + " כפילויות" : "אין כפילויות למחיקה");
       pmRefresh(); if (state.page === "scanner") reRender();
+    }; }
+    // per-preset category — set without a full re-render so the list doesn't jump
+    document.querySelectorAll("[data-pmcat]").forEach(sel => sel.onchange = () => { window.Prefs.setPresetCat(sel.dataset.pmcat, sel.value); });
+    // 🪄 auto-suggest a category from each untagged preset's name (non-destructive to ones already tagged)
+    { const sc = document.getElementById("pmSuggestCat"); if (sc) sc.onclick = () => {
+      const ps = window.Prefs.scanPresets() || []; let n = 0;
+      ps.forEach(p => { if (!p.cat) { const g = _suggestCat(p.name); if (g) { window.Prefs.setPresetCat(p.id, g); n++; } } });
+      snToast(n ? "🪄 קוטלגו אוטומטית " + n + " סריקות — אפשר לשנות ידנית בכל שורה" : "לא נמצאו סריקות לא-מקוטלגות לזיהוי אוטומטי");
+      pmRefresh();
     }; }
     { const ab = document.getElementById("pmAutoBak"); if (ab) ab.onclick = () => {
       let d = null; try { d = JSON.parse(localStorage.getItem((window.Prefs.KEY || "stratninja_prefs_v1") + "__autobak") || "null"); } catch (e) {}
@@ -2334,17 +2348,31 @@
     let compact = false; try { compact = localStorage.getItem("sn_alert_compact") === "1"; } catch (e) {}   // remembered per-device
     box.className = "alert-pop" + (compact ? " compact" : "");
     let secs = Math.min(90, Math.max(20, (fresh.length || 1) * 3));   // more alerts → more time to read (20–90s)
+    // group-by-category state: default ON when the flood is big (>20, per Adi), else flat; a manual toggle wins + is remembered.
+    let grouped; try { const g = localStorage.getItem("sn_alert_group"); grouped = (g == null) ? (fresh.length > 20) : (g === "1"); } catch (e) { grouped = fresh.length > 20; }
+    // one alert row — now carries the PRICE AT THE MOMENT OF THE ALERT (e.px, stored when it fired) + chart link
+    const _apRow = e => {
+      const px = (e.px != null && !isNaN(+e.px)) ? ' <span class="ap-px">@' + (+e.px).toFixed(2) + "</span>" : "";
+      return '<div class="ap-row"><span class="ap-sym">' + escAttr(e.sym) + '</span><span class="ap-verb">נכנסה לסריקה </span><b>' + escAttr(e.preset) + "</b>" + px +
+        ' <a class="ap-link" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener">📈 גרף</a></div>';
+    };
+    // flat list, OR grouped under category headers (ALERT_CATS order; "ללא קטגוריה" last)
+    const _apBodyHtml = (list, grp) => {
+      if (!grp) return list.map(_apRow).join("");
+      const groups = {}; list.forEach(e => { const c = (e && e.cat) ? e.cat : ""; (groups[c] = groups[c] || []).push(e); });
+      return Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c =>
+        '<div class="ap-cathead">' + _catLabel(c) + ' <span class="ap-catn">(' + groups[c].length + ")</span></div>" +
+        groups[c].map(_apRow).join("")).join("");
+    };
     box.innerHTML = '<div class="ap-head"><span>🔔 התראה חדשה! <span class="ap-count">(' + fresh.length + ')</span></span>' +
       '<span class="ap-ctrls">' +
         '<span class="ap-timer" title="הרשימה תיעלם בעוד (שניות)">' + secs + '</span>' +
+        '<button class="ap-grp' + (grouped ? " on" : "") + '" aria-label="קבץ לפי קטגוריה" title="קבץ לפי קטגוריה">📂</button>' +
         '<button class="ap-cmp' + (compact ? " on" : "") + '" aria-label="תצוגה קומפקטית" title="תצוגה קומפקטית">▤</button>' +
         '<button class="ap-pin" aria-label="נעל" title="נעל — שהרשימה לא תיעלם">📌</button>' +
         '<button class="ap-x" aria-label="סגור">✕</button>' +
       "</span></div>" +
-      '<div class="ap-body">' + fresh.map(e =>
-        '<div class="ap-row"><span class="ap-sym">' + escAttr(e.sym) + '</span><span class="ap-verb">נכנסה לסריקה </span><b>' + escAttr(e.preset) + "</b>" +
-        ' <a class="ap-link" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener">📈 גרף</a></div>').join("") +
-      "</div>";
+      '<div class="ap-body">' + _apBodyHtml(fresh, grouped) + "</div>";
     document.body.appendChild(box);
     requestAnimationFrame(() => box.classList.add("show"));
     let pinned = false, timer = null;
@@ -2369,6 +2397,13 @@
       box.classList.toggle("compact", compact);
       cmpBtn.classList.toggle("on", compact);
       try { localStorage.setItem("sn_alert_compact", compact ? "1" : "0"); } catch (e) {}
+    };
+    const grpBtn = box.querySelector(".ap-grp");
+    if (grpBtn) grpBtn.onclick = () => {
+      grouped = !grouped;
+      grpBtn.classList.toggle("on", grouped);
+      try { localStorage.setItem("sn_alert_group", grouped ? "1" : "0"); } catch (e) {}
+      const bodyEl = box.querySelector(".ap-body"); if (bodyEl) bodyEl.innerHTML = _apBodyHtml(fresh, grouped);
     };
     const x = box.querySelector(".ap-x"); if (x) x.onclick = close;
   }
@@ -2411,7 +2446,7 @@
         if (Prefs.feedHas(p.id, sym, today)) return;
         const row = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
         const px = row ? (row.p != null ? row.p : (row.tech ? row.tech.px : null)) : null;
-        const entry = { pid: p.id, preset: p.name, sym: sym, ts: Date.now(), tm: _mfIlTime(), px: px, date: today, read: false };
+        const entry = { pid: p.id, preset: p.name, sym: sym, ts: Date.now(), tm: _mfIlTime(), px: px, cat: _presetCat(p), date: today, read: false };
         Prefs.feedAdd(entry); fresh.push(entry);
       });
     });
@@ -2433,6 +2468,35 @@
     if (/🟢|🔺|🔼|▲|⬆|\bgreen\b|\bup\b|hammer|עלייה|לונג|\bbull/.test(l)) return "bull";
     return "neutral";
   }
+  // ── ALERT CATEGORIES ─────────────────────────────────────────────────────────
+  // A manual per-preset tag (Prefs preset.cat) so a flood of alerts can be grouped by type. Unset → "ללא קטגוריה".
+  const ALERT_CATS = [
+    { k: "reversal", lbl: "🔄 היפוכים" },
+    { k: "intraday", lbl: "⚡ אינטרה-דיי" },
+    { k: "ftfc", lbl: "📊 המשכיות / FTFC" },
+    { k: "setup", lbl: "🎯 Setups" },
+    { k: "earnings", lbl: "📅 דיווחים" },
+    { k: "avoid", lbl: "⛔ להימנע" },
+    { k: "general", lbl: "📁 כללי" },
+  ];
+  const _CAT_LBL = (function () { const m = { "": "📂 ללא קטגוריה" }; ALERT_CATS.forEach(c => m[c.k] = c.lbl); return m; })();
+  const _CAT_ORDER = (function () { const m = {}; ALERT_CATS.forEach((c, i) => m[c.k] = i); m[""] = ALERT_CATS.length; return m; })();  // "ללא קטגוריה" sorts last
+  function _catLabel(k) { return _CAT_LBL[k || ""] || _CAT_LBL[""]; }
+  function _catOrder(k) { return _CAT_ORDER[k || ""] != null ? _CAT_ORDER[k || ""] : ALERT_CATS.length; }
+  // a preset's category — the manually-chosen `cat`; unset → "" (ללא קטגוריה). Kept manual on purpose
+  // (the 🪄 button below fills it from the name on demand; grouping stays predictable otherwise).
+  function _presetCat(p) { return (p && p.cat) ? p.cat : ""; }
+  // auto-SUGGEST a category from a preset name (only used by the 🪄 "הצע קטגוריות" button, never forced).
+  function _suggestCat(name) {
+    const l = String(name || "").toLowerCase();
+    if (/reversal|היפוך/.test(l)) return "reversal";
+    if (/\b(30m|60m|90m|130m|1h|2h|4h|intraday|intra)\b/.test(l)) return "intraday";
+    if (/ftfc|inforce|in\s?force|המשכיות|continuity/.test(l)) return "ftfc";
+    if (/hammer|shooter|support|setup|פטיש|דחיסה|squeeze|breakout|פריצה|darvas|pmg|kicker/.test(l)) return "setup";
+    if (/דיווח|earnings|רווחים|\breport\b|לדיווח/.test(l)) return "earnings";
+    if (/מה לא לסחור|avoid|להימנע|⛔|נר פנימי/.test(l)) return "avoid";
+    return "";
+  }
   function openAlertsFeed() {
     if (!window.Prefs) return;
     Prefs.feedMarkRead(); updateAlertBell();
@@ -2453,7 +2517,8 @@
     const _feedItems = feed.map(e => { const p = feedById[e.pid]; if (!p) return null; /* preset gone → hide stale alert */
       const dir = _alertDir(p.name);
       const d = new Date(e.ts), when = d.getDate() + "." + (d.getMonth() + 1) + " " + _p2(d.getHours()) + ":" + _p2(d.getMinutes());   // compact date+time, one line
-      const html = '<div class="al-frow" style="border-inline-start:3px solid ' + _dcol[dir] + ';padding-inline-start:8px"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted al-fname" title="' + escAttr(p.name) + '">' + escHtml(p.name) + '</span><span class="muted al-time">' + when + "</span></div>";
+      const fpx = (e.px != null && !isNaN(+e.px)) ? '<span class="al-fpx" title="מחיר המניה ברגע ההתראה">@' + (+e.px).toFixed(2) + "</span>" : "";
+      const html = '<div class="al-frow" style="border-inline-start:3px solid ' + _dcol[dir] + ';padding-inline-start:8px"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted al-fname" title="' + escAttr(p.name) + '">' + escHtml(p.name) + "</span>" + fpx + '<span class="muted al-time">' + when + "</span></div>";
       return { dir: dir, html: html };
     }).filter(Boolean);
     const _dcnt = { bull: 0, bear: 0, neutral: 0 };
