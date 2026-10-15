@@ -485,6 +485,14 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* a preset whose CONFIG duplicates another's */
 .pm-row.pm-dup { border-color:rgba(224,162,79,.6); box-shadow:0 0 0 1px rgba(224,162,79,.22) inset; }
 .pm-dupbadge { font-size:10px; font-weight:800; color:#e0a24f; background:rgba(224,162,79,.15); border:1px solid rgba(224,162,79,.4); border-radius:6px; padding:1px 6px; margin-inline-start:6px; white-space:nowrap; }
+/* unified alerts+scanners hub — tab bar */
+.hub-tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+.hub-tab { background:none; border:none; border-bottom:2px solid transparent; color:var(--muted); font-weight:700; font-size:14px; padding:9px 15px; cursor:pointer; border-radius:9px 9px 0 0; margin-bottom:-1px; }
+.hub-tab:hover { color:var(--ink); background:rgba(255,255,255,.03); }
+.hub-tab.on { color:#fff; border-bottom-color:var(--accent); background:rgba(23,192,138,.1); }
+/* per-preset 🔔/📱 toggles inside a preset-manager row */
+.pm-tgls { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.pm-tgls .al-tgl-ico { font-size:13px; }
 /* ticker is now the chart link (dropped the "📈 גרף" link to save space) */
 a.ap-sym { text-decoration:none; cursor:pointer; }
 a.ap-sym:hover { text-decoration:underline; }
