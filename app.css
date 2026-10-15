@@ -480,8 +480,12 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .pm-cat { background:#141b30; color:#cfd6e2; border:1px solid rgba(255,255,255,.14); border-radius:8px; font-size:12px; padding:3px 6px; max-width:150px; cursor:pointer; }
 .pm-cat:hover { border-color:rgba(23,192,138,.55); }
 /* category section header in the preset manager (after "מיין לפי קטגוריה") */
-.pm-cathead { width:100%; font-size:12px; font-weight:800; color:#aeb8cc; margin:5px 2px -1px; padding-top:7px; border-top:1px solid rgba(255,255,255,.08); letter-spacing:.2px; }
-.pm-cathead:first-child { border-top:none; padding-top:0; margin-top:0; }
+.pm-cathead { width:100%; display:flex; align-items:center; gap:8px; font-size:12px; font-weight:800; color:#aeb8cc; margin:5px 2px -1px; padding:7px 6px 2px; border-top:1px solid rgba(255,255,255,.08); letter-spacing:.2px; cursor:pointer; user-select:none; border-radius:7px; }
+.pm-cathead:hover { color:#fff; background:rgba(255,255,255,.03); }
+.pm-cathead:first-child { border-top:none; padding-top:2px; margin-top:0; }
+.pm-cat-caret { font-size:10px; width:12px; flex-shrink:0; color:var(--muted); }
+.pm-cat-lbl { flex:1 1 auto; }
+.pm-cat-move { display:flex; gap:3px; flex-shrink:0; }
 /* a preset whose CONFIG duplicates another's */
 .pm-row.pm-dup { border-color:rgba(224,162,79,.6); box-shadow:0 0 0 1px rgba(224,162,79,.22) inset; }
 .pm-dupbadge { font-size:10px; font-weight:800; color:#e0a24f; background:rgba(224,162,79,.15); border:1px solid rgba(224,162,79,.4); border-radius:6px; padding:1px 6px; margin-inline-start:6px; white-space:nowrap; }

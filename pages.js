@@ -2056,10 +2056,24 @@
       ALERT_CATS.map(c => '<option value="' + c.k + '"' + (p.cat === c.k ? " selected" : "") + ">" + c.lbl + "</option>").join("") +
       _customCats().map(c => '<option value="' + escAttr(c) + '"' + (p.cat === c ? " selected" : "") + ">" + escHtml(c) + "</option>").join("") +
       '<option value="__new__">➕ קטגוריה חדשה…</option>' + "</select>";
-    let _lastCat = "\u0000", rowsHtml = "";   // insert a category header whenever the category changes (clean after "מיין לפי קטגוריה")
+    const _collapsed = _pmCollapsed();
+    const _catSeq = []; list.forEach(p => { const c = p.cat || ""; if (_catSeq.indexOf(c) < 0) _catSeq.push(c); });
+    const _catCnt = {}; list.forEach(p => { const c = p.cat || ""; _catCnt[c] = (_catCnt[c] || 0) + 1; });
+    let _lastCat = "\u0000", rowsHtml = "";   // collapsible category sections + per-category ▲▼ move
     list.forEach((p, i) => {
       const c = p.cat || "";
-      if (c !== _lastCat) { rowsHtml += '<div class="pm-cathead">' + _catLabel(c) + "</div>"; _lastCat = c; }
+      if (c !== _lastCat) {
+        const isCol = _collapsed.has(c), ci = _catSeq.indexOf(c);
+        rowsHtml += '<div class="pm-cathead" data-pmcathead="' + escAttr(c) + '" title="לחץ לקיפול/פתיחה">' +
+          '<span class="pm-cat-caret">' + (isCol ? "▸" : "▾") + "</span>" +
+          '<span class="pm-cat-lbl">' + _catLabel(c) + ' <span class="pm-catn">(' + (_catCnt[c] || 0) + ")</span></span>" +
+          '<span class="pm-cat-move">' +
+            '<button class="btn ghost pm-btn" data-pmcatup="' + escAttr(c) + '"' + (ci <= 0 ? " disabled" : "") + ' title="הזז קטגוריה למעלה">▲</button>' +
+            '<button class="btn ghost pm-btn" data-pmcatdn="' + escAttr(c) + '"' + (ci >= _catSeq.length - 1 ? " disabled" : "") + ' title="הזז קטגוריה למטה">▼</button>' +
+          "</span></div>";
+        _lastCat = c;
+      }
+      if (_collapsed.has(c)) return;   // collapsed category → hide its rows (but keep the header)
       const dupBadge = _dupNum[p.id] ? ' <span class="pm-dupbadge" title="הגדרה זהה לסריקה אחרת בקבוצה זו">כפילות #' + _dupNum[p.id] + "</span>" : "";
       rowsHtml += '<div class="pm-row' + (_dupNum[p.id] ? " pm-dup" : "") + '" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
         '<span class="pm-grip" title="גרור לסידור">⠿</span>' +
@@ -2155,6 +2169,14 @@
       window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender();
       snToast("📂 הרשימה סודרה לפי קטגוריה");
     }; }
+    // collapse/expand a category section (click its header) — ▲▼ have their own handlers
+    document.querySelectorAll("[data-pmcathead]").forEach(h => h.onclick = (e) => {
+      if (e.target.closest("[data-pmcatup],[data-pmcatdn]")) return;
+      _pmToggleCollapse(h.dataset.pmcathead); pmRefresh();
+    });
+    // move a whole category block up/down (also groups it)
+    document.querySelectorAll("[data-pmcatup]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatup, -1); pmRefresh(); if (state.page === "scanner") reRender(); });
+    document.querySelectorAll("[data-pmcatdn]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatdn, 1); pmRefresh(); if (state.page === "scanner") reRender(); });
     // 🪄 auto-suggest a category from each untagged preset's name (non-destructive to ones already tagged)
     { const sc = document.getElementById("pmSuggestCat"); if (sc) sc.onclick = () => {
       const ps = window.Prefs.scanPresets() || []; let n = 0;
@@ -2594,6 +2616,19 @@
       else lead = "תמונה מעורבת — " + bull + " עלייה מול " + bear + " ירידה.";
     } else lead = n + " התראות פעילות כרגע.";
     return lead + catTxt;
+  }
+  // ── preset-manager: collapse category sections + move a whole category up/down ──
+  function _pmCollapsed() { try { return new Set(JSON.parse(localStorage.getItem("sn_pm_collapsed") || "[]")); } catch (e) { return new Set(); } }
+  function _pmToggleCollapse(c) { const s = _pmCollapsed(); if (s.has(c)) s.delete(c); else s.add(c); try { localStorage.setItem("sn_pm_collapsed", JSON.stringify(Array.from(s))); } catch (e) {} }
+  function _pmMoveCat(c, dir) {   // dir: -1 up, +1 down — swaps this category's block with the neighbour (and groups it)
+    const ps = window.Prefs.scanPresets() || [];
+    const seq = []; ps.forEach(p => { const k = p.cat || ""; if (seq.indexOf(k) < 0) seq.push(k); });
+    const i = seq.indexOf(c), j = i + dir;
+    if (i < 0 || j < 0 || j >= seq.length) return;
+    const t = seq[i]; seq[i] = seq[j]; seq[j] = t;
+    const byCat = {}; ps.forEach(p => { const k = p.cat || ""; (byCat[k] = byCat[k] || []).push(p.id); });
+    const ids = []; seq.forEach(k => (byCat[k] || []).forEach(id => ids.push(id)));
+    window.Prefs.setScanPresetsOrder(ids);
   }
   let _hubTab = "feed";   // remembered alerts-hub tab (feed | presets | settings)
   function openAlertsFeed(tab) {
