@@ -8331,11 +8331,12 @@
     const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
     // card with a CUSTOM diagram + "open in scanner" button + a video slot (filled later, platform-agnostic)
     const vslot = '<span style="font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px">🎬 סרטון — בקרוב</span>';
-    const card2 = (badge, bg, title, sub, diagram, body, btnId, btnLabel) =>
+    const card2 = (badge, bg, title, sub, diagram, body, btnId, btnLabel, exId) =>
       '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter" style="min-width:52px;' + (bg || "") + '">' + badge + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
       '<div class="lrn-body"><div class="lrn-svg" style="cursor:default">' + diagram + '</div><div class="lrn-txt">' + body +
       '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
         (btnId ? '<button class="btn primary" style="font-size:13px;padding:6px 12px" id="' + btnId + '">🔍 ' + btnLabel + "</button>" : "") +
+        (exId ? '<span class="lrn-ex" id="' + exId + '" style="display:none"></span>' : "") +
         vslot + "</div></div></div></div>";
     const card = (letter, title, sub, type, body, badge) =>
       '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter">' + letter + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
@@ -8365,28 +8366,28 @@
       "המשכיות טיימפריימים · FTFC", "כשכל הזמנים מצביעים לאותו כיוון",
       _ftfcDia(),
       '<p><b>FTFC (Full Timeframe Continuity)</b> = כל הטיימפריימים — יומי, שבועי, חודשי, רבעוני ושנתי — מצביעים לאותו כיוון. כשכולם ירוקים, כל שכבות הזמן דוחפות מעלה יחד: המוסדיים מיושרים. <b>ככל שיותר זמנים מיושרים — האות חזק יותר.</b> זה מה שמפריד רעש מהזדמנות אמיתית.</p>',
-      "lrnScanFtfc", "פתח בסורק — FTFC מלא");
+      "lrnScanFtfc", "פתח בסורק — FTFC מלא", "lrnExFtfc");
     const inforceCard = card2("⚡", "background:linear-gradient(160deg,#f2b64a,#e0902a);box-shadow:0 3px 10px rgba(242,182,74,.3)",
       "IN FORCE · הטריגר", "מתי נר באמת מחזיק מעבר לקצה הקודם",
       _inforceDia(),
       '<p>יש הבדל בין נר ש<b>נגע</b> מעבר לגבוה הקודם (צל חולף שחזר אחורה) לבין נר ש<b>סגר והחזיק</b> שם. <b>IN FORCE</b> = הסגירה מעל הגבוה הקודם (לונג) או מתחת לנמוך הקודם (שורט) — השבירה אושרה ומחזיקה. זו <b>נקודת הכניסה האמיתית</b>.</p>',
-      "lrnScanInforce", "פתח בסורק — IN FORCE מעל");
+      "lrnScanInforce", "פתח בסורק — IN FORCE מעל", "lrnExInforce");
     const ftfcHead = '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">🎯 השלב הבא — FTFC ו-IN FORCE</h2><p class="muted" style="margin:4px 0 0;font-size:13.5px">אחרי שאתה מזהה נרות — אלה שני הכלים שהופכים זיהוי להזדמנות.</p></div>';
-    const cmb = (badge, title, sub, dia, body, seqId) =>
-      card2(badge, "background:linear-gradient(160deg,#6a5cf0,#4b3fc4)", title, sub, dia, body, seqId, "פתח בסורק");
+    const cmb = (badge, title, sub, dia, body, seqId, exId) =>
+      card2(badge, "background:linear-gradient(160deg,#6a5cf0,#4b3fc4)", title, sub, dia, body, seqId, "פתח בסורק", exId);
     const comboCards =
       cmb("2-1-2", "2-1-2 · היפוך", "נר כיווני → התכנסות → פריצה לכיוון ההפוך",
         _seqDia([[40, 46, 120, 58, 112, _LC.dn, "2D"], [107, 74, 100, 80, 95, _LC.in, "1"], [174, 28, 94, 34, 82, _LC.up, "2U"]], "2-1-2 up"),
         '<p>נר כיווני (2D), ואז נר פנימי (1) שאוגר לחץ, ואז פריצה לכיוון <b>ההפוך</b> (2U) — <b>היפוך קלאסי</b>. ההתכנסות באמצע היא הקפיץ; הפריצה ממנה היא הכניסה.</p>',
-        "lrnSeq212") +
+        "lrnSeq212", "lrnExSeq212") +
       cmb("1-2-2", "1-2-2 · הסטאפ שלך", "פנימי → שבירה → פריצה חזרה מעל (reclaim)",
         _seqDia([[40, 62, 96, 68, 90, _LC.in, "1"], [107, 74, 122, 80, 116, _LC.dn, "2D"], [174, 32, 100, 38, 90, _LC.up, "2U"]], "1-2-2 up"),
         '<p>נר פנימי (1), ואז שבירה למטה (2D), ואז <b>פריצה חזרה מעל ה-2D</b> (2U) — היפוך שורי. השבירה "לכדה" מוכרים, והפריצה חזרה מעליהם היא הטריגר שאתה ממתין לו.</p>',
-        "lrnSeq122") +
+        "lrnSeq122", "lrnExSeq122") +
       cmb("3-1-2", "3-1-2 · אחרי התרחבות", "נר חיצוני → התכנסות → פריצה כיוונית",
         _seqDia([[40, 28, 126, 36, 118, _LC.out, "3"], [107, 76, 102, 82, 96, _LC.in, "1"], [174, 34, 94, 40, 84, _LC.up, "2U"]], "3-1-2 up"),
         '<p>נר חיצוני (3) שפרץ את שני הצדדים = עוצמה ותנודתיות, ואז נר פנימי (1) שמרגיע, ואז פריצה כיוונית (2U). ההתכנסות אחרי הפיצוץ נותנת כניסה נקייה עם סטופ קצר.</p>',
-        "lrnSeq312");
+        "lrnSeq312", "lrnExSeq312");
     const comboSection =
       '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">🔗 הרצפים הנפוצים — הסטאפים שאתה סוחר</h2>' +
       '<p class="muted" style="margin:4px 0 0;font-size:13.5px">שילוב של 3 נרות לפי הסדר (C2 → C1 → הנר הנוכחי). "פתח בסורק" טוען את בונה-התבנית מוכן.</p></div>' +
@@ -8395,12 +8396,12 @@
       "היפוך מול המשכיות", "מתי המחיר מסתובב — ומתי ממשיך",
       _revDia(),
       '<p><b>המשכיות</b> = נר כיווני לאותו כיוון של המגמה (2U אחרי 2U) — רוכבים עליה. <b>היפוך</b> = נר שהולך <b>נגד</b> הקודם: 2D שנשבר ואז נרקלם חזרה מעלה, או 2U שנדחה מלמעלה. ההיפוך הוא נקודת הסיבוב — בדיוק שם נכנסים מוקדם עם סטופ קצר.</p>',
-      "lrnScanRev", "פתח בסורק — היפוכים שוריים");
+      "lrnScanRev", "פתח בסורק — היפוכים שוריים", "lrnExRev");
     const shapeCard = card2("🔨", "background:linear-gradient(160deg,#f472b6,#be185d);box-shadow:0 3px 10px rgba(244,114,182,.3)",
       "פטיש / כוכב נופל", "נרות היפוך לפי צורת הגוף והצל",
       _shapeDia(),
       '<p><b>פטיש 🔨</b> = צל תחתון ארוך וגוף קטן למעלה — המוכרים ניסו להוריד ונדחו, לחץ קנייה. <b>כוכב נופל ⭐</b> = צל עליון ארוך וגוף קטן למטה — הקונים נדחו, לחץ מכירה. שתי הצורות חזקות כפליים כשהן קורות על רמה חשובה או בסוף תנועה.</p>',
-      "lrnScanHammer", "פתח בסורק — פטיש");
+      "lrnScanHammer", "פתח בסורק — פטיש", "lrnExHammer");
     const mmCard = card2("🎯", "background:linear-gradient(160deg,#34d399,#059669);box-shadow:0 3px 10px rgba(52,211,153,.3)",
       "יעד מחיר · Measured Move", "איפה לקחת רווח — לפי גודל התנועה",
       _mmDia(),
@@ -8454,7 +8455,37 @@
     { const r = $("#lrnScanRev"); if (r) r.onclick = () => _learnScan(() => { scanState.broad = "up"; }); }
     { const h = $("#lrnScanHammer"); if (h) h.onclick = () => _learnScan(() => { scanState.shape = ["hammer"]; }); }
     document.querySelectorAll("#page [data-cltype]").forEach(el => el.onclick = () => openCandleLesson(el.dataset.cltype));
+    // LIVE examples: fill each lesson with a real ticker matching it RIGHT NOW (click → its chart).
+    // Only when real scan data is loaded; if not, fetch it once then fill. Graceful no-op on no match.
+    if (SCAN && SCAN.rows && SCAN.rows.length) _fillLearnExamples();
+    else { try { const p = fetchScanner(); if (p && p.then) p.then(() => { if (state.page === "learn") _fillLearnExamples(); }); } catch (e) {} }
     setTimeout(_maybeAskNewbie, 450);   // after the page settles, offer to remove the "start here" badge (once)
+  }
+  // find, per lesson, the most notable ticker (biggest market-cap) that matches its Strat concept on the
+  // DAILY timeframe right now, and render a clickable "📍 עכשיו: SYM +x%" chip that opens its chart.
+  function _fillLearnExamples() {
+    let rows = [];
+    try { rows = scanRowsView() || []; } catch (e) { return; }
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) return;    // only real live data, never the demo set
+    const defs = [
+      ["lrnExFtfc", r => r.ftfc === true],
+      ["lrnExInforce", r => r.D && r.D.ifc === "up"],
+      ["lrnExRev", r => r.D && r.D.br === "up"],
+      ["lrnExHammer", r => r.D && r.D.sh === "hammer"],
+      ["lrnExSeq212", r => r.D && r.D.seq3d === "2D-1-2U"],
+      ["lrnExSeq122", r => r.D && r.D.seq3d === "1-2D-2U"],
+      ["lrnExSeq312", r => r.D && r.D.seq3d === "3-1-2U"],
+    ];
+    defs.forEach(d => {
+      const el = document.getElementById(d[0]); if (!el) return;
+      let best = null;
+      rows.forEach(r => { try { if (d[1](r) && r.price > 0 && (!best || (r.mc || 0) > (best.mc || 0))) best = r; } catch (e) {} });
+      if (!best) return;
+      const up = (best.chg || 0) >= 0, chg = best.chg != null ? (Math.round(best.chg * 100) / 100) : "";
+      el.style.display = "";
+      el.innerHTML = '<button class="lrn-exbtn" data-exsym="' + escAttr(best.sym) + '" title="פתח גרף" style="font-size:12px;border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:3px 10px;color:var(--ink);cursor:pointer">📍 עכשיו: <b>' + escAttr(best.sym) + '</b> <span style="color:' + (up ? "#22c55e" : "#ef4444") + '">' + (up ? "+" : "") + chg + "%</span></button>";
+    });
+    document.querySelectorAll("#page .lrn-exbtn").forEach(b => b.onclick = () => openChart(b.dataset.exsym, "D"));
   }
 
   // ---- interactive candle lesson: click a diagram → zoom into the LOWER timeframe and watch the
