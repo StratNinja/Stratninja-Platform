@@ -488,6 +488,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .pm-cat-caret { font-size:10px; width:12px; flex-shrink:0; color:var(--muted); }
 .pm-cat-lbl { flex:1 1 auto; }
 .pm-cat-move { display:flex; gap:3px; flex-shrink:0; }
+.pm-cathead.pm-dragging { opacity:.45; }
+.pm-cathead.pm-over { box-shadow:0 -2px 0 0 var(--accent) inset; background:rgba(23,192,138,.08); }
 /* a preset whose CONFIG duplicates another's */
 .pm-row.pm-dup { border-color:rgba(224,162,79,.6); box-shadow:0 0 0 1px rgba(224,162,79,.22) inset; }
 .pm-dupbadge { font-size:10px; font-weight:800; color:#e0a24f; background:rgba(224,162,79,.15); border:1px solid rgba(224,162,79,.4); border-radius:6px; padding:1px 6px; margin-inline-start:6px; white-space:nowrap; }

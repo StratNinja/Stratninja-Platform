@@ -2063,7 +2063,7 @@
     let rowsHtml = "";
     _catSeq.forEach((c, ci) => {
       const group = _byCat[c], isCol = _collapsed.has(c);
-      rowsHtml += '<div class="pm-cathead" data-pmcathead="' + escAttr(c) + '" title="לחץ לקיפול/פתיחה">' +
+      rowsHtml += '<div class="pm-cathead" draggable="true" data-pmcathead="' + escAttr(c) + '" title="לחץ לקיפול/פתיחה · גרור לסידור הקטגוריות (כמה מקומות בבת אחת)">' +
         '<span class="pm-cat-caret">' + (isCol ? "▸" : "▾") + "</span>" +
         '<span class="pm-cat-lbl">' + _catLabel(c) + ' <span class="pm-catn">(' + group.length + ")</span></span>" +
         '<span class="pm-cat-move">' +
@@ -2133,16 +2133,29 @@
       const t = nn.trim(); if (!t || t === p.name) return;
       window.Prefs.renameScanPreset(p.id, t); pmRefresh(); if (state.page === "scanner") reRender();
     });
-    let dragId = null;
+    let dragId = null, _pmDragCat = null;
     document.querySelectorAll(".pm-row").forEach(row => {
-      row.addEventListener("dragstart", () => { dragId = row.dataset.pmid; row.classList.add("pm-dragging"); });
+      row.addEventListener("dragstart", () => { dragId = row.dataset.pmid; _pmDragCat = null; row.classList.add("pm-dragging"); });
       row.addEventListener("dragend", () => row.classList.remove("pm-dragging"));
-      row.addEventListener("dragover", e => { e.preventDefault(); row.classList.add("pm-over"); });
+      row.addEventListener("dragover", e => { if (dragId) { e.preventDefault(); row.classList.add("pm-over"); } });
       row.addEventListener("dragleave", () => row.classList.remove("pm-over"));
       row.addEventListener("drop", e => {
         e.preventDefault(); row.classList.remove("pm-over");
         const tgt = row.dataset.pmid; if (!dragId || dragId === tgt) return;
         const ids = _pmIds(); ids.splice(ids.indexOf(dragId), 1); ids.splice(ids.indexOf(tgt), 0, dragId); _pmApply(ids);
+      });
+    });
+    // DRAG a whole category header onto another to reorder categories by ANY distance (the ▲▼ stay for one step)
+    document.querySelectorAll(".pm-cathead").forEach(h => {
+      h.addEventListener("dragstart", e => { _pmDragCat = h.dataset.pmcathead; dragId = null; h.classList.add("pm-dragging"); });
+      h.addEventListener("dragend", () => h.classList.remove("pm-dragging"));
+      h.addEventListener("dragover", e => { if (_pmDragCat != null) { e.preventDefault(); h.classList.add("pm-over"); } });
+      h.addEventListener("dragleave", () => h.classList.remove("pm-over"));
+      h.addEventListener("drop", e => {
+        e.preventDefault(); h.classList.remove("pm-over");
+        const tgt = h.dataset.pmcathead;
+        if (_pmDragCat == null || _pmDragCat === tgt) { _pmDragCat = null; return; }
+        _pmReorderCatTo(_pmDragCat, tgt); _pmDragCat = null; pmRefresh();
       });
     });
     document.querySelectorAll("[data-pmdel]").forEach(b => b.onclick = () => {
@@ -2671,6 +2684,16 @@
     const ids = ps.map(x => x.id);
     const i = ids.indexOf(id), j = ids.indexOf(same[sj]);
     const t = ids[i]; ids[i] = ids[j]; ids[j] = t;
+    window.Prefs.setScanPresetsOrder(ids);
+  }
+  function _pmReorderCatTo(dragCat, tgtCat) {   // DRAG: move the whole dragged category to just before the target category (any distance)
+    const ps = window.Prefs.scanPresets() || [];
+    const seq = []; ps.forEach(p => { const c = p.cat || ""; if (seq.indexOf(c) < 0) seq.push(c); });
+    if (seq.indexOf(dragCat) < 0 || seq.indexOf(tgtCat) < 0 || dragCat === tgtCat) return;
+    seq.splice(seq.indexOf(dragCat), 1);          // pull the dragged category out
+    seq.splice(seq.indexOf(tgtCat), 0, dragCat);  // drop it just before the target
+    const byCat = {}; ps.forEach(p => { const c = p.cat || ""; (byCat[c] = byCat[c] || []).push(p.id); });
+    const ids = []; seq.forEach(c => (byCat[c] || []).forEach(id => ids.push(id)));
     window.Prefs.setScanPresetsOrder(ids);
   }
   function _pmDeleteCat(c) {   // delete a category: its scans move to "ללא קטגוריה" (NOT deleted); a custom cat is also dropped from the list
