@@ -2053,8 +2053,8 @@
       : '<div class="note" style="margin-bottom:9px;color:#7ee2b8">✓ אין כפילויות הגדרה — כל הסריקות ייחודיות.</div>';
     const _catSel = p => '<select class="pm-cat" data-pmcat="' + escAttr(p.id) + '" title="קטגוריה — לקיבוץ ההתראות בפופאפ ובפיד">' +
       '<option value=""' + (!p.cat ? " selected" : "") + ">📂 ללא קטגוריה</option>" +
-      ALERT_CATS.map(c => '<option value="' + c.k + '"' + (p.cat === c.k ? " selected" : "") + ">" + c.lbl + "</option>").join("") +
-      _customCats().map(c => '<option value="' + escAttr(c) + '"' + (p.cat === c ? " selected" : "") + ">" + escHtml(c) + "</option>").join("") +
+      ALERT_CATS.map(c => '<option value="' + c.k + '"' + (p.cat === c.k ? " selected" : "") + ">" + escHtml(_catLabel(c.k)) + "</option>").join("") +
+      _customCats().map(c => '<option value="' + escAttr(c) + '"' + (p.cat === c ? " selected" : "") + ">" + escHtml(_catLabel(c)) + "</option>").join("") +
       '<option value="__new__">➕ קטגוריה חדשה…</option>' + "</select>";
     const _collapsed = _pmCollapsed();
     const _catSeq = []; list.forEach(p => { const c = p.cat || ""; if (_catSeq.indexOf(c) < 0) _catSeq.push(c); });
@@ -2070,6 +2070,7 @@
           '<span class="pm-cat-move">' +
             '<button class="btn ghost pm-btn" data-pmcatup="' + escAttr(c) + '"' + (ci <= 0 ? " disabled" : "") + ' title="הזז קטגוריה למעלה">▲</button>' +
             '<button class="btn ghost pm-btn" data-pmcatdn="' + escAttr(c) + '"' + (ci >= _catSeq.length - 1 ? " disabled" : "") + ' title="הזז קטגוריה למטה">▼</button>' +
+            (c ? '<button class="btn ghost pm-btn" data-pmcatren="' + escAttr(c) + '" title="שנה שם קטגוריה">✏️</button>' : "") +
             (c ? '<button class="btn ghost pm-btn pm-del" data-pmcatdel="' + escAttr(c) + '" title="מחק קטגוריה (הסריקות יעברו ל-ללא קטגוריה)">🗑</button>' : "") +
           "</span></div>";
         _lastCat = c;
@@ -2178,6 +2179,14 @@
     // move a whole category block up/down (also groups it)
     document.querySelectorAll("[data-pmcatup]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatup, -1); pmRefresh(); if (state.page === "scanner") reRender(); });
     document.querySelectorAll("[data-pmcatdn]").forEach(b => b.onclick = (e) => { e.stopPropagation(); _pmMoveCat(b.dataset.pmcatdn, 1); pmRefresh(); if (state.page === "scanner") reRender(); });
+    document.querySelectorAll("[data-pmcatren]").forEach(b => b.onclick = (e) => {
+      e.stopPropagation();
+      const c = b.dataset.pmcatren;
+      const nn = prompt("שם חדש לקטגוריה (ריק = חזרה לשם ברירת-המחדל):", _catLabel(c));
+      if (nn == null) return;
+      window.Prefs.setCatLabel(c, nn.trim());
+      pmRefresh(); if (state.page === "scanner") reRender();
+    });
     document.querySelectorAll("[data-pmcatdel]").forEach(b => b.onclick = (e) => {
       e.stopPropagation();
       const c = b.dataset.pmcatdel;
@@ -2581,7 +2590,11 @@
   const _CAT_LBL = (function () { const m = { "": "📂 ללא קטגוריה" }; ALERT_CATS.forEach(c => m[c.k] = c.lbl); return m; })();
   const _CAT_ORDER = (function () { const m = {}; ALERT_CATS.forEach((c, i) => m[c.k] = i); m[""] = ALERT_CATS.length; return m; })();  // "ללא קטגוריה" sorts last
   function _customCats() { try { return (window.Prefs && window.Prefs.alertCats) ? (window.Prefs.alertCats() || []) : []; } catch (e) { return []; } }
-  function _catLabel(k) { if (!k) return _CAT_LBL[""]; return _CAT_LBL[k] || k; }   // built-in → its label; custom → the string itself
+  function _catLabel(k) {   // display-name override (any cat) → built-in label → the key itself (custom); "" → ללא קטגוריה
+    if (!k) return _CAT_LBL[""];
+    try { const ov = (window.Prefs && window.Prefs.catLabels) ? window.Prefs.catLabels()[k] : null; if (ov) return ov; } catch (e) {}
+    return _CAT_LBL[k] || k;
+  }
   function _catOrder(k) {
     if (!k) return 99999;                                     // "ללא קטגוריה" always last
     if (_CAT_ORDER[k] != null) return _CAT_ORDER[k];          // built-ins keep 0..6
@@ -5759,7 +5772,12 @@
 
     const presets = (window.Prefs && window.Prefs.scanPresets) ? window.Prefs.scanPresets() : [];
     if (_selPreset && !presets.some(p => p.id === _selPreset)) _selPreset = "";  // stale id (deleted) → clear
-    const presetOpts = '<option value="">— טען פריסט —</option>' + presets.map(p => '<option value="' + escAttr(p.id) + '"' + (p.id === _selPreset ? " selected" : "") + ">" + escAttr(p.name) + "</option>").join("");
+    // group the load-preset dropdown by CATEGORY (in the list's order) with a thin native divider (<optgroup>)
+    const _poGroups = {}, _poSeq = [];
+    presets.forEach(p => { const c = p.cat || ""; if (_poSeq.indexOf(c) < 0) _poSeq.push(c); (_poGroups[c] = _poGroups[c] || []).push(p); });
+    const _poOpt = p => '<option value="' + escAttr(p.id) + '"' + (p.id === _selPreset ? " selected" : "") + ">" + escAttr(p.name) + "</option>";
+    const presetOpts = '<option value="">— טען פריסט —</option>' +
+      _poSeq.map(c => { const o = _poGroups[c].map(_poOpt).join(""); return c ? '<optgroup label="' + escAttr(_catLabel(c)) + '">' + o + "</optgroup>" : o; }).join("");
     const topBar = '<div class="panel filters scan-topbar">' +
       '<div class="stb-grp stb-view"><span class="muted stb-lbl">👁️ תצוגה:</span>' +
         '<button class="btn ' + (scanView === "live" ? "primary" : "ghost") + ' sm" data-scanview="live" title="הסריקה החיה — נר הטיימפריים הנוכחי שמתהווה עכשיו">🔴 לייב</button>' +

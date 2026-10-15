@@ -77,7 +77,18 @@ window.Prefs = (function () {
       const d = read(); const nm = String(name || "").trim();
       d.alertCats = (d.alertCats || []).filter(c => c !== nm);
       (d.scanPresets || []).forEach(p => { if (p.cat === nm) delete p.cat; });   // detach from presets that used it
+      if (d.catLabels) delete d.catLabels[nm];                                    // drop any display-name override
       write(d); return d.alertCats;
+    },
+    // display-name OVERRIDES per category key (built-in or custom) — lets any category be renamed without
+    // changing its key (so preset.cat stays valid). "" clears the override (back to the default label).
+    catLabels() { return read().catLabels || {}; },
+    setCatLabel(key, label) {
+      const d = read(); d.catLabels = d.catLabels || {};
+      const k = String(key || ""); if (!k) return d.catLabels;
+      const l = String(label || "").trim();
+      if (l) d.catLabels[k] = l; else delete d.catLabels[k];
+      write(d); return d.catLabels;
     },
     // reorder presets to the given id order (any id not listed is appended at the end)
     setScanPresetsOrder(ids) {
