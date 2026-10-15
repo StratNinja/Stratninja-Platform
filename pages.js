@@ -8276,8 +8276,40 @@
     return '<svg id="' + sid + '" viewBox="0 0 214 150" width="100%" style="max-width:230px" role="img" aria-label="דיאגרמת נר ' + type + '">' +
       guides + prior + wick + body + "</svg>";
   }
+  // ── extended-lesson diagrams (multi-bar, static) ──────────────────────────
+  const _LC = { up: "#22c55e", dn: "#ef4444", in: "#7b88ad", out: "#f2b64a", ref: "#5b6690" };
+  function _svgWrap(inner, label) {
+    return '<svg viewBox="0 0 214 150" width="100%" style="max-width:240px" role="img" aria-label="' + (label || "") + '">' + inner + "</svg>";
+  }
+  function _ftfcDia() {                       // 5 green candles (D/W/M/Q/Y) stepping up = full continuity up
+    const xs = [30, 69, 108, 147, 186], lbl = ["D", "W", "M", "Q", "Y"]; let s = "";
+    xs.forEach((cx, i) => { const base = 118 - i * 15; s += _cndl(cx, base - 26, base + 6, base - 20, base, _LC.up) +
+      '<text x="' + cx + '" y="140" fill="#8894b5" font-size="11" text-anchor="middle">' + lbl[i] + "</text>"; });
+    return _svgWrap(s, "FTFC — כל הזמנים ירוקים");
+  }
+  function _inforceDia() {                     // prior bar + a green bar whose CLOSE holds above the prior high
+    const pH = 66, pL = 118;
+    const s = '<line x1="16" y1="' + pH + '" x2="198" y2="' + pH + '" stroke="#57608a" stroke-width="1" stroke-dasharray="4 4"/>' +
+      '<text x="18" y="' + (pH - 5) + '" fill="#8894b5" font-size="10">גבוה קודם</text>' +
+      _cndl(80, pH, pL, 80, 110, _LC.ref) +
+      _cndl(150, 36, 104, 42, 90, _LC.up) +
+      '<text x="150" y="30" fill="#22c55e" font-size="10.5" text-anchor="middle">סגר מעל ✓</text>';
+    return _svgWrap(s, "IN FORCE — סגירה מעל הגבוה הקודם");
+  }
+  function _seqDia(cands, label) {             // cands = [[cx,wickTop,wickBot,bodyTop,bodyBot,col,label], …]
+    return _svgWrap(cands.map(c => _cndl(c[0], c[1], c[2], c[3], c[4], c[5]) +
+      (c[6] ? '<text x="' + c[0] + '" y="140" fill="#8894b5" font-size="11" text-anchor="middle">' + c[6] + "</text>" : "")).join(""), label || "");
+  }
   function renderLearn() {
     const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
+    // card with a CUSTOM diagram + "open in scanner" button + a video slot (filled later, platform-agnostic)
+    const vslot = '<span style="font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px">🎬 סרטון — בקרוב</span>';
+    const card2 = (badge, bg, title, sub, diagram, body, btnId, btnLabel) =>
+      '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter" style="min-width:52px;' + (bg || "") + '">' + badge + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
+      '<div class="lrn-body"><div class="lrn-svg" style="cursor:default">' + diagram + '</div><div class="lrn-txt">' + body +
+      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        (btnId ? '<button class="btn primary" style="font-size:13px;padding:6px 12px" id="' + btnId + '">🔍 ' + btnLabel + "</button>" : "") +
+        vslot + "</div></div></div></div>";
     const card = (letter, title, sub, type, body, badge) =>
       '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter">' + letter + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
       '<div class="lrn-body"><div class="lrn-svg" data-cltype="' + type + '" title="לחץ למבט מבפנים 🔬">' + _candleDiagram(type) + "</div><div class=\"lrn-txt\">" + body +
@@ -8302,18 +8334,50 @@
       card("3", "נר 3 · חיצוני (Outside)", "פרץ גם את הגבוה וגם את הנמוך — התרחבות/עוצמה", "3",
         '<p>הנר <b>פרץ את שני הצדדים</b> של הנר הקודם — התרחבות ועוצמה. <b>חשוב:</b> נר 3 תמיד מגיע אחרי נר 2 (קודם פורצים צד אחד, ואז גם את השני).</p>',
         scanBadge("3", "b3"));
+    const ftfcCard = card2("FTFC", "background:linear-gradient(160deg,#22c55e,#16a34a);box-shadow:0 3px 10px rgba(34,197,94,.3)",
+      "המשכיות טיימפריימים · FTFC", "כשכל הזמנים מצביעים לאותו כיוון",
+      _ftfcDia(),
+      '<p><b>FTFC (Full Timeframe Continuity)</b> = כל הטיימפריימים — יומי, שבועי, חודשי, רבעוני ושנתי — מצביעים לאותו כיוון. כשכולם ירוקים, כל שכבות הזמן דוחפות מעלה יחד: המוסדיים מיושרים. <b>ככל שיותר זמנים מיושרים — האות חזק יותר.</b> זה מה שמפריד רעש מהזדמנות אמיתית.</p>',
+      "lrnScanFtfc", "פתח בסורק — FTFC מלא");
+    const inforceCard = card2("⚡", "background:linear-gradient(160deg,#f2b64a,#e0902a);box-shadow:0 3px 10px rgba(242,182,74,.3)",
+      "IN FORCE · הטריגר", "מתי נר באמת מחזיק מעבר לקצה הקודם",
+      _inforceDia(),
+      '<p>יש הבדל בין נר ש<b>נגע</b> מעבר לגבוה הקודם (צל חולף שחזר אחורה) לבין נר ש<b>סגר והחזיק</b> שם. <b>IN FORCE</b> = הסגירה מעל הגבוה הקודם (לונג) או מתחת לנמוך הקודם (שורט) — השבירה אושרה ומחזיקה. זו <b>נקודת הכניסה האמיתית</b>.</p>',
+      "lrnScanInforce", "פתח בסורק — IN FORCE מעל");
+    const ftfcHead = '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">🎯 השלב הבא — FTFC ו-IN FORCE</h2><p class="muted" style="margin:4px 0 0;font-size:13.5px">אחרי שאתה מזהה נרות — אלה שני הכלים שהופכים זיהוי להזדמנות.</p></div>';
+    const cmb = (badge, title, sub, dia, body, seqId) =>
+      card2(badge, "background:linear-gradient(160deg,#6a5cf0,#4b3fc4)", title, sub, dia, body, seqId, "פתח בסורק");
+    const comboCards =
+      cmb("2-1-2", "2-1-2 · היפוך", "נר כיווני → התכנסות → פריצה לכיוון ההפוך",
+        _seqDia([[40, 46, 120, 58, 112, _LC.dn, "2D"], [107, 74, 100, 80, 95, _LC.in, "1"], [174, 28, 94, 34, 82, _LC.up, "2U"]], "2-1-2 up"),
+        '<p>נר כיווני (2D), ואז נר פנימי (1) שאוגר לחץ, ואז פריצה לכיוון <b>ההפוך</b> (2U) — <b>היפוך קלאסי</b>. ההתכנסות באמצע היא הקפיץ; הפריצה ממנה היא הכניסה.</p>',
+        "lrnSeq212") +
+      cmb("1-2-2", "1-2-2 · הסטאפ שלך", "פנימי → שבירה → פריצה חזרה מעל (reclaim)",
+        _seqDia([[40, 62, 96, 68, 90, _LC.in, "1"], [107, 74, 122, 80, 116, _LC.dn, "2D"], [174, 32, 100, 38, 90, _LC.up, "2U"]], "1-2-2 up"),
+        '<p>נר פנימי (1), ואז שבירה למטה (2D), ואז <b>פריצה חזרה מעל ה-2D</b> (2U) — היפוך שורי. השבירה "לכדה" מוכרים, והפריצה חזרה מעליהם היא הטריגר שאתה ממתין לו.</p>',
+        "lrnSeq122") +
+      cmb("3-1-2", "3-1-2 · אחרי התרחבות", "נר חיצוני → התכנסות → פריצה כיוונית",
+        _seqDia([[40, 28, 126, 36, 118, _LC.out, "3"], [107, 76, 102, 82, 96, _LC.in, "1"], [174, 34, 94, 40, 84, _LC.up, "2U"]], "3-1-2 up"),
+        '<p>נר חיצוני (3) שפרץ את שני הצדדים = עוצמה ותנודתיות, ואז נר פנימי (1) שמרגיע, ואז פריצה כיוונית (2U). ההתכנסות אחרי הפיצוץ נותנת כניסה נקייה עם סטופ קצר.</p>',
+        "lrnSeq312");
+    const comboSection =
+      '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">🔗 הרצפים הנפוצים — הסטאפים שאתה סוחר</h2>' +
+      '<p class="muted" style="margin:4px 0 0;font-size:13.5px">שילוב של 3 נרות לפי הסדר (C2 → C1 → הנר הנוכחי). "פתח בסורק" טוען את בונה-התבנית מוכן.</p></div>' +
+      '<div class="lrn-cards">' + comboCards + "</div>";
     const next =
-      '<div class="panel lrn-next"><h3 style="margin:0 0 10px">🎬 בקרוב — הרחבה</h3>' +
+      '<div class="panel lrn-next"><h3 style="margin:0 0 10px">🎬 עוד בקרוב</h3>' +
       '<div class="lrn-nextgrid">' +
-      '<div class="lrn-nextitem"><b>המשכיות טיימפריימים (FTFC)</b><span class="muted">כשכל הזמנים מיושרים לאותו כיוון = אות חזק</span></div>' +
-      '<div class="lrn-nextitem"><b>IN FORCE</b><span class="muted">מתי נר מחזיק מעבר לקצה הקודם — טריגר אמיתי</span></div>' +
-      '<div class="lrn-nextitem"><b>סרטוני מדריך</b><span class="muted">🔜 בקרוב — סדרה חדשה בהקלטה</span></div>' +
+      '<div class="lrn-nextitem"><b>היפוכים מול המשכיות</b><span class="muted">מתי לסחור היפוך ומתי להמשיך עם המגמה</span></div>' +
+      '<div class="lrn-nextitem"><b>יעד מחיר (Measured Move)</b><span class="muted">איפה לקחת רווח — לפי גודל התנועה</span></div>' +
+      '<div class="lrn-nextitem"><b>פטיש / כוכב נופל</b><span class="muted">נרות היפוך לפי צורת הגוף והצל</span></div>' +
       "</div>" +
       '<div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
     const hint = '<div class="lrn-hint">💡 רחף על דיאגרמה כדי לראות איך הנר נוצר · <b>לחץ עליה</b> לזום פנימה ולראות את הנרות הקטנים שמרכיבים אותה 🔬</div>';
     const badgeCtl = _newbieHidden() ? "" :
       '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
-    return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" + guidesPanel() + next;
+    return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" +
+      ftfcHead + '<div class="lrn-cards">' + ftfcCard + inforceCard + "</div>" +
+      comboSection + guidesPanel() + next;
   }
   // "התחל כאן" nav badge — shown to everyone, but on the FIRST visit to Learn we ask if they want it gone.
   function _newbieHidden() { try { return localStorage.getItem("sn_newbie_hide") === "1"; } catch (e) { return false; } }
@@ -8338,6 +8402,14 @@
     const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
     const b = $("#lrnToToday"); if (b) b.onclick = () => setPage("today");
     { const rb = $("#lrnRemoveBadge"); if (rb) rb.onclick = () => _newbiePopup(); }   // re-open the remove dialog on demand
+    // "open in scanner" from a lesson — reset filters, apply the lesson's filter, jump to the scanner
+    const _learnScan = cfg => { resetScan(); cfg(); setPage("scanner"); };
+    { const f = $("#lrnScanFtfc"); if (f) f.onclick = () => _learnScan(() => { scanState.ftfc = true; }); }
+    { const i = $("#lrnScanInforce"); if (i) i.onclick = () => _learnScan(() => { scanState.inforce = "up"; }); }
+    const _seqSet = (c2, c1, cc) => { scanState.seq = { c2: c2, c1: c1, cc: cc, c2col: "", c1col: "", cccol: "" }; };
+    { const s = $("#lrnSeq212"); if (s) s.onclick = () => _learnScan(() => _seqSet(["2D"], ["1"], ["2U"])); }
+    { const s = $("#lrnSeq122"); if (s) s.onclick = () => _learnScan(() => _seqSet(["1"], ["2D"], ["2U"])); }
+    { const s = $("#lrnSeq312"); if (s) s.onclick = () => _learnScan(() => _seqSet(["3"], ["1"], ["2U"])); }
     document.querySelectorAll("#page [data-cltype]").forEach(el => el.onclick = () => openCandleLesson(el.dataset.cltype));
     setTimeout(_maybeAskNewbie, 450);   // after the page settles, offer to remove the "start here" badge (once)
   }
