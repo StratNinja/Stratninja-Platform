@@ -5388,8 +5388,8 @@
     if (d == null) return false;
     if (rel === "near" && Math.abs(d) > pct) return false;
     if (rel === "far" && Math.abs(d) < pct) return false;
-    if (rel === "farAbove" && d < pct) return false;      // stretched far ABOVE the MA → overextended up (mean-reversion SHORT)
-    if (rel === "farBelow" && d > -pct) return false;     // stretched far BELOW the MA → oversold down (mean-reversion LONG)
+    if (rel === "farAbove" && d < pct) return false;      // stretched far ABOVE the MA (direction is the trader's call: momentum vs mean-reversion)
+    if (rel === "farBelow" && d > -pct) return false;     // stretched far BELOW the MA (direction is the trader's call: momentum vs mean-reversion)
     if (rel === "above" && d <= 0) return false;
     if (rel === "below" && d >= 0) return false;
     if (rel === "touchAbove" || rel === "touchBelow") {   // wick "touch" — mirrors the SMA150 Sniper
@@ -5408,8 +5408,8 @@
       case "below": return "מציג רק מניות שהמחיר שלהן <b>מתחת</b> ל-" + ma + " (חולשה / מתחת להתנגדות).";
       case "near":  return "מציג מניות שהמחיר <b>עד " + p + "%</b> מ-" + ma + " — נוגעות/נבחנות מול הממוצע (אזור כניסה).";
       case "far":   return "מציג מניות שהמחיר <b>יותר מ-" + p + "%</b> מ-" + ma + " — מתוחות / רחוקות מהממוצע (שני הכיוונים).";
-      case "farAbove": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מעל</b> " + ma + " — מתוחות <b>יתר על המידה כלפי מעלה</b> (חזרה לממוצע / <b>שורט</b>).";
-      case "farBelow": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מתחת</b> ל-" + ma + " — מתוחות <b>יתר על המידה כלפי מטה</b> (חזרה לממוצע / <b>לונג</b>).";
+      case "farAbove": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מעל</b> " + ma + " — <b>מתוחות הרבה מעל הממוצע</b>. הכיוון תלוי בגישה: מומנטום = המשך למעלה · חזרה-לממוצע = פולבק.";
+      case "farBelow": return "מציג מניות שהמחיר <b>יותר מ-" + p + "% מתחת</b> ל-" + ma + " — <b>מתוחות הרבה מתחת לממוצע</b>. הכיוון תלוי בגישה: מומנטום = המשך למטה · חזרה-לממוצע = ריבאונד.";
       case "touchAbove": return "🎯 כמו ה-<b>SMA150 Sniper</b> בדיסקורד: המניה סגרה <b>מעל</b> " + ma + ", וה-<b>נמוך</b> ירד עד <b>" + p + "%</b> מהממוצע (צלפה בו מלמעלה).";
       case "touchBelow": return "🎯 כמו ה-Sniper בדיסקורד: המניה סגרה <b>מתחת</b> ל-" + ma + ", וה-<b>גבוה</b> נגע עד <b>" + p + "%</b> מהממוצע (מלמטה).";
       default: return "";
@@ -5583,7 +5583,7 @@
             '<div class="fgrp"><label>מיקום מול ממוצע (MA)</label><div class="chips" style="align-items:center">' +
               '<select id="tMaType">' + opt("SMA", techState.maType) + opt("EMA", techState.maType) + opt("WMA", techState.maType) + '</select>' +
               '<select id="tMaPer">' + MA_PERIODS.map(p => opt(p, techState.maPeriod)).join("") + '</select>' +
-              '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע (2 הכיוונים)") + opt("farAbove", techState.maRel, "יותר מ-% מעל הממוצע ↑ לונג") + opt("farBelow", techState.maRel, "יותר מ-% מתחת לממוצע ↓ שורט") + opt("touchAbove", techState.maRel, "🎯 נגיעה מלמעלה (צל תחתון)") + opt("touchBelow", techState.maRel, "🎯 נגיעה מלמטה (צל עליון)") + '</select>' +
+              '<select id="tMaRel">' + opt("off", techState.maRel, "— בלי סינון") + opt("above", techState.maRel, "מעל הממוצע") + opt("below", techState.maRel, "מתחת לממוצע") + opt("near", techState.maRel, "עד ±% מהממוצע") + opt("far", techState.maRel, "יותר מ-±% מהממוצע (2 הכיוונים)") + opt("farAbove", techState.maRel, "יותר מ-% מעל הממוצע ⬆ (מתוח למעלה)") + opt("farBelow", techState.maRel, "יותר מ-% מתחת לממוצע ⬇ (מתוח למטה)") + opt("touchAbove", techState.maRel, "🎯 נגיעה מלמעלה (צל תחתון)") + opt("touchBelow", techState.maRel, "🎯 נגיעה מלמטה (צל עליון)") + '</select>' +
               (_maPctShown() ? '<input id="tMaPct" type="number" step="0.5" min="0" style="width:58px" value="' + techState.maPct + '"><span class="muted">%</span>' : "") +
             "</div>" + (techState.maRel !== "off" ? '<div class="ma-hint">' + maRelHint() + "</div>" : "") +
             '<div id="maExtraWrap">' + (techState.maExtra || []).map((c, i) =>
@@ -5591,7 +5591,7 @@
                 '<span class="ma-and">＋ וגם</span>' +
                 '<select data-maex="type" data-idx="' + i + '">' + opt("SMA", c.type) + opt("EMA", c.type) + opt("WMA", c.type) + '</select>' +
                 '<select data-maex="period" data-idx="' + i + '">' + MA_PERIODS.map(p => opt(p, c.period)).join("") + '</select>' +
-                '<select data-maex="rel" data-idx="' + i + '">' + [["above", "מעל הממוצע"], ["below", "מתחת לממוצע"], ["near", "עד ±% מהממוצע"], ["far", "יותר מ-±% מהממוצע"], ["farAbove", "יותר מ-% מעל ↓ שורט"], ["farBelow", "יותר מ-% מתחת ↑ לונג"], ["touchAbove", "🎯 נגיעה מלמעלה (צל תחתון)"], ["touchBelow", "🎯 נגיעה מלמטה (צל עליון)"]].map(o => opt(o[0], c.rel, o[1])).join("") + '</select>' +
+                '<select data-maex="rel" data-idx="' + i + '">' + [["above", "מעל הממוצע"], ["below", "מתחת לממוצע"], ["near", "עד ±% מהממוצע"], ["far", "יותר מ-±% מהממוצע"], ["farAbove", "יותר מ-% מעל ⬆ (מתוח למעלה)"], ["farBelow", "יותר מ-% מתחת ⬇ (מתוח למטה)"], ["touchAbove", "🎯 נגיעה מלמעלה (צל תחתון)"], ["touchBelow", "🎯 נגיעה מלמטה (צל עליון)"]].map(o => opt(o[0], c.rel, o[1])).join("") + '</select>' +
                 (_maPctShownFor(c.rel) ? '<input type="number" step="0.5" min="0" style="width:54px" data-maex="pct" data-idx="' + i + '" value="' + c.pct + '"><span class="muted">%</span>' : "") +
                 '<button class="ma-del" data-maexdel="' + i + '" title="הסר תנאי" type="button">✕</button>' +
               "</div>"
