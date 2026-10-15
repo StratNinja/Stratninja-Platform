@@ -479,6 +479,17 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 /* per-preset category selector in the preset manager */
 .pm-cat { background:#141b30; color:#cfd6e2; border:1px solid rgba(255,255,255,.14); border-radius:8px; font-size:12px; padding:3px 6px; max-width:150px; cursor:pointer; }
 .pm-cat:hover { border-color:rgba(23,192,138,.55); }
+/* ticker is now the chart link (dropped the "📈 גרף" link to save space) */
+a.ap-sym { text-decoration:none; cursor:pointer; }
+a.ap-sym:hover { text-decoration:underline; }
+/* grouped popup = WIDE, categories as side-by-side columns (RTL: first category rightmost; wraps down at max width) */
+.alert-pop.grouped { width:min(1380px,96vw); }
+.ap-cols { display:flex; flex-flow:row wrap; gap:0 18px; align-items:flex-start; }
+.ap-catcol { flex:1 1 210px; min-width:185px; max-width:300px; }
+.ap-cols .ap-verb { display:none; }                 /* tighter rows in the dense multi-column view */
+.ap-cols .ap-row { padding:3.5px 0; font-size:13px; line-height:1.4; }
+.ap-cols .ap-sym { font-size:13.5px; }
+.ap-cols .ap-cathead { position:sticky; top:0; background:linear-gradient(135deg,#1a2138,#232b47); z-index:1; }
 .sn-toast { position:fixed; inset-block-end:24px; inset-inline-start:50%; transform:translate(-50%,20px); z-index:9999;
   background:linear-gradient(90deg, rgba(12,145,96,.97), rgba(23,192,138,.95)); color:#fff; font-weight:700; font-size:14px;
   padding:12px 20px; border-radius:12px; box-shadow:0 8px 30px rgba(0,0,0,.4); opacity:0; transition:.3s; pointer-events:none; max-width:90vw; }

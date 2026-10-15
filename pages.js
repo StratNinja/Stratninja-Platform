@@ -2385,19 +2385,20 @@
     let secs = Math.min(90, Math.max(20, (fresh.length || 1) * 3));   // more alerts → more time to read (20–90s)
     // group-by-category state: default ON when the flood is big (>20, per Adi), else flat; a manual toggle wins + is remembered.
     let grouped; try { const g = localStorage.getItem("sn_alert_group"); grouped = (g == null) ? (fresh.length > 20) : (g === "1"); } catch (e) { grouped = fresh.length > 20; }
+    if (grouped) box.classList.add("grouped");   // wide multi-column layout when grouped
     // one alert row — now carries the PRICE AT THE MOMENT OF THE ALERT (e.px, stored when it fired) + chart link
     const _apRow = e => {
       const px = (e.px != null && !isNaN(+e.px)) ? ' <span class="ap-px">@' + (+e.px).toFixed(2) + "</span>" : "";
-      return '<div class="ap-row"><span class="ap-sym">' + escAttr(e.sym) + '</span><span class="ap-verb">נכנסה לסריקה </span><b>' + escAttr(e.preset) + "</b>" + px +
-        ' <a class="ap-link" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener">📈 גרף</a></div>';
+      // the TICKER itself is now the chart link (dropped the trailing "📈 גרף" to save horizontal space)
+      return '<div class="ap-row"><a class="ap-sym" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener" title="פתח גרף ב-TradingView">' + escAttr(e.sym) + "</a><span class=\"ap-verb\">נכנסה לסריקה </span><b>" + escAttr(e.preset) + "</b>" + px + "</div>";
     };
-    // flat list, OR grouped under category headers (ALERT_CATS order; "ללא קטגוריה" last)
+    // flat list, OR grouped as side-by-side CATEGORY COLUMNS (RTL → first category rightmost; wraps down at max width)
     const _apBodyHtml = (list, grp) => {
       if (!grp) return list.map(_apRow).join("");
       const groups = {}; list.forEach(e => { const c = (e && e.cat) ? e.cat : ""; (groups[c] = groups[c] || []).push(e); });
-      return Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c =>
-        '<div class="ap-cathead">' + _catLabel(c) + ' <span class="ap-catn">(' + groups[c].length + ")</span></div>" +
-        groups[c].map(_apRow).join("")).join("");
+      return '<div class="ap-cols">' + Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c =>
+        '<div class="ap-catcol"><div class="ap-cathead">' + _catLabel(c) + ' <span class="ap-catn">(' + groups[c].length + ")</span></div>" +
+        groups[c].map(_apRow).join("") + "</div>").join("") + "</div>";
     };
     box.innerHTML = '<div class="ap-head"><span>🔔 התראה חדשה! <span class="ap-count">(' + fresh.length + ')</span></span>' +
       '<span class="ap-ctrls">' +
@@ -2437,6 +2438,7 @@
     if (grpBtn) grpBtn.onclick = () => {
       grouped = !grouped;
       grpBtn.classList.toggle("on", grouped);
+      box.classList.toggle("grouped", grouped);   // widen ↔ narrow with the layout
       try { localStorage.setItem("sn_alert_group", grouped ? "1" : "0"); } catch (e) {}
       const bodyEl = box.querySelector(".ap-body"); if (bodyEl) bodyEl.innerHTML = _apBodyHtml(fresh, grouped);
     };
@@ -2507,9 +2509,9 @@
   // A manual per-preset tag (Prefs preset.cat) so a flood of alerts can be grouped by type. Unset → "ללא קטגוריה".
   const ALERT_CATS = [
     { k: "reversal", lbl: "🔄 היפוכים" },
-    { k: "intraday", lbl: "⚡ אינטרה-דיי" },
     { k: "ftfc", lbl: "📊 המשכיות / FTFC" },
     { k: "setup", lbl: "🎯 Setups" },
+    { k: "intraday", lbl: "⚡ אינטרה-דיי" },
     { k: "earnings", lbl: "📅 דיווחים" },
     { k: "avoid", lbl: "⛔ להימנע" },
     { k: "general", lbl: "📁 כללי" },
