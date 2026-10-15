@@ -2039,28 +2039,42 @@
         '<button class="btn ghost" id="pmImportBtn" title="שחזר סריקות מקובץ גיבוי (מתווסף לקיימות)">📂 שחזר מקובץ</button>' +
         (list.length ? '<button class="btn ghost" id="pmDedupe" title="הסר סריקות כפולות (הגדרה זהה) — שומר את השם הנקי">🧹 נקה כפילויות</button>' : "") +
         (list.length ? '<button class="btn ghost" id="pmSuggestCat" title="הצע קטגוריה אוטומטית לפי שם הסריקה — רק לסריקות שעוד לא מקוטלגות">🪄 הצע קטגוריות</button>' : "") +
+        (list.length ? '<button class="btn ghost" id="pmSortCat" title="סדר את כל הרשימה מקובצת לפי קטגוריה (לפי רמות)">📂 מיין לפי קטגוריה</button>' : "") +
         '<button class="btn ghost" id="pmManageCats" title="נהל קטגוריות אישיות (הוסף / מחק)">🗂️ קטגוריות</button>' +
         abBtn + syncBar +
         '<input type="file" id="pmImportFile" accept=".json,application/json" style="display:none"></div>';
     if (!list.length) return ioBar + '<div class="muted" style="padding:14px">אין עדיין סריקות שמורות. שמור סריקה כדי לסדר ולשתף — או שחזר מקובץ גיבוי למעלה.</div>';
-    return ioBar + '<div class="pm-list">' + list.map((p, i) =>
-      '<div class="pm-row" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
+    // DUPLICATE DETECTION BY CONFIG (not name): group presets whose cfg is byte-identical, number each group.
+    const _dupG = {}; list.forEach(p => { const k = JSON.stringify(p.cfg); (_dupG[k] = _dupG[k] || []).push(p.id); });
+    const _dupNum = {}; let _dn = 0, _dupTot = 0;
+    Object.keys(_dupG).forEach(k => { if (_dupG[k].length > 1) { _dn++; _dupTot += _dupG[k].length; _dupG[k].forEach(id => { _dupNum[id] = _dn; }); } });
+    const dupSummary = _dupTot
+      ? '<div class="note" style="margin-bottom:9px;border-color:#e0a24f;color:#e8c08a">⚠️ נמצאו <b>' + _dupTot + '</b> סריקות עם <b>הגדרה זהה</b> (' + _dn + ' קבוצות) — מסומנות למטה ב"כפילות #". מחק את המיותרות, או "🧹 נקה כפילויות".</div>'
+      : '<div class="note" style="margin-bottom:9px;color:#7ee2b8">✓ אין כפילויות הגדרה — כל הסריקות ייחודיות.</div>';
+    const _catSel = p => '<select class="pm-cat" data-pmcat="' + escAttr(p.id) + '" title="קטגוריה — לקיבוץ ההתראות בפופאפ ובפיד">' +
+      '<option value=""' + (!p.cat ? " selected" : "") + ">📂 ללא קטגוריה</option>" +
+      ALERT_CATS.map(c => '<option value="' + c.k + '"' + (p.cat === c.k ? " selected" : "") + ">" + c.lbl + "</option>").join("") +
+      _customCats().map(c => '<option value="' + escAttr(c) + '"' + (p.cat === c ? " selected" : "") + ">" + escHtml(c) + "</option>").join("") +
+      '<option value="__new__">➕ קטגוריה חדשה…</option>' + "</select>";
+    let _lastCat = "\u0000", rowsHtml = "";   // insert a category header whenever the category changes (clean after "מיין לפי קטגוריה")
+    list.forEach((p, i) => {
+      const c = p.cat || "";
+      if (c !== _lastCat) { rowsHtml += '<div class="pm-cathead">' + _catLabel(c) + "</div>"; _lastCat = c; }
+      const dupBadge = _dupNum[p.id] ? ' <span class="pm-dupbadge" title="הגדרה זהה לסריקה אחרת בקבוצה זו">כפילות #' + _dupNum[p.id] + "</span>" : "";
+      rowsHtml += '<div class="pm-row' + (_dupNum[p.id] ? " pm-dup" : "") + '" draggable="true" data-pmid="' + escAttr(p.id) + '">' +
         '<span class="pm-grip" title="גרור לסידור">⠿</span>' +
-        '<span class="pm-name">' + escHtml(p.name) + "</span>" +
-        '<select class="pm-cat" data-pmcat="' + escAttr(p.id) + '" title="קטגוריה — לקיבוץ ההתראות בפופאפ ובפיד">' +
-          '<option value=""' + (!p.cat ? " selected" : "") + ">📂 ללא קטגוריה</option>" +
-          ALERT_CATS.map(c => '<option value="' + c.k + '"' + (p.cat === c.k ? " selected" : "") + ">" + c.lbl + "</option>").join("") +
-          _customCats().map(c => '<option value="' + escAttr(c) + '"' + (p.cat === c ? " selected" : "") + ">" + escHtml(c) + "</option>").join("") +
-          '<option value="__new__">➕ קטגוריה חדשה…</option>' +
-        "</select>" +
+        '<span class="pm-name">' + escHtml(p.name) + dupBadge + "</span>" +
+        _catSel(p) +
         '<span class="pm-acts">' +
           '<button class="btn ghost pm-btn" data-pmup="' + escAttr(p.id) + '"' + (i === 0 ? " disabled" : "") + ' title="הזז למעלה">▲</button>' +
           '<button class="btn ghost pm-btn" data-pmdn="' + escAttr(p.id) + '"' + (i === list.length - 1 ? " disabled" : "") + ' title="הזז למטה">▼</button>' +
           '<button class="btn ghost pm-btn" data-pmren="' + escAttr(p.id) + '" title="שנה שם">✏️</button>' +
           '<button class="btn ghost pm-btn" data-pmshare="' + escAttr(p.id) + '" title="העתק קישור שיתוף">🔗</button>' +
           '<button class="btn ghost pm-btn pm-del" data-pmdel="' + escAttr(p.id) + '" title="מחק סריקה">🗑</button>' +
-        "</span></div>").join("") + "</div>" +
-      '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף</div>';
+        "</span></div>";
+    });
+    return ioBar + dupSummary + '<div class="pm-list">' + rowsHtml + "</div>" +
+      '<div class="note" style="margin-top:10px;font-size:12px">גרור בעזרת ⠿ · או ▲▼ להזזה · ✏️ שינוי שם · 🔗 קישור שיתוף · 📂 מיין לפי קטגוריה</div>';
   }
   function pmRefresh() { const b = document.getElementById("pmBody"); if (b) { b.innerHTML = pmBodyHtml(); pmWire(); } }
   function _pmApply(ids) { window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender(); }
@@ -2123,6 +2137,13 @@
       window.Prefs.setPresetCat(sel.dataset.pmcat, sel.value);
     });
     { const mc = document.getElementById("pmManageCats"); if (mc) mc.onclick = () => openCatManager(); }
+    // 📂 reorder the whole list grouped by category (built-in order, then custom, then "ללא קטגוריה"); stable within a category
+    { const sb = document.getElementById("pmSortCat"); if (sb) sb.onclick = () => {
+      const ids = (window.Prefs.scanPresets() || []).map((p, i) => ({ id: p.id, o: _catOrder(p.cat || ""), i: i }))
+        .sort((a, b) => (a.o - b.o) || (a.i - b.i)).map(x => x.id);
+      window.Prefs.setScanPresetsOrder(ids); pmRefresh(); if (state.page === "scanner") reRender();
+      snToast("📂 הרשימה סודרה לפי קטגוריה");
+    }; }
     // 🪄 auto-suggest a category from each untagged preset's name (non-destructive to ones already tagged)
     { const sc = document.getElementById("pmSuggestCat"); if (sc) sc.onclick = () => {
       const ps = window.Prefs.scanPresets() || []; let n = 0;
@@ -2390,7 +2411,7 @@
     const _apRow = e => {
       const px = (e.px != null && !isNaN(+e.px)) ? ' <span class="ap-px">@' + (+e.px).toFixed(2) + "</span>" : "";
       // the TICKER itself is now the chart link (dropped the trailing "📈 גרף" to save horizontal space)
-      return '<div class="ap-row"><a class="ap-sym" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener" title="פתח גרף ב-TradingView">' + escAttr(e.sym) + "</a><span class=\"ap-verb\">נכנסה לסריקה </span><b>" + escAttr(e.preset) + "</b>" + px + "</div>";
+      return '<div class="ap-row"><a class="ap-sym" href="https://www.tradingview.com/chart/?symbol=' + escAttr(e.sym) + '" target="_blank" rel="noopener" title="פתח גרף ב-TradingView">' + escAttr(e.sym) + "</a><span class=\"ap-verb\">נכנסה לסריקה </span><b title=\"" + escAttr(e.preset) + "\">" + escAttr(e.preset) + "</b>" + px + "</div>";
     };
     // flat list, OR grouped as side-by-side CATEGORY COLUMNS (RTL → first category rightmost; wraps down at max width)
     const _apBodyHtml = (list, grp) => {
