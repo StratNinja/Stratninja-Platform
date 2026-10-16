@@ -47,7 +47,10 @@ window.Live = (function () {
     var s = document.createElement("style");
     s.id = "liveCss";
     s.textContent = [
-      ".live-wrap{max-width:1000px;margin:0 auto}",
+      ".live-wrap{max-width:1340px;margin:0 auto}",
+      ".live-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}",
+      "@media(min-width:900px){.live-grid{grid-template-columns:minmax(0,1fr) 350px}}",   // video | chat
+      ".live-main{min-width:0}.live-side{min-width:0}",
       ".live-stage{position:relative;width:100%;aspect-ratio:16/9;background:#05070c;border:1px solid var(--line);border-radius:16px;overflow:hidden}",
       ".live-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}",
       ".live-off{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;text-align:center;padding:24px}",
@@ -135,8 +138,11 @@ window.Live = (function () {
       }).join("") + "</div>";
     }
     var prev = (s && s.preview) ? '<span class="live-badge" style="background:#6a5cf0;color:#fff">🧪 PREVIEW</span>' : "";
+    // when the admin has announced a live giveaway, surface a prominent entry button right here on /live
+    var gvw = "";
+    try { if (window.LiveAlert && window.LiveAlert.active && window.LiveAlert.active()) gvw = '<button class="btn" id="liveGvw" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:6px 12px">🎁 השתתף בהגרלה</button>'; } catch (e) {}
     return '<div class="live-meta">' +
-      '<div class="live-row">' + badge + prev +
+      '<div class="live-row">' + badge + prev + gvw +
       '<button class="btn ghost" id="liveShare" style="font-size:13px;padding:6px 12px">🔗 שיתוף</button></div>' +
       title + desc + plats + "</div>";
   }
@@ -165,8 +171,14 @@ window.Live = (function () {
 
   function _body(s) {
     var vs = _vs(s);
-    return '<div id="livePlayer">' + _playerHtml(s, vs) + "</div>" +
-      '<div id="liveMeta">' + _metaHtml(s, vs) + "</div>" +
+    // two-column on desktop (video+meta on one side, chat on the other); stacks on mobile.
+    return '<div class="live-grid">' +
+        '<div class="live-main">' +
+          '<div id="livePlayer">' + _playerHtml(s, vs) + "</div>" +
+          '<div id="liveMeta">' + _metaHtml(s, vs) + "</div>" +
+        "</div>" +
+        '<div class="live-side"><div id="liveChatRoot"></div></div>' +   // live chat + waiting/viewer count
+      "</div>" +
       _adminHtml(s);
   }
 
@@ -195,6 +207,8 @@ window.Live = (function () {
       if (navigator.share) { navigator.share({ title: "StratNinja — שידור חי", url: url }).catch(function () {}); return; }
       try { navigator.clipboard.writeText(url); toast("הקישור הועתק ✓"); } catch (e) { toast(url); }
     };
+    var gv = $("liveGvw");   // 🎁 enter the announced giveaway (entry auto-prompts login if a guest)
+    if (gv) gv.onclick = function () { try { if (window.setPageExternal) window.setPageExternal("giveaway"); else location.href = "/giveaway"; } catch (e) { location.href = "/giveaway"; } };
   }
   function _wireAdmin() {
     var save = $("laSave"); if (!save) return;
@@ -225,6 +239,7 @@ window.Live = (function () {
       var pl = $("livePlayer"); if (pl) pl.innerHTML = _playerHtml(s, vs);
     }
     var mt = $("liveMeta"); if (mt) { mt.innerHTML = _metaHtml(s, vs); _wireMeta(); }
+    if (window.LiveChat && window.LiveChat.setPhase) window.LiveChat.setPhase(vs);   // "ממתינים" (pre-live) vs "צופים" (live)
     _tickCd();
     // admin panel: build once (don't clobber inputs while typing); refresh only the status line
     if (isAdmin() && !document.querySelector(".live-admin")) {
@@ -249,6 +264,7 @@ window.Live = (function () {
       _refresh();
     }, POLL_MS);
     _cd = setInterval(_tickCd, 1000);
+    if (window.LiveChat && window.LiveChat.mount) window.LiveChat.mount();   // live chat + waiting/viewer count
   }
 
   // Called by the SPA when leaving the /live page: stop the player so there is NO background
@@ -259,6 +275,7 @@ window.Live = (function () {
     if (_cd) { clearInterval(_cd); _cd = null; }
     _playerSig = "";                                       // force a fresh player when the user returns
     var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
+    if (window.LiveChat && window.LiveChat.unmount) window.LiveChat.unmount();   // stop chat/presence polling + heartbeat
   }
 
   return { render: render, wire: wire, teardown: teardown };

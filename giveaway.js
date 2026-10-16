@@ -538,6 +538,10 @@ window.Giveaway = (function () {
     else if (s === "open") h = '<button class="btn" data-gadm="close">🔒 סגור הרשמה</button><button class="btn ghost" data-gadm="manual">➕ ידני</button><button class="btn ghost" data-gadm="demo">🧪 דמה</button>';
     else if (s === "closed") h = '<button class="btn primary" data-gadm="draw">🥁 הגרל זוכה!</button><button class="btn ghost" data-gadm="manual">➕ ידני</button><button class="btn ghost" data-gadm="demo">🧪 דמה</button>';
     else if (s === "drawing") h = '<button class="btn ghost" data-gadm="reset">עצור / איפוס</button>';
+    // 📢 announce the live giveaway site-wide (flashing banner on every page → /live). Only while active.
+    // 🧪 test announce: same banner but shown ONLY to the admin — rehearse without alerting anyone.
+    if (s === "open" || s === "closed") h += '<button class="btn" style="background:#dc2626;color:#fff;font-weight:800" data-gadm="announce">📢 הודע לכולם</button>' +
+      '<button class="btn ghost" data-gadm="announce_test" title="הבאנר יופיע רק לך — לבדיקה">🧪 בדיקה (רק אני)</button>';
     h += '<button class="btn ghost" data-gadm="save">💾 שמור הגדרות</button>';
     if (s !== "idle") h += '<button class="btn ghost" data-gadm="reset">↺ איפוס</button>';
     row.innerHTML = h;
@@ -563,7 +567,18 @@ window.Giveaway = (function () {
     if (act === "cancelDraw") { _cancelAnim(); _draw.key = ""; return _patch({ status: "closed", winner: { awarded: _awarded().slice(0, -1), last: null } }); }   // abort this draw, return the entrant+prize to the pool
     if (act === "demo") return _addDemo();
     if (act === "manual") return _addManual();
-    if (act === "reset") { _closeOverlay(); return _patch({ status: "idle", winner: null, draw_until: null }); }
+    if (act === "announce") return _announce(false);
+    if (act === "announce_test") return _announce(true);
+    if (act === "reset") { _closeOverlay(); return _patch({ status: "idle", winner: null, draw_until: null, announce_until: null, announce_test: false }); }
+  }
+
+  // 📢 publish a site-wide "giveaway live now" alert: sets announce_until = now()+12min on the row.
+  // The flashing banner (window.LiveAlert) + /live "השתתף" button read it; a reset/idle clears it.
+  // test=true → announce_test flag set → the banner/push reach ONLY the admin (safe rehearsal).
+  function _announce(test) {
+    _patch({ announce_until: new Date(Date.now() + 12 * 60000).toISOString(), announce_test: !!test }).then(function () {
+      toast(test ? "🧪 מצב בדיקה — הבאנר יופיע רק לך" : "📢 ההתראה פורסמה בכל האתר — צופים חדשים יראו אותה ויגיעו ללייב");
+    });
   }
 
   function _patch(fields) {
