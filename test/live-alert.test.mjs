@@ -39,6 +39,10 @@ async function apiTests() {
     const res = mockRes(); await alertHandler({ method: "GET", query: {} }, res);
     ok("past announce_until → active:false", res._json && res._json.ok === true && res._json.active === false); }
 
+  { global.fetch = async () => ({ ok: true, status: 200, json: async () => [{ announce_until: FUTURE, announce_test: true, title: "x", status: "open" }] });
+    const res = mockRes(); await alertHandler({ method: "GET", query: {} }, res);
+    ok("test announce → active:true + test:true", res._json && res._json.active === true && res._json.test === true); }
+
   { global.fetch = async () => ({ ok: true, status: 200, json: async () => [{ announce_until: null, title: "x", status: "idle" }] });
     const res = mockRes(); await alertHandler({ method: "GET", query: {} }, res);
     ok("null announce_until → active:false", res._json && res._json.active === false); }
@@ -62,6 +66,11 @@ async function helperTests() {
   ok("isActive: no until → false", LA.isActive({ active: true }, Date.now()) === false);
   ok("isActive: null payload → false", LA.isActive(null, Date.now()) === false);
   eq("dismissKey is per-announcement", LA.dismissKey("2026-10-16T20:00:00Z"), "sn_gvwalert_x_2026-10-16T20:00:00Z");
+  // test-mode visibility: normal → everyone; test → admin only
+  ok("shouldShow: normal + guest → true", LA.shouldShow({ active: true, until: FUTURE, test: false }, false, Date.now()) === true);
+  ok("shouldShow: test + admin → true", LA.shouldShow({ active: true, until: FUTURE, test: true }, true, Date.now()) === true);
+  ok("shouldShow: test + non-admin → false", LA.shouldShow({ active: true, until: FUTURE, test: true }, false, Date.now()) === false);
+  ok("shouldShow: inactive (past) → false even for admin", LA.shouldShow({ active: true, until: PAST, test: false }, true, Date.now()) === false);
 }
 
 await apiTests();

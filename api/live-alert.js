@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") { res.status(204).end(); return; }
   if (req.method !== "GET") { res.setHeader("Cache-Control", "no-store"); res.status(405).json({ error: "method" }); return; }
 
-  const url = SUPA_URL + "/rest/v1/giveaways?select=announce_until,title,status&id=eq.current";
+  const url = SUPA_URL + "/rest/v1/giveaways?select=announce_until,announce_test,title,status&id=eq.current";
   try {
     const r = await fetch(url, { headers: { apikey: ANON, Authorization: "Bearer " + ANON } });
     if (!r.ok) { res.setHeader("Cache-Control", "no-store"); res.status(200).json({ ok: false, active: false }); return; }
@@ -22,8 +22,9 @@ export default async function handler(req, res) {
     const until = row && row.announce_until ? row.announce_until : null;
     const active = !!(until && new Date(until).getTime() > Date.now());
     // short edge cache shared by all viewers; the admin press shows up within a few seconds.
+    // `test` means the client only shows it to the admin (rehearsal) — enforced client-side in live_alert.js.
     res.setHeader("Cache-Control", "public, s-maxage=4, stale-while-revalidate=6");
-    res.status(200).json({ ok: true, active: active, until: until, title: (row && row.title) || "", href: "/live" });
+    res.status(200).json({ ok: true, active: active, test: !!(row && row.announce_test), until: until, title: (row && row.title) || "", href: "/live" });
   } catch (e) {
     res.setHeader("Cache-Control", "no-store");
     res.status(200).json({ ok: false, active: false });

@@ -8,18 +8,26 @@
 (function () {
   "use strict";
 
+  var ADMIN_EMAIL = "koriatmanagement@gmail.com";
   var POLL_MS = 6000;
   var _timer = null;
-  var _cur = null;        // last alert payload { active, until, href, title }
+  var _cur = null;        // last alert payload { active, test, until, href, title }
   var _started = false;
 
-  function active() { return (_cur && _cur.active) ? _cur : null; }   // read by live.js (the /live "השתתף" button)
+  function isAdmin() { try { return (((window.SNAuth && SNAuth.user && SNAuth.user()) || {}).email || "").toLowerCase() === ADMIN_EMAIL; } catch (e) { return false; } }
+  function active() { return shouldShow(_cur, isAdmin(), Date.now()) ? _cur : null; }   // read by live.js (the /live "השתתף" button)
 
   // ---- pure helpers (exported for tests) ----
   function isActive(payload, nowMs) {
     if (!payload || !payload.active || !payload.until) return false;
     var t = new Date(payload.until).getTime();
     return !isNaN(t) && t > (nowMs || Date.now());
+  }
+  // a TEST announce is shown only to the admin; a normal announce is shown to everyone.
+  function shouldShow(payload, admin, nowMs) {
+    if (!isActive(payload, nowMs)) return false;
+    if (payload.test && !admin) return false;
+    return true;
   }
   function dismissKey(until) { return "sn_gvwalert_x_" + (until || ""); }
   function isDismissed(until) { try { return localStorage.getItem(dismissKey(until)) === "1"; } catch (e) { return false; } }
@@ -60,7 +68,8 @@
       bar.id = "snGvwAlert";
       bar.className = "sn-gvw-alert";
       bar.setAttribute("role", "button");
-      bar.innerHTML = '<span>🎁🔴 הגרלה חיה עכשיו בלייב — <span class="sn-gvw-cta">הצטרפו והשתתפו! 👈</span></span>' +
+      var tag = payload.test ? "🧪 בדיקה (רק אתה רואה) · " : "";
+      bar.innerHTML = '<span>' + tag + '🎁🔴 הגרלה חיה עכשיו בלייב — <span class="sn-gvw-cta">הצטרפו והשתתפו! 👈</span></span>' +
         '<button class="sn-gvw-x" aria-label="סגור">×</button>';
       bar.addEventListener("click", function (e) {
         if (e.target && e.target.classList.contains("sn-gvw-x")) { e.stopPropagation(); dismiss(payload.until); _hide(); return; }
@@ -76,7 +85,7 @@
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
         _cur = j || null;
-        if (j && isActive(j, Date.now()) && !isDismissed(j.until)) _show(j);
+        if (j && shouldShow(j, isAdmin(), Date.now()) && !isDismissed(j.until)) _show(j);
         else _hide();
       })
       .catch(function () {});
@@ -91,7 +100,7 @@
 
   var api = { start: start, active: active,
     // exported for unit tests:
-    isActive: isActive, dismissKey: dismissKey };
+    isActive: isActive, shouldShow: shouldShow, dismissKey: dismissKey };
   if (typeof window !== "undefined") {
     window.LiveAlert = api;
     if (typeof document !== "undefined") {   // browser: auto-start (guarded so Node tests can import without a DOM)
