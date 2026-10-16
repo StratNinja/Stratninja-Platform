@@ -17,6 +17,12 @@ const { default: liveHandler } = await import("../api/live.js");
 const { default: hookHandler } = await import("../api/live-webhook.js");
 const REAL_FETCH = global.fetch;   // keep the real undici fetch (installFetch replaces global.fetch)
 
+// live.js is a BROWSER script (assigns window.Live). Shim window so we can import it and unit-test
+// the PURE _vs() visual-state decision. No DOM is touched at import time (only inside render/wire).
+globalThis.window = globalThis.window || {};
+await import("../live.js");
+const Live = globalThis.window.Live;
+
 // ---- tiny test runner ----
 let pass = 0, fail = 0;
 function ok(name, cond, extra) { if (cond) { pass++; console.log("  ✓ " + name); } else { fail++; console.log("  ✗ " + name + (extra ? "  → " + extra : "")); } }
@@ -333,6 +339,28 @@ async function realShapeTests() {
   process.env.VERCEL_ENV = savedEnv;
 }
 
+// ========================= _vs visual-state priority (live.js) =========================
+// Admin-approved order: forced OFFLINE ▸ real LIVE ▸ soon/scheduled ▸ normal OFFLINE.
+async function vsTests() {
+  console.log("\n_vs() visual-state priority (live.js)");
+  const FUTURE = new Date(Date.now() + 3600000).toISOString();
+  const PAST = new Date(Date.now() - 3600000).toISOString();
+  const vs = (s) => Live._vs(s);
+  eq("forced OFFLINE beats a real LIVE stream (kill switch)", vs({ ok: true, is_live: true, mode: "offline" }), "offline");
+  eq("real LIVE beats mode=soon", vs({ ok: true, is_live: true, mode: "soon" }), "live");
+  eq("real LIVE beats a future scheduled time", vs({ ok: true, is_live: true, mode: "auto", scheduled_at: FUTURE }), "live");
+  eq("not live + mode=soon → soon", vs({ ok: true, is_live: false, mode: "soon" }), "soon");
+  eq("not live + future schedule → soon", vs({ ok: true, is_live: false, mode: "auto", scheduled_at: FUTURE }), "soon");
+  eq("not live + past schedule → offline", vs({ ok: true, is_live: false, mode: "auto", scheduled_at: PAST }), "offline");
+  eq("not live + auto, nothing scheduled → offline", vs({ ok: true, is_live: false, mode: "auto" }), "offline");
+  eq("response not ok → offline", vs({ ok: false }), "offline");
+  eq("null status → offline", vs(null), "offline");
+  eq("CF unreachable (preview) + not live → unknown (no false offline)", vs({ ok: true, is_live: false, unknown: true, mode: "auto" }), "unknown");
+  eq("forced OFFLINE beats unknown", vs({ ok: true, unknown: true, mode: "offline" }), "offline");
+  eq("real LIVE beats unknown (known-live not flickered to checking)", vs({ ok: true, is_live: true, unknown: true, mode: "auto" }), "live");
+}
+
+await vsTests();
 await webhookTests();
 await getTests();
 await capNoCfTest();

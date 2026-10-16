@@ -79,15 +79,21 @@ window.Live = (function () {
     document.head.appendChild(s);
   }
 
-  // which visual state to show
+  // which visual state to show.
+  // Admin-approved priority: 1) forced OFFLINE (kill switch) ▸ 2) real Cloudflare LIVE ▸
+  // 3) soon / scheduled ▸ 4) normal OFFLINE. A real connected broadcast ALWAYS beats "soon"
+  // and a scheduled time; only an explicit forced-OFFLINE can hide a live stream. There is no
+  // manual "live" — only Cloudflare's is_live turns it on. ("unknown" = CF unreachable in the
+  // preview test mode → shown as "checking", never a false OFFLINE, and it never overrides a
+  // forced OFFLINE or a known-live broadcast.)
   function _vs(s) {
     if (!s || !s.ok) return "offline";
-    if (s.unknown) return "unknown";                 // couldn't reach Cloudflare → "checking", not a false OFFLINE
-    if (s.mode === "offline") return "offline";
-    if (s.mode === "soon") return "soon";
-    if (s.is_live) return "live";
-    if (s.scheduled_at && new Date(s.scheduled_at).getTime() > Date.now()) return "soon";
-    return "offline";
+    if (s.mode === "offline") return "offline";      // 1. forced kill switch — wins even over a real live stream
+    if (s.is_live) return "live";                    // 2. real Cloudflare-connected broadcast
+    if (s.unknown) return "unknown";                 // CF unreachable (preview) → "checking", not a false OFFLINE
+    if (s.mode === "soon") return "soon";            // 3. admin "starting soon"
+    if (s.scheduled_at && new Date(s.scheduled_at).getTime() > Date.now()) return "soon";  // 3. scheduled in the future
+    return "offline";                                // 4. normal offline
   }
 
   function _playerHtml(s, vs) {
@@ -264,5 +270,5 @@ window.Live = (function () {
     var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
   }
 
-  return { render: render, wire: wire, teardown: teardown };
+  return { render: render, wire: wire, teardown: teardown, _vs: _vs };
 })();
