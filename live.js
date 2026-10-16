@@ -94,8 +94,11 @@ window.Live = (function () {
     if (vs === "live") {
       var pb = s && s.playback;
       if (pb && pb.iframe) {
-        return '<div class="live-stage"><iframe src="' + esc(pb.iframe) + '?autoplay=true&muted=false" ' +
-          'allow="accelerated-2d-canvas; autoplay; encrypted-media; gyroscope; picture-in-picture;" allowfullscreen></iframe></div>';
+        // MUTED autoplay is allowed in cross-origin iframes (unmuted is blocked → black). The CF player's
+        // own controls give the manual play / unmute fallback if autoplay is prevented; playsinline keeps
+        // it inline on mobile. (The parent can't control a cross-origin iframe's audio — only its controls can.)
+        return '<div class="live-stage"><iframe src="' + esc(pb.iframe) + '?autoplay=true&muted=true&controls=true&playsinline=true" ' +
+          'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen playsinline></iframe></div>';
       }
       return '<div class="live-stage"><div class="live-off"><div class="lo-ico">🔴</div><h3>השידור חי</h3>' +
         '<p>הנגן עדיין לא הוגדר (חסרים פרטי ה-Playback של Cloudflare). ראה הוראות ההגדרה.</p></div></div>';
