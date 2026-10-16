@@ -47,7 +47,10 @@ window.Live = (function () {
     var s = document.createElement("style");
     s.id = "liveCss";
     s.textContent = [
-      ".live-wrap{max-width:1000px;margin:0 auto}",
+      ".live-wrap{max-width:1340px;margin:0 auto}",
+      ".live-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}",
+      "@media(min-width:900px){.live-grid{grid-template-columns:minmax(0,1fr) 350px}}",   // video | chat
+      ".live-main{min-width:0}.live-side{min-width:0}",
       ".live-stage{position:relative;width:100%;aspect-ratio:16/9;background:#05070c;border:1px solid var(--line);border-radius:16px;overflow:hidden}",
       ".live-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}",
       ".live-off{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;text-align:center;padding:24px}",
@@ -168,9 +171,14 @@ window.Live = (function () {
 
   function _body(s) {
     var vs = _vs(s);
-    return '<div id="livePlayer">' + _playerHtml(s, vs) + "</div>" +
-      '<div id="liveMeta">' + _metaHtml(s, vs) + "</div>" +
-      '<div id="liveChatRoot"></div>' +     // live chat + waiting/viewer count (window.LiveChat)
+    // two-column on desktop (video+meta on one side, chat on the other); stacks on mobile.
+    return '<div class="live-grid">' +
+        '<div class="live-main">' +
+          '<div id="livePlayer">' + _playerHtml(s, vs) + "</div>" +
+          '<div id="liveMeta">' + _metaHtml(s, vs) + "</div>" +
+        "</div>" +
+        '<div class="live-side"><div id="liveChatRoot"></div></div>' +   // live chat + waiting/viewer count
+      "</div>" +
       _adminHtml(s);
   }
 
