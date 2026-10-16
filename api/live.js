@@ -134,9 +134,25 @@ function cfErrStr(cf) {
 // Public playback URLs built from the LIVE INPUT uid (CF_PUBLIC_INPUT_ID) — this is the live
 // stream, NOT a recording/VOD id (those are separate video objects with their own uids; we never
 // fetch or use them here). All values are PUBLIC (no secret). Empty until configured.
+// Strict formats — anything else (Hebrew text, a whole URL, the "customer-" prefix, the "copy the
+// code" LABEL, stray chars) must NOT produce a player URL.
+const RE_CF_CODE = /^[a-z0-9]+$/i;        // Cloudflare customer subdomain code: alphanumeric
+const RE_CF_INPUT = /^[a-f0-9]{32}$/i;    // live input uid: 32-char hex
+
+// "" when the playback config is valid; otherwise a clear, specific reason (surfaced in /api/live).
+function playbackErr() {
+  if (!CF_CODE && !CF_INPUT) return "not_configured";
+  if (!RE_CF_CODE.test(CF_CODE)) return "bad_customer_code";
+  if (!RE_CF_INPUT.test(CF_INPUT)) return "bad_input_id";
+  return "";
+}
 function playback() {
-  if (!(CF_CODE && CF_INPUT)) return null;
-  const base = "https://customer-" + CF_CODE + ".cloudflarestream.com/" + CF_INPUT;   // <customer-CODE>/<LIVE_INPUT_UID>
+  const err = playbackErr();
+  if (err) {
+    if (err !== "not_configured") console.warn("[live] invalid playback config " + JSON.stringify({ problem: err }));  // reason only, never the values
+    return null;   // no broken URL — the UI shows the clean "player not configured" state
+  }
+  const base = "https://customer-" + CF_CODE + ".cloudflarestream.com/" + CF_INPUT;   // always an absolute HTTPS URL
   return { uid: CF_INPUT, customer: CF_CODE, iframe: base + "/iframe", hls: base + "/manifest/video.m3u8" };
 }
 
@@ -152,7 +168,7 @@ function publicView(row) {
     scheduled_at: row.scheduled_at || null,
     started_at: row.started_at || null,
     platforms: Array.isArray(row.platforms) ? row.platforms : [],
-    playback: playback(),
+    playback: playback(), playback_err: playbackErr(),
     ts: Date.now(),
   };
 }
@@ -170,7 +186,7 @@ export default async function handler(req, res) {
       ok: true, preview: true, unknown,
       is_live: (cf.ok && !cf.unknown) ? !!cf.live : false, mode: "auto",
       title: "", description: "", scheduled_at: null, started_at: null, platforms: [],
-      playback: playback(),
+      playback: playback(), playback_err: playbackErr(),
       cf_status: cf.ok ? (cf.unknown ? ("unknown:" + (cf.status || "")) : cf.status) : cfErrStr(cf),
       ts: Date.now(),
     });

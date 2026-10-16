@@ -7,7 +7,7 @@ process.env.SUPABASE_URL = "https://test.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "test-svc";
 process.env.SUPABASE_ANON_KEY = "test-anon";
 process.env.CF_WEBHOOK_SECRET = "secret-123";
-process.env.CF_PUBLIC_INPUT_ID = "INPUT123";
+process.env.CF_PUBLIC_INPUT_ID = "a1b2c3d4e5f60718293a4b5c6d7e8f90";
 process.env.CF_ACCOUNT_ID = "ACC";
 process.env.CF_STREAM_API_TOKEN = "cftok";
 process.env.CF_CUSTOMER_CODE = "cust";
@@ -68,7 +68,7 @@ async function webhookTests() {
   // bad shared secret → 401, no DB call
   { const st = { row: { last_event_ts: 0 } }; installFetch(st);
     const res = mockRes();
-    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "WRONG" }, body: { data: { event_type: "live_input.connected", input_id: "INPUT123" }, ts: 100 } }, res);
+    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "WRONG" }, body: { data: { event_type: "live_input.connected", input_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" }, ts: 100 } }, res);
     eq("bad cf-webhook-auth → 401", res.statusCode, 401);
     ok("bad auth → no DB write", st.calls.length === 0); }
 
@@ -83,7 +83,7 @@ async function webhookTests() {
   // connected (fresh ts) → is_live true via atomic conditional PATCH
   { const st = { row: { last_event_ts: 50 } }; installFetch(st);
     const res = mockRes();
-    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.connected", input_id: "INPUT123" }, ts: 100 } }, res);
+    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.connected", input_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" }, ts: 100 } }, res);
     const patch = st.calls.find(c => c.method === "PATCH");
     ok("connected → 200 ok", res._json && res._json.ok === true);
     ok("connected → PATCH uses conditional filter last_event_ts=lt.100", patch && patch.url.includes("last_event_ts=lt.100"));
@@ -94,20 +94,20 @@ async function webhookTests() {
   // stale/duplicate ts (<= current) → conditional PATCH matches 0 rows → ignored
   { const st = { row: { last_event_ts: 100 } }; installFetch(st);
     const res = mockRes();
-    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.disconnected", input_id: "INPUT123" }, ts: 80 } }, res);
+    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.disconnected", input_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" }, ts: 80 } }, res);
     ok("stale ts → ignored (atomic 0-row update)", res._json && res._json.ignored === "stale_or_norow");
     eq("stale ts → row unchanged", st.row.last_event_ts, 100); }
 
   // disconnected → is_live false
   { const st = { row: { last_event_ts: 50, is_live: true } }; installFetch(st);
     const res = mockRes();
-    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.disconnected", input_id: "INPUT123" }, ts: 120 } }, res);
+    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.disconnected", input_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" }, ts: 120 } }, res);
     ok("disconnected → is_live:false", st.row.is_live === false); }
 
   // errored → is_live false (treated as offline) + cf_status recorded
   { const st = { row: { last_event_ts: 50, is_live: true } }; installFetch(st);
     const res = mockRes();
-    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.errored", input_id: "INPUT123" }, ts: 130 } }, res);
+    await hookHandler({ method: "POST", headers: { "cf-webhook-auth": "secret-123" }, body: { data: { event_type: "live_input.errored", input_id: "a1b2c3d4e5f60718293a4b5c6d7e8f90" }, ts: 130 } }, res);
     ok("errored → is_live:false", st.row.is_live === false);
     ok("errored → cf_status records the event", st.row.cf_status === "live_input.errored"); }
 }
@@ -144,8 +144,8 @@ async function getTests() {
     const res = mockRes();
     await liveHandler({ method: "GET", headers: {}, query: {} }, res);
     const pb = res._json && res._json.playback;
-    ok("playback uid === CF_PUBLIC_INPUT_ID", pb && pb.uid === "INPUT123");
-    ok("playback iframe uses the input uid", pb && pb.iframe === "https://customer-cust.cloudflarestream.com/INPUT123/iframe"); }
+    ok("playback uid === CF_PUBLIC_INPUT_ID", pb && pb.uid === "a1b2c3d4e5f60718293a4b5c6d7e8f90");
+    ok("playback iframe uses the input uid", pb && pb.iframe === "https://customer-cust.cloudflarestream.com/a1b2c3d4e5f60718293a4b5c6d7e8f90/iframe"); }
 }
 
 // ========================= POST (admin-only) =========================
@@ -213,7 +213,34 @@ async function previewTests() {
     ok("preview GET → preview:true", res._json && res._json.preview === true);
     ok("preview GET → is_live from Cloudflare API (state=connected)", res._json && res._json.is_live === true);
     ok("preview GET → ZERO Supabase calls", !st.calls.some(c => c.url.includes("/rest/v1/")));
-    ok("preview GET → public playback present", res._json && res._json.playback && res._json.playback.uid === "INPUT123"); }
+    ok("preview GET → public playback present", res._json && res._json.playback && res._json.playback.uid === "a1b2c3d4e5f60718293a4b5c6d7e8f90");
+    ok("preview GET → playback.iframe is a real cloudflarestream URL (req #7)", res._json && res._json.playback && res._json.playback.iframe === "https://customer-cust.cloudflarestream.com/a1b2c3d4e5f60718293a4b5c6d7e8f90/iframe"); }
+  // CF_CUSTOMER_CODE missing → playback is NULL → the client would show the "player not configured"
+  // fallback with NO iframe (reproduces "LIVE badge but black area, no cloudflarestream request").
+  { const savedCode = process.env.CF_CUSTOMER_CODE; delete process.env.CF_CUSTOMER_CODE;
+    const { default: liveNoCode } = await import("../api/live.js?nocode");
+    installFetch({ cf: { success: true, result: { status: { current: { state: "connected" } } } } });
+    const res = mockRes();
+    await liveNoCode({ method: "GET", headers: {}, query: {} }, res);
+    ok("missing CF_CUSTOMER_CODE → is_live true BUT playback null (no iframe → black)", res._json && res._json.is_live === true && res._json.playback === null);
+    if (savedCode !== undefined) process.env.CF_CUSTOMER_CODE = savedCode; }
+  // CF_CUSTOMER_CODE with Hebrew / non-alphanumeric text (pasted by mistake) → playback null, NOT a broken iframe URL
+  { const savedCode = process.env.CF_CUSTOMER_CODE; process.env.CF_CUSTOMER_CODE = "קוד-לקוח בטעות";
+    const { default: liveBadCode } = await import("../api/live.js?badcode");
+    installFetch({ cf: { success: true, result: { status: { current: { state: "connected" } } } } });
+    const res = mockRes();
+    await liveBadCode({ method: "GET", headers: {}, query: {} }, res);
+    ok("Hebrew/invalid CF_CUSTOMER_CODE → playback null (no broken iframe)", res._json && res._json.playback === null);
+    ok("Hebrew/invalid CF_CUSTOMER_CODE → playback_err 'bad_customer_code'", res._json && res._json.playback_err === "bad_customer_code");
+    if (savedCode !== undefined) process.env.CF_CUSTOMER_CODE = savedCode; }
+  // CF_PUBLIC_INPUT_ID that is NOT a 32-hex id → playback null + clear bad_input_id reason
+  { const savedInp = process.env.CF_PUBLIC_INPUT_ID; process.env.CF_PUBLIC_INPUT_ID = "not-a-hex-id";
+    const { default: liveBadInp } = await import("../api/live.js?badinput");
+    installFetch({ cf: { success: true, result: { status: { current: { state: "connected" } } } } });
+    const res = mockRes();
+    await liveBadInp({ method: "GET", headers: {}, query: {} }, res);
+    ok("non-hex CF_PUBLIC_INPUT_ID → playback null + playback_err 'bad_input_id'", res._json && res._json.playback === null && res._json.playback_err === "bad_input_id");
+    if (savedInp !== undefined) process.env.CF_PUBLIC_INPUT_ID = savedInp; }
   // GET when Cloudflare API is DOWN → UNKNOWN, not a false OFFLINE (req #3)
   { const st = { cf: { success: false } }; installFetch(st);
     const res = mockRes();
