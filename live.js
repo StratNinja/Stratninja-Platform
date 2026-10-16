@@ -97,7 +97,10 @@ window.Live = (function () {
         // MUTED autoplay is allowed in cross-origin iframes (unmuted is blocked → black). The CF player's
         // own controls give the manual play / unmute fallback if autoplay is prevented; playsinline keeps
         // it inline on mobile. (The parent can't control a cross-origin iframe's audio — only its controls can.)
-        return '<div class="live-stage"><iframe src="' + esc(pb.iframe) + '?autoplay=true&muted=true&controls=true&playsinline=true" ' +
+        // dvrEnabled=true turns on Cloudflare's built-in DVR: viewers START at the live edge, can scrub back
+        // to the start of the broadcast, and the LIVE indicator (grey when behind, red at the edge) jumps back
+        // to live on click. All-or-nothing in the built-in player (no 30-min gate). Still loads by Live Input ID.
+        return '<div class="live-stage"><iframe src="' + esc(pb.iframe) + '?autoplay=true&muted=true&controls=true&playsinline=true&dvrEnabled=true" ' +
           'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen playsinline></iframe></div>';
       }
       return '<div class="live-stage"><div class="live-off"><div class="lo-ico">🔴</div><h3>השידור חי</h3>' +
