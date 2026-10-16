@@ -20,10 +20,12 @@ const ANON = process.env.SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1amVla2R0aW1sbWd3enpsYXVqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxODg5NTcsImV4cCI6MjA5ODc2NDk1N30.LLF0AJ3rx4Y3NBeLuki6lF6FEPZSWGrTnNsaWWT7ov4";
 const ADMIN_EMAIL = "koriatmanagement@gmail.com";
 
-const CF_ACCOUNT = process.env.CF_ACCOUNT_ID || "";
-const CF_TOKEN = process.env.CF_STREAM_API_TOKEN || "";
-const CF_INPUT = process.env.CF_PUBLIC_INPUT_ID || "";
-const CF_CODE = process.env.CF_CUSTOMER_CODE || "";
+// .trim() — a stray space/newline pasted into an env var would make a bad URL or an invalid
+// Authorization header value, which makes fetch() THROW (the "fetch_threw" we saw). Trimming fixes that.
+const CF_ACCOUNT = (process.env.CF_ACCOUNT_ID || "").trim();
+const CF_TOKEN = (process.env.CF_STREAM_API_TOKEN || "").trim();
+const CF_INPUT = (process.env.CF_PUBLIC_INPUT_ID || "").trim();
+const CF_CODE = (process.env.CF_CUSTOMER_CODE || "").trim();
 
 // PREVIEW-ONLY read-only test mode. Vercel sets VERCEL_ENV automatically ("production" on the
 // Production deployment), so this can NEVER be true in Production — no way to enable it by accident.
@@ -33,6 +35,7 @@ const CF_CODE = process.env.CF_CUSTOMER_CODE || "";
 const TEST_MODE = process.env.VERCEL_ENV === "preview";
 
 const RECONCILE_MS = 90000;   // reconcile against the Cloudflare API at most once per 90s
+const CF_TIMEOUT_MS = 6000;   // abort the Cloudflare status fetch if it hangs past this
 const MAX_LIVE_MS = (Number(process.env.LIVE_MAX_HOURS) || 12) * 3600000;  // safety cap on an unconfirmed LIVE
 const ROW_ID = "public";
 
@@ -77,27 +80,35 @@ async function cfLiveStatus() {
     console.warn("[live] CF not configured (account/token/input missing in this environment)");
     return { ok: false, reason: "not_configured" };
   }
+  const url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + CF_INPUT;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), CF_TIMEOUT_MS);
+  const t0 = Date.now();
   try {
-    const r = await fetch("https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + CF_INPUT, {
-      headers: { Authorization: "Bearer " + CF_TOKEN },
-    });
-    let j = null; try { j = await r.json(); } catch (e) {}
+    const r = await fetch(url, { headers: { Authorization: "Bearer " + CF_TOKEN }, signal: ctrl.signal });
+    let j = null; try { j = await r.json(); } catch (e) {}   // response-parse failure is handled below, NOT as a fetch throw
+    const ms = Date.now() - t0;
     if (!r.ok || !j || !j.success) {
       const code = (j && j.errors && j.errors[0] && j.errors[0].code);
-      console.warn("[live] CF live_inputs GET failed " + JSON.stringify({ http: r.status, cf_code: code != null ? code : null, success: j ? !!j.success : null }));
+      console.warn("[live] CF live_inputs GET failed " + JSON.stringify({ http: r.status, cf_code: code != null ? code : null, success: j ? !!j.success : null, ms }));
       return { ok: false, reason: "api_error", http: r.status, code: code != null ? code : null };
     }
     const st = (j.result && j.result.status) || "";   // CF can report null status on an idle input
     return { ok: true, live: !!LIVE_STATES[st], status: st || "idle" };
   } catch (e) {
-    console.warn("[live] CF live_inputs GET threw " + JSON.stringify({ type: (e && e.name) || "Error" }));
-    return { ok: false, reason: "fetch_threw" };
+    const name = (e && e.name) || "Error";                 // AbortError = our timeout; TypeError = bad URL/header value
+    const reason = name === "AbortError" ? "timeout" : "fetch_threw";
+    console.warn("[live] CF live_inputs GET threw " + JSON.stringify({ type: name, reason, ms: Date.now() - t0 }));  // safe: type/reason/ms only
+    return { ok: false, reason, name };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 // compact, secret-free failure string for cf_status (surfaced in /api/live so it's diagnosable)
 function cfErrStr(cf) {
-  return "cf_error:" + (cf.reason || "unknown") + (cf.http ? (":http" + cf.http) : "") + (cf.code != null ? (":code" + cf.code) : "");
+  return "cf_error:" + (cf.reason || "unknown") + (cf.http ? (":http" + cf.http) : "") +
+    (cf.code != null ? (":code" + cf.code) : "") + (cf.name ? (":" + cf.name) : "");
 }
 
 // Public playback URLs built from the LIVE INPUT uid (CF_PUBLIC_INPUT_ID) — this is the live

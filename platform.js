@@ -2,6 +2,10 @@
 (function () {
   "use strict";
   const $ = s => document.querySelector(s);
+  // PUBLIC LIVE is guest-viewable: this detects the /live route (direct entry, refresh, or #live).
+  function _isLivePath() {
+    try { return /^\/live\/?$/.test(location.pathname) || /(^|#)live$/.test(location.hash); } catch (e) { return false; }
+  }
 
   // Temporary "under renovation" ticker at the very top of every page (landing + app).
   // Dismissible; the dismissal survives refreshes within this visit (sessionStorage).
@@ -97,15 +101,22 @@
       if (note) note.classList.remove("hidden");
     }
 
-    if (SNAuth.isCloud() && SNAuth.user()) { showApp(); renderUserArea(SNAuth.user()); }
+    // PUBLIC LIVE — a guest (not logged in) who opens /live may view the public stream WITHOUT login.
+    // It's scoped to the live page only (pages.js setPage() bounces a guest off any other page), so the
+    // general login gate for the rest of the app is unchanged.
+    var guestLive = _isLivePath() && SNAuth.isCloud() && !SNAuth.user();
+    window.__snGuestLive = guestLive;
+    window.__snShowLanding = function () { window.__snGuestLive = false; showLanding(); renderUserArea(null); };
+    if ((SNAuth.isCloud() && SNAuth.user()) || guestLive) { showApp(); renderUserArea(SNAuth.user()); }
     else { showLanding(); renderUserArea(null); }
 
     // showRenovationBar();   // removed — the redesign is now live, so the "under renovation" notice is retired
     stripNavEmojis();      // clean, icon-free sidebar for the premium look
 
     SNAuth.onChange(user => {
-      if (user) { showApp(); renderUserArea(user); }
-      else { renderUserArea(null); showLanding(); }
+      if (user) { window.__snGuestLive = false; showApp(); renderUserArea(user); }
+      else if (_isLivePath() && SNAuth.isCloud()) { window.__snGuestLive = true; renderUserArea(null); showApp(); }  // guest stays on public /live
+      else { window.__snGuestLive = false; renderUserArea(null); showLanding(); }
     });
   }
 

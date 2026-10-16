@@ -43,7 +43,7 @@ function installFetch(state) {
       if (!state.authEmail) return R({}, false, 401);
       return R({ email: state.authEmail });
     }
-    if (url.includes("api.cloudflare.com")) return R(state.cf || { success: false });
+    if (url.includes("api.cloudflare.com")) { if (state.cfThrow) throw new TypeError("simulated bad url/header"); return R(state.cf || { success: false }); }
     if (url.includes("/rest/v1/live_status")) {
       if (method === "PATCH") {
         // simulate the conditional UPDATE: ...&last_event_ts=lt.<ts>
@@ -219,6 +219,11 @@ async function previewTests() {
     ok("preview GET (CF down) → unknown:true (not false OFFLINE)", res._json && res._json.unknown === true);
     ok("preview GET (CF down) → is_live false + unknown flag", res._json && res._json.is_live === false && res._json.unknown === true);
     ok("preview GET (CF down) → cf_status is DIAGNOSABLE (not generic)", res._json && /^cf_error:/.test(res._json.cf_status || "")); }
+  // GET when the CF fetch THROWS → classified fetch_threw, with the error name surfaced (req Task B)
+  { const st = { cfThrow: true }; installFetch(st);
+    const res = mockRes();
+    await livePrev({ method: "GET", headers: {}, query: {} }, res);
+    ok("preview GET (CF fetch threw) → unknown + cf_error:fetch_threw:<name>", res._json && res._json.unknown === true && /^cf_error:fetch_threw:/.test(res._json.cf_status || "")); }
   // POST (admin write) → refused, no write
   { const st = {}; installFetch(st);
     const res = mockRes();

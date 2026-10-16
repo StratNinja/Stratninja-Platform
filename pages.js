@@ -8912,6 +8912,13 @@
   function setPage(name) {
     // market-overview + the sector-internals views all live inside one 'pulse' channel as tabs — route old names there
     if (name === "market" || name === "sp500" || name === "today" || name === "sectors" || name === "breadth") { pulseTab = name; name = "pulse"; }
+    // PUBLIC LIVE guest (not logged in, entered via /live): may view ONLY the live page — any other
+    // page keeps its login gate. This never affects logged-in users (flag is false for them).
+    if (window.__snGuestLive && name !== "live") {
+      if (window.__snShowLanding) window.__snShowLanding();
+      else if (window.SNAuth && SNAuth.signInWithGoogle) SNAuth.signInWithGoogle();
+      return;
+    }
     document.querySelectorAll(".side-nav a").forEach(a => a.classList.toggle("active", a.dataset.page === name));
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
