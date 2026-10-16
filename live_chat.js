@@ -18,7 +18,7 @@
 
   var ADMIN_EMAIL = "koriatmanagement@gmail.com";
   var LIVE_ID = "public";
-  var MSG_POLL_MS = 3000;     // fetch new messages
+  var MSG_POLL_MS = 2000;     // fetch new messages
   var BEAT_MS = 15000;        // heartbeat + refresh the count
   var MSG_MAX = 280;          // keep in sync with live_engagement.sql
   var NAME_MAX = 40;
@@ -28,6 +28,7 @@
   var _phase = "offline";     // from live.js _vs(): "live" → "צופים", else "ממתינים"
   var _seen = {};             // id → true (dedup)
   var _mounted = false;
+  var _authHooked = false;    // register the SNAuth listener only once
 
   function $(id) { return document.getElementById(id); }
   function user() { try { return window.SNAuth && SNAuth.user && SNAuth.user(); } catch (e) { return null; } }
@@ -100,18 +101,27 @@
   }
 
   // ---- render skeleton ----
-  function _shell() {
-    var loggedIn = !!user();
-    var inputHtml = loggedIn
+  function _inputHtml() {   // the composer OR the login prompt, depending on whether a user is signed in
+    return user()
       ? '<form class="lc-form" id="lcForm"><input id="lcInput" maxlength="' + MSG_MAX + '" placeholder="כתוב הודעה…" autocomplete="off"><button type="submit">שלח</button></form>'
       : '<div class="lc-login">כדי לכתוב בצ\'אט <a id="lcLogin">התחבר עם Google</a> · אפשר לקרוא גם בלי התחברות</div>';
+  }
+  function _shell() {
     return '<div class="lc-wrap">' +
       '<div class="lc-count" id="lcCount"><span class="lc-dot"></span>' + esc(countLabel(_phase, 0)) + "</div>" +
       '<div class="lc-box">' +
       '<div class="lc-head">💬 צ\'אט חי</div>' +
       '<div class="lc-list" id="lcList"><div class="lc-empty">עדיין אין הודעות — תהיו הראשונים 👋</div></div>' +
-      inputHtml +
+      '<div id="lcInputWrap">' + _inputHtml() + "</div>" +
       "</div></div>";
+  }
+  // keep the input in sync with the login state — the Supabase session often loads a moment AFTER mount,
+  // so a logged-in user was seeing the "log in" prompt. Rebuilds ONLY the input, never the message list.
+  function _syncInput() {
+    var wrap = $("lcInputWrap"); if (!wrap) return;
+    var loggedIn = !!user(), hasForm = !!$("lcForm");
+    if (loggedIn === hasForm) return;   // already correct
+    wrap.innerHTML = _inputHtml(); _wireForm();
   }
 
   function _msgHtml(m) {
@@ -164,10 +174,10 @@
     var u = user(); var c = client();
     var msg = cleanMsg(raw);
     if (!u || !c || !msg) return Promise.resolve({ error: "empty" });
-    return c.from("live_chat").insert({ live_id: LIVE_ID, user_id: u.id, name: displayName(u), msg: msg })
+    return c.from("live_chat").insert({ live_id: LIVE_ID, user_id: u.id, name: displayName(u), msg: msg }).select()
       .then(function (r) {
         if (r && r.error) { toast(/rate/i.test(r.error.message || "") ? "רגע… אל תשלח כל כך מהר" : "השליחה נכשלה"); return { error: r.error }; }
-        _refreshMsgs();       // pull our own message in quickly
+        if (r && r.data && r.data.length) _append(r.data);   // show my own message INSTANTLY (no waiting for the poll)
         return { ok: true };
       })
       .catch(function (e) { toast("השליחה נכשלה"); return { error: e }; });
@@ -232,10 +242,14 @@
     _mounted = true; _lastId = 0; _seen = {};
     root.innerHTML = _shell();
     _wireForm();
+    if (!_authHooked && window.SNAuth && SNAuth.onChange) {   // session may arrive after mount → resync input + count
+      _authHooked = true;
+      SNAuth.onChange(function () { if (_mounted) { _syncInput(); _refreshCount(); } });
+    }
     _refreshMsgs(); _beat();
     _msgTimer = setInterval(function () {
       if (!$("liveChatRoot")) { unmount(); return; }   // page gone
-      _refreshMsgs();
+      _syncInput(); _refreshMsgs();
     }, MSG_POLL_MS);
     _beatTimer = setInterval(_beat, BEAT_MS);
   }
