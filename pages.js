@@ -8867,6 +8867,7 @@
     favorites: { render: renderFavorites, wire: wireFavorites },
     learn: { render: renderLearn, wire: wireLearn },
     giveaway: { render: function () { return window.Giveaway ? window.Giveaway.render() : '<div class="page-head"><h1>🎁 הגרלות</h1></div>'; }, wire: function () { if (window.Giveaway) window.Giveaway.wire(); } },
+    live: { render: function () { return window.Live ? window.Live.render() : '<div class="page-head"><h1>🔴 שידור חי</h1></div>'; }, wire: function () { if (window.Live) window.Live.wire(); } },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
   };
   const state = { page: "market" };
@@ -9465,7 +9466,11 @@
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
     try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}
-    setPage((PAGES[last] || last === "journal" || _pulseRender[last]) ? last : "market");   // _pulseRender[last] → a pulse sub-tab (sectors/today/…)
+    // direct entry / refresh on /live (served via the vercel rewrite) or #live → open the live page
+    var _wantLive = false;
+    try { _wantLive = /^\/live\/?$/.test(location.pathname) || /(^|#)live$/.test(location.hash); } catch (e) {}
+    if (_wantLive) setPage("live");
+    else setPage((PAGES[last] || last === "journal" || _pulseRender[last]) ? last : "market");   // _pulseRender[last] → a pulse sub-tab (sectors/today/…)
     if (/[?&]p=/.test(location.search)) setTimeout(checkSharedPresetInUrl, 1500);   // shared preset (?p=) — wait for cloud prefs to settle first
     loadLive();
     setInterval(loadLive, 60000);
