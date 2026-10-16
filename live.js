@@ -167,6 +167,7 @@ window.Live = (function () {
     var vs = _vs(s);
     return '<div id="livePlayer">' + _playerHtml(s, vs) + "</div>" +
       '<div id="liveMeta">' + _metaHtml(s, vs) + "</div>" +
+      '<div id="liveChatRoot"></div>' +     // live chat + waiting/viewer count (window.LiveChat)
       _adminHtml(s);
   }
 
@@ -225,6 +226,7 @@ window.Live = (function () {
       var pl = $("livePlayer"); if (pl) pl.innerHTML = _playerHtml(s, vs);
     }
     var mt = $("liveMeta"); if (mt) { mt.innerHTML = _metaHtml(s, vs); _wireMeta(); }
+    if (window.LiveChat && window.LiveChat.setPhase) window.LiveChat.setPhase(vs);   // "ממתינים" (pre-live) vs "צופים" (live)
     _tickCd();
     // admin panel: build once (don't clobber inputs while typing); refresh only the status line
     if (isAdmin() && !document.querySelector(".live-admin")) {
@@ -249,6 +251,7 @@ window.Live = (function () {
       _refresh();
     }, POLL_MS);
     _cd = setInterval(_tickCd, 1000);
+    if (window.LiveChat && window.LiveChat.mount) window.LiveChat.mount();   // live chat + waiting/viewer count
   }
 
   // Called by the SPA when leaving the /live page: stop the player so there is NO background
@@ -259,6 +262,7 @@ window.Live = (function () {
     if (_cd) { clearInterval(_cd); _cd = null; }
     _playerSig = "";                                       // force a fresh player when the user returns
     var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
+    if (window.LiveChat && window.LiveChat.unmount) window.LiveChat.unmount();   // stop chat/presence polling + heartbeat
   }
 
   return { render: render, wire: wire, teardown: teardown };
