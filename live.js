@@ -251,5 +251,15 @@ window.Live = (function () {
     _cd = setInterval(_tickCd, 1000);
   }
 
-  return { render: render, wire: wire };
+  // Called by the SPA when leaving the /live page: stop the player so there is NO background
+  // video/audio, and stop the status poll. Removing the <iframe> immediately halts media (even
+  // when the SPA only HIDES #page — e.g. navigating to the journal — rather than re-rendering it).
+  function teardown() {
+    if (_timer) { clearInterval(_timer); _timer = null; }
+    if (_cd) { clearInterval(_cd); _cd = null; }
+    _playerSig = "";                                       // force a fresh player when the user returns
+    var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
+  }
+
+  return { render: render, wire: wire, teardown: teardown };
 })();

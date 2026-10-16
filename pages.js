@@ -8912,6 +8912,9 @@
   function setPage(name) {
     // market-overview + the sector-internals views all live inside one 'pulse' channel as tabs — route old names there
     if (name === "market" || name === "sp500" || name === "today" || name === "sectors" || name === "breadth") { pulseTab = name; name = "pulse"; }
+    // LEAVING the LIVE page → stop the Cloudflare player so there is no background video/audio. Must run
+    // for EVERY destination (incl. the journal, which only hides #page, and the guest→login path below).
+    if (state.page === "live" && name !== "live" && window.Live && window.Live.teardown) window.Live.teardown();
     // PUBLIC LIVE guest (not logged in, entered via /live): may view ONLY the live page — any other
     // page keeps its login gate. This never affects logged-in users (flag is false for them).
     if (window.__snGuestLive && name !== "live") {
