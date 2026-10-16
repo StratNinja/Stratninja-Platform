@@ -39,8 +39,12 @@ const CF_TIMEOUT_MS = 6000;   // abort the Cloudflare status fetch if it hangs p
 const MAX_LIVE_MS = (Number(process.env.LIVE_MAX_HOURS) || 12) * 3600000;  // safety cap on an unconfirmed LIVE
 const ROW_ID = "public";
 
-// Cloudflare live-input status values that mean "receiving a stream".
-const LIVE_STATES = { connected: 1, reconnected: 1 };
+// Cloudflare live-input status values (from result.status.current.state).
+const LIVE_STATES = { connected: 1, reconnected: 1 };                 // → LIVE
+const OFFLINE_STATES = {                                              // → OFFLINE (not live, but known)
+  disconnected: 1, reconnecting: 1, client_disconnect: 1, ttl_exceeded: 1,
+  failed_to_connect: 1, failed_to_reconnect: 1, new_configuration_accepted: 1,
+};
 
 function sb(path, opts) {
   opts = opts || {};
@@ -80,6 +84,15 @@ async function cfLiveStatus() {
     console.warn("[live] CF not configured (account/token/input missing in this environment)");
     return { ok: false, reason: "not_configured" };
   }
+  // Pre-flight: a control char (CR/LF/…) INSIDE the token makes an invalid Authorization header value,
+  // which makes fetch() throw a synchronous TypeError (the 0ms "fetch_threw"). Whitespace inside an id
+  // breaks the URL. .trim() only fixes the edges, so catch an INTERNAL bad char here and name the field
+  // (no value is ever logged/returned).
+  const badField = /[\x00-\x1f\x7f]/.test(CF_TOKEN) ? "token" : /\s/.test(CF_ACCOUNT) ? "account" : /\s/.test(CF_INPUT) ? "input" : "";
+  if (badField) {
+    console.warn("[live] CF env value has invalid characters inside it " + JSON.stringify({ field: badField }));
+    return { ok: false, reason: "invalid_env", field: badField };
+  }
   const url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + CF_INPUT;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), CF_TIMEOUT_MS);
@@ -93,13 +106,20 @@ async function cfLiveStatus() {
       console.warn("[live] CF live_inputs GET failed " + JSON.stringify({ http: r.status, cf_code: code != null ? code : null, success: j ? !!j.success : null, ms }));
       return { ok: false, reason: "api_error", http: r.status, code: code != null ? code : null };
     }
-    const st = (j.result && j.result.status) || "";   // CF can report null status on an idle input
-    return { ok: true, live: !!LIVE_STATES[st], status: st || "idle" };
+    // Real Cloudflare shape: result.status = { current: { state, reason, ... }, history: [...] }.
+    // (Verified against the live response: current.state = "connected" / "disconnected", etc.)
+    const status = j.result && j.result.status;
+    const state = (status && status.current && status.current.state) || "";
+    if (!state) return { ok: true, live: false, status: "idle" };              // never streamed / no current state → offline
+    if (LIVE_STATES[state]) return { ok: true, live: true, status: state };     // connected / reconnected → LIVE
+    if (OFFLINE_STATES[state]) return { ok: true, live: false, status: state }; // disconnected / failure states → offline
+    return { ok: true, live: false, unknown: true, status: state };            // recognized API, UNRECOGNIZED state → UNKNOWN
   } catch (e) {
     const name = (e && e.name) || "Error";                 // AbortError = our timeout; TypeError = bad URL/header value
+    const causeCode = (e && e.cause && e.cause.code) || null;   // undici network cause, e.g. ENOTFOUND (DNS), UND_ERR_...
     const reason = name === "AbortError" ? "timeout" : "fetch_threw";
-    console.warn("[live] CF live_inputs GET threw " + JSON.stringify({ type: name, reason, ms: Date.now() - t0 }));  // safe: type/reason/ms only
-    return { ok: false, reason, name };
+    console.warn("[live] CF live_inputs GET threw " + JSON.stringify({ type: name, reason, cause_code: causeCode, ms: Date.now() - t0 }));  // safe: type/reason/cause/ms only
+    return { ok: false, reason, name, cause: causeCode };
   } finally {
     clearTimeout(timer);
   }
@@ -107,8 +127,8 @@ async function cfLiveStatus() {
 
 // compact, secret-free failure string for cf_status (surfaced in /api/live so it's diagnosable)
 function cfErrStr(cf) {
-  return "cf_error:" + (cf.reason || "unknown") + (cf.http ? (":http" + cf.http) : "") +
-    (cf.code != null ? (":code" + cf.code) : "") + (cf.name ? (":" + cf.name) : "");
+  return "cf_error:" + (cf.reason || "unknown") + (cf.field ? (":" + cf.field) : "") + (cf.http ? (":http" + cf.http) : "") +
+    (cf.code != null ? (":code" + cf.code) : "") + (cf.name ? (":" + cf.name) : "") + (cf.cause ? (":" + cf.cause) : "");
 }
 
 // Public playback URLs built from the LIVE INPUT uid (CF_PUBLIC_INPUT_ID) — this is the live
@@ -145,12 +165,14 @@ export default async function handler(req, res) {
   if (TEST_MODE) {
     if (req.method === "POST") { res.status(403).json({ error: "disabled_in_preview" }); return; }   // all writes refused
     const cf = await cfLiveStatus();
-    const unknown = !cf.ok;   // couldn't reach/parse Cloudflare → UNKNOWN, never a false OFFLINE
+    const unknown = !cf.ok || !!cf.unknown;   // couldn't reach/parse CF, or an unrecognized state → UNKNOWN (never a false OFFLINE)
     res.status(200).json({
       ok: true, preview: true, unknown,
-      is_live: cf.ok ? !!cf.live : false, mode: "auto",
+      is_live: (cf.ok && !cf.unknown) ? !!cf.live : false, mode: "auto",
       title: "", description: "", scheduled_at: null, started_at: null, platforms: [],
-      playback: playback(), cf_status: cf.ok ? cf.status : cfErrStr(cf), ts: Date.now(),
+      playback: playback(),
+      cf_status: cf.ok ? (cf.unknown ? ("unknown:" + (cf.status || "")) : cf.status) : cfErrStr(cf),
+      ts: Date.now(),
     });
     return;
   }
@@ -194,7 +216,7 @@ export default async function handler(req, res) {
   if (stale) {
     if (cfConfigured) {
       const cf = await cfLiveStatus();
-      if (cf.ok) {
+      if (cf.ok && !cf.unknown) {
         const fields = { verified_at: new Date().toISOString(), cf_status: cf.status };
         if (cf.live !== !!row.is_live) {
           fields.is_live = cf.live;
@@ -204,8 +226,8 @@ export default async function handler(req, res) {
         const updated = await patchRow(fields);
         if (updated) row = updated;
       } else {
-        // CF call failed — don't change is_live (keep last known), but record WHY (diagnosable) and back off
-        await patchRow({ verified_at: new Date().toISOString(), cf_status: cfErrStr(cf) });
+        // unrecognized state OR a CF error — don't change is_live (keep last known), record why & back off
+        await patchRow({ verified_at: new Date().toISOString(), cf_status: cf.ok ? ("unknown:" + (cf.status || "")) : cfErrStr(cf) });
       }
     } else if (row.is_live && row.started_at &&
                (Date.now() - new Date(row.started_at).getTime() > MAX_LIVE_MS)) {

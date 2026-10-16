@@ -12,6 +12,8 @@ snapshot.zip
 # secrets (do NOT commit private keys; the Supabase ANON key is public and lives in config.js)
 .env
 .env.local
+cf.env.local
+cf_diag.mjs
 *secret*
 *client_secret*
 *.har

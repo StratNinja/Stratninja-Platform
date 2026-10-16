@@ -15,6 +15,7 @@ process.env.LIVE_MAX_HOURS = "12";
 
 const { default: liveHandler } = await import("../api/live.js");
 const { default: hookHandler } = await import("../api/live-webhook.js");
+const REAL_FETCH = global.fetch;   // keep the real undici fetch (installFetch replaces global.fetch)
 
 // ---- tiny test runner ----
 let pass = 0, fail = 0;
@@ -116,18 +117,19 @@ async function getTests() {
   console.log("\nGET /api/live (reconcile + safety cap)");
 
   // CF says disconnected while row says live → reconcile flips is_live false (missed-webhook catch)
+  // Uses the REAL nested shape: result.status.current.state.
   { const st = { row: { id: "public", is_live: true, verified_at: ISO(5 * 60000), started_at: ISO(60000), last_event_ts: 5 },
-      cf: { success: true, result: { status: "client_disconnect" } } }; installFetch(st);
+      cf: { success: true, result: { status: { current: { state: "disconnected", reason: "client_disconnect" } } } } }; installFetch(st);
     const res = mockRes();
     await liveHandler({ method: "GET", headers: {}, query: {} }, res);
-    ok("reconcile: CF offline → is_live false", res._json && res._json.is_live === false); }
+    ok("reconcile: CF state=disconnected → is_live false", res._json && res._json.is_live === false); }
 
   // CF confirms connected → stays live
   { const st = { row: { id: "public", is_live: false, verified_at: ISO(5 * 60000), started_at: null, last_event_ts: 5 },
-      cf: { success: true, result: { status: "connected" } } }; installFetch(st);
+      cf: { success: true, result: { status: { current: { state: "connected", reason: "connected" } } } } }; installFetch(st);
     const res = mockRes();
     await liveHandler({ method: "GET", headers: {}, query: {} }, res);
-    ok("reconcile: CF connected → is_live true", res._json && res._json.is_live === true); }
+    ok("reconcile: CF state=connected → is_live true", res._json && res._json.is_live === true); }
 
   // req #1: CF CONFIGURED but temporarily unreachable → a genuine long stream is NOT force-capped.
   { const st = { row: { id: "public", is_live: true, verified_at: ISO(5 * 60000), started_at: ISO(13 * 3600000), last_event_ts: 5 },
@@ -204,12 +206,12 @@ async function previewTests() {
   process.env.VERCEL_ENV = "preview";
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;         // Preview does NOT get the Production service key
   const { default: livePrev } = await import("../api/live.js?preview");
-  // GET → live/offline straight from Cloudflare, ZERO Supabase I/O
-  { const st = { cf: { success: true, result: { status: "connected" } } }; installFetch(st);
+  // GET → live/offline straight from Cloudflare, ZERO Supabase I/O (real nested status shape)
+  { const st = { cf: { success: true, result: { status: { current: { state: "connected", reason: "connected" } } } } }; installFetch(st);
     const res = mockRes();
     await livePrev({ method: "GET", headers: {}, query: {} }, res);
     ok("preview GET → preview:true", res._json && res._json.preview === true);
-    ok("preview GET → is_live from Cloudflare API", res._json && res._json.is_live === true);
+    ok("preview GET → is_live from Cloudflare API (state=connected)", res._json && res._json.is_live === true);
     ok("preview GET → ZERO Supabase calls", !st.calls.some(c => c.url.includes("/rest/v1/")));
     ok("preview GET → public playback present", res._json && res._json.playback && res._json.playback.uid === "INPUT123"); }
   // GET when Cloudflare API is DOWN → UNKNOWN, not a false OFFLINE (req #3)
@@ -248,11 +250,69 @@ async function prodSafetyTest() {
   process.env.VERCEL_ENV = savedEnv; if (savedSvc !== undefined) process.env.SUPABASE_SERVICE_ROLE_KEY = savedSvc;
 }
 
+// ========= CF ENV diagnosis: internal invalid-char detection + the fetch TypeError mechanism =========
+async function envDiagTests() {
+  console.log("\nCF ENV DIAGNOSIS (invalid-char detection + fetch TypeError mechanism)");
+  // (1) a newline INSIDE the token → pinpointed as invalid_env:token, with NO network call
+  const savedEnv = process.env.VERCEL_ENV, savedTok = process.env.CF_STREAM_API_TOKEN;
+  process.env.VERCEL_ENV = "preview";
+  process.env.CF_STREAM_API_TOKEN = "cf-token-with\ninternal-newline";
+  const { default: liveBad } = await import("../api/live.js?badtok");
+  { const st = {}; installFetch(st);
+    const res = mockRes();
+    await liveBad({ method: "GET", headers: {}, query: {} }, res);
+    ok("newline inside token → cf_error:invalid_env:token", res._json && res._json.cf_status === "cf_error:invalid_env:token");
+    ok("newline inside token → unknown:true + NO Cloudflare network call", res._json && res._json.unknown === true && !st.calls.some(c => c.url.includes("api.cloudflare.com"))); }
+  process.env.VERCEL_ENV = savedEnv; if (savedTok !== undefined) process.env.CF_STREAM_API_TOKEN = savedTok;
+  // (2) mechanism proof (REAL fetch): a newline in the header value throws a synchronous TypeError,
+  //     exactly matching the Vercel log {"type":"TypeError","reason":"fetch_threw","ms":0}
+  { let name = null; try { await REAL_FETCH("https://api.cloudflare.com/client/v4/x", { headers: { Authorization: "Bearer a\nb" } }); } catch (e) { name = e && e.name; }
+    ok("Node fetch THROWS TypeError for newline-in-header (reproduces the Vercel symptom)", name === "TypeError"); }
+}
+
+// ========= REAL Cloudflare status shape (result.status.current.state) =========
+async function realShapeTests() {
+  console.log("\nREAL Cloudflare status shape (result.status.current.state)");
+  const savedEnv = process.env.VERCEL_ENV;
+  process.env.VERCEL_ENV = "preview";
+  const { default: liveRS } = await import("../api/live.js?realshape");
+  // the EXACT JSON returned by Cloudflare (from the live /api/live response)
+  const REAL_DISCONNECTED = { success: true, result: { status: {
+    current: { ingestProtocol: "rtmp", reason: "client_disconnect", state: "disconnected", statusEnteredAt: "2026-10-15T21:09:30.211Z", statusLastSeen: "2026-10-15T21:09:30.211Z" },
+    history: [{ ingestProtocol: "rtmp", reason: "connected", state: "connected", statusEnteredAt: "2026-10-15T21:07:22.028Z" }],
+  } } };
+  { installFetch({ cf: REAL_DISCONNECTED }); const res = mockRes();
+    await liveRS({ method: "GET", headers: {}, query: {} }, res);
+    ok("real JSON state=disconnected → OFFLINE (is_live false, not unknown)", res._json && res._json.is_live === false && res._json.unknown === false);
+    ok("real JSON → cf_status === 'disconnected'", res._json && res._json.cf_status === "disconnected"); }
+  // the EXACT connected JSON from the live preview while OBS was streaming (history: [])
+  { installFetch({ cf: { success: true, result: { status: {
+      current: { ingestProtocol: "rtmp", reason: "connected", state: "connected", statusEnteredAt: "2026-10-16T06:24:48.218Z", statusLastSeen: "2026-10-16T06:26:18.016Z" },
+      history: [] } } } }); const res = mockRes();
+    await liveRS({ method: "GET", headers: {}, query: {} }, res);
+    ok("real connected JSON (history:[]) → is_live TRUE (req #6)", res._json && res._json.is_live === true && res._json.unknown === false && res._json.cf_status === "connected"); }
+  { installFetch({ cf: { success: true, result: { status: { current: { state: "connected", reason: "connected" } } } } }); const res = mockRes();
+    await liveRS({ method: "GET", headers: {}, query: {} }, res);
+    ok("state=connected → LIVE → player shows (is_live true, unknown false)", res._json && res._json.is_live === true && res._json.unknown === false); }
+  { installFetch({ cf: { success: true, result: { status: { current: { state: "reconnected" } } } } }); const res = mockRes();
+    await liveRS({ method: "GET", headers: {}, query: {} }, res);
+    ok("state=reconnected → LIVE", res._json && res._json.is_live === true); }
+  { installFetch({ cf: { success: true, result: { status: { current: { state: "some_future_state" } } } } }); const res = mockRes();
+    await liveRS({ method: "GET", headers: {}, query: {} }, res);
+    ok("unrecognized state → UNKNOWN (not false OFFLINE)", res._json && res._json.unknown === true && /^unknown:/.test(res._json.cf_status || "")); }
+  { installFetch({ cf: { success: true, result: { status: null } } }); const res = mockRes();   // input never streamed
+    await liveRS({ method: "GET", headers: {}, query: {} }, res);
+    ok("status=null (never streamed) → OFFLINE idle", res._json && res._json.is_live === false && res._json.unknown === false && res._json.cf_status === "idle"); }
+  process.env.VERCEL_ENV = savedEnv;
+}
+
 await webhookTests();
 await getTests();
 await capNoCfTest();
 await previewTests();
 await prodSafetyTest();
+await envDiagTests();
+await realShapeTests();
 await postTests();
 console.log("\n──────────────\n" + pass + " passed, " + fail + " failed\n");
 process.exit(fail ? 1 : 0);
