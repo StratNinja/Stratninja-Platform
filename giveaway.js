@@ -538,6 +538,8 @@ window.Giveaway = (function () {
     else if (s === "open") h = '<button class="btn" data-gadm="close">🔒 סגור הרשמה</button><button class="btn ghost" data-gadm="manual">➕ ידני</button><button class="btn ghost" data-gadm="demo">🧪 דמה</button>';
     else if (s === "closed") h = '<button class="btn primary" data-gadm="draw">🥁 הגרל זוכה!</button><button class="btn ghost" data-gadm="manual">➕ ידני</button><button class="btn ghost" data-gadm="demo">🧪 דמה</button>';
     else if (s === "drawing") h = '<button class="btn ghost" data-gadm="reset">עצור / איפוס</button>';
+    // 📢 announce the live giveaway site-wide (flashing banner on every page → /live). Only while active.
+    if (s === "open" || s === "closed") h += '<button class="btn" style="background:#dc2626;color:#fff;font-weight:800" data-gadm="announce">📢 הודע לכולם</button>';
     h += '<button class="btn ghost" data-gadm="save">💾 שמור הגדרות</button>';
     if (s !== "idle") h += '<button class="btn ghost" data-gadm="reset">↺ איפוס</button>';
     row.innerHTML = h;
@@ -563,7 +565,16 @@ window.Giveaway = (function () {
     if (act === "cancelDraw") { _cancelAnim(); _draw.key = ""; return _patch({ status: "closed", winner: { awarded: _awarded().slice(0, -1), last: null } }); }   // abort this draw, return the entrant+prize to the pool
     if (act === "demo") return _addDemo();
     if (act === "manual") return _addManual();
-    if (act === "reset") { _closeOverlay(); return _patch({ status: "idle", winner: null, draw_until: null }); }
+    if (act === "announce") return _announce();
+    if (act === "reset") { _closeOverlay(); return _patch({ status: "idle", winner: null, draw_until: null, announce_until: null }); }
+  }
+
+  // 📢 publish a site-wide "giveaway live now" alert: sets announce_until = now()+12min on the row.
+  // The flashing banner (window.LiveAlert) + /live "השתתף" button read it; a reset/idle clears it.
+  function _announce() {
+    _patch({ announce_until: new Date(Date.now() + 12 * 60000).toISOString() }).then(function () {
+      toast("📢 ההתראה פורסמה בכל האתר — צופים חדשים יראו אותה ויגיעו ללייב");
+    });
   }
 
   function _patch(fields) {

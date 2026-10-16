@@ -135,8 +135,11 @@ window.Live = (function () {
       }).join("") + "</div>";
     }
     var prev = (s && s.preview) ? '<span class="live-badge" style="background:#6a5cf0;color:#fff">🧪 PREVIEW</span>' : "";
+    // when the admin has announced a live giveaway, surface a prominent entry button right here on /live
+    var gvw = "";
+    try { if (window.LiveAlert && window.LiveAlert.active && window.LiveAlert.active()) gvw = '<button class="btn" id="liveGvw" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:6px 12px">🎁 השתתף בהגרלה</button>'; } catch (e) {}
     return '<div class="live-meta">' +
-      '<div class="live-row">' + badge + prev +
+      '<div class="live-row">' + badge + prev + gvw +
       '<button class="btn ghost" id="liveShare" style="font-size:13px;padding:6px 12px">🔗 שיתוף</button></div>' +
       title + desc + plats + "</div>";
   }
@@ -196,6 +199,8 @@ window.Live = (function () {
       if (navigator.share) { navigator.share({ title: "StratNinja — שידור חי", url: url }).catch(function () {}); return; }
       try { navigator.clipboard.writeText(url); toast("הקישור הועתק ✓"); } catch (e) { toast(url); }
     };
+    var gv = $("liveGvw");   // 🎁 enter the announced giveaway (entry auto-prompts login if a guest)
+    if (gv) gv.onclick = function () { try { if (window.setPageExternal) window.setPageExternal("giveaway"); else location.href = "/giveaway"; } catch (e) { location.href = "/giveaway"; } };
   }
   function _wireAdmin() {
     var save = $("laSave"); if (!save) return;
