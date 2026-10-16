@@ -66,18 +66,38 @@ async function verifyAdmin(req) {
   } catch (e) { return false; }
 }
 
-// Ask Cloudflare for the live input's REAL current status. Returns { live, status } or null.
+// Ask Cloudflare for the live input's REAL current status.
+// Endpoint (official): GET /accounts/{account_id}/stream/live_inputs/{live_input_id}  (needs Stream:Read).
+// Always returns a structured result (never null): { ok:true, live, status } on success, or
+// { ok:false, reason, http?, code? } on failure — so callers can surface a DIAGNOSABLE reason instead
+// of a blind "cf_unreachable". Logs ONLY the HTTP status / CF error code / failure type — never the
+// token, the Authorization header, or any secret.
 async function cfLiveStatus() {
-  if (!(CF_ACCOUNT && CF_TOKEN && CF_INPUT)) return null;
+  if (!(CF_ACCOUNT && CF_TOKEN && CF_INPUT)) {
+    console.warn("[live] CF not configured (account/token/input missing in this environment)");
+    return { ok: false, reason: "not_configured" };
+  }
   try {
     const r = await fetch("https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + CF_INPUT, {
       headers: { Authorization: "Bearer " + CF_TOKEN },
     });
-    const j = await r.json().catch(() => ({}));
-    if (!j || !j.success) return null;
-    const st = (j.result && j.result.status) || "";
-    return { live: !!LIVE_STATES[st], status: st };
-  } catch (e) { return null; }
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (!r.ok || !j || !j.success) {
+      const code = (j && j.errors && j.errors[0] && j.errors[0].code);
+      console.warn("[live] CF live_inputs GET failed " + JSON.stringify({ http: r.status, cf_code: code != null ? code : null, success: j ? !!j.success : null }));
+      return { ok: false, reason: "api_error", http: r.status, code: code != null ? code : null };
+    }
+    const st = (j.result && j.result.status) || "";   // CF can report null status on an idle input
+    return { ok: true, live: !!LIVE_STATES[st], status: st || "idle" };
+  } catch (e) {
+    console.warn("[live] CF live_inputs GET threw " + JSON.stringify({ type: (e && e.name) || "Error" }));
+    return { ok: false, reason: "fetch_threw" };
+  }
+}
+
+// compact, secret-free failure string for cf_status (surfaced in /api/live so it's diagnosable)
+function cfErrStr(cf) {
+  return "cf_error:" + (cf.reason || "unknown") + (cf.http ? (":http" + cf.http) : "") + (cf.code != null ? (":code" + cf.code) : "");
 }
 
 // Public playback URLs built from the LIVE INPUT uid (CF_PUBLIC_INPUT_ID) — this is the live
@@ -113,13 +133,13 @@ export default async function handler(req, res) {
   // ---- PREVIEW TEST MODE (never Production) — read-only, Cloudflare-API only, no Supabase ----
   if (TEST_MODE) {
     if (req.method === "POST") { res.status(403).json({ error: "disabled_in_preview" }); return; }   // all writes refused
-    const cf = (CF_ACCOUNT && CF_TOKEN && CF_INPUT) ? await cfLiveStatus() : null;
-    const unknown = !cf;   // Cloudflare API unavailable / not configured → UNKNOWN, never a false OFFLINE
+    const cf = await cfLiveStatus();
+    const unknown = !cf.ok;   // couldn't reach/parse Cloudflare → UNKNOWN, never a false OFFLINE
     res.status(200).json({
       ok: true, preview: true, unknown,
-      is_live: !!(cf && cf.live), mode: "auto",
+      is_live: cf.ok ? !!cf.live : false, mode: "auto",
       title: "", description: "", scheduled_at: null, started_at: null, platforms: [],
-      playback: playback(), cf_status: cf ? cf.status : "cf_unreachable", ts: Date.now(),
+      playback: playback(), cf_status: cf.ok ? cf.status : cfErrStr(cf), ts: Date.now(),
     });
     return;
   }
@@ -163,7 +183,7 @@ export default async function handler(req, res) {
   if (stale) {
     if (cfConfigured) {
       const cf = await cfLiveStatus();
-      if (cf) {
+      if (cf.ok) {
         const fields = { verified_at: new Date().toISOString(), cf_status: cf.status };
         if (cf.live !== !!row.is_live) {
           fields.is_live = cf.live;
@@ -173,7 +193,8 @@ export default async function handler(req, res) {
         const updated = await patchRow(fields);
         if (updated) row = updated;
       } else {
-        await patchRow({ verified_at: new Date().toISOString() });   // CF unreachable — back off, don't hammer
+        // CF call failed — don't change is_live (keep last known), but record WHY (diagnosable) and back off
+        await patchRow({ verified_at: new Date().toISOString(), cf_status: cfErrStr(cf) });
       }
     } else if (row.is_live && row.started_at &&
                (Date.now() - new Date(row.started_at).getTime() > MAX_LIVE_MS)) {

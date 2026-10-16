@@ -217,7 +217,8 @@ async function previewTests() {
     const res = mockRes();
     await livePrev({ method: "GET", headers: {}, query: {} }, res);
     ok("preview GET (CF down) → unknown:true (not false OFFLINE)", res._json && res._json.unknown === true);
-    ok("preview GET (CF down) → is_live false + unknown flag", res._json && res._json.is_live === false && res._json.unknown === true); }
+    ok("preview GET (CF down) → is_live false + unknown flag", res._json && res._json.is_live === false && res._json.unknown === true);
+    ok("preview GET (CF down) → cf_status is DIAGNOSABLE (not generic)", res._json && /^cf_error:/.test(res._json.cf_status || "")); }
   // POST (admin write) → refused, no write
   { const st = {}; installFetch(st);
     const res = mockRes();
