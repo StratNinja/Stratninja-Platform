@@ -46,6 +46,12 @@ export default async function handler(req, res) {
   const action = body.action;
 
   try {
+    if (action === "list_bans") {
+      const r = await sb("live_chat_bans?select=user_id,name,banned_at&order=banned_at.desc&limit=100");
+      const rows = r.ok ? await r.json() : [];
+      res.status(200).json({ ok: true, bans: Array.isArray(rows) ? rows : [] });
+      return;
+    }
     if ((action === "hide" || action === "unhide") && body.id != null && /^[0-9]+$/.test(String(body.id))) {
       const r = await sb("live_chat?id=eq." + String(body.id), { method: "PATCH", body: JSON.stringify({ hidden: action === "hide" }) });
       res.status(r.ok ? 200 : 502).json({ ok: r.ok, action: action });

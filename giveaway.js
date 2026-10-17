@@ -608,21 +608,9 @@ window.Giveaway = (function () {
     if (!prizes.length) { toast("הוסף לפחות פרס אחד לפני פתיחה"); return; }
     var title = (($("gvwAdmTitle") || {}).value || _row.title || "הגרלת StratNinja").trim();
     var kw = (($("gvwAdmKw") || {}).value || _row.keyword || "NINJA").trim();
-    _busy = true; toast("מחפש לייב פעיל…");
-    _apiCall("find").then(function (r) {
-      _busy = false;
-      var live = r && r.live;
-      if (live && live.live_chat_id) { _doOpen(live, prizes, title, kw); return; }
-      // auto-detect failed → manual fallback: paste the live URL/ID (or cancel to open in TEST mode without chat)
-      var url = window.prompt("לא נמצא לייב פעיל.\nהדבק קישור/מזהה של לייב Public ב-YouTube — או בטל כדי לפתוח במצב בדיקה (בלי צ׳אט, עם משתתפי דמה/ידני):", "");
-      if (!url) { _doOpen({ video_id: null, live_chat_id: null, title: "בדיקה (ללא צ׳אט)" }, prizes, title, kw); return; }
-      _busy = true;
-      _apiCall("resolve", { video: url }).then(function (rr) {
-        _busy = false;
-        if (rr && rr.live_chat_id) { _doOpen(rr, prizes, title, kw); }
-        else { toast("לא אותר צ׳אט חי בקישור הזה (ודא שהלייב משודר כרגע)"); }
-      });
-    }).catch(function () { _busy = false; toast("שגיאה בחיפוש הלייב — נסה שוב"); });
+    // Entry is via the site "השתתף" button now (the YouTube live-chat integration is retired), so open
+    // directly — no YouTube lookup and no "paste a YouTube link" prompt.
+    _doOpen({ video_id: null, live_chat_id: null, title: "" }, prizes, title, kw);
   }
   function _doOpen(live, prizes, title, kw) {
     var round = (_row.round || 0) + 1;
@@ -630,7 +618,7 @@ window.Giveaway = (function () {
       status: "open", round: round, winner: null, draw_until: null, prizes: prizes, title: title, keyword: kw,
       yt_video_id: live.video_id || null, yt_live_chat_id: live.live_chat_id || null, yt_page_token: null,
       opened_at: new Date().toISOString(),
-    }).then(function () { _entries = []; _endedToasted = false; _stageSig = ""; _paint(); toast("ההרשמה נפתחה 🎉 — " + (live.title || "לייב") + " (כתבו " + kw + " בצ׳אט)"); });
+    }).then(function () { _entries = []; _endedToasted = false; _stageSig = ""; _paint(); toast("ההרשמה נפתחה 🎉 — המשתתפים נכנסים בלחיצה על 'השתתף'"); });
   }
 
   function _startDraw() {
