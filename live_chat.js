@@ -187,25 +187,39 @@
       .catch(function (e) { toast("השליחה נכשלה"); return { error: e }; });
   }
 
-  function _hide(id) {
-    var c = client(); if (!c || !isAdmin()) return;
-    c.from("live_chat").update({ hidden: true }).eq("id", id).then(function () {
-      var el = document.querySelector('.lc-msg[data-id="' + id + '"]'); if (el) el.remove();
-    }).catch(function () { toast("ההסתרה נכשלה"); });
+  // moderation goes through the SERVER (service role) so it RELIABLY persists for EVERYONE — a client-side
+  // RLS write could silently affect 0 rows (a hidden message reappearing on refresh, the bug we hit).
+  function _token() {
+    try {
+      var c = client(); if (!c) return Promise.resolve(null);
+      return c.auth.getSession().then(function (r) { return (r.data && r.data.session && r.data.session.access_token) || null; }).catch(function () { return null; });
+    } catch (e) { return Promise.resolve(null); }
   }
-  // ban a user: add to live_chat_bans (blocks future posts via the DB trigger) + hide all their messages.
+  function _modCall(payload) {
+    return _token().then(function (tok) {
+      if (!tok) return { error: "no_token" };
+      return fetch("/api/live-mod", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(payload) })
+        .then(function (r) { return r.json(); }).catch(function () { return { error: "net" }; });
+    });
+  }
+  function _hide(id) {
+    if (!isAdmin()) return;
+    _modCall({ action: "hide", id: id }).then(function (r) {
+      if (r && r.ok) { var el = document.querySelector('.lc-msg[data-id="' + id + '"]'); if (el) el.remove(); }
+      else toast("המחיקה נכשלה");
+    });
+  }
+  // ban a user: server inserts the ban (blocks future posts via the DB trigger) + hides all their messages.
   function _ban(userId, name) {
-    var c = client(); if (!c || !isAdmin() || !userId) return;
+    if (!isAdmin() || !userId) return;
     if (typeof confirm === "function" && !confirm("לחסום את " + (name || "המשתמש") + "? הוא לא יוכל לכתוב יותר בצ'אט, וכל הודעותיו יוסתרו.")) return;
-    c.from("live_chat_bans").upsert({ user_id: userId, name: name || "" }, { onConflict: "user_id", ignoreDuplicates: true })
-      .then(function (r) {
-        if (r && r.error) { toast("החסימה נכשלה"); return; }
-        c.from("live_chat").update({ hidden: true }).eq("user_id", userId).then(function () {
-          var nodes = document.querySelectorAll('.lc-msg[data-user="' + userId + '"]');
-          for (var i = 0; i < nodes.length; i++) nodes[i].remove();
-          toast("🚫 המשתמש נחסם וכל הודעותיו הוסתרו");
-        }).catch(function () { toast("המשתמש נחסם (הסתרת ההודעות נכשלה)"); });
-      }).catch(function () { toast("החסימה נכשלה"); });
+    _modCall({ action: "ban", user_id: userId, name: name || "" }).then(function (r) {
+      if (r && r.ok) {
+        var nodes = document.querySelectorAll('.lc-msg[data-user="' + userId + '"]');
+        for (var i = 0; i < nodes.length; i++) nodes[i].remove();
+        toast("🚫 המשתמש נחסם וכל הודעותיו הוסתרו");
+      } else toast("החסימה נכשלה");
+    });
   }
 
   function _refreshMsgs() { _fetchMsgs().then(_append); }
