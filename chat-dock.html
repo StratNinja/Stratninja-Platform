@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StratNinja — צ'אט לייב</title>
+<!--
+  A clean, readable, scrolling view of the StratNinja site live-chat. Read-only. Use it:
+   • In a SEPARATE browser window  (so you read the chat without the whole site in front of you), or
+   • As an OBS Custom Browser Dock  (OBS → Docks → Custom Browser Docks → add this URL),
+     so you see the chat inside OBS while you stream.
+  URL:  https://www.stratninja.win/chat-dock      Public read (polls the cached /api/live-chat).
+  (To delete/ban/feature a message, use 🎛️ ניהול on /live — this window is read-only.)
+-->
+<style>
+  :root{--bg:#0b0f17;--line:#1e2633;--muted:#8a94a6;--ink:#eef2f7;--accent:#34d399}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Heebo","Segoe UI",Arial,sans-serif}
+  #dk{display:flex;flex-direction:column;height:100vh}
+  .dk-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:800;font-size:15px;background:#0e1420}
+  .dk-head .dk-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(52,211,153,.5);animation:dkp 2s infinite}
+  @keyframes dkp{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  .dk-head .dk-n{margin-inline-start:auto;font-size:12.5px;color:var(--muted);font-weight:700}
+  #dkList{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+  .dkm{font-size:16px;line-height:1.45;word-break:break-word}
+  .dkm .dkn{font-weight:800;color:var(--accent);margin-inline-end:7px}
+  .dkm .dkt{font-size:11px;color:var(--muted);margin-inline-start:6px}
+  .dk-empty{color:var(--muted);text-align:center;padding:26px 0}
+  #dkList::-webkit-scrollbar{width:9px}#dkList::-webkit-scrollbar-thumb{background:#273142;border-radius:9px}
+</style>
+</head>
+<body>
+<div id="dk">
+  <div class="dk-head"><span class="dk-dot"></span>💬 צ'אט לייב <span class="dk-n" id="dkN"></span></div>
+  <div id="dkList"><div class="dk-empty">אין הודעות עדיין…</div></div>
+</div>
+<script>
+(function(){
+  "use strict";
+  var list = document.getElementById("dkList"), nEl = document.getElementById("dkN");
+  var seen = {};
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];}); }
+  function hhmm(iso){ try{ var d=new Date(iso); if(isNaN(d))return ""; function p(n){return (n<10?"0":"")+n;} return p(d.getHours())+":"+p(d.getMinutes()); }catch(e){return "";} }
+
+  function fetchMsgs(){
+    return fetch("/api/live-chat",{headers:{"Cache-Control":"no-cache"}})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(j){return (j&&j.ok&&Array.isArray(j.messages))?j.messages:null;})
+      .catch(function(){return null;});
+  }
+  function render(msgs){
+    if(!msgs) return;
+    var ids={}, minId=Infinity;
+    for(var i=0;i<msgs.length;i++){ ids[msgs[i].id]=1; if(msgs[i].id<minId)minId=msgs[i].id; }
+    var full=msgs.length<60;
+    // remove deleted/hidden
+    var nodes=list.querySelectorAll(".dkm");
+    for(var n=0;n<nodes.length;n++){ var mid=parseInt(nodes[n].getAttribute("data-id"),10); if(!ids[mid]&&(full||mid>=minId)){ delete seen[mid]; nodes[n].remove(); } }
+    // append new
+    var empty=list.querySelector(".dk-empty");
+    var nearBottom = list.scrollHeight-list.scrollTop-list.clientHeight < 80;
+    var fresh=[];
+    for(var k=0;k<msgs.length;k++){ var m=msgs[k]; if(!seen[m.id]){ seen[m.id]=1; fresh.push(m); } }
+    if(fresh.length){
+      if(empty) empty.remove();
+      list.insertAdjacentHTML("beforeend", fresh.map(function(m){
+        return '<div class="dkm" data-id="'+m.id+'"><span class="dkn">'+esc(m.name)+'</span><span class="dkt">'+hhmm(m.created_at)+'</span><div>'+esc(m.msg)+'</div></div>';
+      }).join(""));
+      if(nearBottom) list.scrollTop=list.scrollHeight;
+    }
+    // cap to last 150
+    var all=list.querySelectorAll(".dkm");
+    for(var x=0;x<all.length-150;x++){ delete seen[parseInt(all[x].getAttribute("data-id"),10)]; all[x].remove(); }
+    nEl.textContent = list.querySelectorAll(".dkm").length ? (list.querySelectorAll(".dkm").length+" הודעות") : "";
+  }
+  function tick(){ fetchMsgs().then(render); }
+  tick(); setInterval(tick, 2000);
+})();
+</script>
+</body>
+</html>
