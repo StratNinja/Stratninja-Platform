@@ -194,6 +194,8 @@ window.Live = (function () {
         '<input type="file" id="laThumb" accept="image/*"></div>' +
       '<div class="live-row"><button class="btn primary" id="laSave" style="font-size:13px;padding:7px 14px">💾 שמור</button>' +
       '<button class="btn ghost" id="laClearSched" style="font-size:13px;padding:7px 12px">נקה תזמון</button></div>' +
+      '<div class="live-row" style="margin-top:4px"><button class="btn" id="laPush" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:7px 14px">📢 שלח התראה לנייד — "אני בלייב"</button></div>' +
+      '<div class="la-stat">נשלח לכל מנויי ההתראות (פעם אחת; חסימה חוזרת ל-10 דקות). לחץ רק כשאתה באמת בלייב ומוכן.</div>' +
       '<div class="la-stat" id="laStat">מצב שידור אמיתי מ-Cloudflare: <b>' + (s && s.is_live ? "🔴 חי" : "⚫ לא פעיל") + "</b>" +
       " · אי אפשר לאלץ 'LIVE' ידנית — הוא נקבע לפי החיבור בפועל של OBS.</div>";
   }
@@ -324,6 +326,22 @@ window.Live = (function () {
     };
     var clr = $("laClearSched"); if (clr) clr.onclick = function () { if ($("laSched")) $("laSched").value = ""; };
     var th = $("laThumb"); if (th) th.onchange = function () { var f = th.files && th.files[0]; if (f) _uploadThumb(f); };
+    var pushBtn = $("laPush");
+    if (pushBtn) pushBtn.onclick = function () {
+      if (!confirm('לשלוח התראת פוש לכל המנויים: "🔴 StratNinja בלייב עכשיו"? נשלח פעם אחת.')) return;
+      var lbl = pushBtn.textContent; pushBtn.disabled = true; pushBtn.textContent = "שולח…";
+      _accessToken().then(function (tok) {
+        if (!tok) { pushBtn.disabled = false; pushBtn.textContent = lbl; toast("יש להתחבר מחדש"); return; }
+        fetch("/api/live-push", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ kind: "live" }) })
+          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            pushBtn.disabled = false; pushBtn.textContent = lbl;
+            if (r && r.ok) toast("ההתראה בדרך לכל המנויים ✓ (עד דקה)");
+            else if (r && r.cooldown) toast("כבר נשלחה לאחרונה — נסה שוב בעוד ~" + (r.wait || "") + " דק׳");
+            else toast("שליחה נכשלה" + (r && r.error ? " · " + r.error : ""));
+          }).catch(function () { pushBtn.disabled = false; pushBtn.textContent = lbl; toast("שליחה נכשלה"); });
+      });
+    };
   }
 
   // upload a thumbnail via the SERVER (service role) — reliable even though the storage RLS blocks a
