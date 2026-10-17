@@ -8868,6 +8868,7 @@
     learn: { render: renderLearn, wire: wireLearn },
     giveaway: { render: function () { return window.Giveaway ? window.Giveaway.render() : '<div class="page-head"><h1>🎁 הגרלות</h1></div>'; }, wire: function () { if (window.Giveaway) window.Giveaway.wire(); } },
     live: { render: function () { return window.Live ? window.Live.render() : '<div class="page-head"><h1>🔴 שידור חי</h1></div>'; }, wire: function () { if (window.Live) window.Live.wire(); } },
+    vods: { render: function () { return window.LiveVods ? window.LiveVods.render() : '<div class="page-head"><h1>📼 שידורים קודמים</h1></div>'; }, wire: function () { if (window.LiveVods) window.LiveVods.wire(); } },
     // alerts: { render: renderAlerts, wire: wireAlerts },  // hidden per Adi 2026-07-05; re-enable on request
   };
   const state = { page: "market" };
@@ -8915,6 +8916,7 @@
     // LEAVING the LIVE page → stop the Cloudflare player so there is no background video/audio. Must run
     // for EVERY destination (incl. the journal, which only hides #page, and the guest→login path below).
     if (state.page === "live" && name !== "live" && window.Live && window.Live.teardown) window.Live.teardown();
+    if (state.page === "vods" && name !== "vods" && window.LiveVods && window.LiveVods.teardown) window.LiveVods.teardown();   // stop VOD playback on leave
     // PUBLIC LIVE guest (not logged in, entered via /live): may view ONLY the live page — any other
     // page keeps its login gate. This never affects logged-in users (flag is false for them).
     if (window.__snGuestLive && name !== "live") {
