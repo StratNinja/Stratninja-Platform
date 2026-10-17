@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>StratNinja — צ'אט לייב</title>
 <!--
-  A clean, readable, scrolling view of the StratNinja site live-chat. Read-only. Use it:
-   • In a SEPARATE browser window  (so you read the chat without the whole site in front of you), or
-   • As an OBS Custom Browser Dock  (OBS → Docks → Custom Browser Docks → add this URL),
-     so you see the chat inside OBS while you stream.
-  URL:  https://www.stratninja.win/chat-dock      Public read (polls the cached /api/live-chat).
-  (To delete/ban/feature a message, use 🎛️ ניהול on /live — this window is read-only.)
+  A clean, readable, scrolling view of the StratNinja site live-chat. Use it:
+   • In a SEPARATE browser window  (so you read/moderate the chat without the whole site in front of you), or
+   • As an OBS Custom Browser Dock  (OBS → Docks → Custom Browser Docks → add this URL).
+  URL:  https://www.stratninja.win/chat-dock
+  MODERATION: when you are signed in as the admin, each message shows 📢 (הצג) / 🗑️ (מחק) / 🚫 (חסום).
+    • In a separate browser window you are already signed in (same site session) — buttons appear automatically.
+    • In OBS's dock the browser is separate, so click "התחבר לניהול" once to sign in inside OBS.
+  Moderation goes through /api/live-mod with the admin token (service-role server-side). Public viewers see read-only.
 -->
 <style>
   :root{--bg:#0b0f17;--line:#1e2633;--muted:#8a94a6;--ink:#eef2f7;--accent:#34d399}
@@ -21,10 +23,17 @@
   .dk-head .dk-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(52,211,153,.5);animation:dkp 2s infinite}
   @keyframes dkp{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
   .dk-head .dk-n{margin-inline-start:auto;font-size:12.5px;color:var(--muted);font-weight:700}
+  .dk-login{border:1px solid var(--line);background:#121a28;color:var(--ink);font-family:inherit;font-weight:700;font-size:12.5px;border-radius:9px;padding:5px 11px;cursor:pointer}
+  .dk-login:hover{border-color:var(--accent)}
+  .dk-admin{margin-inline-start:auto;font-size:12px;color:var(--accent);font-weight:800}
   #dkList{flex:1;overflow-y:auto;padding:10px 14px;display:flex;flex-direction:column;gap:8px}
-  .dkm{font-size:16px;line-height:1.45;word-break:break-word}
+  .dkm{font-size:16px;line-height:1.45;word-break:break-word;position:relative}
   .dkm .dkn{font-weight:800;color:var(--accent);margin-inline-end:7px}
   .dkm .dkt{font-size:11px;color:var(--muted);margin-inline-start:6px}
+  .dkm .dkmod{display:inline-flex;gap:4px;margin-inline-start:8px;vertical-align:middle}
+  .dkm .dkmod span{cursor:pointer;font-size:19px;line-height:1;opacity:.75;transition:opacity .12s,transform .12s;user-select:none}
+  .dkm .dkmod span:hover{opacity:1;transform:scale(1.15)}
+  .dkm.dkfeat{background:rgba(52,211,153,.07);border-inline-start:3px solid var(--accent);padding-inline-start:9px;border-radius:7px}
   .dk-empty{color:var(--muted);text-align:center;padding:26px 0}
   #dkList::-webkit-scrollbar{width:9px}#dkList::-webkit-scrollbar-thumb{background:#273142;border-radius:9px}
 </style>
@@ -34,14 +43,110 @@
   <div class="dk-head"><span class="dk-dot"></span>💬 צ'אט לייב <span class="dk-n" id="dkN"></span></div>
   <div id="dkList"><div class="dk-empty">אין הודעות עדיין…</div></div>
 </div>
+
+<!-- auth stack (same as the site) — lets the admin moderate from this window -->
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 <script>
 (function(){
   "use strict";
+  var ADMIN_EMAIL = "koriatmanagement@gmail.com";
   var list = document.getElementById("dkList"), nEl = document.getElementById("dkN");
-  var seen = {};
+  var head = document.querySelector(".dk-head");
+  var seen = {};            // id → message object (so we can re-render on admin login)
+  var isAdmin = false;
+  var pending = {};         // id → true while a mod action is in flight (avoids double-click)
+
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];}); }
   function hhmm(iso){ try{ var d=new Date(iso); if(isNaN(d))return ""; function p(n){return (n<10?"0":"")+n;} return p(d.getHours())+":"+p(d.getMinutes()); }catch(e){return "";} }
 
+  // ---- admin auth ------------------------------------------------------------
+  function adminBadge(){
+    var old=head.querySelector(".dk-login,.dk-admin"); if(old) old.remove();
+    if(isAdmin){
+      var b=document.createElement("span"); b.className="dk-admin"; b.textContent="🛡️ מצב ניהול"; head.appendChild(b);
+    } else if (window.SN_CLOUD){
+      var btn=document.createElement("button"); btn.className="dk-login"; btn.textContent="התחבר לניהול";
+      btn.onclick=function(){ try{ SNAuth.signInWithGoogle(); }catch(e){} };
+      head.appendChild(btn);
+    }
+  }
+  function applyAdmin(u){
+    var next = !!(u && u.email && u.email.toLowerCase()===ADMIN_EMAIL);
+    if(next===isAdmin){ adminBadge(); return; }
+    isAdmin=next; adminBadge();
+    // re-render existing messages so the moderation buttons appear / disappear
+    var cur=list.querySelectorAll(".dkm"); for(var i=0;i<cur.length;i++) cur[i].remove();
+    seen={}; var e=list.querySelector(".dk-empty"); if(e) e.remove();
+    list.insertAdjacentHTML("beforeend",'<div class="dk-empty">טוען…</div>');
+    tick();
+  }
+  async function initAuth(){
+    try{
+      if(window.SNAuth && window.SN_CLOUD){
+        await SNAuth.init();
+        SNAuth.onChange(applyAdmin);          // fires immediately with current user, and on login/logout
+      }
+    }catch(e){}
+    adminBadge();
+  }
+  async function token(){
+    try{ var c=SNAuth.getClient(); if(!c) return null; var r=await c.auth.getSession(); return (r&&r.data&&r.data.session)?r.data.session.access_token:null; }
+    catch(e){ return null; }
+  }
+  async function modCall(payload){
+    var t=await token(); if(!t) return false;
+    try{
+      var r=await fetch("/api/live-mod",{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+t},body:JSON.stringify(payload)});
+      return r.ok;
+    }catch(e){ return false; }
+  }
+
+  // ---- moderation actions ----------------------------------------------------
+  async function doHide(id,node){
+    if(pending[id]) return; pending[id]=1;
+    var ok=await modCall({action:"hide",id:String(id)});
+    delete pending[id];
+    if(ok){ delete seen[id]; if(node&&node.parentNode) node.remove(); updateCount(); }
+  }
+  async function doFeature(id,node){
+    if(pending[id]) return; pending[id]=1;
+    var ok=await modCall({action:"feature",id:String(id)});
+    delete pending[id];
+    if(ok&&node){ node.classList.add("dkfeat"); setTimeout(function(){ node.classList.remove("dkfeat"); }, 11000); }
+  }
+  async function doBan(uid,name){
+    if(!uid) return;
+    if(!confirm("לחסום את "+(name||"המשתמש")+" מהצ'אט?")) return;
+    await modCall({action:"ban",user_id:uid});
+  }
+
+  function modHtml(m){
+    if(!isAdmin) return "";
+    var own = m.user_id && SNAuth.user() && m.user_id===SNAuth.user().id;   // never show ban for yourself
+    return '<span class="dkmod">'
+      + '<span class="dk-feat" data-feat="'+m.id+'" title="הצג על המסך">📢</span>'
+      + '<span class="dk-hide" data-hide="'+m.id+'" title="מחק">🗑️</span>'
+      + ((m.user_id && !own) ? '<span class="dk-ban" data-ban="'+esc(m.user_id)+'" data-name="'+esc(m.name)+'" title="חסום">🚫</span>' : "")
+      + '</span>';
+  }
+
+  // delegated clicks for the moderation buttons
+  list.addEventListener("click",function(ev){
+    var t=ev.target; if(!isAdmin||!t) return;
+    var fid=t.getAttribute("data-feat"), hid=t.getAttribute("data-hide"), bid=t.getAttribute("data-ban");
+    if(fid){ doFeature(parseInt(fid,10), t.closest(".dkm")); }
+    else if(hid){ doHide(parseInt(hid,10), t.closest(".dkm")); }
+    else if(bid){ doBan(bid, t.getAttribute("data-name")); }
+  });
+
+  function updateCount(){
+    var c=list.querySelectorAll(".dkm").length;
+    nEl.textContent = c ? (c+" הודעות") : "";
+  }
+
+  // ---- chat polling ----------------------------------------------------------
   function fetchMsgs(){
     return fetch("/api/live-chat",{headers:{"Cache-Control":"no-cache"}})
       .then(function(r){return r.ok?r.json():null;})
@@ -53,27 +158,29 @@
     var ids={}, minId=Infinity;
     for(var i=0;i<msgs.length;i++){ ids[msgs[i].id]=1; if(msgs[i].id<minId)minId=msgs[i].id; }
     var full=msgs.length<60;
-    // remove deleted/hidden
+    // remove deleted/hidden (also reflects a delete done from /live or another admin)
     var nodes=list.querySelectorAll(".dkm");
     for(var n=0;n<nodes.length;n++){ var mid=parseInt(nodes[n].getAttribute("data-id"),10); if(!ids[mid]&&(full||mid>=minId)){ delete seen[mid]; nodes[n].remove(); } }
     // append new
     var empty=list.querySelector(".dk-empty");
     var nearBottom = list.scrollHeight-list.scrollTop-list.clientHeight < 80;
     var fresh=[];
-    for(var k=0;k<msgs.length;k++){ var m=msgs[k]; if(!seen[m.id]){ seen[m.id]=1; fresh.push(m); } }
+    for(var k=0;k<msgs.length;k++){ var m=msgs[k]; if(!seen[m.id]){ seen[m.id]=m; fresh.push(m); } }
     if(fresh.length){
       if(empty) empty.remove();
       list.insertAdjacentHTML("beforeend", fresh.map(function(m){
-        return '<div class="dkm" data-id="'+m.id+'"><span class="dkn">'+esc(m.name)+'</span><span class="dkt">'+hhmm(m.created_at)+'</span><div>'+esc(m.msg)+'</div></div>';
+        return '<div class="dkm" data-id="'+m.id+'"><span class="dkn">'+esc(m.name)+'</span><span class="dkt">'+hhmm(m.created_at)+'</span>'+modHtml(m)+'<div>'+esc(m.msg)+'</div></div>';
       }).join(""));
       if(nearBottom) list.scrollTop=list.scrollHeight;
     }
     // cap to last 150
     var all=list.querySelectorAll(".dkm");
     for(var x=0;x<all.length-150;x++){ delete seen[parseInt(all[x].getAttribute("data-id"),10)]; all[x].remove(); }
-    nEl.textContent = list.querySelectorAll(".dkm").length ? (list.querySelectorAll(".dkm").length+" הודעות") : "";
+    updateCount();
   }
   function tick(){ fetchMsgs().then(render); }
+
+  initAuth();
   tick(); setInterval(tick, 2000);
 })();
 </script>
