@@ -119,9 +119,9 @@
   // so a logged-in user was seeing the "log in" prompt. Rebuilds ONLY the input, never the message list.
   function _syncInput() {
     var wrap = $("lcInputWrap"); if (!wrap) return;
-    var loggedIn = !!user(), hasForm = !!$("lcForm");
-    if (loggedIn === hasForm) return;   // already correct
-    wrap.innerHTML = _inputHtml(); _wireForm();
+    // ONLY upgrade guest-prompt → composer once a user is present. Never downgrade composer → login:
+    // a transient null session (token refresh) must not yank the input box or a half-typed message.
+    if (user() && !$("lcForm")) { wrap.innerHTML = _inputHtml(); _wireForm(); }
   }
 
   function _msgHtml(m) {
