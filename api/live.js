@@ -268,15 +268,16 @@ export default async function handler(req, res) {
           if (cf.live && !row.started_at) fields.started_at = new Date().toISOString();
           fields.updated_at = new Date().toISOString();
         }
-        // resolve (while live) / clear (when offline) the active Video ID used for DVR playback
-        if (cf.live) {
-          const vid = await activeVideoUid();
-          if (vid && vid !== row.live_video_uid) { fields.live_video_uid = vid; fields.updated_at = new Date().toISOString(); }
-        } else if (row.live_video_uid) {
-          fields.live_video_uid = null; fields.updated_at = new Date().toISOString();
-        }
         const updated = await patchRow(fields);
         if (updated) row = updated;
+        // DVR Video ID — in a SEPARATE patch so a missing live_video_uid column (SQL not run yet) can never
+        // break the is_live update above (patchRow returns null on error → the live still shows).
+        if (cf.live) {
+          const vid = await activeVideoUid();
+          if (vid && vid !== row.live_video_uid) { const u2 = await patchRow({ live_video_uid: vid }); if (u2) row = u2; }
+        } else if (row.live_video_uid) {
+          const u2 = await patchRow({ live_video_uid: null }); if (u2) row = u2;
+        }
       } else {
         // unrecognized state OR a CF error — don't change is_live (keep last known), record why & back off
         await patchRow({ verified_at: new Date().toISOString(), cf_status: cf.ok ? ("unknown:" + (cf.status || "")) : cfErrStr(cf) });
