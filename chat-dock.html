@@ -160,7 +160,8 @@
 
   // ---- chat polling ----------------------------------------------------------
   function fetchMsgs(){
-    return fetch("/api/live-chat",{headers:{"Cache-Control":"no-cache"}})
+    // cache-bust → always a FRESH read (the dock is admin-only, so it bypasses the shared edge cache)
+    return fetch("/api/live-chat?live=public&_="+Date.now(),{headers:{"Cache-Control":"no-cache"}})
       .then(function(r){return r.ok?r.json():null;})
       .then(function(j){return (j&&j.ok&&Array.isArray(j.messages))?j.messages:null;})
       .catch(function(){return null;});
@@ -193,7 +194,7 @@
   function tick(){ fetchMsgs().then(render); }
 
   initAuth();
-  tick(); setInterval(tick, 2000);
+  tick(); setInterval(tick, 1000);
 })();
 </script>
 </body>
