@@ -19,11 +19,14 @@
   body{font-family:"Heebo","Segoe UI",Arial,sans-serif;color:#fff}
   #ovWrap{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding:12px;box-sizing:border-box}
   body.panel #ovWrap{background:linear-gradient(0deg,rgba(6,10,16,.55),rgba(6,10,16,.15));border-radius:14px}
-  .ovm{font-size:var(--fs);line-height:1.4;word-break:break-word;background:rgba(10,14,22,.62);border:1px solid rgba(255,255,255,.08);
-       border-radius:12px;padding:7px 12px;max-width:100%;box-shadow:0 2px 10px rgba(0,0,0,.35);
-       animation:ovIn .25s ease;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
-  .ovm .ovn{font-weight:800;color:#34d399;margin-inline-end:7px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
-  .ovm .ovt{text-shadow:0 1px 6px rgba(0,0,0,.75)}
+  .ovm{font-size:var(--fs);line-height:1.5;word-break:break-word;
+       background:rgba(8,12,20,.93);border:1.5px solid rgba(255,255,255,.18);
+       border-inline-start:5px solid #34d399;
+       border-radius:14px;padding:12px 20px;max-width:100%;
+       box-shadow:0 6px 22px rgba(0,0,0,.6),0 0 0 1px rgba(0,0,0,.4);
+       animation:ovIn .25s ease;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  .ovm .ovn{font-weight:900;color:#4ade80;margin-inline-end:8px;text-shadow:0 1px 4px rgba(0,0,0,.85)}
+  .ovm .ovt{font-weight:600;text-shadow:0 1px 6px rgba(0,0,0,.9),0 0 2px rgba(0,0,0,.9)}
   @keyframes ovIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style>
 </head>
@@ -44,50 +47,78 @@
   var HOLD = Math.max(2, Math.min(120, parseInt(q.get("hold"), 10) || 10)) * 1000;
 
   var wrap = document.getElementById("ovWrap");
-  var shown = {};   // dedup key → true
+  var shown = {};          // "all" mode: message id → shown
+  var featuredEls = {};    // "featured" mode: message id → { el, key } currently on screen
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];}); }
 
-  function addMsg(m, ttl) {
+  function mkEl(m){
     var el = document.createElement("div");
     el.className = "ovm";
     el.innerHTML = '<span class="ovn">' + esc(m.name) + '</span><span class="ovt">' + esc(m.msg) + "</span>";
-    wrap.appendChild(el);
-    setTimeout(function () {   // auto-hide after its hold time (fade out)
-      if (!el.parentNode) return;
-      el.style.transition = "opacity .35s"; el.style.opacity = "0";
-      setTimeout(function () { if (el.parentNode) el.remove(); }, 350);
-    }, Math.max(600, ttl));
-    var all = wrap.querySelectorAll(".ovm");   // keep at most LIMIT on screen
+    return el;
+  }
+  function fadeRemove(el){
+    if (!el || !el.parentNode || el._gone) return;
+    el._gone = 1;
+    el.style.transition = "opacity .3s"; el.style.opacity = "0";
+    setTimeout(function(){ if (el.parentNode) el.remove(); }, 300);
+  }
+
+  // "all" mode — append and auto-hide after its hold time.
+  function addMsg(m, ttl){
+    var el = mkEl(m); wrap.appendChild(el);
+    setTimeout(function(){ fadeRemove(el); }, Math.max(600, ttl));
+    var all = wrap.querySelectorAll(".ovm");
     for (var x = 0; x < all.length - LIMIT; x++) all[x].remove();
   }
 
   function fetchMsgs() {
-    return fetch("/api/live-chat", { headers: { "Cache-Control": "no-cache" } })
+    // cache-bust so the overlay always gets a FRESH read (bypasses the 2s edge cache that the
+    // public viewers share). The overlay is a single OBS source, so this adds no real load.
+    return fetch("/api/live-chat?live=public&_=" + Date.now(), { headers: { "Cache-Control": "no-cache" } })
       .then(function(r){ return r.ok ? r.json() : null; })
       .then(function(j){ return (j && j.ok && Array.isArray(j.messages)) ? j.messages : null; })
       .catch(function(){ return null; });
   }
+
   function render(msgs) {
     if (!msgs) return;
     var now = Date.now();
-    for (var i = 0; i < msgs.length; i++) {
-      var m = msgs[i];
-      if (FEED === "featured") {
+    if (FEED === "featured") {
+      // which messages should be on screen right now (featured within the HOLD window)
+      var active = {};
+      for (var i = 0; i < msgs.length; i++) {
+        var m = msgs[i];
         if (!m.featured_at) continue;
         var ft = new Date(m.featured_at).getTime();
         if (isNaN(ft)) continue;
         var age = now - ft;
-        if (age < 0 || age >= HOLD) continue;               // not currently featured
-        var key = m.id + "|" + m.featured_at;               // re-featuring (new featured_at) shows it again
-        if (!shown[key]) { shown[key] = 1; addMsg(m, HOLD - age); }
-      } else {
-        if (!shown[m.id]) { shown[m.id] = 1; addMsg(m, HOLD); }
+        if (age < 0 || age >= HOLD) continue;
+        active[m.id] = { m: m, key: m.id + "|" + m.featured_at };   // new featured_at ⇒ new key ⇒ re-show
+      }
+      // add new / re-featured
+      for (var id in active) {
+        var a = active[id], cur = featuredEls[id];
+        if (!cur || cur.key !== a.key) {
+          if (cur) fadeRemove(cur.el);
+          var el = mkEl(a.m); wrap.appendChild(el);
+          featuredEls[id] = { el: el, key: a.key };
+        }
+      }
+      // remove messages the admin un-featured (📢 again) or that expired — pulled off within ~1s
+      for (var id2 in featuredEls) {
+        if (!active[id2]) { fadeRemove(featuredEls[id2].el); delete featuredEls[id2]; }
+      }
+    } else {
+      for (var j = 0; j < msgs.length; j++) {
+        var mm = msgs[j];
+        if (!shown[mm.id]) { shown[mm.id] = 1; addMsg(mm, HOLD); }
       }
     }
   }
   function tick(){ fetchMsgs().then(render); }
   tick();
-  setInterval(tick, 2000);
+  setInterval(tick, 1000);
 })();
 </script>
 </body>

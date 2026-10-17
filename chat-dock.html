@@ -33,7 +33,8 @@
   .dkm .dkmod{display:inline-flex;gap:4px;margin-inline-start:8px;vertical-align:middle}
   .dkm .dkmod span{cursor:pointer;font-size:19px;line-height:1;opacity:.75;transition:opacity .12s,transform .12s;user-select:none}
   .dkm .dkmod span:hover{opacity:1;transform:scale(1.15)}
-  .dkm.dkfeat{background:rgba(52,211,153,.07);border-inline-start:3px solid var(--accent);padding-inline-start:9px;border-radius:7px}
+  .dkm .dkmod .dk-feat.on{opacity:1;filter:drop-shadow(0 0 5px rgba(52,211,153,.95))}
+  .dkm.dkfeat{background:rgba(52,211,153,.10);border-inline-start:3px solid var(--accent);padding-inline-start:9px;border-radius:7px}
   .dk-empty{color:var(--muted);text-align:center;padding:26px 0}
   #dkList::-webkit-scrollbar{width:9px}#dkList::-webkit-scrollbar-thumb{background:#273142;border-radius:9px}
 </style>
@@ -57,6 +58,7 @@
   var seen = {};            // id → message object (so we can re-render on admin login)
   var isAdmin = false;
   var pending = {};         // id → true while a mod action is in flight (avoids double-click)
+  var featured = {};        // id → true while this message is currently pushed to the overlay (toggle state)
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];}); }
   function hhmm(iso){ try{ var d=new Date(iso); if(isNaN(d))return ""; function p(n){return (n<10?"0":"")+n;} return p(d.getHours())+":"+p(d.getMinutes()); }catch(e){return "";} }
@@ -110,11 +112,21 @@
     delete pending[id];
     if(ok){ delete seen[id]; if(node&&node.parentNode) node.remove(); updateCount(); }
   }
-  async function doFeature(id,node){
+  async function doFeature(id,node,btn){
     if(pending[id]) return; pending[id]=1;
-    var ok=await modCall({action:"feature",id:String(id)});
+    var on = !!featured[id];                       // currently on the overlay? → toggle it off
+    var ok = await modCall({action: on?"unfeature":"feature", id:String(id)});
     delete pending[id];
-    if(ok&&node){ node.classList.add("dkfeat"); setTimeout(function(){ node.classList.remove("dkfeat"); }, 11000); }
+    if(!ok) return;
+    if(on){
+      delete featured[id];
+      if(btn) btn.classList.remove("on");
+      if(node) node.classList.remove("dkfeat");
+    } else {
+      featured[id]=1;
+      if(btn) btn.classList.add("on");
+      if(node) node.classList.add("dkfeat");
+    }
   }
   async function doBan(uid,name){
     if(!uid) return;
@@ -136,7 +148,7 @@
   list.addEventListener("click",function(ev){
     var t=ev.target; if(!isAdmin||!t) return;
     var fid=t.getAttribute("data-feat"), hid=t.getAttribute("data-hide"), bid=t.getAttribute("data-ban");
-    if(fid){ doFeature(parseInt(fid,10), t.closest(".dkm")); }
+    if(fid){ doFeature(parseInt(fid,10), t.closest(".dkm"), t); }
     else if(hid){ doHide(parseInt(hid,10), t.closest(".dkm")); }
     else if(bid){ doBan(bid, t.getAttribute("data-name")); }
   });
