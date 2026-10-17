@@ -79,7 +79,7 @@
     s.textContent = [
       ".lc-wrap{margin:0}",   // fills its column (video is beside it on desktop, above it on mobile)
       // desktop: the chat matches the video's height and stays FIXED (list scrolls; never shrinks when empty)
-      "@media(min-width:900px){.lc-wrap{display:flex;flex-direction:column;height:100%}.lc-box{flex:1;display:flex;flex-direction:column;min-height:0}.lc-list{flex:1;max-height:none;min-height:0}}",
+      "@media(min-width:900px){.lc-wrap{display:flex;flex-direction:column;flex:1;min-height:0}.lc-box{flex:1;display:flex;flex-direction:column;min-height:0}.lc-list{flex:1;max-height:none;min-height:0}}",
       ".lc-count{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);margin-bottom:10px}",
       ".lc-count .lc-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.5);animation:lcPulse 2s infinite}",
       "@keyframes lcPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}",
@@ -222,22 +222,32 @@
     });
   }
 
-  function _refreshMsgs() { _fetchMsgs().then(_append); }
-
-  function _beat() {
-    var c = client(); if (!c) { _refreshCount(); return; }
-    var u = user();
-    if (u) {   // only logged-in users contribute a heartbeat (RLS), then everyone reads the count
-      c.from("live_presence").upsert({ user_id: u.id, live_id: LIVE_ID, last_seen: new Date().toISOString() }, { onConflict: "user_id,live_id" })
-        .then(_refreshCount).catch(_refreshCount);
-    } else { _refreshCount(); }
+  function _refreshMsgs() { _fetchMsgs().then(function (msgs) { _append(msgs); _reconcile(msgs); }); }
+  // remove messages that were hidden/deleted by the admin, for EVERYONE, without a refresh. Only within the
+  // fetched window [minId..maxId] so older messages scrolled out of the latest-60 aren't wrongly removed.
+  function _reconcile(msgs) {
+    if (!msgs || !msgs.length) return;
+    var ids = {}, minId = Infinity, maxId = 0;
+    for (var i = 0; i < msgs.length; i++) { var id = msgs[i].id; ids[id] = 1; if (id < minId) minId = id; if (id > maxId) maxId = id; }
+    var nodes = document.querySelectorAll("#lcList .lc-msg");
+    for (var j = 0; j < nodes.length; j++) {
+      var mid = parseInt(nodes[j].getAttribute("data-id"), 10);
+      if (mid >= minId && mid <= maxId && !ids[mid]) { nodes[j].remove(); delete _seen[mid]; }
+    }
   }
-  function _refreshCount() {
-    var c = client(); if (!c) return;
-    c.rpc("live_active_count", { p_live: LIVE_ID }).then(function (r) {
-      var n = (r && typeof r.data === "number") ? r.data : 0;
-      var el = $("lcCount"); if (el) el.innerHTML = '<span class="lc-dot"></span>' + esc(countLabel(_phase, n));
-    }).catch(function () {});
+
+  function _setCount(n) {
+    var el = $("lcCount"); if (el) el.innerHTML = '<span class="lc-dot"></span>' + esc(countLabel(_phase, n || 0));
+  }
+  // heartbeat + count via the SERVER (service role) — reliable even if a client-side RLS upsert silently
+  // writes 0 rows (the "count stuck at 0" bug). Logged-in → POST (counts you); guest → GET (reads only).
+  function _beat() {
+    _token().then(function (tok) {
+      var opts = tok ? { method: "POST", headers: { Authorization: "Bearer " + tok } } : { method: "GET", headers: {} };
+      fetch("/api/live-presence", opts).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j && typeof j.count === "number") _setCount(j.count); })
+        .catch(function () {});
+    });
   }
 
   // ---- wiring ----
@@ -269,14 +279,19 @@
     }
   }
   function mount() {
-    var root = $("liveChatRoot"); if (!root || _mounted) return;
+    var root = $("liveChatRoot"); if (!root) return;
+    if (_mounted && root.querySelector(".lc-box")) return;   // already shown — do nothing
+    // (re)build: navigating to /live while already there rebuilds the page into an EMPTY #liveChatRoot,
+    // so we must re-render even if _mounted is still true (the "2nd click empties the chat" bug).
     _css();
+    if (_msgTimer) { clearInterval(_msgTimer); _msgTimer = null; }   // re-mount safety: never duplicate timers
+    if (_beatTimer) { clearInterval(_beatTimer); _beatTimer = null; }
     _mounted = true; _lastId = 0; _seen = {};
     root.innerHTML = _shell();
     _wireForm();
     if (!_authHooked && window.SNAuth && SNAuth.onChange) {   // session may arrive after mount → resync input + count
       _authHooked = true;
-      SNAuth.onChange(function () { if (_mounted) { _syncInput(); _refreshCount(); } });
+      SNAuth.onChange(function () { if (_mounted) { _syncInput(); _beat(); } });
     }
     _refreshMsgs(); _beat();
     _msgTimer = setInterval(function () {

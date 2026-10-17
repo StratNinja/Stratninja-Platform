@@ -49,7 +49,7 @@ window.Live = (function () {
     s.textContent = [
       ".live-wrap{max-width:1340px;margin:0 auto}",
       ".live-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}",
-      "@media(min-width:900px){.live-grid{grid-template-columns:minmax(0,1fr) 350px;align-items:stretch}.live-side{height:100%}}",   // video | chat, chat matches video height
+      "@media(min-width:900px){.live-grid{grid-template-columns:minmax(0,1fr) 350px;align-items:stretch}.live-side,#liveChatRoot{display:flex;flex-direction:column;min-height:0}#liveChatRoot{flex:1}}",   // video | chat; chat column stretches to video height, chat fills it via a full flex chain
       ".live-main{min-width:0}.live-side{min-width:0}",
       ".live-stage{position:relative;width:100%;aspect-ratio:16/9;background:#05070c;border:1px solid var(--line);border-radius:16px;overflow:hidden}",
       ".live-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}",
