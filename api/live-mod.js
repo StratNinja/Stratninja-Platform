@@ -57,6 +57,11 @@ export default async function handler(req, res) {
       res.status(r.ok ? 200 : 502).json({ ok: r.ok, action: action });
       return;
     }
+    if (action === "feature" && body.id != null && /^[0-9]+$/.test(String(body.id))) {   // show this message on the OBS overlay
+      const r = await sb("live_chat?id=eq." + String(body.id), { method: "PATCH", body: JSON.stringify({ featured_at: new Date().toISOString() }) });
+      res.status(r.ok ? 200 : 502).json({ ok: r.ok, action: "feature" });
+      return;
+    }
     if ((action === "ban" || action === "unban") && typeof body.user_id === "string" && /^[0-9a-f-]{36}$/i.test(body.user_id)) {
       if (action === "ban" && body.user_id === admin.id) { res.status(400).json({ error: "cannot_ban_self" }); return; }   // never ban the admin
       if (action === "ban") {

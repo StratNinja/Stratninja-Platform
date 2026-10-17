@@ -89,8 +89,9 @@
       ".lc-msg{font-size:14px;line-height:1.45;word-break:break-word}",
       ".lc-msg .lc-name{font-weight:800;color:var(--accent)}",
       ".lc-msg .lc-t{font-size:11px;color:var(--muted);margin-inline-start:6px}",
-      ".lc-msg .lc-hide,.lc-msg .lc-ban{font-size:11px;color:var(--muted);cursor:pointer;margin-inline-start:6px;opacity:.6}",
+      ".lc-msg .lc-hide,.lc-msg .lc-ban,.lc-msg .lc-feat{font-size:11px;color:var(--muted);cursor:pointer;margin-inline-start:6px;opacity:.6}",
       ".lc-msg .lc-hide:hover,.lc-msg .lc-ban:hover{opacity:1;color:#ef4444}",
+      ".lc-msg .lc-feat:hover{opacity:1;color:var(--accent)}",
       ".lc-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:18px 0}",
       ".lc-form{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}",
       ".lc-form input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:9px 12px;font-family:inherit;font-size:14px}",
@@ -129,7 +130,8 @@
     var admin = "";
     if (isAdmin()) {
       var myId = (user() || {}).id;   // never offer to ban yourself
-      admin = '<span class="lc-hide" data-hide="' + m.id + '" title="מחק הודעה">🗑️</span>' +
+      admin = '<span class="lc-feat" data-feat="' + m.id + '" title="הצג בשידור (Overlay, 10 שניות)">📢</span>' +
+        '<span class="lc-hide" data-hide="' + m.id + '" title="מחק הודעה">🗑️</span>' +
         (m.user_id && m.user_id !== myId ? '<span class="lc-ban" data-ban="' + esc(m.user_id) + '" data-banname="' + esc(m.name) + '" title="חסום משתמש (לא יוכל לכתוב יותר)">🚫</span>' : "");
     }
     return '<div class="lc-msg" data-id="' + m.id + '"' + (m.user_id ? ' data-user="' + esc(m.user_id) + '"' : "") + ">" +
@@ -257,11 +259,17 @@
   }
 
   // ---- wiring ----
-  function _wireMod() {   // wire the admin 🗑️ (delete one) + 🚫 (ban user) controls
+  function _wireMod() {   // wire the admin 📢 (feature on overlay) + 🗑️ (delete) + 🚫 (ban) controls
+    var feat = document.querySelectorAll(".lc-feat");
+    for (var k = 0; k < feat.length; k++) feat[k].onclick = function () { _feature(parseInt(this.getAttribute("data-feat"), 10)); };
     var hid = document.querySelectorAll(".lc-hide");
     for (var i = 0; i < hid.length; i++) hid[i].onclick = function () { _hide(parseInt(this.getAttribute("data-hide"), 10)); };
     var ban = document.querySelectorAll(".lc-ban");
     for (var j = 0; j < ban.length; j++) ban[j].onclick = function () { _ban(this.getAttribute("data-ban"), this.getAttribute("data-banname")); };
+  }
+  function _feature(id) {   // show this message on the OBS overlay (?feed=featured) for ~10s
+    if (!isAdmin()) return;
+    _modCall({ action: "feature", id: id }).then(function (r) { toast(r && r.ok ? "📢 מוצג בשידור" : "הפעולה נכשלה"); });
   }
   function _wireForm() {
     var f = $("lcForm");

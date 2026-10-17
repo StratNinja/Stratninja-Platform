@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
   // newest 60 non-hidden rows, then flip to chronological for the UI.
   const url = SUPA_URL + "/rest/v1/live_chat" +
-    "?select=id,name,msg,created_at,user_id&live_id=eq." + encodeURIComponent(live) +
+    "?select=id,name,msg,created_at,user_id,featured_at&live_id=eq." + encodeURIComponent(live) +
     "&hidden=is.false&order=id.desc&limit=60";
   try {
     const r = await fetch(url, { headers: { apikey: ANON, Authorization: "Bearer " + ANON } });

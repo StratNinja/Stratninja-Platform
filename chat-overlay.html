@@ -8,7 +8,10 @@
   Transparent live-chat overlay for OBS. Add as a Browser Source:
     https://www.stratninja.win/chat-overlay   (≈ 420 × 640, transparent)
   Shows the StratNinja site live-chat messages. Public read; polls the cached /api/live-chat.
-  Optional query params:  ?limit=25  (max visible)   ?size=20  (font px)   ?bg=1 (add a dark panel)
+  Optional query params:
+    ?feed=featured  only the messages the admin picked with 📢 (default: every message)
+    ?hold=10        seconds each message stays before it fades (default 10)
+    ?limit=25  max on screen   ?size=20  font px   ?bg=1  add a dark panel
 -->
 <style>
   :root { --fs: 19px; }
@@ -35,9 +38,28 @@
   if (SIZE && SIZE >= 10 && SIZE <= 60) document.documentElement.style.setProperty("--fs", SIZE + "px");
   if (q.get("bg") === "1") document.body.classList.add("panel");
 
+  // ?feed=featured → only the messages the admin picked (📢); default → every message.
+  var FEED = (q.get("feed") === "featured") ? "featured" : "all";
+  // ?hold=10 → seconds each message stays on screen before it fades out.
+  var HOLD = Math.max(2, Math.min(120, parseInt(q.get("hold"), 10) || 10)) * 1000;
+
   var wrap = document.getElementById("ovWrap");
-  var seen = {}, lastId = 0;
+  var shown = {};   // dedup key → true
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];}); }
+
+  function addMsg(m, ttl) {
+    var el = document.createElement("div");
+    el.className = "ovm";
+    el.innerHTML = '<span class="ovn">' + esc(m.name) + '</span><span class="ovt">' + esc(m.msg) + "</span>";
+    wrap.appendChild(el);
+    setTimeout(function () {   // auto-hide after its hold time (fade out)
+      if (!el.parentNode) return;
+      el.style.transition = "opacity .35s"; el.style.opacity = "0";
+      setTimeout(function () { if (el.parentNode) el.remove(); }, 350);
+    }, Math.max(600, ttl));
+    var all = wrap.querySelectorAll(".ovm");   // keep at most LIMIT on screen
+    for (var x = 0; x < all.length - LIMIT; x++) all[x].remove();
+  }
 
   function fetchMsgs() {
     return fetch("/api/live-chat", { headers: { "Cache-Control": "no-cache" } })
@@ -46,27 +68,22 @@
       .catch(function(){ return null; });
   }
   function render(msgs) {
-    if (!msgs) return;   // fetch failed → keep what's shown
-    var ids = {}, minId = Infinity;
-    for (var i=0;i<msgs.length;i++){ ids[msgs[i].id]=1; if(msgs[i].id<minId)minId=msgs[i].id; }
-    var full = msgs.length < 60;
-    // remove deleted/hidden messages (gone from the fetched set)
-    var nodes = wrap.querySelectorAll(".ovm");
-    for (var n=0;n<nodes.length;n++){
-      var mid = parseInt(nodes[n].getAttribute("data-id"),10);
-      if (!ids[mid] && (full || mid>=minId)) { delete seen[mid]; nodes[n].remove(); }
+    if (!msgs) return;
+    var now = Date.now();
+    for (var i = 0; i < msgs.length; i++) {
+      var m = msgs[i];
+      if (FEED === "featured") {
+        if (!m.featured_at) continue;
+        var ft = new Date(m.featured_at).getTime();
+        if (isNaN(ft)) continue;
+        var age = now - ft;
+        if (age < 0 || age >= HOLD) continue;               // not currently featured
+        var key = m.id + "|" + m.featured_at;               // re-featuring (new featured_at) shows it again
+        if (!shown[key]) { shown[key] = 1; addMsg(m, HOLD - age); }
+      } else {
+        if (!shown[m.id]) { shown[m.id] = 1; addMsg(m, HOLD); }
+      }
     }
-    // append new ones
-    var fresh = [];
-    for (var k=0;k<msgs.length;k++){ var m=msgs[k]; if(!seen[m.id]){ seen[m.id]=1; if(m.id>lastId)lastId=m.id; fresh.push(m); } }
-    if (fresh.length) {
-      wrap.insertAdjacentHTML("beforeend", fresh.map(function(m){
-        return '<div class="ovm" data-id="'+m.id+'"><span class="ovn">'+esc(m.name)+'</span><span class="ovt">'+esc(m.msg)+'</span></div>';
-      }).join(""));
-    }
-    // cap to the last LIMIT messages
-    var all = wrap.querySelectorAll(".ovm");
-    for (var x=0; x < all.length - LIMIT; x++) { var el=all[x]; delete seen[parseInt(el.getAttribute("data-id"),10)]; el.remove(); }
   }
   function tick(){ fetchMsgs().then(render); }
   tick();
