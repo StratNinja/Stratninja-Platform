@@ -22,7 +22,9 @@
   .dk-head{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:800;font-size:15px;background:#0e1420}
   .dk-head .dk-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 0 rgba(52,211,153,.5);animation:dkp 2s infinite}
   @keyframes dkp{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
-  .dk-head .dk-n{margin-inline-start:auto;font-size:12.5px;color:var(--muted);font-weight:700}
+  .dk-head .dk-meta{margin-inline-start:auto;display:flex;align-items:center;gap:12px}
+  .dk-head .dk-v{font-size:13px;color:var(--accent);font-weight:800;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+  .dk-head .dk-n{font-size:12.5px;color:var(--muted);font-weight:700;white-space:nowrap}
   .dk-login{border:1px solid var(--line);background:#121a28;color:var(--ink);font-family:inherit;font-weight:700;font-size:12.5px;border-radius:9px;padding:5px 11px;cursor:pointer}
   .dk-login:hover{border-color:var(--accent)}
   .dk-admin{margin-inline-start:auto;font-size:12px;color:var(--accent);font-weight:800}
@@ -41,7 +43,7 @@
 </head>
 <body>
 <div id="dk">
-  <div class="dk-head"><span class="dk-dot"></span>💬 צ'אט לייב <span class="dk-n" id="dkN"></span></div>
+  <div class="dk-head"><span class="dk-dot"></span>💬 צ'אט לייב <span class="dk-meta"><span class="dk-v" id="dkV"></span><span class="dk-n" id="dkN"></span></span></div>
   <div id="dkList"><div class="dk-empty">אין הודעות עדיין…</div></div>
 </div>
 
@@ -53,7 +55,7 @@
 (function(){
   "use strict";
   var ADMIN_EMAIL = "koriatmanagement@gmail.com";
-  var list = document.getElementById("dkList"), nEl = document.getElementById("dkN");
+  var list = document.getElementById("dkList"), nEl = document.getElementById("dkN"), vEl = document.getElementById("dkV");
   var head = document.querySelector(".dk-head");
   var seen = {};            // id → message object (so we can re-render on admin login)
   var isAdmin = false;
@@ -193,7 +195,20 @@
   }
   function tick(){ fetchMsgs().then(render); }
 
+  // live viewer / waiting count (server-side presence, logged-in heartbeats in the last 30s)
+  function pollViewers(){
+    fetch("/api/live-presence",{headers:{"Cache-Control":"no-cache"}})
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(j){
+        if(!vEl) return;
+        var c = (j && j.ok && typeof j.count==="number") ? j.count : 0;
+        vEl.textContent = c>0 ? ("👥 "+c+(c===1?" צופה":" צופים")) : "";
+      })
+      .catch(function(){});
+  }
+
   initAuth();
+  pollViewers(); setInterval(pollViewers, 6000);
 
   // Realtime: new messages / deletes / featured changes arrive over a websocket (<0.5s),
   // polling stays as a safety net (slows once realtime is healthy). Needs live_realtime.sql.
