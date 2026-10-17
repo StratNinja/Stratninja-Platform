@@ -78,7 +78,8 @@
     s.id = "liveChatCss";
     s.textContent = [
       ".lc-wrap{margin:0}",   // fills its column (video is beside it on desktop, above it on mobile)
-      "@media(min-width:900px){.lc-list{max-height:460px}}",   // taller chat next to the video on desktop
+      // desktop: the chat matches the video's height and stays FIXED (list scrolls; never shrinks when empty)
+      "@media(min-width:900px){.lc-wrap{display:flex;flex-direction:column;height:100%}.lc-box{flex:1;display:flex;flex-direction:column;min-height:0}.lc-list{flex:1;max-height:none;min-height:0}}",
       ".lc-count{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);margin-bottom:10px}",
       ".lc-count .lc-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 0 rgba(34,197,94,.5);animation:lcPulse 2s infinite}",
       "@keyframes lcPulse{0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}70%{box-shadow:0 0 0 7px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}",
