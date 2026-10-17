@@ -89,7 +89,7 @@
       ".lc-msg{font-size:14px;line-height:1.45;word-break:break-word}",
       ".lc-msg .lc-name{font-weight:800;color:var(--accent)}",
       ".lc-msg .lc-t{font-size:11px;color:var(--muted);margin-inline-start:6px}",
-      ".lc-msg .lc-hide,.lc-msg .lc-ban,.lc-msg .lc-feat{font-size:11px;color:var(--muted);cursor:pointer;margin-inline-start:6px;opacity:.6}",
+      ".lc-msg .lc-hide,.lc-msg .lc-ban,.lc-msg .lc-feat{font-size:20px;color:var(--muted);cursor:pointer;margin-inline-start:8px;opacity:.65;vertical-align:middle}",
       ".lc-msg .lc-hide:hover,.lc-msg .lc-ban:hover{opacity:1;color:#ef4444}",
       ".lc-msg .lc-feat:hover{opacity:1;color:var(--accent)}",
       ".lc-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:18px 0}",
