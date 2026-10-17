@@ -21,15 +21,15 @@ function sb(path, opts) {
     headers: Object.assign({ apikey: SVC, Authorization: "Bearer " + SVC, "Content-Type": "application/json" }, opts.headers || {}),
   }));
 }
-async function isAdmin(req) {
+async function adminUser(req) {   // returns the admin's user object, or null if the caller isn't the admin
   const auth = req.headers.authorization || req.headers.Authorization || "";
-  if (!auth) return false;
+  if (!auth) return null;
   try {
     const r = await fetch(SUPA_URL + "/auth/v1/user", { headers: { apikey: ANON, Authorization: auth } });
-    if (!r.ok) return false;
+    if (!r.ok) return null;
     const u = await r.json();
-    return ((u && u.email) || "").toLowerCase() === ADMIN_EMAIL;
-  } catch (e) { return false; }
+    return (((u && u.email) || "").toLowerCase() === ADMIN_EMAIL) ? u : null;
+  } catch (e) { return null; }
 }
 
 export default async function handler(req, res) {
@@ -37,7 +37,8 @@ export default async function handler(req, res) {
   if (req.method === "OPTIONS") { res.status(204).end(); return; }
   if (req.method !== "POST") { res.status(405).json({ error: "method" }); return; }
   if (!SVC) { res.status(500).json({ error: "missing_service_key" }); return; }
-  if (!(await isAdmin(req))) { res.status(403).json({ error: "forbidden" }); return; }
+  const admin = await adminUser(req);
+  if (!admin) { res.status(403).json({ error: "forbidden" }); return; }
 
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
@@ -51,6 +52,7 @@ export default async function handler(req, res) {
       return;
     }
     if ((action === "ban" || action === "unban") && typeof body.user_id === "string" && /^[0-9a-f-]{36}$/i.test(body.user_id)) {
+      if (action === "ban" && body.user_id === admin.id) { res.status(400).json({ error: "cannot_ban_self" }); return; }   // never ban the admin
       if (action === "ban") {
         await sb("live_chat_bans", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates" }, body: JSON.stringify({ user_id: body.user_id, name: String(body.name || "").slice(0, 40) }) });
         await sb("live_chat?user_id=eq." + body.user_id, { method: "PATCH", body: JSON.stringify({ hidden: true }) });

@@ -128,8 +128,9 @@
   function _msgHtml(m) {
     var admin = "";
     if (isAdmin()) {
+      var myId = (user() || {}).id;   // never offer to ban yourself
       admin = '<span class="lc-hide" data-hide="' + m.id + '" title="מחק הודעה">🗑️</span>' +
-        (m.user_id ? '<span class="lc-ban" data-ban="' + esc(m.user_id) + '" data-banname="' + esc(m.name) + '" title="חסום משתמש (לא יוכל לכתוב יותר)">🚫</span>' : "");
+        (m.user_id && m.user_id !== myId ? '<span class="lc-ban" data-ban="' + esc(m.user_id) + '" data-banname="' + esc(m.name) + '" title="חסום משתמש (לא יוכל לכתוב יותר)">🚫</span>' : "");
     }
     return '<div class="lc-msg" data-id="' + m.id + '"' + (m.user_id ? ' data-user="' + esc(m.user_id) + '"' : "") + ">" +
       '<span class="lc-name">' + esc(m.name) + "</span>" +
@@ -138,6 +139,7 @@
   }
 
   function _append(msgs) {
+    if (!msgs) return;
     var list = $("lcList"); if (!list) return;
     var fresh = [];
     for (var i = 0; i < msgs.length; i++) {
@@ -167,11 +169,11 @@
       .catch(function () { return _directMsgs(); });
   }
   function _directMsgs() {
-    var c = client(); if (!c) return Promise.resolve([]);
+    var c = client(); if (!c) return Promise.resolve(null);   // null (not []) so a failure never wipes the chat
     return c.from("live_chat").select("id,name,msg,created_at,user_id")
       .eq("live_id", LIVE_ID).eq("hidden", false).order("id", { ascending: false }).limit(60)
-      .then(function (r) { return (r && r.data ? r.data.slice().reverse() : []); })
-      .catch(function () { return []; });
+      .then(function (r) { return (r && r.data) ? r.data.slice().reverse() : null; })
+      .catch(function () { return null; });
   }
 
   function _send(raw) {
@@ -222,17 +224,21 @@
     });
   }
 
-  function _refreshMsgs() { _fetchMsgs().then(function (msgs) { _append(msgs); _reconcile(msgs); }); }
-  // remove messages that were hidden/deleted by the admin, for EVERYONE, without a refresh. Only within the
-  // fetched window [minId..maxId] so older messages scrolled out of the latest-60 aren't wrongly removed.
+  function _refreshMsgs() { _fetchMsgs().then(function (msgs) { if (msgs == null) return; _append(msgs); _reconcile(msgs); }); }
+  // remove messages that were hidden/deleted by the admin, for EVERYONE, without a refresh. `msgs` is the
+  // current non-hidden set. When we got fewer than a page (<60) we have EVERY non-hidden message, so any
+  // displayed message not in the set was deleted (even if it's older than the oldest survivor). At the page
+  // limit, only remove within [minId..] so messages legitimately scrolled out of the window aren't dropped.
   function _reconcile(msgs) {
-    if (!msgs || !msgs.length) return;
-    var ids = {}, minId = Infinity, maxId = 0;
-    for (var i = 0; i < msgs.length; i++) { var id = msgs[i].id; ids[id] = 1; if (id < minId) minId = id; if (id > maxId) maxId = id; }
+    if (!msgs) return;   // null = fetch failed → never touch the DOM
+    var ids = {}, minId = Infinity;
+    for (var i = 0; i < msgs.length; i++) { var id = msgs[i].id; ids[id] = 1; if (id < minId) minId = id; }
+    var full = msgs.length < 60;
     var nodes = document.querySelectorAll("#lcList .lc-msg");
     for (var j = 0; j < nodes.length; j++) {
       var mid = parseInt(nodes[j].getAttribute("data-id"), 10);
-      if (mid >= minId && mid <= maxId && !ids[mid]) { nodes[j].remove(); delete _seen[mid]; }
+      if (ids[mid]) continue;                                   // still present → keep
+      if (full || mid >= minId) { nodes[j].remove(); delete _seen[mid]; }   // deleted/hidden → remove
     }
   }
 
