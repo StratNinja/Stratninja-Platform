@@ -81,6 +81,15 @@ window.Live = (function () {
       ".la-thumb{display:flex;align-items:center;gap:10px;margin-top:4px}",
       ".la-thumb-prev{width:92px;height:52px;object-fit:cover;border-radius:7px;border:1px solid var(--line);flex:0 0 auto}",
       ".la-thumb input[type=file]{font-size:12px}",
+      // floating admin window
+      ".live-adminwin{position:fixed;top:72px;inset-inline-end:20px;width:min(390px,94vw);max-height:84vh;overflow:auto;z-index:10000;background:var(--panel);border:1px solid var(--accent);border-radius:14px;box-shadow:0 18px 54px rgba(0,0,0,.6)}",
+      ".live-adminwin .live-admin{border:0;margin:0;padding:14px}",
+      ".law-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;background:var(--panel2);border-bottom:1px solid var(--line);cursor:move;font-weight:800;font-size:14px}",
+      ".law-x{background:transparent;border:0;color:var(--muted);font-size:18px;cursor:pointer;line-height:1}",
+      ".law-x:hover{color:var(--ink)}",
+      ".law-bans{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}",
+      ".law-ban-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding:6px 0;border-bottom:1px solid var(--line)}",
+      ".law-ban-row button{font-size:12px;padding:3px 11px}",
       ".live-admin .la-stat{font-size:12px;color:var(--muted);margin-top:10px}",
       "@media(max-width:640px){.live-admin .la-grid{grid-template-columns:1fr}.live-meta h2{font-size:19px}}",
     ].join("");
@@ -155,22 +164,22 @@ window.Live = (function () {
     // when the admin has announced a live giveaway, surface a prominent entry button right here on /live
     var gvw = "";
     try { if (window.LiveAlert && window.LiveAlert.active && window.LiveAlert.active()) gvw = '<button class="btn" id="liveGvw" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:6px 12px">🎁 השתתף בהגרלה</button>'; } catch (e) {}
+    var adm = isAdmin() ? '<button class="btn ghost" id="liveAdminBtn" style="font-size:13px;padding:6px 12px">🎛️ ניהול</button>' : "";
     return '<div class="live-meta">' +
       '<div class="live-row">' + badge + prev + gvw +
-      '<button class="btn ghost" id="liveShare" style="font-size:13px;padding:6px 12px">🔗 שיתוף</button></div>' +
+      '<button class="btn ghost" id="liveShare" style="font-size:13px;padding:6px 12px">🔗 שיתוף</button>' + adm + "</div>" +
       title + desc + plats + "</div>";
   }
 
-  function _adminHtml(s) {
-    if (!isAdmin()) return "";
-    if (s && s.preview) return '<div class="live-admin"><h4>🛠️ ניהול שידור</h4><div class="la-stat">🧪 מצב בדיקה (Preview) — עריכה וכתיבה מושבתות (קריאה-בלבד).</div></div>';
+  // the admin form fields (rendered inside the floating window, wrapped in .live-admin for styling)
+  function _adminFields(s) {
+    if (s && s.preview) return '<div class="la-stat">🧪 מצב בדיקה (Preview) — עריכה וכתיבה מושבתות (קריאה-בלבד).</div>';
     var sch = s && s.scheduled_at ? new Date(s.scheduled_at) : null;
     var schVal = "";
     if (sch && !isNaN(sch)) { var off = sch.getTime() - sch.getTimezoneOffset() * 60000; schVal = new Date(off).toISOString().slice(0, 16); }
     var mode = (s && s.mode) || "auto";
     function opt(v, l) { return '<option value="' + v + '"' + (mode === v ? " selected" : "") + ">" + l + "</option>"; }
-    return '<div class="live-admin"><h4>🛠️ ניהול שידור (מנהל)</h4>' +
-      '<label>כותרת</label><input id="laTitle" maxlength="200" value="' + esc(s && s.title) + '">' +
+    return '<label>כותרת</label><input id="laTitle" maxlength="200" value="' + esc(s && s.title) + '">' +
       '<label>תיאור</label><textarea id="laDesc" maxlength="1000">' + esc(s && s.description) + "</textarea>" +
       '<div class="la-grid">' +
       '<div><label>מצב תצוגה</label><select id="laMode">' + opt("auto", "אוטומטי (לפי השידור)") + opt("soon", "השידור יתחיל בקרוב") + opt("offline", "כבוי (OFFLINE מאולץ)") + "</select></div>" +
@@ -182,8 +191,73 @@ window.Live = (function () {
       '<div class="live-row"><button class="btn primary" id="laSave" style="font-size:13px;padding:7px 14px">💾 שמור</button>' +
       '<button class="btn ghost" id="laClearSched" style="font-size:13px;padding:7px 12px">נקה תזמון</button></div>' +
       '<div class="la-stat" id="laStat">מצב שידור אמיתי מ-Cloudflare: <b>' + (s && s.is_live ? "🔴 חי" : "⚫ לא פעיל") + "</b>" +
-      " · אי אפשר לאלץ 'LIVE' ידנית — הוא נקבע לפי החיבור בפועל של OBS.</div>" +
+      " · אי אפשר לאלץ 'LIVE' ידנית — הוא נקבע לפי החיבור בפועל של OBS.</div>";
+  }
+
+  // ---- floating admin window (opened from the 🎛️ button on /live; accessible only via the live channel) ----
+  function _modCall(payload) {
+    return _accessToken().then(function (tok) {
+      if (!tok) return { error: "no_token" };
+      return fetch("/api/live-mod", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(payload) })
+        .then(function (r) { return r.json(); }).catch(function () { return { error: "net" }; });
+    });
+  }
+  function closeAdmin() { var w = $("liveAdminWin"); if (w) w.remove(); }
+  function openAdmin() {
+    if (!isAdmin()) return;
+    if (_status) { _renderAdminWin(); }
+    else { _get().then(function (r) { if (r) _status = r; _renderAdminWin(); }); }
+  }
+  function _renderAdminWin() {
+    closeAdmin();
+    var s = _status;
+    var win = document.createElement("div");
+    win.id = "liveAdminWin"; win.className = "live-adminwin"; win.dir = "rtl";
+    win.innerHTML =
+      '<div class="law-head" id="lawHead"><span>🎛️ ניהול שידור</span><button class="law-x" id="lawClose" title="סגור">✕</button></div>' +
+      '<div class="law-body live-admin">' + _adminFields(s) +
+        '<div class="law-bans" id="lawBans"><div class="muted" style="font-size:12px">טוען חסומים…</div></div>' +
       "</div>";
+    document.body.appendChild(win);
+    _wireAdmin();
+    var close = $("lawClose"); if (close) close.onclick = closeAdmin;
+    _dragWin(win, $("lawHead"));
+    if (!(s && s.preview)) _loadBans();
+  }
+  function _dragWin(win, handle) {
+    if (!handle) return;
+    handle.onmousedown = function (e) {
+      if (e.target && e.target.id === "lawClose") return;
+      var r = win.getBoundingClientRect();
+      win.style.insetInlineEnd = "auto"; win.style.left = r.left + "px"; win.style.top = r.top + "px";
+      var sx = e.clientX, sy = e.clientY, sl = r.left, st = r.top;
+      e.preventDefault();
+      document.onmousemove = function (ev) {
+        win.style.left = Math.max(0, sl + ev.clientX - sx) + "px";
+        win.style.top = Math.max(0, st + ev.clientY - sy) + "px";
+      };
+      document.onmouseup = function () { document.onmousemove = null; document.onmouseup = null; };
+    };
+  }
+  function _loadBans() {
+    var box = $("lawBans"); if (!box) return;
+    _modCall({ action: "list_bans" }).then(function (r) {
+      if (!box.parentNode) return;
+      if (!r || !r.ok) { box.innerHTML = '<div class="muted" style="font-size:12px">לא ניתן לטעון חסומים</div>'; return; }
+      var bans = r.bans || [];
+      var head = '<div style="font-weight:800;font-size:13px;margin-bottom:6px">🚫 חסומים' + (bans.length ? " (" + bans.length + ")" : "") + "</div>";
+      if (!bans.length) { box.innerHTML = head + '<div class="muted" style="font-size:12px">אין חסומים</div>'; return; }
+      box.innerHTML = head + bans.map(function (b) {
+        return '<div class="law-ban-row"><span>' + esc(b.name || b.user_id) + '</span><button class="btn ghost" data-unban="' + esc(b.user_id) + '">שחרר</button></div>';
+      }).join("");
+      var btns = box.querySelectorAll("[data-unban]");
+      for (var i = 0; i < btns.length; i++) btns[i].onclick = function () { _unban(this.getAttribute("data-unban")); };
+    });
+  }
+  function _unban(userId) {
+    _modCall({ action: "unban", user_id: userId }).then(function (r) {
+      if (r && r.ok) { toast("החסימה שוחררה ✓"); _loadBans(); } else { toast("השחרור נכשל"); }
+    });
   }
 
   function _body(s) {
@@ -195,8 +269,8 @@ window.Live = (function () {
           '<div id="liveMeta">' + _metaHtml(s, vs) + "</div>" +
         "</div>" +
         '<div class="live-side"><div id="liveChatRoot"></div></div>' +   // live chat + waiting/viewer count
-      "</div>" +
-      _adminHtml(s);
+      "</div>";
+    // admin controls are no longer inline — they open in a floating window via the 🎛️ button (see openAdmin).
   }
 
   function render() {
@@ -226,6 +300,7 @@ window.Live = (function () {
     };
     var gv = $("liveGvw");   // 🎁 enter the announced giveaway (entry auto-prompts login if a guest)
     if (gv) gv.onclick = function () { try { if (window.setPageExternal) window.setPageExternal("giveaway"); else location.href = "/giveaway"; } catch (e) { location.href = "/giveaway"; } };
+    var ab = $("liveAdminBtn"); if (ab) ab.onclick = openAdmin;   // 🎛️ open the floating admin window
   }
   function _wireAdmin() {
     var save = $("laSave"); if (!save) return;
@@ -280,10 +355,8 @@ window.Live = (function () {
     var mt = $("liveMeta"); if (mt) { mt.innerHTML = _metaHtml(s, vs); _wireMeta(); }
     if (window.LiveChat && window.LiveChat.setPhase) window.LiveChat.setPhase(vs);   // "ממתינים" (pre-live) vs "צופים" (live)
     _tickCd();
-    // admin panel: build once (don't clobber inputs while typing); refresh only the status line
-    if (isAdmin() && !document.querySelector(".live-admin")) {
-      $("liveRoot").insertAdjacentHTML("beforeend", _adminHtml(s)); _wireAdmin();
-    } else if (isAdmin() && $("laStat") && document.activeElement && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+    // keep the floating admin window's live-status line fresh (only while it's open & not being edited)
+    if (isAdmin() && $("laStat") && document.activeElement && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
       $("laStat").innerHTML = "מצב שידור אמיתי מ-Cloudflare: <b>" + (s && s.is_live ? "🔴 חי" : "⚫ לא פעיל") + "</b> · אי אפשר לאלץ 'LIVE' ידנית.";
     }
   }
@@ -315,7 +388,8 @@ window.Live = (function () {
     _playerSig = "";                                       // force a fresh player when the user returns
     var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
     if (window.LiveChat && window.LiveChat.unmount) window.LiveChat.unmount();   // stop chat/presence polling + heartbeat
+    closeAdmin();   // close the floating admin window when leaving /live
   }
 
-  return { render: render, wire: wire, teardown: teardown };
+  return { render: render, wire: wire, teardown: teardown, openAdmin: openAdmin };
 })();
