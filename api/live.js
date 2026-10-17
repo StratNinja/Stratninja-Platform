@@ -125,6 +125,32 @@ async function cfLiveStatus() {
   }
 }
 
+// The Video ID of the CURRENTLY-LIVE broadcast (for DVR — the player must load by Video ID, not the
+// Live Input ID, to allow rewinding). Returns null if it can't be resolved (→ the player falls back to
+// the Live Input ID, i.e. current behaviour, no DVR). Safe/secret-free logging only.
+async function activeVideoUid() {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), CF_TIMEOUT_MS);
+  try {
+    const url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + CF_INPUT + "/videos";
+    const r = await fetch(url, { headers: { Authorization: "Bearer " + CF_TOKEN }, signal: ctrl.signal });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.success || !Array.isArray(j.result)) return null;
+    const vids = j.result;
+    let v = vids.find((x) => x && x.uid && x.status && /live-?inprogress/i.test(x.status.state || ""));
+    if (!v) {   // fallback: the most recent recording that isn't finished/errored yet
+      v = vids.filter((x) => x && x.uid && x.status && !/ready|error/i.test(x.status.state || ""))
+        .sort((a, b) => new Date(b.created || 0) - new Date(a.created || 0))[0];
+    }
+    return (v && /^[a-f0-9]{32}$/i.test(v.uid)) ? v.uid : null;
+  } catch (e) {
+    console.warn("[live] activeVideoUid failed " + JSON.stringify({ type: (e && e.name) || "Error" }));
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // compact, secret-free failure string for cf_status (surfaced in /api/live so it's diagnosable)
 function cfErrStr(cf) {
   return "cf_error:" + (cf.reason || "unknown") + (cf.field ? (":" + cf.field) : "") + (cf.http ? (":http" + cf.http) : "") +
@@ -169,6 +195,7 @@ function publicView(row) {
     started_at: row.started_at || null,
     platforms: Array.isArray(row.platforms) ? row.platforms : [],
     thumbnail_url: row.thumbnail_url || "",
+    live_video_uid: row.live_video_uid || null,   // the active broadcast's Video ID (for DVR), while live
     playback: playback(), playback_err: playbackErr(),
     ts: Date.now(),
   };
@@ -240,6 +267,13 @@ export default async function handler(req, res) {
           fields.is_live = cf.live;
           if (cf.live && !row.started_at) fields.started_at = new Date().toISOString();
           fields.updated_at = new Date().toISOString();
+        }
+        // resolve (while live) / clear (when offline) the active Video ID used for DVR playback
+        if (cf.live) {
+          const vid = await activeVideoUid();
+          if (vid && vid !== row.live_video_uid) { fields.live_video_uid = vid; fields.updated_at = new Date().toISOString(); }
+        } else if (row.live_video_uid) {
+          fields.live_video_uid = null; fields.updated_at = new Date().toISOString();
         }
         const updated = await patchRow(fields);
         if (updated) row = updated;

@@ -117,11 +117,15 @@ window.Live = (function () {
   function _playerHtml(s, vs) {
     if (vs === "live") {
       var pb = s && s.playback;
-      if (pb && pb.iframe) {
-        // MUTED autoplay is allowed in cross-origin iframes (unmuted is blocked → black). The CF player's
-        // own controls give the manual play / unmute fallback if autoplay is prevented; playsinline keeps
-        // it inline on mobile. (The parent can't control a cross-origin iframe's audio — only its controls can.)
-        return '<div class="live-stage"><iframe src="' + esc(pb.iframe) + '?autoplay=true&muted=true&controls=true&playsinline=true" ' +
+      if (pb && pb.uid && pb.customer) {
+        // DVR (rewind during the live) needs the active broadcast's VIDEO id; fall back to the Live Input id
+        // (no DVR) if it isn't resolved yet. MUTED autoplay is allowed cross-origin (unmuted → black); the
+        // player's own controls give manual play/unmute; playsinline keeps it inline on mobile.
+        var vid = (s && s.live_video_uid && /^[a-f0-9]{32}$/i.test(s.live_video_uid)) ? s.live_video_uid : null;
+        var id = vid || pb.uid;
+        var dvr = vid ? "&dvrEnabled=true" : "";
+        var src = "https://customer-" + pb.customer + ".cloudflarestream.com/" + id + "/iframe?autoplay=true&muted=true&controls=true&playsinline=true" + dvr;
+        return '<div class="live-stage"><iframe src="' + esc(src) + '" ' +
           'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen playsinline></iframe></div>';
       }
       return '<div class="live-stage"><div class="live-off"><div class="lo-ico">🔴</div><h3>השידור חי</h3>' +
@@ -351,7 +355,7 @@ window.Live = (function () {
   function _apply(force) {
     if (!$("liveRoot")) return;
     var s = _status, vs = _vs(s);
-    var sig = vs + "|" + (s && s.playback && s.playback.uid || "");
+    var sig = vs + "|" + (s && s.playback && s.playback.uid || "") + "|" + (s && s.live_video_uid || "");   // rebuild when the live Video ID (DVR) resolves
     if (force || sig !== _playerSig) {
       _playerSig = sig;
       var pl = $("livePlayer"); if (pl) pl.innerHTML = _playerHtml(s, vs);
