@@ -48,27 +48,32 @@ export default async function handler(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
   const kind = body.kind === "giveaway" ? "giveaway" : "live";
+  const test = body.test === true;             // self-test: send ONLY to the admin, no cooldown, doesn't block real sends
   const msg = MESSAGES[kind];
 
   try {
-    // cooldown — reject if the same kind was enqueued within the window
-    const since = new Date(Date.now() - COOLDOWN_MIN * 60000).toISOString();
-    const r0 = await sb("push_outbox?select=created_at&kind=eq." + kind +
-      "&created_at=gte." + encodeURIComponent(since) + "&order=created_at.desc&limit=1");
-    if (r0.ok) {
-      const rows = await r0.json();
-      if (Array.isArray(rows) && rows.length) {
-        const ageMs = Date.now() - new Date(rows[0].created_at).getTime();
-        const wait = Math.max(1, Math.ceil((COOLDOWN_MIN * 60000 - ageMs) / 60000));
-        res.status(200).json({ ok: false, cooldown: true, wait });
-        return;
+    if (!test) {
+      // cooldown — reject if a real (non-test) broadcast of this kind was enqueued within the window
+      const since = new Date(Date.now() - COOLDOWN_MIN * 60000).toISOString();
+      const r0 = await sb("push_outbox?select=created_at&kind=eq." + kind +
+        "&only_user=is.null&created_at=gte." + encodeURIComponent(since) + "&order=created_at.desc&limit=1");
+      if (r0.ok) {
+        const rows = await r0.json();
+        if (Array.isArray(rows) && rows.length) {
+          const ageMs = Date.now() - new Date(rows[0].created_at).getTime();
+          const wait = Math.max(1, Math.ceil((COOLDOWN_MIN * 60000 - ageMs) / 60000));
+          res.status(200).json({ ok: false, cooldown: true, wait });
+          return;
+        }
       }
     }
+    const row = { kind, title: msg.title, body: msg.body, url: msg.url, status: "pending" };
+    if (test) row.only_user = admin.id;        // the admin's own user id → worker sends only to them
     const ins = await sb("push_outbox", {
       method: "POST", headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ kind, title: msg.title, body: msg.body, url: msg.url, status: "pending" }),
+      body: JSON.stringify(row),
     });
-    res.status(ins.ok ? 200 : 502).json(ins.ok ? { ok: true, kind } : { ok: false, error: "enqueue_failed" });
+    res.status(ins.ok ? 200 : 502).json(ins.ok ? { ok: true, kind, test } : { ok: false, error: "enqueue_failed" });
   } catch (e) {
     res.status(502).json({ ok: false, error: "server" });
   }

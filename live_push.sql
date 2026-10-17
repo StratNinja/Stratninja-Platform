@@ -14,8 +14,11 @@ create table if not exists public.push_outbox (
   status      text        not null default 'pending',   -- pending → sent
   created_at  timestamptz not null default now(),
   sent_at     timestamptz,
-  sent_count  integer
+  sent_count  integer,
+  only_user   uuid                                       -- set → self-test: send ONLY to this user (the admin)
 );
+-- if the table already existed from an earlier run, add the self-test column
+alter table public.push_outbox add column if not exists only_user uuid;
 
 -- fast lookup of what still needs sending
 create index if not exists push_outbox_pending_idx on public.push_outbox (status, id) where status = 'pending';
