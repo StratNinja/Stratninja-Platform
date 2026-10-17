@@ -322,25 +322,29 @@ window.Live = (function () {
     var th = $("laThumb"); if (th) th.onchange = function () { var f = th.files && th.files[0]; if (f) _uploadThumb(f); };
   }
 
-  // upload a thumbnail to Supabase Storage (admin-only bucket) and save its public URL on the row.
+  // upload a thumbnail via the SERVER (service role) — reliable even though the storage RLS blocks a
+  // direct client upload. The server stores the image + saves its URL on the live_status row.
   function _uploadThumb(file) {
-    var c = (window.SNAuth && SNAuth.getClient && SNAuth.getClient());
-    if (!c || !c.storage) { toast("אחסון לא זמין"); return; }
-    if (file.size > 5 * 1024 * 1024) { toast("התמונה גדולה מדי (מקס׳ 5MB)"); return; }
-    var ext = ((file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "")) || "jpg";
-    var path = "public-live." + ext;   // single thumbnail, overwritten each upload
+    if (file.size > 3 * 1024 * 1024) { toast("התמונה גדולה מדי (מקס׳ 3MB)"); return; }
     toast("מעלה תמונה…");
-    c.storage.from("live-thumbnails").upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" })
-      .then(function (r) {
-        if (r && r.error) { toast("העלאה נכשלה · " + (r.error.message || "")); return; }
-        var pub = c.storage.from("live-thumbnails").getPublicUrl(path);
-        var url = pub && pub.data && pub.data.publicUrl;
-        if (!url) { toast("לא התקבל קישור לתמונה"); return; }
-        url += (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();   // cache-bust so a replaced image shows
-        _post({ thumbnail_url: url }).then(function (rr) {
-          if (rr && rr.ok) { _status = rr; toast("התמונה הועלתה ✓"); _apply(true); } else { toast("שמירת הקישור נכשלה"); }
-        });
-      }).catch(function () { toast("העלאה נכשלה"); });
+    var reader = new FileReader();
+    reader.onerror = function () { toast("קריאת הקובץ נכשלה"); };
+    reader.onload = function () {
+      _accessToken().then(function (tok) {
+        if (!tok) { toast("יש להתחבר מחדש"); return; }
+        fetch("/api/live-thumb", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ data_url: reader.result }) })
+          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (r && r.ok && r.thumbnail_url) {
+              _status = Object.assign({}, _status, { thumbnail_url: r.thumbnail_url });
+              toast("התמונה הועלתה ✓"); _apply(true);
+              var tw = document.querySelector(".law-body .la-thumb");   // refresh the preview in the window
+              if (tw) { var img = tw.querySelector(".la-thumb-prev"); if (!img) { img = document.createElement("img"); img.className = "la-thumb-prev"; tw.insertBefore(img, tw.firstChild); } img.src = r.thumbnail_url; }
+            } else { toast("העלאה נכשלה" + (r && r.error ? " · " + r.error : "")); }
+          }).catch(function () { toast("העלאה נכשלה"); });
+      });
+    };
+    reader.readAsDataURL(file);
   }
 
   // apply _status to the DOM without reloading the player unless the player state changed
