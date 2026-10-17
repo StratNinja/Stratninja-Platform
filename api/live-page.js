@@ -14,6 +14,10 @@ function setMeta(html, kind, key, value) {   // replace the content="" of an exi
   var re = new RegExp('(<meta ' + kind + '="' + key.replace(/[:]/g, "\\$&") + '" content=")[^"]*(")', "i");
   return html.replace(re, function (m, a, b) { return a + esc(value) + b; });
 }
+function removeMeta(html, kind, key) {       // drop a <meta kind="key" ...> entirely (e.g. stale image dimensions)
+  var re = new RegExp('[ \\t]*<meta ' + kind + '="' + key.replace(/[:]/g, "\\$&") + '"[^>]*>\\r?\\n?', "i");
+  return html.replace(re, "");
+}
 
 export default async function handler(req, res) {
   const host = req.headers["x-forwarded-host"] || req.headers.host || "www.stratninja.win";
@@ -44,6 +48,11 @@ export default async function handler(req, res) {
   if (RE_HTTPS_IMG.test(thumb)) {
     html = setMeta(html, "property", "og:image", thumb);
     html = setMeta(html, "name", "twitter:image", thumb);
+    html = setMeta(html, "property", "og:image:alt", ogTitle);
+    // the default image's declared 1280x720 would conflict with the uploaded thumbnail → drop the hints so
+    // crawlers read the real dimensions (a mismatch makes WhatsApp/others skip the image).
+    html = removeMeta(html, "property", "og:image:width");
+    html = removeMeta(html, "property", "og:image:height");
   }
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
