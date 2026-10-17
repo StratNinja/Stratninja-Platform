@@ -88,8 +88,8 @@
       ".lc-msg{font-size:14px;line-height:1.45;word-break:break-word}",
       ".lc-msg .lc-name{font-weight:800;color:var(--accent)}",
       ".lc-msg .lc-t{font-size:11px;color:var(--muted);margin-inline-start:6px}",
-      ".lc-msg .lc-hide{font-size:11px;color:var(--muted);cursor:pointer;margin-inline-start:6px;opacity:.6}",
-      ".lc-msg .lc-hide:hover{opacity:1;color:#ef4444}",
+      ".lc-msg .lc-hide,.lc-msg .lc-ban{font-size:11px;color:var(--muted);cursor:pointer;margin-inline-start:6px;opacity:.6}",
+      ".lc-msg .lc-hide:hover,.lc-msg .lc-ban:hover{opacity:1;color:#ef4444}",
       ".lc-empty{color:var(--muted);font-size:13.5px;text-align:center;padding:18px 0}",
       ".lc-form{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}",
       ".lc-form input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:9px 12px;font-family:inherit;font-size:14px}",
@@ -125,9 +125,12 @@
   }
 
   function _msgHtml(m) {
-    var admin = isAdmin()
-      ? '<span class="lc-hide" data-hide="' + m.id + '" title="הסתר הודעה">🗑️</span>' : "";
-    return '<div class="lc-msg" data-id="' + m.id + '">' +
+    var admin = "";
+    if (isAdmin()) {
+      admin = '<span class="lc-hide" data-hide="' + m.id + '" title="מחק הודעה">🗑️</span>' +
+        (m.user_id ? '<span class="lc-ban" data-ban="' + esc(m.user_id) + '" data-banname="' + esc(m.name) + '" title="חסום משתמש (לא יוכל לכתוב יותר)">🚫</span>' : "");
+    }
+    return '<div class="lc-msg" data-id="' + m.id + '"' + (m.user_id ? ' data-user="' + esc(m.user_id) + '"' : "") + ">" +
       '<span class="lc-name">' + esc(m.name) + "</span>" +
       '<span class="lc-t">' + fmtTime(m.created_at) + "</span>" + admin +
       "<div>" + esc(m.msg) + "</div></div>";
@@ -148,7 +151,7 @@
     var nearBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
     list.insertAdjacentHTML("beforeend", fresh.map(_msgHtml).join(""));
     if (nearBottom) list.scrollTop = list.scrollHeight;
-    if (isAdmin()) _wireHide();
+    if (isAdmin()) _wireMod();
   }
 
   // ---- data ----
@@ -164,7 +167,7 @@
   }
   function _directMsgs() {
     var c = client(); if (!c) return Promise.resolve([]);
-    return c.from("live_chat").select("id,name,msg,created_at")
+    return c.from("live_chat").select("id,name,msg,created_at,user_id")
       .eq("live_id", LIVE_ID).eq("hidden", false).order("id", { ascending: false }).limit(60)
       .then(function (r) { return (r && r.data ? r.data.slice().reverse() : []); })
       .catch(function () { return []; });
@@ -176,7 +179,7 @@
     if (!u || !c || !msg) return Promise.resolve({ error: "empty" });
     return c.from("live_chat").insert({ live_id: LIVE_ID, user_id: u.id, name: displayName(u), msg: msg }).select()
       .then(function (r) {
-        if (r && r.error) { toast(/rate/i.test(r.error.message || "") ? "רגע… אל תשלח כל כך מהר" : "השליחה נכשלה"); return { error: r.error }; }
+        if (r && r.error) { var em = r.error.message || ""; toast(/banned/i.test(em) ? "אין באפשרותך לכתוב בצ'אט" : /rate/i.test(em) ? "רגע… אל תשלח כל כך מהר" : "השליחה נכשלה"); return { error: r.error }; }
         if (r && r.data && r.data.length) _append(r.data);   // show my own message INSTANTLY (no waiting for the poll)
         return { ok: true };
       })
@@ -188,6 +191,20 @@
     c.from("live_chat").update({ hidden: true }).eq("id", id).then(function () {
       var el = document.querySelector('.lc-msg[data-id="' + id + '"]'); if (el) el.remove();
     }).catch(function () { toast("ההסתרה נכשלה"); });
+  }
+  // ban a user: add to live_chat_bans (blocks future posts via the DB trigger) + hide all their messages.
+  function _ban(userId, name) {
+    var c = client(); if (!c || !isAdmin() || !userId) return;
+    if (typeof confirm === "function" && !confirm("לחסום את " + (name || "המשתמש") + "? הוא לא יוכל לכתוב יותר בצ'אט, וכל הודעותיו יוסתרו.")) return;
+    c.from("live_chat_bans").upsert({ user_id: userId, name: name || "" }, { onConflict: "user_id", ignoreDuplicates: true })
+      .then(function (r) {
+        if (r && r.error) { toast("החסימה נכשלה"); return; }
+        c.from("live_chat").update({ hidden: true }).eq("user_id", userId).then(function () {
+          var nodes = document.querySelectorAll('.lc-msg[data-user="' + userId + '"]');
+          for (var i = 0; i < nodes.length; i++) nodes[i].remove();
+          toast("🚫 המשתמש נחסם וכל הודעותיו הוסתרו");
+        }).catch(function () { toast("המשתמש נחסם (הסתרת ההודעות נכשלה)"); });
+      }).catch(function () { toast("החסימה נכשלה"); });
   }
 
   function _refreshMsgs() { _fetchMsgs().then(_append); }
@@ -209,11 +226,11 @@
   }
 
   // ---- wiring ----
-  function _wireHide() {
-    var nodes = document.querySelectorAll(".lc-hide");
-    for (var i = 0; i < nodes.length; i++) {
-      nodes[i].onclick = function () { _hide(parseInt(this.getAttribute("data-hide"), 10)); };
-    }
+  function _wireMod() {   // wire the admin 🗑️ (delete one) + 🚫 (ban user) controls
+    var hid = document.querySelectorAll(".lc-hide");
+    for (var i = 0; i < hid.length; i++) hid[i].onclick = function () { _hide(parseInt(this.getAttribute("data-hide"), 10)); };
+    var ban = document.querySelectorAll(".lc-ban");
+    for (var j = 0; j < ban.length; j++) ban[j].onclick = function () { _ban(this.getAttribute("data-ban"), this.getAttribute("data-banname")); };
   }
   function _wireForm() {
     var f = $("lcForm");
