@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StratNinja — Chat Overlay</title>
+<!--
+  Transparent live-chat overlay for OBS. Add as a Browser Source:
+    https://www.stratninja.win/chat-overlay   (≈ 420 × 640, transparent)
+  Shows the StratNinja site live-chat messages. Public read; polls the cached /api/live-chat.
+  Optional query params:  ?limit=25  (max visible)   ?size=20  (font px)   ?bg=1 (add a dark panel)
+-->
+<style>
+  :root { --fs: 19px; }
+  html,body{margin:0;padding:0;background:transparent;overflow:hidden}
+  body{font-family:"Heebo","Segoe UI",Arial,sans-serif;color:#fff}
+  #ovWrap{position:fixed;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;padding:12px;box-sizing:border-box}
+  body.panel #ovWrap{background:linear-gradient(0deg,rgba(6,10,16,.55),rgba(6,10,16,.15));border-radius:14px}
+  .ovm{font-size:var(--fs);line-height:1.4;word-break:break-word;background:rgba(10,14,22,.62);border:1px solid rgba(255,255,255,.08);
+       border-radius:12px;padding:7px 12px;max-width:100%;box-shadow:0 2px 10px rgba(0,0,0,.35);
+       animation:ovIn .25s ease;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .ovm .ovn{font-weight:800;color:#34d399;margin-inline-end:7px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+  .ovm .ovt{text-shadow:0 1px 6px rgba(0,0,0,.75)}
+  @keyframes ovIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<div id="ovWrap"></div>
+<script>
+(function () {
+  "use strict";
+  var q = new URLSearchParams(location.search);
+  var LIMIT = Math.max(3, Math.min(60, parseInt(q.get("limit"), 10) || 25));
+  var SIZE = parseInt(q.get("size"), 10);
+  if (SIZE && SIZE >= 10 && SIZE <= 60) document.documentElement.style.setProperty("--fs", SIZE + "px");
+  if (q.get("bg") === "1") document.body.classList.add("panel");
+
+  var wrap = document.getElementById("ovWrap");
+  var seen = {}, lastId = 0;
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c];}); }
+
+  function fetchMsgs() {
+    return fetch("/api/live-chat", { headers: { "Cache-Control": "no-cache" } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){ return (j && j.ok && Array.isArray(j.messages)) ? j.messages : null; })
+      .catch(function(){ return null; });
+  }
+  function render(msgs) {
+    if (!msgs) return;   // fetch failed → keep what's shown
+    var ids = {}, minId = Infinity;
+    for (var i=0;i<msgs.length;i++){ ids[msgs[i].id]=1; if(msgs[i].id<minId)minId=msgs[i].id; }
+    var full = msgs.length < 60;
+    // remove deleted/hidden messages (gone from the fetched set)
+    var nodes = wrap.querySelectorAll(".ovm");
+    for (var n=0;n<nodes.length;n++){
+      var mid = parseInt(nodes[n].getAttribute("data-id"),10);
+      if (!ids[mid] && (full || mid>=minId)) { delete seen[mid]; nodes[n].remove(); }
+    }
+    // append new ones
+    var fresh = [];
+    for (var k=0;k<msgs.length;k++){ var m=msgs[k]; if(!seen[m.id]){ seen[m.id]=1; if(m.id>lastId)lastId=m.id; fresh.push(m); } }
+    if (fresh.length) {
+      wrap.insertAdjacentHTML("beforeend", fresh.map(function(m){
+        return '<div class="ovm" data-id="'+m.id+'"><span class="ovn">'+esc(m.name)+'</span><span class="ovt">'+esc(m.msg)+'</span></div>';
+      }).join(""));
+    }
+    // cap to the last LIMIT messages
+    var all = wrap.querySelectorAll(".ovm");
+    for (var x=0; x < all.length - LIMIT; x++) { var el=all[x]; delete seen[parseInt(el.getAttribute("data-id"),10)]; el.remove(); }
+  }
+  function tick(){ fetchMsgs().then(render); }
+  tick();
+  setInterval(tick, 2000);
+})();
+</script>
+</body>
+</html>

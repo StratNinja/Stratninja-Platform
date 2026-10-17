@@ -84,9 +84,18 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 </div>
 <script>
   (function () {
-    // always show on every load/refresh — the ✕ only hides it for the current view
+    // show ONCE per day, auto-hide after 5 minutes, then not again until tomorrow (per browser).
+    var el = document.getElementById("ytOutage"); if (!el) return;
+    var KEY = "sn_ytoutage_day";
+    function today() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return ""; } }
+    function hide() { el.style.display = "none"; }
+    var shownToday = false;
+    try { shownToday = localStorage.getItem(KEY) === today(); } catch (e) {}
+    if (shownToday) { hide(); return; }                 // already shown today → don't show again
+    try { localStorage.setItem(KEY, today()); } catch (e) {}
+    var timer = setTimeout(hide, 5 * 60 * 1000);        // auto-hide after 5 minutes
     var x = document.getElementById("ytoX");
-    if (x) x.onclick = function () { var e = document.getElementById("ytOutage"); if (e) e.style.display = "none"; };
+    if (x) x.onclick = function () { clearTimeout(timer); hide(); };
   })();
 </script>
 
