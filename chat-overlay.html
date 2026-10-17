@@ -32,6 +32,8 @@
 </head>
 <body>
 <div id="ovWrap"></div>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function () {
   "use strict";
@@ -117,8 +119,24 @@
     }
   }
   function tick(){ fetchMsgs().then(render); }
-  tick();
-  setInterval(tick, 750);
+
+  // Realtime: the DB pushes featured on/off (and new messages) over a websocket, so the overlay
+  // reacts in <0.5s instead of waiting for a poll. Polling stays as a safety net; it slows down
+  // once realtime is confirmed healthy. (Needs live_realtime.sql run once on the DB.)
+  var rtOK = false, pend = null;
+  function bump(){ if (pend) return; pend = setTimeout(function(){ pend = null; tick(); }, 120); }   // coalesce bursts
+  function startRealtime(){
+    try{
+      if (!(window.supabase && window.SN_CONFIG && SN_CONFIG.SUPABASE_URL && SN_CONFIG.SUPABASE_ANON_KEY)) return;
+      window.supabase.createClient(SN_CONFIG.SUPABASE_URL, SN_CONFIG.SUPABASE_ANON_KEY)
+        .channel("overlay_live_chat")
+        .on("postgres_changes", { event: "*", schema: "public", table: "live_chat" }, function(){ bump(); })
+        .subscribe(function(status){ rtOK = (status === "SUBSCRIBED"); });
+    }catch(e){}
+  }
+  function loop(){ tick(); setTimeout(loop, rtOK ? 4000 : 750); }
+  startRealtime();
+  loop();
 })();
 </script>
 </body>

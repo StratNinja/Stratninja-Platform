@@ -194,7 +194,23 @@
   function tick(){ fetchMsgs().then(render); }
 
   initAuth();
-  tick(); setInterval(tick, 1000);
+
+  // Realtime: new messages / deletes / featured changes arrive over a websocket (<0.5s),
+  // polling stays as a safety net (slows once realtime is healthy). Needs live_realtime.sql.
+  var rtOK = false, pend = null;
+  function bump(){ if (pend) return; pend = setTimeout(function(){ pend = null; tick(); }, 120); }
+  function startRealtime(){
+    try{
+      if (!(window.supabase && window.SN_CONFIG && SN_CONFIG.SUPABASE_URL && SN_CONFIG.SUPABASE_ANON_KEY)) return;
+      window.supabase.createClient(SN_CONFIG.SUPABASE_URL, SN_CONFIG.SUPABASE_ANON_KEY)
+        .channel("dock_live_chat")
+        .on("postgres_changes", { event: "*", schema: "public", table: "live_chat" }, function(){ bump(); })
+        .subscribe(function(status){ rtOK = (status === "SUBSCRIBED"); });
+    }catch(e){}
+  }
+  function loop(){ tick(); setTimeout(loop, rtOK ? 4000 : 1000); }
+  startRealtime();
+  loop();
 })();
 </script>
 </body>
