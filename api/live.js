@@ -168,6 +168,7 @@ function publicView(row) {
     scheduled_at: row.scheduled_at || null,
     started_at: row.started_at || null,
     platforms: Array.isArray(row.platforms) ? row.platforms : [],
+    thumbnail_url: row.thumbnail_url || "",
     playback: playback(), playback_err: playbackErr(),
     ts: Date.now(),
   };
@@ -212,6 +213,7 @@ export default async function handler(req, res) {
         .slice(0, 8)
         .map(p => ({ name: String(p.name || "").slice(0, 40), url: String(p.url).slice(0, 300) }));
     }
+    if (typeof body.thumbnail_url === "string") patch.thumbnail_url = body.thumbnail_url.slice(0, 500);   // live "soon" background
     const row = await patchRow(patch);
     res.status(200).json(publicView(row));
     return;

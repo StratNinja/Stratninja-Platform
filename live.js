@@ -53,10 +53,12 @@ window.Live = (function () {
       ".live-main{min-width:0}.live-side{min-width:0}",
       ".live-stage{position:relative;width:100%;aspect-ratio:16/9;background:#05070c;border:1px solid var(--line);border-radius:16px;overflow:hidden}",
       ".live-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}",
-      ".live-off{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;text-align:center;padding:24px}",
+      ".live-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,12,.45),rgba(5,7,12,.82));z-index:1}",   // darken the thumbnail so the countdown is readable
+      ".live-off{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;text-align:center;padding:24px}",
       ".live-off .lo-ico{font-size:46px;line-height:1}",
-      ".live-off h3{margin:0;font-size:22px}",
+      ".live-off h3{margin:0;font-size:22px;text-shadow:0 1px 10px rgba(0,0,0,.6)}",
       ".live-off p{margin:0;color:var(--muted);max-width:46ch}",
+      ".live-off .live-cd{text-shadow:0 2px 14px rgba(0,0,0,.7)}",
       ".live-badge{display:inline-flex;align-items:center;gap:7px;font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px}",
       ".live-badge.on{background:#dc2626;color:#fff;box-shadow:0 0 0 0 rgba(220,38,38,.55);animation:livePulse 1.8s infinite}",
       ".live-badge.off{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}",
@@ -76,6 +78,9 @@ window.Live = (function () {
       ".live-admin input,.live-admin textarea,.live-admin select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:7px 10px;font-family:inherit;font-size:14px}",
       ".live-admin textarea{min-height:60px;resize:vertical}",
       ".live-admin .la-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}",
+      ".la-thumb{display:flex;align-items:center;gap:10px;margin-top:4px}",
+      ".la-thumb-prev{width:92px;height:52px;object-fit:cover;border-radius:7px;border:1px solid var(--line);flex:0 0 auto}",
+      ".la-thumb input[type=file]{font-size:12px}",
       ".live-admin .la-stat{font-size:12px;color:var(--muted);margin-top:10px}",
       "@media(max-width:640px){.live-admin .la-grid{grid-template-columns:1fr}.live-meta h2{font-size:19px}}",
     ].join("");
@@ -93,6 +98,13 @@ window.Live = (function () {
     return "offline";
   }
 
+  // optional uploaded thumbnail as the background of the soon/offline stage. The URL is validated to a
+  // bare https URL (no quotes/parens/spaces) so it can't break out of the CSS url() — no injection.
+  function _thumb(s) {
+    var u = (s && /^https:\/\/[^\s'"()]+$/i.test(String(s.thumbnail_url || ""))) ? s.thumbnail_url : "";
+    return u ? { bg: ' style="background-image:url(\'' + u + '\');background-size:cover;background-position:center"', scrim: '<div class="live-scrim"></div>' }
+             : { bg: "", scrim: "" };
+  }
   function _playerHtml(s, vs) {
     if (vs === "live") {
       var pb = s && s.playback;
@@ -108,7 +120,8 @@ window.Live = (function () {
     }
     if (vs === "soon") {
       var when = s && s.scheduled_at ? new Date(s.scheduled_at) : null;
-      return '<div class="live-stage"><div class="live-off"><div class="lo-ico">⏳</div>' +
+      var ts = _thumb(s);
+      return '<div class="live-stage"' + ts.bg + '>' + ts.scrim + '<div class="live-off"><div class="lo-ico">⏳</div>' +
         '<h3>השידור יתחיל בקרוב</h3>' +
         (when ? '<div class="live-cd" id="liveCountdown">—</div>' : '<p>תכף מתחילים — הישאר בעמוד.</p>') +
         "</div></div>";
@@ -117,7 +130,8 @@ window.Live = (function () {
       return '<div class="live-stage"><div class="live-off"><div class="lo-ico">🔄</div>' +
         '<h3>בודקים את מצב השידור…</h3><p>לא הצלחנו כרגע לקבל את סטטוס השידור מ-Cloudflare — מנסים שוב אוטומטית.</p></div></div>';
     }
-    return '<div class="live-stage"><div class="live-off"><div class="lo-ico">⚫</div>' +
+    var to = _thumb(s);
+    return '<div class="live-stage"' + to.bg + '>' + to.scrim + '<div class="live-off"><div class="lo-ico">⚫</div>' +
       '<h3>אין שידור כרגע</h3><p>כרגע לא משדרים בלייב. חזור בזמן השידור הבא — או הצטרף לקהילה כדי לקבל עדכון.</p></div></div>';
   }
 
@@ -162,6 +176,9 @@ window.Live = (function () {
       '<div><label>מצב תצוגה</label><select id="laMode">' + opt("auto", "אוטומטי (לפי השידור)") + opt("soon", "השידור יתחיל בקרוב") + opt("offline", "כבוי (OFFLINE מאולץ)") + "</select></div>" +
       '<div><label>זמן התחלה מתוזמן (לא חובה)</label><input type="datetime-local" id="laSched" value="' + schVal + '"></div>' +
       "</div>" +
+      '<label>תמונת רקע למסך "בקרוב" / "אין שידור" (Thumbnail)</label>' +
+      '<div class="la-thumb">' + (s && s.thumbnail_url ? '<img src="' + esc(s.thumbnail_url) + '" class="la-thumb-prev" alt="">' : "") +
+        '<input type="file" id="laThumb" accept="image/*"></div>' +
       '<div class="live-row"><button class="btn primary" id="laSave" style="font-size:13px;padding:7px 14px">💾 שמור</button>' +
       '<button class="btn ghost" id="laClearSched" style="font-size:13px;padding:7px 12px">נקה תזמון</button></div>' +
       '<div class="la-stat" id="laStat">מצב שידור אמיתי מ-Cloudflare: <b>' + (s && s.is_live ? "🔴 חי" : "⚫ לא פעיל") + "</b>" +
@@ -227,6 +244,28 @@ window.Live = (function () {
       });
     };
     var clr = $("laClearSched"); if (clr) clr.onclick = function () { if ($("laSched")) $("laSched").value = ""; };
+    var th = $("laThumb"); if (th) th.onchange = function () { var f = th.files && th.files[0]; if (f) _uploadThumb(f); };
+  }
+
+  // upload a thumbnail to Supabase Storage (admin-only bucket) and save its public URL on the row.
+  function _uploadThumb(file) {
+    var c = (window.SNAuth && SNAuth.getClient && SNAuth.getClient());
+    if (!c || !c.storage) { toast("אחסון לא זמין"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast("התמונה גדולה מדי (מקס׳ 5MB)"); return; }
+    var ext = ((file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "")) || "jpg";
+    var path = "public-live." + ext;   // single thumbnail, overwritten each upload
+    toast("מעלה תמונה…");
+    c.storage.from("live-thumbnails").upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" })
+      .then(function (r) {
+        if (r && r.error) { toast("העלאה נכשלה · " + (r.error.message || "")); return; }
+        var pub = c.storage.from("live-thumbnails").getPublicUrl(path);
+        var url = pub && pub.data && pub.data.publicUrl;
+        if (!url) { toast("לא התקבל קישור לתמונה"); return; }
+        url += (url.indexOf("?") >= 0 ? "&" : "?") + "t=" + Date.now();   // cache-bust so a replaced image shows
+        _post({ thumbnail_url: url }).then(function (rr) {
+          if (rr && rr.ok) { _status = rr; toast("התמונה הועלתה ✓"); _apply(true); } else { toast("שמירת הקישור נכשלה"); }
+        });
+      }).catch(function () { toast("העלאה נכשלה"); });
   }
 
   // apply _status to the DOM without reloading the player unless the player state changed
