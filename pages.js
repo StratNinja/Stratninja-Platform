@@ -5768,7 +5768,7 @@
       { key: "bbp", th: "%B" + (techState.bbPeriod === "50" ? " (50)" : ""), tip: "מיקום המחיר ברצועות בולינגר: 0=רצועה תחתונה · 100=עליונה. מתחת ל-0 = מתחת לרצועה (מועמד LONG לחזרה לממוצע) · מעל 100 = מעל הרצועה (מועמד SHORT)", cell: k => { const v = _bbVal(k, "bbp"); return "<td>" + (v == null ? "—" : v <= 0 ? '<b class="pos">' + v.toFixed(0) + " ▲</b>" : v >= 100 ? '<b class="neg">' + v.toFixed(0) + " ▼</b>" : v.toFixed(0)) + "</td>"; }, active: _bbPosActive() },
       { key: "swd", th: "Δ סווינג", tip: "מרחק המחיר (%) מנקודת הסווינג/פיבוט האחרונה (שיא/תחתית מקומית)", cell: k => "<td>" + dPct(_pivActive() ? (techState.pivRev === "bull" ? _pivLoD(k) : _pivHiD(k)) : ((techState.swSide === "low" || techState.swSide === "breakLo") ? _swLoD(k) : _swHiD(k))) + "</td>", active: _swActive() || _pivActive() },
       { key: "trend", th: "Δ קו מגמה", tip: "מרחק המחיר (%) מקו המגמה האלכסוני הרלוונטי. ~0 = נגיעה · חיובי = מעל הקו · שלילי = מתחת · במוסגר מספר הנגיעות שמאשרות את הקו", cell: k => { const v = _trendVal(k), n = _trendTouches(k); return "<td>" + dPct(v) + (v != null && n ? ' <span class="muted" style="font-size:10px">·' + n + "</span>" : "") + "</td>"; }, active: _trendActive() },
-      { key: "fib", th: "פיבו %", tip: "אחוז הריטרייסמנט של המחיר מה-swing האחרון (0% = בשיא/שפל האחרון · 100% = חזרה לנקודת ההתחלה). ↗ = פולבק בטרנד עולה · ↘ = תיקון בטרנד יורד", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
+      { key: "fib", th: "פיבו %", tip: "רמת הריטרייסמנט של המחיר ב-swing האחרון, לוגריתמי וכמו TradingView (0% = בשיא ה-swing · 100% = בשפל). ↗ = פולבק בטרנד עולה (רמות=תמיכה) · ↘ = תיקון/באונס בטרנד יורד (רמות=התנגדות)", cell: k => { const v = k.fibr; if (v == null) return '<td class="muted">—</td>'; const arr = k.fibdir === "up" ? "↗" : "↘"; return "<td>" + v.toFixed(1) + "% <span class='muted' style='font-size:10px'>" + arr + "</span></td>"; }, active: _fibActive() },
     ];
     // a filter becoming active auto-adds its column (once); the user can still remove it via the chip
     optCols.forEach(c => { if (c.active && colState[c.key] == null) colState[c.key] = true; });
@@ -6542,10 +6542,12 @@
     if (isNaN(lo)) return false;
     const inBand = v => v != null && v >= lo - tol && v <= hi + tol;   // within the level/zone ± tol
     switch (techState.fibDir) {
-      // 🎯 touch-from-above: an up-leg pullback whose LOW wicked into the level zone while the CLOSE held ABOVE it (support hold)
+      // 🎯 touch-from-above: an up-leg pullback whose LOW wicked into the level zone while the CLOSE held ABOVE it (support hold).
+      // fibr = % DOWN from the swing high → "close above the level" = less retraced = fibr < level.
       case "touchAbove": return k.fibdir === "up" && k.fibr < lo && inBand(k.fibrlo);
-      // 🎯 touch-from-below: a down-leg bounce whose HIGH wicked into the level zone while the CLOSE stayed BELOW it (resistance reject)
-      case "touchBelow": return k.fibdir === "down" && k.fibr < lo && inBand(k.fibrhi);
+      // 🎯 touch-from-below: a down-leg bounce whose HIGH wicked into the level zone while the CLOSE stayed BELOW it (resistance reject).
+      // "close below the level" = more retraced down = fibr > level.
+      case "touchBelow": return k.fibdir === "down" && k.fibr > hi && inBand(k.fibrhi);
       case "up":   return k.fibdir === "up" && inBand(k.fibr);
       case "down": return k.fibdir === "down" && inBand(k.fibr);
       default:     return inBand(k.fibr);   // "any" — close near the level, either direction
