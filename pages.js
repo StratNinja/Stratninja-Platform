@@ -2964,6 +2964,22 @@
     for (let i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
     return arr;
   }
+  // save a sub (and optionally drop an old endpoint) DIRECTLY to the server, so registration never
+  // depends on cloudsync running. No-op for guests (needs a logged-in token).
+  async function _saveSubServer(subJson, removeEp) {
+    try {
+      var c = window.SNAuth && SNAuth.getClient && SNAuth.getClient();
+      if (!c) return false;
+      var r = await c.auth.getSession();
+      var tok = r && r.data && r.data.session && r.data.session.access_token;
+      if (!tok) return false;
+      var resp = await fetch("/api/push-subscribe", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok },
+        body: JSON.stringify({ subscription: subJson || undefined, remove: removeEp || undefined }),
+      });
+      return resp.ok;
+    } catch (e) { return false; }
+  }
   async function subscribeToPush() {
     try {
       const cfg = window.SN_CONFIG;
@@ -2976,6 +2992,7 @@
       let sub = await reg.pushManager.getSubscription();
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
       if (window.Prefs && sub) Prefs.addPushSub(sub.toJSON());
+      if (sub) await _saveSubServer(sub.toJSON());                 // register on the server immediately
       try { localStorage.setItem("sn_push_renew", String(Date.now())); } catch (e) {}
       snToast("✓ התראות לפלאפון הופעלו!");
       if (document.getElementById("pgModal")) openAlertsFeed();
@@ -2996,9 +3013,12 @@
       let sub = await reg.pushManager.getSubscription();
       let renew = false;
       try { renew = (Date.now() - (+(localStorage.getItem("sn_push_renew") || 0))) > 7 * 864e5; } catch (e) {}
-      if (renew && sub) { try { if (window.Prefs) Prefs.removePushSub(sub.endpoint); await sub.unsubscribe(); } catch (e) {} sub = null; }
+      const hadSub = !!sub;
+      let oldEp = null;
+      if (renew && sub) { oldEp = sub.endpoint; try { if (window.Prefs) Prefs.removePushSub(sub.endpoint); await sub.unsubscribe(); } catch (e) {} sub = null; }
       if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
       if (window.Prefs && sub) Prefs.addPushSub(sub.toJSON());
+      if (sub && (!hadSub || renew)) await _saveSubServer(sub.toJSON(), oldEp);   // save to server when newly created / renewed
       if (renew) { try { localStorage.setItem("sn_push_renew", String(Date.now())); } catch (e) {} }
     } catch (e) {}
   }
@@ -3013,9 +3033,11 @@
       if (perm !== "granted") { snToast("צריך לאשר התראות בדפדפן"); return; }
       const reg = await navigator.serviceWorker.ready;
       const old = await reg.pushManager.getSubscription();
-      if (old) { const ep = old.endpoint; try { await old.unsubscribe(); } catch (e) {} if (window.Prefs) Prefs.removePushSub(ep); }
+      let oldEp = null;
+      if (old) { oldEp = old.endpoint; try { await old.unsubscribe(); } catch (e) {} if (window.Prefs) Prefs.removePushSub(oldEp); }
       const fresh = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(cfg.VAPID_PUBLIC) });
       if (window.Prefs && fresh) Prefs.addPushSub(fresh.toJSON());
+      if (fresh) await _saveSubServer(fresh.toJSON(), oldEp);      // save fresh + drop the old (dead) one on the server
       try { localStorage.setItem("sn_push_renew", String(Date.now())); } catch (e) {}
       snToast("✓ המנוי חודש! עכשיו אפשר לשלוח בדיקה");
       if (state.page === "favorites") reRender();
