@@ -190,13 +190,15 @@ window.Live = (function () {
       '<div><label>זמן התחלה מתוזמן (לא חובה)</label><input type="datetime-local" id="laSched" value="' + schVal + '"></div>' +
       "</div>" +
       '<label>תמונת רקע למסך "בקרוב" / "אין שידור" (Thumbnail)</label>' +
-      '<div class="la-thumb">' + (s && s.thumbnail_url ? '<img src="' + esc(s.thumbnail_url) + '" class="la-thumb-prev" alt="">' : "") +
+      '<div class="la-thumb">' + (s && s.thumbnail_url ? '<img src="' + esc(s.thumbnail_url) + '" class="la-thumb-prev" alt=""><button class="btn ghost" id="laThumbRemove" style="font-size:12px;padding:5px 10px">🗑️ הסר תמונה</button>' : "") +
         '<input type="file" id="laThumb" accept="image/*"></div>' +
       '<div class="live-row"><button class="btn primary" id="laSave" style="font-size:13px;padding:7px 14px">💾 שמור</button>' +
       '<button class="btn ghost" id="laClearSched" style="font-size:13px;padding:7px 12px">נקה תזמון</button></div>' +
       '<div class="live-row" style="margin-top:4px"><button class="btn" id="laPush" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:7px 14px">📢 שלח התראה לנייד — "אני בלייב"</button>' +
       '<button class="btn ghost" id="laPushTest" style="font-size:13px;padding:7px 12px">🧪 בדיקה — רק אליי</button></div>' +
       '<div class="la-stat">📢 = לכל מנויי ההתראות (פעם אחת; חסימה חוזרת 10 דק׳). 🧪 = נשלח רק לטלפון שלך לבדיקה, בלי להעיר אף אחד.</div>' +
+      '<div class="live-row" style="margin-top:4px"><button class="btn ghost" id="laClearChat" style="font-size:13px;padding:7px 12px;color:#ff9b9b;border-color:#3a2030">🧹 נקה את כל הצ\'אט</button></div>' +
+      '<div class="la-stat">מנקה את כל הודעות הצ\'אט (להכנה ללייב הבא). מסתיר לכולם — הפיך, המידע נשמר.</div>' +
       '<div class="la-stat" id="laStat">מצב שידור אמיתי מ-Cloudflare: <b>' + (s && s.is_live ? "🔴 חי" : "⚫ לא פעיל") + "</b>" +
       " · אי אפשר לאלץ 'LIVE' ידנית — הוא נקבע לפי החיבור בפועל של OBS.</div>";
   }
@@ -327,6 +329,34 @@ window.Live = (function () {
     };
     var clr = $("laClearSched"); if (clr) clr.onclick = function () { if ($("laSched")) $("laSched").value = ""; };
     var th = $("laThumb"); if (th) th.onchange = function () { var f = th.files && th.files[0]; if (f) _uploadThumb(f); };
+    var thRm = $("laThumbRemove");
+    if (thRm) thRm.onclick = function () {
+      if (!confirm("להסיר את התמונה? מסך 'בקרוב/אין שידור' יחזור לברירת המחדל.")) return;
+      thRm.disabled = true; thRm.textContent = "מסיר…";
+      _accessToken().then(function (tok) {
+        if (!tok) { thRm.disabled = false; thRm.textContent = "🗑️ הסר תמונה"; toast("יש להתחבר מחדש"); return; }
+        fetch("/api/live-thumb", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ remove: true }) })
+          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (r && r.ok) {
+              _status = Object.assign({}, _status, { thumbnail_url: null });
+              toast("התמונה הוסרה ✓"); _apply(true);
+              var tw = document.querySelector(".law-body .la-thumb");
+              if (tw) { var img = tw.querySelector(".la-thumb-prev"); if (img) img.remove(); }
+              thRm.remove();
+            } else { thRm.disabled = false; thRm.textContent = "🗑️ הסר תמונה"; toast("ההסרה נכשלה"); }
+          }).catch(function () { thRm.disabled = false; thRm.textContent = "🗑️ הסר תמונה"; toast("ההסרה נכשלה"); });
+      });
+    };
+    var clc = $("laClearChat");
+    if (clc) clc.onclick = function () {
+      if (!confirm("לנקות את כל הצ'אט? כל ההודעות ייעלמו מהמסך ומהצ'אט (להכנה ללייב הבא). המידע נשמר וניתן לשחזור.")) return;
+      clc.disabled = true; clc.textContent = "מנקה…";
+      _modCall({ action: "clear" }).then(function (r) {
+        clc.disabled = false; clc.textContent = "🧹 נקה את כל הצ'אט";
+        toast(r && r.ok ? "הצ'אט נוקה ✓" : ("הניקוי נכשל" + (r && r.error ? " · " + r.error : "")));
+      });
+    };
     function _livePush(btn, test) {
       var lbl = btn.textContent; btn.disabled = true; btn.textContent = "שולח…";
       _accessToken().then(function (tok) {

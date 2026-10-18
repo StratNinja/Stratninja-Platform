@@ -33,6 +33,25 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
+
+  // remove the thumbnail → clear it on the row + best-effort delete the stored files
+  if (body.remove === true) {
+    try {
+      await fetch(SUPA_URL + "/rest/v1/live_status?id=eq.public", {
+        method: "PATCH",
+        headers: { apikey: SVC, Authorization: "Bearer " + SVC, "Content-Type": "application/json" },
+        body: JSON.stringify({ thumbnail_url: null, updated_at: new Date().toISOString() }),
+      });
+      for (const ext of ["png", "jpg", "webp", "gif"]) {
+        try { await fetch(SUPA_URL + "/storage/v1/object/" + BUCKET + "/public-live." + ext, { method: "DELETE", headers: { apikey: SVC, Authorization: "Bearer " + SVC } }); } catch (e) {}
+      }
+      res.status(200).json({ ok: true, thumbnail_url: null });
+    } catch (e) {
+      res.status(502).json({ error: "remove_failed" });
+    }
+    return;
+  }
+
   const m = /^data:(image\/(png|jpe?g|webp|gif));base64,([A-Za-z0-9+/=]+)$/.exec(String(body.data_url || ""));
   if (!m) { res.status(400).json({ error: "bad_image" }); return; }
   const contentType = m[1];
