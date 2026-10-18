@@ -6541,15 +6541,19 @@
     const band = _fibBand(); const lo = band[0], hi = band[1], tol = _fibTol();
     if (isNaN(lo)) return false;
     const inBand = v => v != null && v >= lo - tol && v <= hi + tol;   // within the level/zone ± tol
+    // a level is only a valid SUPPORT/RESISTANCE if price reached it and HELD — not if price blew
+    // through it toward ~100% and later came back. fibext = the extreme reach of the move.
+    const BRK = 15;
+    const heldUp   = k.fibext == null || k.fibext <= hi + BRK;   // up: deepest pullback didn't break far BELOW the level
+    const heldDown = k.fibext == null || k.fibext >= lo - BRK;   // down: highest bounce didn't break far ABOVE the level
     switch (techState.fibDir) {
-      // 🎯 touch-from-above: an up-leg pullback whose LOW wicked into the level zone while the CLOSE held ABOVE it (support hold).
-      // fibr = % DOWN from the swing high → "close above the level" = less retraced = fibr < level.
-      case "touchAbove": return k.fibdir === "up" && k.fibr < lo && inBand(k.fibrlo);
-      // 🎯 touch-from-below: a down-leg bounce whose HIGH wicked into the level zone while the CLOSE stayed BELOW it (resistance reject).
-      // "close below the level" = more retraced down = fibr > level.
-      case "touchBelow": return k.fibdir === "down" && k.fibr > hi && inBand(k.fibrhi);
-      case "up":   return k.fibdir === "up" && inBand(k.fibr);
-      case "down": return k.fibdir === "down" && inBand(k.fibr);
+      // 🎯 touch-from-above: an up-leg pullback whose LOW reached the level (support) while the CLOSE held ABOVE it, and
+      // the move didn't blow through (hammer/reversal AT the level). fibr=% DOWN from high → close above = fibr < level.
+      case "touchAbove": return k.fibdir === "up" && k.fibr < lo && k.fibrlo != null && k.fibrlo >= lo - tol && heldUp;
+      // 🎯 touch-from-below: a down-leg bounce whose HIGH reached the level (resistance) while the CLOSE stayed BELOW it.
+      case "touchBelow": return k.fibdir === "down" && k.fibr > hi && k.fibrhi != null && k.fibrhi <= hi + tol && heldDown;
+      case "up":   return k.fibdir === "up"   && inBand(k.fibr) && heldUp;    // close sitting AT the level, held
+      case "down": return k.fibdir === "down" && inBand(k.fibr) && heldDown;
       default:     return inBand(k.fibr);   // "any" — close near the level, either direction
     }
   }
