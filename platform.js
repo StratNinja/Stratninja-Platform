@@ -81,9 +81,12 @@
     await SNAuth.init();
     const loginBtn = $("#googleBtn");
     const isLocalhost = ["localhost", "127.0.0.1"].indexOf(location.hostname) >= 0;
+    const discordBtn = $("#discordBtn");
     if (SNAuth.isCloud()) {
       loginBtn.querySelector(".lbl").textContent = "התחבר עם Google";
       loginBtn.onclick = () => SNAuth.signInWithGoogle();
+      // Discord sign-in (additive) — lets the server verify community membership for the "vault".
+      if (discordBtn) { discordBtn.classList.remove("hidden"); discordBtn.onclick = () => SNAuth.signInWithDiscord(); }
       // dev-only bypass so the UI stays testable locally before Google OAuth is set up
       if (isLocalhost) {
         const note = $("#modeNote");

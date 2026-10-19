@@ -25,6 +25,7 @@ const ADMIN_EMAIL = "koriatmanagement@gmail.com";
 const CF_ACCOUNT = (process.env.CF_ACCOUNT_ID || "").trim();
 const CF_TOKEN = (process.env.CF_STREAM_API_TOKEN || "").trim();
 const CF_INPUT = (process.env.CF_PUBLIC_INPUT_ID || "").trim();
+const CF_CLOSED = (process.env.CF_CLOSED_INPUT_ID || "").trim();   // COMMUNITY (requireSignedURLs) input
 const CF_CODE = (process.env.CF_CUSTOMER_CODE || "").trim();
 
 // PREVIEW-ONLY read-only test mode. Vercel sets VERCEL_ENV automatically ("production" on the
@@ -79,8 +80,9 @@ async function verifyAdmin(req) {
 // { ok:false, reason, http?, code? } on failure — so callers can surface a DIAGNOSABLE reason instead
 // of a blind "cf_unreachable". Logs ONLY the HTTP status / CF error code / failure type — never the
 // token, the Authorization header, or any secret.
-async function cfLiveStatus() {
-  if (!(CF_ACCOUNT && CF_TOKEN && CF_INPUT)) {
+async function cfLiveStatus(inputId) {
+  inputId = inputId || CF_INPUT;   // default to the PUBLIC input (back-compat); community passes the closed one
+  if (!(CF_ACCOUNT && CF_TOKEN && inputId)) {
     console.warn("[live] CF not configured (account/token/input missing in this environment)");
     return { ok: false, reason: "not_configured" };
   }
@@ -88,12 +90,12 @@ async function cfLiveStatus() {
   // which makes fetch() throw a synchronous TypeError (the 0ms "fetch_threw"). Whitespace inside an id
   // breaks the URL. .trim() only fixes the edges, so catch an INTERNAL bad char here and name the field
   // (no value is ever logged/returned).
-  const badField = /[\x00-\x1f\x7f]/.test(CF_TOKEN) ? "token" : /\s/.test(CF_ACCOUNT) ? "account" : /\s/.test(CF_INPUT) ? "input" : "";
+  const badField = /[\x00-\x1f\x7f]/.test(CF_TOKEN) ? "token" : /\s/.test(CF_ACCOUNT) ? "account" : /\s/.test(inputId) ? "input" : "";
   if (badField) {
     console.warn("[live] CF env value has invalid characters inside it " + JSON.stringify({ field: badField }));
     return { ok: false, reason: "invalid_env", field: badField };
   }
-  const url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + CF_INPUT;
+  const url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + inputId;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), CF_TIMEOUT_MS);
   const t0 = Date.now();
@@ -128,11 +130,12 @@ async function cfLiveStatus() {
 // The Video ID of the CURRENTLY-LIVE broadcast (for DVR — the player must load by Video ID, not the
 // Live Input ID, to allow rewinding). Returns null if it can't be resolved (→ the player falls back to
 // the Live Input ID, i.e. current behaviour, no DVR). Safe/secret-free logging only.
-async function activeVideoUid() {
+async function activeVideoUid(inputId) {
+  inputId = inputId || CF_INPUT;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), CF_TIMEOUT_MS);
   try {
-    const url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + CF_INPUT + "/videos";
+    const url = "https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + inputId + "/videos";
     const r = await fetch(url, { headers: { Authorization: "Bearer " + CF_TOKEN }, signal: ctrl.signal });
     const j = await r.json().catch(() => null);
     if (!r.ok || !j || !j.success || !Array.isArray(j.result)) return null;
@@ -185,18 +188,23 @@ function playback() {
 // shape the row for public consumption (never leak internal/debug fields beyond what's useful)
 function publicView(row) {
   if (!row) return { ok: false };
+  var community = (row.visibility === "community");
   return {
     ok: true,
     is_live: !!row.is_live,
     mode: row.mode || "auto",
+    visibility: community ? "community" : "public",   // drives the /live gate (signed-URL vault)
     title: row.title || "",
     description: row.description || "",
     scheduled_at: row.scheduled_at || null,
     started_at: row.started_at || null,
     platforms: Array.isArray(row.platforms) ? row.platforms : [],
     thumbnail_url: row.thumbnail_url || "",
-    live_video_uid: row.live_video_uid || null,   // the active broadcast's Video ID (for DVR), while live
-    playback: playback(), playback_err: playbackErr(),
+    // COMMUNITY lives expose NO playable URL to the browser — the only way to watch is a signed URL
+    // minted by /api/live-token after the entitlement check. Public lives keep the PUBLIC playback URL.
+    live_video_uid: community ? null : (row.live_video_uid || null),   // the active broadcast's Video ID (DVR), public only
+    playback: community ? null : playback(),
+    playback_err: community ? "" : playbackErr(),
     ts: Date.now(),
   };
 }
@@ -233,6 +241,7 @@ export default async function handler(req, res) {
     if (typeof body.title === "string") patch.title = body.title.slice(0, 200);
     if (typeof body.description === "string") patch.description = body.description.slice(0, 1000);
     if (["auto", "offline", "soon"].indexOf(body.mode) >= 0) patch.mode = body.mode;
+    if (["public", "community"].indexOf(body.visibility) >= 0) patch.visibility = body.visibility;   // public ⇄ community (the vault toggle)
     if ("scheduled_at" in body) patch.scheduled_at = body.scheduled_at || null;   // ISO string or null
     if (Array.isArray(body.platforms)) {
       patch.platforms = body.platforms
@@ -256,11 +265,14 @@ export default async function handler(req, res) {
   //   • a stream CF keeps confirming stays live for as long as it runs — the max-duration cap below
   //     is reached ONLY in a webhook-only deployment (no CF reconcile), so a stream that continues to
   //     be verified against Cloudflare is NEVER force-stopped (requirement #1).
-  const cfConfigured = !!(CF_ACCOUNT && CF_TOKEN && CF_INPUT);
+  // COMMUNITY lives stream to the CLOSED input, so reconcile is_live against THAT input (not the public
+  // one) when the row is in community mode. Everything else (is_live write path) is unchanged.
+  const reconcileInput = (row.visibility === "community") ? CF_CLOSED : CF_INPUT;
+  const cfConfigured = !!(CF_ACCOUNT && CF_TOKEN && reconcileInput);
   const stale = !row.verified_at || (Date.now() - new Date(row.verified_at).getTime() > RECONCILE_MS);
   if (stale) {
     if (cfConfigured) {
-      const cf = await cfLiveStatus();
+      const cf = await cfLiveStatus(reconcileInput);
       if (cf.ok && !cf.unknown) {
         const fields = { verified_at: new Date().toISOString(), cf_status: cf.status };
         if (cf.live !== !!row.is_live) {
@@ -273,7 +285,7 @@ export default async function handler(req, res) {
         // DVR Video ID — in a SEPARATE patch so a missing live_video_uid column (SQL not run yet) can never
         // break the is_live update above (patchRow returns null on error → the live still shows).
         if (cf.live) {
-          const vid = await activeVideoUid();
+          const vid = await activeVideoUid(reconcileInput);
           if (vid && vid !== row.live_video_uid) { const u2 = await patchRow({ live_video_uid: vid }); if (u2) row = u2; }
         } else if (row.live_video_uid) {
           const u2 = await patchRow({ live_video_uid: null }); if (u2) row = u2;

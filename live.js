@@ -14,10 +14,17 @@ window.Live = (function () {
   var ADMIN_EMAIL = "koriatmanagement@gmail.com";
   var POLL_MS = 15000;          // refresh the status every 15s while on the page
 
+  var PATREON_JOIN = "https://www.patreon.com/14520383/join";   // community join link (shown on the locked screen)
+
   var _status = null;           // last /api/live payload
   var _timer = null;            // status poll
   var _cd = null;               // countdown 1s timer
   var _playerSig = "";          // only rebuild the <iframe> when this changes (avoids reload/flicker)
+
+  // ---- community "vault" gate state ----
+  var _access = "unknown";      // "unknown" | "checking" | "ok" | "locked"  (for the CURRENT community live)
+  var _commIframe = "";         // the signed iframe URL once minted (entitled users only)
+  var _accessTried = false;     // guard so we only run the entitlement check once per community-live session
 
   function me() { try { return window.SNAuth && SNAuth.user && SNAuth.user(); } catch (e) { return null; } }
   function isAdmin() { try { return ((me() || {}).email || "").toLowerCase() === ADMIN_EMAIL; } catch (e) { return false; } }
@@ -40,6 +47,55 @@ window.Live = (function () {
       return fetch("/api/live", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(body) })
         .then(function (r) { return r.json(); }).catch(function () { return { error: "net" }; });
     });
+  }
+
+  // ---- community vault: entitlement + signed-URL helpers ----
+  function _isCommunity(s) { return !!(s && s.visibility === "community"); }
+  // POST /api/live-token → { status, json }. 200 = signed URL; 403 = not entitled; others = error/guest.
+  function _postLiveToken(tok) {
+    return fetch("/api/live-token", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok } })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, json: j }; }); })
+      .catch(function () { return { status: 0, json: {} }; });
+  }
+  // POST /api/entitlement-sync → refresh the user's 'community' entitlement from Discord guild membership.
+  function _syncEntitlement(tok) {
+    return fetch("/api/entitlement-sync", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok } })
+      .then(function (r) { return r.json().catch(function () { return {}; }); })
+      .catch(function () { return {}; });
+  }
+  // Resolve whether the current viewer may watch the community live, and mint the signed player URL.
+  // Self-healing: a just-signed-in Discord user has no entitlement row yet → a 403 triggers ONE sync +
+  // retry, which populates it. Sets _access + _commIframe and re-applies the player.
+  function _ensureCommunity() {
+    if (_accessTried) return;
+    _accessTried = true; _access = "checking";
+    _accessToken().then(function (tok) {
+      // No session yet (guest, or the Supabase session simply hasn't loaded). Lock for now but allow a
+      // RETRY on a later poll — otherwise an entitled user whose session arrives late stays wrongly locked.
+      if (!tok) { _access = "locked"; _commIframe = ""; _accessTried = false; _applyCommunity(); return; }
+      _postLiveToken(tok).then(function (r) {
+        if (r.json && r.json.ok && r.json.iframe) { _access = "ok"; _commIframe = r.json.iframe; _applyCommunity(); return; }
+        if (r.status === 403) {   // not entitled (stored) → try a Discord re-check once, then retry
+          _syncEntitlement(tok).then(function () {
+            _postLiveToken(tok).then(function (r2) {
+              if (r2.json && r2.json.ok && r2.json.iframe) { _access = "ok"; _commIframe = r2.json.iframe; }
+              else { _access = "locked"; _commIframe = ""; }
+              _applyCommunity();
+            });
+          });
+          return;
+        }
+        _access = "locked"; _commIframe = ""; _applyCommunity();   // error/unauthorized → treat as locked
+      });
+    });
+  }
+  // reset the gate when leaving a community live or when the live/visibility changes
+  function _resetCommunity() { _access = "unknown"; _commIframe = ""; _accessTried = false; }
+  // re-render only the player + chat region after an async access result
+  function _applyCommunity() {
+    if (!$("liveRoot")) return;
+    var pl = $("livePlayer"); if (pl) pl.innerHTML = _playerHtml(_status, _vs(_status));
+    _syncCommunityChat(_status, _vs(_status));
   }
 
   function _injectCss() {
@@ -92,6 +148,7 @@ window.Live = (function () {
       ".law-ban-row button{font-size:12px;padding:3px 11px}",
       ".live-admin .la-stat{font-size:12px;color:var(--muted);margin-top:10px}",
       "@media(max-width:640px){.live-admin .la-grid{grid-template-columns:1fr}.live-meta h2{font-size:19px}}",
+      ".lc-locked{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--muted);font-size:13.5px;text-align:center;padding:22px 16px}",   // community: chat is members-only
     ].join("");
     document.head.appendChild(s);
   }
@@ -114,7 +171,32 @@ window.Live = (function () {
     return u ? { bg: ' style="background-image:url(\'' + u + '\');background-size:cover;background-position:center"', scrim: '<div class="live-scrim"></div>' }
              : { bg: "", scrim: "" };
   }
+  // the community "vault" stage for a LIVE community broadcast: a signed player for entitled viewers,
+  // a "checking" state while we resolve access, or the Hebrew "private — join the community" screen.
+  function _communityLiveHtml() {
+    if (_access === "ok" && _commIframe) {
+      return '<div class="live-stage"><iframe src="' + esc(_commIframe) + '" ' +
+        'allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen playsinline></iframe></div>';
+    }
+    if (_access === "checking" || _access === "unknown") {
+      return '<div class="live-stage"><div class="live-off"><div class="lo-ico">🔄</div>' +
+        '<h3>בודקים את ההרשאה שלך…</h3><p>רגע, מוודאים שאתה חבר קהילה.</p></div></div>';
+    }
+    // locked — not entitled (guest, or logged-in without a verified Discord membership)
+    var loggedIn = !!me();
+    var discordBtn = '<button class="btn primary" id="liveDiscord" style="background:#5865F2;color:#fff;font-weight:800;font-size:14px;padding:9px 16px">' +
+      (loggedIn ? "התחבר עם Discord לאימות חברות" : "התחבר עם Discord") + "</button>";
+    return '<div class="live-stage"><div class="live-off"><div class="lo-ico">🔒</div>' +
+      "<h3>הלייב פרטי כרגע — להצטרפות הירשם לקהילה</h3>" +
+      '<p>השידור הזה פתוח לחברי הקהילה בלבד. הצטרף לקהילה בפטריון, והתחבר עם Discord כדי שנאמת את החברות שלך.</p>' +
+      '<div class="live-row" style="justify-content:center">' +
+        '<a class="btn" href="' + PATREON_JOIN + '" target="_blank" rel="noopener" style="background:#dc2626;color:#fff;font-weight:800;font-size:14px;padding:9px 16px;text-decoration:none">🎁 הצטרף לקהילה (Patreon)</a>' +
+        discordBtn +
+      "</div></div></div>";
+  }
+
   function _playerHtml(s, vs) {
+    if (vs === "live" && _isCommunity(s)) return _communityLiveHtml();   // the vault — gated player
     if (vs === "live") {
       var pb = s && s.playback;
       if (pb && pb.uid && pb.customer) {
@@ -182,13 +264,17 @@ window.Live = (function () {
     var schVal = "";
     if (sch && !isNaN(sch)) { var off = sch.getTime() - sch.getTimezoneOffset() * 60000; schVal = new Date(off).toISOString().slice(0, 16); }
     var mode = (s && s.mode) || "auto";
+    var vis = (s && s.visibility === "community") ? "community" : "public";
     function opt(v, l) { return '<option value="' + v + '"' + (mode === v ? " selected" : "") + ">" + l + "</option>"; }
+    function vopt(v, l) { return '<option value="' + v + '"' + (vis === v ? " selected" : "") + ">" + l + "</option>"; }
     return '<label>כותרת</label><input id="laTitle" maxlength="200" value="' + esc(s && s.title) + '">' +
       '<label>תיאור</label><textarea id="laDesc" maxlength="1000">' + esc(s && s.description) + "</textarea>" +
       '<div class="la-grid">' +
       '<div><label>מצב תצוגה</label><select id="laMode">' + opt("auto", "אוטומטי (לפי השידור)") + opt("soon", "השידור יתחיל בקרוב") + opt("offline", "כבוי (OFFLINE מאולץ)") + "</select></div>" +
       '<div><label>זמן התחלה מתוזמן (לא חובה)</label><input type="datetime-local" id="laSched" value="' + schVal + '"></div>' +
       "</div>" +
+      '<label>👁️ נראות השידור</label><select id="laVis">' + vopt("public", "🌐 ציבורי — פתוח לכולם") + vopt("community", "🔒 קהילה בלבד — רק חברי הקהילה (כספת)") + "</select>" +
+      '<div class="la-stat">🔒 "קהילה" = שידור מה-Input הסגור; רק חברי הדיסקורד (משלמים) רואים דרך קישור חתום. ⚠️ ודא ש-OBS משדר ל-Stream Key ה<b>סגור</b> לפני מעבר ל"קהילה".</div>' +
       '<label>תמונת רקע למסך "בקרוב" / "אין שידור" (Thumbnail)</label>' +
       '<div class="la-thumb">' + (s && s.thumbnail_url ? '<img src="' + esc(s.thumbnail_url) + '" class="la-thumb-prev" alt=""><button class="btn ghost" id="laThumbRemove" style="font-size:12px;padding:5px 10px">🗑️ הסר תמונה</button>' : "") +
         '<input type="file" id="laThumb" accept="image/*"></div>' +
@@ -300,6 +386,24 @@ window.Live = (function () {
     el.textContent = _fmtCd(new Date(_status.scheduled_at).getTime() - Date.now());
   }
 
+  // wire controls that live INSIDE the player stage (the locked community screen's Discord button)
+  function _wirePlayer() {
+    var db = $("liveDiscord");
+    if (db) db.onclick = function () { try { SNAuth.signInWithDiscord(); } catch (e) {} };
+  }
+  // chat + presence gating: public live → normal chat; community live → chat only for entitled members,
+  // otherwise a "members only" note. (The video itself is server-gated; this mirrors it in the chat UI.)
+  function _syncCommunityChat(s, vs) {
+    var root = $("liveChatRoot"); if (!root) return;
+    if (_isCommunity(s) && vs === "live" && _access !== "ok") {
+      if (window.LiveChat && window.LiveChat.unmount) window.LiveChat.unmount();
+      root.innerHTML = '<div class="lc-locked">🔒 הצ׳אט פתוח לחברי הקהילה בלבד</div>';
+      return;
+    }
+    if (window.LiveChat && window.LiveChat.mount) window.LiveChat.mount();     // (re)mount if needed — idempotent
+    if (window.LiveChat && window.LiveChat.setPhase) window.LiveChat.setPhase(vs);
+  }
+
   function _wireMeta() {
     var sh = $("liveShare");
     if (sh) sh.onclick = function () {
@@ -319,6 +423,7 @@ window.Live = (function () {
         title: ($("laTitle") && $("laTitle").value) || "",
         description: ($("laDesc") && $("laDesc").value) || "",
         mode: ($("laMode") && $("laMode").value) || "auto",
+        visibility: ($("laVis") && $("laVis").value) || "public",
         scheduled_at: sched ? new Date(sched).toISOString() : null,
       };
       save.disabled = true; save.textContent = "שומר…";
@@ -409,13 +514,17 @@ window.Live = (function () {
   function _apply(force) {
     if (!$("liveRoot")) return;
     var s = _status, vs = _vs(s);
-    var sig = vs + "|" + (s && s.playback && s.playback.uid || "") + "|" + (s && s.live_video_uid || "");   // rebuild when the live Video ID (DVR) resolves
+    // COMMUNITY vault: resolve access once the live is on; reset the gate when it's no longer a community live.
+    if (_isCommunity(s) && vs === "live") _ensureCommunity();
+    else if (_accessTried) _resetCommunity();
+    var sig = vs + "|" + (s && s.playback && s.playback.uid || "") + "|" + (s && s.live_video_uid || "") +
+      "|" + (_isCommunity(s) ? "c" : "p") + "|" + _access;   // also rebuild when visibility / vault-access changes
     if (force || sig !== _playerSig) {
       _playerSig = sig;
-      var pl = $("livePlayer"); if (pl) pl.innerHTML = _playerHtml(s, vs);
+      var pl = $("livePlayer"); if (pl) { pl.innerHTML = _playerHtml(s, vs); _wirePlayer(); }
     }
     var mt = $("liveMeta"); if (mt) { mt.innerHTML = _metaHtml(s, vs); _wireMeta(); }
-    if (window.LiveChat && window.LiveChat.setPhase) window.LiveChat.setPhase(vs);   // "ממתינים" (pre-live) vs "צופים" (live)
+    _syncCommunityChat(s, vs);   // mount/gate chat + presence ("ממתינים"/"צופים"); locks chat for non-members
     _tickCd();
     // keep the floating admin window's live-status line fresh (only while it's open & not being edited)
     if (isAdmin() && $("laStat") && document.activeElement && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
@@ -447,7 +556,7 @@ window.Live = (function () {
   function teardown() {
     if (_timer) { clearInterval(_timer); _timer = null; }
     if (_cd) { clearInterval(_cd); _cd = null; }
-    _playerSig = "";                                       // force a fresh player when the user returns
+    _playerSig = ""; _resetCommunity();                    // force a fresh player + re-check the vault when the user returns
     var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
     if (window.LiveChat && window.LiveChat.unmount) window.LiveChat.unmount();   // stop chat/presence polling + heartbeat
     closeAdmin();   // close the floating admin window when leaving /live
