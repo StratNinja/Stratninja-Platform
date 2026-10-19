@@ -34,6 +34,12 @@ create table if not exists public.live_status (
 insert into public.live_status (id) values ('public')
   on conflict (id) do nothing;
 
+-- COMMUNITY LIVE (the "vault"): visibility of the CURRENT broadcast. 'public' = the normal public
+-- stream; 'community' = gated — the browser gets NO playable URL from /api/live, only a short-lived
+-- signed URL from /api/live-token after the server verifies a 'community' entitlement. Added as an
+-- idempotent ALTER so this file stays safe to re-run on the existing production row.
+alter table public.live_status add column if not exists visibility text not null default 'public';
+
 alter table public.live_status enable row level security;
 
 -- PUBLIC READ — anyone can read the live status (needed for the /live page).

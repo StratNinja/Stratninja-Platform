@@ -36,6 +36,17 @@ window.SNAuth = (function () {
     });
   }
 
+  // Sign in with Discord (additive — Google stays exactly as-is). Used for the
+  // community "vault": the user's Discord identity lets the server verify guild
+  // membership (= paying member). Same redirect behaviour as Google.
+  async function signInWithDiscord() {
+    if (!isCloud()) return;
+    await client.auth.signInWithOAuth({
+      provider: "discord",
+      options: { redirectTo: location.origin + location.pathname },
+    });
+  }
+
   async function signOut() {
     if (client) { try { await client.auth.signOut(); } catch (e) {} }
     currentUser = null;
@@ -46,5 +57,5 @@ window.SNAuth = (function () {
   function getClient() { return client; }
   function onChange(cb) { listeners.push(cb); try { cb(currentUser); } catch (e) {} }
 
-  return { init, signInWithGoogle, signOut, user, getClient, onChange, isCloud };
+  return { init, signInWithGoogle, signInWithDiscord, signOut, user, getClient, onChange, isCloud };
 })();
