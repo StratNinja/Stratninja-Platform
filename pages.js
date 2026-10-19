@@ -2267,15 +2267,31 @@
     r.readAsText(file);
   }
   function openPresetManager() { openAlertsFeed("presets"); }   // unified: the preset manager is now a tab of the alerts hub
-  // manage CUSTOM alert categories (add / delete). Built-in categories aren't listed here (they're fixed).
+  // manage alert categories. Lists BOTH the fixed built-in categories AND the user's custom ones — the
+  // same set offered in each preset's category picker — each with a (count) of how many presets use it.
+  // Only custom categories can be deleted (built-ins are fixed).
   function openCatManager() {
     const inpCss = "flex:1;background:#141b30;color:#cfd6e2;border:1px solid rgba(255,255,255,.14);border-radius:8px;padding:7px 10px;font-size:13px";
     const cats = _customCats();
-    const rows = cats.length
-      ? cats.map(c => '<div class="pm-row" style="justify-content:space-between"><span class="pm-name">' + escHtml(c) + '</span><button class="btn ghost pm-del" data-catdel="' + escAttr(c) + '" title="מחק קטגוריה">🗑</button></div>').join("")
-      : '<div class="muted" style="padding:10px">אין עדיין קטגוריות אישיות. הוסף למטה, או דרך בורר הקטגוריה של כל סריקה → "➕ קטגוריה חדשה…".</div>';
-    modal("🗂️ קטגוריות אישיות",
-      '<div class="note" style="margin-bottom:10px">צור קטגוריות משלך לפי השיטה שלך. קטגוריות שתמחק — הסריקות שהשתמשו בהן יחזרו ל"ללא קטגוריה".</div>' +
+    // count presets per category (by the manually-chosen cat key)
+    const presets = (window.Prefs && window.Prefs.scanPresets) ? (window.Prefs.scanPresets() || []) : [];
+    const counts = {};
+    presets.forEach(p => { const c = _presetCat(p); counts[c] = (counts[c] || 0) + 1; });
+    const _catRow = (key, deletable) =>
+      '<div class="pm-row" style="justify-content:space-between"><span class="pm-name">' + escHtml(_catLabel(key)) +
+        ' <span class="pm-catn">(' + (counts[key] || 0) + ')</span>' +
+        (deletable ? "" : ' <span class="muted" style="font-size:11px">· מובנית</span>') + "</span>" +
+        (deletable ? '<button class="btn ghost pm-del" data-catdel="' + escAttr(key) + '" title="מחק קטגוריה">🗑</button>' : "") + "</div>";
+    const builtinRows = ALERT_CATS.map(c => _catRow(c.k, false)).join("");
+    const customRows = cats.length
+      ? cats.map(c => _catRow(c, true)).join("")
+      : '<div class="muted" style="padding:10px">אין עדיין קטגוריות אישיות משלך. הוסף למטה, או דרך בורר הקטגוריה של כל סריקה → "➕ קטגוריה חדשה…".</div>';
+    const rows =
+      '<div class="muted" style="font-size:12px;margin:2px 0 6px">קטגוריות מובנות</div>' + builtinRows +
+      '<div class="muted" style="font-size:12px;margin:14px 0 6px">הקטגוריות שלך</div>' + customRows +
+      _catRow("", false);   // "ללא קטגוריה" with its count, so you can see how many presets are untagged
+    modal("🗂️ קטגוריות",
+      '<div class="note" style="margin-bottom:10px">אלה כל הקטגוריות שאפשר לשייך אליהן סריקה (מובנות + שלך), עם מספר הסריקות בכל אחת. קטגוריה שתמחק — הסריקות שבה יחזרו ל"ללא קטגוריה".</div>' +
       '<div style="display:flex;gap:8px;margin-bottom:12px"><input id="catNewName" placeholder="שם קטגוריה חדשה (אפשר אימוג׳י)" style="' + inpCss + '"><button class="btn primary" id="catAddBtn">➕ הוסף</button></div>' +
       '<div class="pm-list" id="catList">' + rows + "</div>" +
       '<div style="margin-top:12px"><button class="btn ghost" id="catBackBtn">← חזרה לניהול הסריקות</button></div>');
