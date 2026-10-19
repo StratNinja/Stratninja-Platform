@@ -2478,6 +2478,8 @@
   }
   // prominent on-screen alert — can't be missed
   function showAlertBanner(fresh) {
+    // never STACK banners one-on-top-of-another: replace any banner already on screen (unless pinned)
+    document.querySelectorAll(".alert-pop:not(.pinned)").forEach(el => el.remove());
     const box = document.createElement("div");
     let compact = false; try { compact = localStorage.getItem("sn_alert_compact") === "1"; } catch (e) {}   // remembered per-device
     box.className = "alert-pop" + (compact ? " compact" : "");
@@ -2571,23 +2573,44 @@
     if (style !== "sound") showAlertBanner(fresh);          // on-screen banner (both / visual)
     if (style !== "visual") _alertChime();                  // chime (both / sound)
   }
+  // UNCAPPED per-day dedup of fired alerts. The display feed (Prefs.feedAdd) is capped at 200 rows for
+  // the UI, so it CANNOT be trusted for dedup when a user has hundreds of preset×favorite matches —
+  // beyond 200 it "forgot" and re-fired the same alerts on every refresh, stacking banners one on top
+  // of another. This separate key set (pid|sym|date) is never evicted within the day.
+  let _firedKeys = null, _firedDate = "";
+  function _ensureFired(today) {
+    if (_firedKeys && _firedDate === today) return;
+    _firedDate = today; _firedKeys = new Set();
+    try {
+      const raw = JSON.parse(localStorage.getItem("sn_fired_keys") || "null");
+      if (raw && raw.date === today && Array.isArray(raw.keys)) _firedKeys = new Set(raw.keys);
+    } catch (e) {}
+  }
+  function _saveFired(today) {
+    try { localStorage.setItem("sn_fired_keys", JSON.stringify({ date: today, keys: [..._firedKeys].slice(-5000) })); } catch (e) {}
+  }
   function checkPresetAlerts() {
     if (!window.Prefs || !(SCAN && SCAN.rows && SCAN.rows.length)) return;
     const presets = (Prefs.scanPresets() || []).filter(p => p.alert);
     const favs = Prefs.favorites();
     if (!presets.length || !favs.length) return;
     const today = new Date().toISOString().slice(0, 10), fresh = [];
+    _ensureFired(today);
+    const favSet = new Set(favs);
     presets.forEach(p => {
       const matched = evalPreset(p);
-      matched.filter(s => favs.indexOf(s) >= 0).forEach(sym => {
-        if (Prefs.feedHas(p.id, sym, today)) return;
+      matched.forEach(sym => {
+        if (!favSet.has(sym)) return;
+        const key = p.id + "|" + sym + "|" + today;
+        if (_firedKeys.has(key)) return;                 // uncapped dedup — never re-fires the same match today
+        _firedKeys.add(key);
         const row = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
         const px = row ? (row.p != null ? row.p : (row.tech ? row.tech.px : null)) : null;
         const entry = { pid: p.id, preset: p.name, sym: sym, ts: Date.now(), tm: _mfIlTime(), px: px, cat: _presetCat(p), date: today, read: false };
         Prefs.feedAdd(entry); fresh.push(entry);
       });
     });
-    if (fresh.length) { _fireAlert(fresh); updateAlertBell(); }
+    if (fresh.length) { _saveFired(today); _fireAlert(fresh); updateAlertBell(); }
   }
   window._snTestAlert = () => _fireAlert([{ sym: "TSLA", preset: "בדיקה", pid: "x" }]);
   function updateAlertBell() {
