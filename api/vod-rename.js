@@ -44,8 +44,11 @@ export default async function handler(req, res) {
     });
     const j = await r.json().catch(() => null);
     if (r.ok && j && j.success) { res.status(200).json({ ok: true, name: name }); return; }
-    console.warn("[vod-rename] CF update failed " + JSON.stringify({ http: r.status, success: j ? !!j.success : null }));
-    res.status(502).json({ ok: false, error: "cf_update_failed" });
+    // surface CF's own error (admin-only endpoint) so the real cause is visible — most often a
+    // read-only API token (needs Stream:Edit), a wrong account id, or an unknown video uid.
+    const errs = (j && Array.isArray(j.errors)) ? j.errors.map((e) => (e && (e.code + ": " + e.message)) || "").filter(Boolean) : [];
+    console.warn("[vod-rename] CF update failed " + JSON.stringify({ http: r.status, success: j ? !!j.success : null, errors: errs }));
+    res.status(502).json({ ok: false, error: "cf_update_failed", http: r.status, cf: errs });
   } catch (e) {
     res.status(502).json({ ok: false, error: "cf_unreachable" });
   }

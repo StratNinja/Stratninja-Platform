@@ -139,7 +139,12 @@
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) {
           if (j && j.ok) { _renderTitle(uid, nn); }   // the grid refreshes to the new name within the cache TTL
-          else { alert("שינוי השם נכשל" + (j && j.error ? " · " + j.error : "")); }
+          else {
+            var det = (j && j.error ? " · " + j.error : "");
+            if (j && j.http) det += " · HTTP " + j.http;
+            if (j && j.cf && j.cf.length) det += "\n" + j.cf.join("\n");
+            alert("שינוי השם נכשל" + det);
+          }
         }).catch(function () { alert("שינוי השם נכשל."); });
     });
   }
