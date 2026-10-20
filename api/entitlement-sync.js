@@ -26,8 +26,10 @@ const ANON = process.env.SUPABASE_ANON_KEY ||
 
 const BOT_TOKEN = (process.env.DISCORD_BOT_TOKEN || "").trim();
 const GUILD_ID = (process.env.DISCORD_GUILD_ID || "").trim();
-const REQUIRED_ROLE = (process.env.DISCORD_REQUIRED_ROLE_ID || "").trim();  // optional — future role gate
+const REQUIRED_ROLE = (process.env.DISCORD_REQUIRED_ROLE_ID || "").trim();  // optional — role gate for community
+const COURSE_ROLE = (process.env.DISCORD_COURSE_ROLE_ID || "").trim();      // optional — role that grants the course
 const SCOPE = "community";
+const COURSE_SCOPE = "course_the_strat";
 const DISCORD_TIMEOUT_MS = 6000;
 
 function sb(path, opts) {
@@ -110,18 +112,33 @@ async function guildMember(discordId) {
   }
 }
 
-async function upsertEntitlement(userId, discordId) {
+async function upsertEntitlement(userId, discordId, scope) {
   // upsert on the (user_id, scope) unique constraint; refresh source + discord id, clear any expiry.
   return sb("entitlements?on_conflict=user_id,scope", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({ user_id: userId, scope: SCOPE, source: "discord", discord_user_id: discordId, expires_at: null }),
+    body: JSON.stringify({ user_id: userId, scope: scope, source: "discord", discord_user_id: discordId, expires_at: null }),
   }).then(r => r.ok).catch(() => false);
 }
-async function revokeDiscordEntitlement(userId) {
+async function revokeDiscordEntitlement(userId, scope) {
   // remove ONLY the discord-sourced row — never a manual admin grant (source='manual').
-  return sb("entitlements?user_id=eq." + encodeURIComponent(userId) + "&scope=eq." + SCOPE + "&source=eq.discord", { method: "DELETE" })
+  return sb("entitlements?user_id=eq." + encodeURIComponent(userId) + "&scope=eq." + scope + "&source=eq.discord", { method: "DELETE" })
     .then(r => r.ok).catch(() => false);
+}
+// grant or revoke one scope's discord-sourced entitlement for this user.
+async function syncScope(userId, discordId, scope, entitled) {
+  if (entitled) return upsertEntitlement(userId, discordId, scope);
+  return revokeDiscordEntitlement(userId, scope);
+}
+// does this user have ANY active (non-expired) entitlement for this scope? (reflects manual grants too)
+async function hasActiveEntitlement(userId, scope) {
+  try {
+    const r = await sb("entitlements?user_id=eq." + encodeURIComponent(userId) + "&scope=eq." + scope + "&select=expires_at");
+    if (!r.ok) return false;
+    const rows = await r.json().catch(() => []);
+    const now = Date.now();
+    return Array.isArray(rows) && rows.some((row) => !row.expires_at || new Date(row.expires_at).getTime() > now);
+  } catch (e) { return false; }
 }
 
 export default async function handler(req, res) {
@@ -145,11 +162,17 @@ export default async function handler(req, res) {
     return;
   }
 
-  // ROLE-READY one-liner: when a required role id is configured, membership alone is not enough.
-  const entitled = gm.member && (!REQUIRED_ROLE || (gm.roles || []).indexOf(REQUIRED_ROLE) >= 0);
+  const roles = gm.roles || [];
+  // community: guild membership (optionally gated by a required role).
+  const entitled = gm.member && (!REQUIRED_ROLE || roles.indexOf(REQUIRED_ROLE) >= 0);
+  // course: a member who holds the dedicated course role. If no course role is configured yet,
+  // nobody is auto-granted the course via Discord (manual grants in the table still stand).
+  let course = gm.member && !!COURSE_ROLE && roles.indexOf(COURSE_ROLE) >= 0;
 
-  if (entitled) await upsertEntitlement(u.id, discordId);
-  else await revokeDiscordEntitlement(u.id);
+  await syncScope(u.id, discordId, SCOPE, entitled);
+  if (COURSE_ROLE) await syncScope(u.id, discordId, COURSE_SCOPE, course);  // only manage the role-sourced course row when a role is set
+  // reflect a manual/admin grant too, so the UI unlocks even without the Discord role
+  if (!course) course = await hasActiveEntitlement(u.id, COURSE_SCOPE);
 
-  res.status(200).json({ ok: true, entitled: entitled });
+  res.status(200).json({ ok: true, entitled: entitled, course: course });
 }

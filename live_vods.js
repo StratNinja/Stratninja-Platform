@@ -71,6 +71,30 @@
       ".vod-ttl .vt-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
       ".vt-edit{flex:none;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:3px 9px;font-size:13px;cursor:pointer;font-weight:700}",
       ".vt-edit:hover{border-color:var(--accent)}",
+      // tabs: community lives / course
+      ".vod-tabs{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}",
+      ".vod-tab{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}",
+      ".vod-tab:hover{border-color:var(--accent);color:var(--ink)}",
+      ".vod-tab.active{background:var(--accent);border-color:var(--accent);color:#06281c}",
+      // course curriculum
+      ".course-head{max-width:860px;margin:0 0 14px;color:var(--muted);font-size:14px;line-height:1.6}",
+      ".course-locked{max-width:860px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:0 0 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}",
+      ".course-locked .cl-txt{flex:1 1 220px;color:var(--ink);font-size:14.5px;line-height:1.6}",
+      ".course-cta{background:var(--accent);color:#06281c;border:0;border-radius:10px;padding:10px 18px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-block}",
+      ".course-sec{max-width:860px;margin:0 0 18px}",
+      ".course-sec h3{font-size:15px;color:var(--ink);margin:0 0 8px;font-weight:800}",
+      ".course-lesson{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}",
+      ".course-lesson:hover{border-color:var(--accent)}",
+      ".course-lesson .cl-ico{flex:none;width:30px;height:30px;border-radius:8px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:14px}",
+      ".course-lesson .cl-main{flex:1 1 auto;min-width:0}",
+      ".course-lesson .cl-title{font-size:14px;color:var(--ink);font-weight:700}",
+      ".course-lesson .cl-sum{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+      ".course-lesson .cl-dur{flex:none;font-size:12.5px;color:var(--muted);font-weight:700;direction:ltr}",
+      ".course-lesson.locked{opacity:.72}",
+      ".course-admin{max-width:860px;margin:2px 0 16px;display:flex;gap:8px;flex-wrap:wrap}",
+      ".course-add{background:var(--panel2);border:1px dashed var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}",
+      ".course-add:hover{border-color:var(--accent)}",
+      ".course-empty{color:var(--muted);font-size:14.5px;padding:24px 0}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -78,11 +102,37 @@
   function render() {
     _css();
     return '<div class="page-head"><h1>📼 שידורים קודמים</h1><div class="sub">צפו שוב בשידורים החיים הקודמים של StratNinja — בכל זמן.</div></div>' +
-      '<div id="vodGrid" class="vod-grid"><div class="vod-empty">טוען הקלטות…</div></div>';
+      '<div class="vod-tabs">' +
+        '<button type="button" class="vod-tab active" data-tab="lives">📼 לייבי קהילה</button>' +
+        '<button type="button" class="vod-tab" data-tab="course">🎓 קורס The Strat</button>' +
+      '</div>' +
+      '<div id="vodGrid" class="vod-grid"><div class="vod-empty">טוען הקלטות…</div></div>' +
+      '<div id="courseWrap" style="display:none"><div class="course-empty">טוען קורס…</div></div>';
   }
 
   function wire() {
     _css();
+    _wireTabs();
+    _loadLives();
+  }
+
+  // tab switching: show the lives grid or the course pane (course loads lazily on first open)
+  var _courseLoaded = false;
+  function _wireTabs() {
+    var tabs = document.querySelectorAll(".vod-tab");
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].onclick = function () {
+        var which = this.getAttribute("data-tab");
+        for (var k = 0; k < tabs.length; k++) tabs[k].classList.toggle("active", tabs[k] === this);
+        var grid = $("vodGrid"), course = $("courseWrap");
+        if (grid) grid.style.display = (which === "lives") ? "" : "none";
+        if (course) course.style.display = (which === "course") ? "" : "none";
+        if (which === "course" && !_courseLoaded) { _courseLoaded = true; _loadCourse(); }
+      };
+    }
+  }
+
+  function _loadLives() {
     // cache:"no-cache" → always revalidate with the server (cheap ETag 304), so a renamed recording
     // shows on the next load without a hard refresh. The Vercel edge cache still serves the response.
     fetch("/api/live-vods", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
@@ -210,6 +260,127 @@
     fr.src = baseIframe + "?autoplay=true&startTime=" + (t || 0);
     try { fr.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
   }
+  // ===== COURSE (gated "The Strat" course) =====
+  var COURSE_INFO_URL = "/";   // where "לפרטים והצטרפות" links (purchase/subscribe page) — tell me the real URL to wire
+
+  // load the curriculum + the viewer's course entitlement, then render the pane
+  function _loadCourse() {
+    var wrap = $("courseWrap"); if (!wrap) return;
+    fetch("/api/course-lessons").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      var lessons = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : [];
+      _courseEntitled().then(function (state) { _renderCourse(wrap, lessons, state); });
+    }).catch(function () { wrap.innerHTML = '<div class="course-empty">לא ניתן לטעון את הקורס כרגע — נסו שוב.</div>'; });
+  }
+
+  // { loggedIn, ok } — ok = this user holds an active course entitlement (server-verified)
+  function _courseEntitled() {
+    return _token().then(function (tok) {
+      if (!tok) return { loggedIn: false, ok: false };
+      return fetch("/api/entitlement-sync", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok } })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { return { loggedIn: true, ok: !!(j && j.course) }; })
+        .catch(function () { return { loggedIn: true, ok: false }; });
+    });
+  }
+
+  function _renderCourse(wrap, lessons, state) {
+    var admin = isAdmin();
+    var html = '<div class="course-head">🎓 <b>קורס The Strat</b> — סדרת שיעורים מובנית. ' +
+      (state.ok ? "יש לך גישה מלאה — לחץ על שיעור כדי לצפות." : (state.loggedIn ? "הגישה פתוחה לבעלי מנוי הקורס." : "התחבר כדי לצפות בשיעורים שרכשת.")) + "</div>";
+    if (admin) html += '<div class="course-admin"><button type="button" class="course-add" id="courseAdd">➕ הוסף שיעור</button></div>';
+    if (!state.ok) {
+      html += '<div class="course-locked"><div class="cl-txt">🔒 ' +
+        (state.loggedIn ? "הגישה לקורס פתוחה למנויי הקורס. אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס." : "התחבר עם החשבון שלך כדי לצפות בקורס שרכשת.") +
+        '</div><a class="course-cta" href="' + COURSE_INFO_URL + '">' + (state.loggedIn ? "🔓 לפרטים והצטרפות" : "🔑 התחבר") + "</a></div>";
+    }
+    if (!lessons.length) {
+      html += '<div class="course-empty">' + (admin ? "אין עדיין שיעורים — הוסף את הראשון עם הכפתור למעלה. ⬆️" : "השיעורים יתווספו בקרוב 🎬") + "</div>";
+      wrap.innerHTML = html; _wireCourseActions(wrap, state); return;
+    }
+    var curMod = null;
+    for (var i = 0; i < lessons.length; i++) {
+      var L = lessons[i];
+      if (L.module !== curMod) {
+        if (curMod !== null) html += "</div>";
+        curMod = L.module;
+        html += '<div class="course-sec">' + (curMod ? "<h3>" + esc(curMod) + "</h3>" : "");
+      }
+      var ico = state.ok ? "▶" : "🔒";
+      html += '<div class="course-lesson' + (state.ok ? "" : " locked") + '" data-uid="' + esc(L.uid) + '" data-title="' + esc(L.title) + '">' +
+        '<span class="cl-ico">' + ico + "</span>" +
+        '<div class="cl-main"><div class="cl-title">' + esc(L.title) + "</div>" + (L.summary ? '<div class="cl-sum">' + esc(L.summary) + "</div>" : "") + "</div>" +
+        (L.duration ? '<span class="cl-dur">' + fmtDur(L.duration) + "</span>" : "") +
+        (admin ? '<button type="button" class="vt-edit cl-del" data-del="' + esc(L.uid) + '" title="מחק">🗑️</button>' : "") +
+        "</div>";
+    }
+    if (curMod !== null) html += "</div>";
+    wrap.innerHTML = html;
+    _wireCourseActions(wrap, state);
+  }
+
+  function _wireCourseActions(wrap, state) {
+    var add = $("courseAdd"); if (add) add.onclick = _courseAddPrompt;
+    var dels = wrap.querySelectorAll(".cl-del");
+    for (var d = 0; d < dels.length; d++) dels[d].onclick = function (e) { e.stopPropagation(); _courseDelete(this.getAttribute("data-del")); };
+    var rows = wrap.querySelectorAll(".course-lesson");
+    for (var i = 0; i < rows.length; i++) rows[i].onclick = function () {
+      var uid = this.getAttribute("data-uid"), title = this.getAttribute("data-title");
+      if (state.ok) _playCourse(uid, title); else _promptUnlock(state);
+    };
+  }
+
+  function _promptUnlock(state) {
+    if (!state.loggedIn) { alert("התחבר עם החשבון שלך כדי לצפות בקורס."); return; }
+    alert("הגישה לקורס פתוחה למנויי הקורס. אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס.");
+  }
+
+  // mint a signed URL for the lesson (server checks entitlement) and play it in the modal
+  function _playCourse(uid, title) {
+    _token().then(function (tok) {
+      if (!tok) { alert("התחבר כדי לצפות בקורס."); return; }
+      fetch("/api/course-token", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ uid: uid }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (j) {
+          if (j && j.ok && j.iframe) { _play(j.iframe, null, title || "שיעור"); }
+          else if (j && j.error === "not_entitled") { alert("אין לך גישה לקורס עדיין."); }
+          else { alert("לא ניתן לנגן את השיעור כרגע" + (j && j.error ? " · " + j.error : "") + "."); }
+        }).catch(function () { alert("שגיאה בניגון השיעור."); });
+    });
+  }
+
+  // admin: add/update a lesson (prompts for the Cloudflare video uid + title + module + order)
+  function _courseAddPrompt() {
+    var uid = window.prompt("מזהה הווידאו ב-Cloudflare (32 תווים hex):", ""); if (uid == null) return;
+    uid = String(uid).trim();
+    if (!/^[a-f0-9]{32}$/i.test(uid)) { alert("מזהה לא תקין — צריך 32 תווים hex."); return; }
+    var title = window.prompt("כותרת השיעור:", ""); if (title == null) return; title = String(title).trim();
+    if (!title) { alert("צריך כותרת."); return; }
+    var module = window.prompt("מודול/פרק (אפשר להשאיר ריק):", "") || "";
+    var sort = window.prompt("סדר (מספר — קטן יופיע ראשון):", "0");
+    _token().then(function (tok) {
+      if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
+      fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: uid, title: title, module: module, sort: parseInt(sort, 10) || 0 }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (j) {
+          if (j && j.ok) {
+            if (j.warn === "video_not_gated") alert("נשמר ✓ — אבל שים לב: הסרטון ב-Cloudflare לא מסומן כ-'Require signed URLs'. סמן אותו כדי שיהיה מגודר.");
+            else if (j.warn === "cf_lookup_failed") alert("נשמר ✓ (לא הצלחתי לאמת מול Cloudflare — ודא שהמזהה נכון).");
+            _loadCourse();
+          } else { alert("שמירה נכשלה" + (j && j.error ? " · " + j.error : "") + (j && j.detail ? "\n" + j.detail : "")); }
+        }).catch(function () { alert("שמירה נכשלה."); });
+    });
+  }
+
+  function _courseDelete(uid) {
+    if (!uid || !window.confirm("להסיר את השיעור מהרשימה? (הסרטון עצמו ב-Cloudflare לא יימחק)")) return;
+    _token().then(function (tok) {
+      if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
+      fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "delete", uid: uid }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (j) { if (j && j.ok) { _loadCourse(); } else { alert("ההסרה נכשלה."); } }).catch(function () { alert("ההסרה נכשלה."); });
+    });
+  }
+
   function _closePlay() { var o = $("vodOv"); if (o) o.remove(); }   // removing the iframe stops playback + audio
   function teardown() { _closePlay(); }
 
