@@ -4520,7 +4520,7 @@
       ? '<img class="sc-photo" src="' + _heroSquare + '">'
       : '<img class="sc-photo" src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'">';
     el.innerHTML =
-      '<div class="sc-top"><img class="sc-logo" src="ninja-icon.png" crossorigin="anonymous">' +
+      '<div class="sc-top"><img class="sc-logo" src="ninja-icon.png?v=4" crossorigin="anonymous">' +
         '<div><div class="sc-title">StratNinja <span>Scanner</span></div><div class="sc-sub">סריקת שוק בזמן אמת · The Strat</div></div>' +
         photo + "</div>" +
       '<div class="sc-body">' +
