@@ -46,6 +46,8 @@
       ".vod-meta{padding:10px 12px}",
       ".vod-date{font-size:13px;color:var(--ink);font-weight:700}",
       ".vod-name{font-size:12.5px;color:var(--muted);margin-top:2px}",
+      // at-a-glance teaser under each card (first sentence of the auto summary), 2-line clamp
+      ".vod-tldr{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5;opacity:.92;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}",
       ".vod-empty{color:var(--muted);font-size:14.5px;padding:30px 0;text-align:center}",
       ".vod-ov{position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.9);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:48px 16px 24px}",
       ".vod-player{position:relative;width:min(1200px,96vw);margin:auto 0}",
@@ -95,11 +97,13 @@
           '<div class="vod-thumb"' + (bg ? ' style="background-image:url(\'' + bg + '\')"' : "") + '>' +
             '<span class="vod-play">▶</span><span class="vod-dur">' + fmtDur(v.duration) + "</span></div>" +
           '<div class="vod-meta"><div class="vod-date">' + esc(fmtDate(v.created)) + "</div>" +
-            (v.name ? '<div class="vod-name">' + esc(v.name) + "</div>" : "") + "</div>" +
-          "</div>";
+            (v.name ? '<div class="vod-name">' + esc(v.name) + "</div>" : "") +
+            '<div class="vod-tldr" data-tldr="' + esc(v.uid) + '"></div>' +
+          "</div></div>";
       }).join("");
       var cards = grid.querySelectorAll(".vod-card");
       for (var i = 0; i < cards.length; i++) cards[i].onclick = function () { _play(this.getAttribute("data-iframe"), this.getAttribute("data-uid"), this.getAttribute("data-name")); };
+      _loadTeasers();   // fill the at-a-glance blurbs under each card (one request for all)
     }).catch(function () {
       var grid = $("vodGrid"); if (grid) grid.innerHTML = '<div class="vod-empty">לא ניתן לטעון כרגע — נסו שוב.</div>';
     });
@@ -152,6 +156,18 @@
           }
         }).catch(function () { alert("שינוי השם נכשל."); });
     });
+  }
+
+  // fill the short at-a-glance teaser under every card, in ONE request (public + edge-cached)
+  function _loadTeasers() {
+    fetch("/api/vod-summaries").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      if (!j || !j.ok || !j.items) return;
+      var slots = document.querySelectorAll(".vod-tldr[data-tldr]");
+      for (var i = 0; i < slots.length; i++) {
+        var t = j.items[slots[i].getAttribute("data-tldr")];
+        if (t) slots[i].textContent = t;
+      }
+    }).catch(function () {});
   }
 
   // after a successful rename, update the grid card immediately (data-name drives the modal title on
