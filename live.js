@@ -25,6 +25,8 @@ window.Live = (function () {
   var _access = "unknown";      // "unknown" | "checking" | "ok" | "locked"  (for the CURRENT community live)
   var _commIframe = "";         // the signed iframe URL once minted (entitled users only)
   var _accessTried = false;     // guard so we only run the entitlement check once per community-live session
+  var _ready = "unknown";       // "unknown"|"checking"|"guest"|"ok"|"nomember" — readiness for an UPCOMING community live (soon screen)
+  var _readyTried = false;      // guard so the soon-screen readiness check runs once per community-soon session
 
   function me() { try { return window.SNAuth && SNAuth.user && SNAuth.user(); } catch (e) { return null; } }
   function isAdmin() { try { return ((me() || {}).email || "").toLowerCase() === ADMIN_EMAIL; } catch (e) { return false; } }
@@ -98,6 +100,41 @@ window.Live = (function () {
     _syncCommunityChat(_status, _vs(_status));
   }
 
+  // ---- community readiness: the "you're connected & ready" indicator on the SOON/countdown screen ----
+  // So a community member knows BEFORE the live starts whether they're logged in + verified. Uses the
+  // light entitlement-sync (no stream minting — there's no broadcast yet).
+  function _ensureReady() {
+    if (_readyTried) return;
+    _readyTried = true;
+    if (!me()) { _ready = "guest"; return; }            // not logged in → prompt to connect Discord
+    _ready = "checking";
+    _accessToken().then(function (tok) {
+      if (!tok) { _ready = "guest"; _readyTried = false; _applyReady(); return; }   // session not loaded yet → retry later
+      _syncEntitlement(tok).then(function (j) { _ready = (j && j.entitled) ? "ok" : "nomember"; _applyReady(); });
+    });
+  }
+  function _resetReady() { _ready = "unknown"; _readyTried = false; }
+  function _applyReady() {
+    if (!$("liveRoot")) return;
+    var pl = $("livePlayer"); if (pl) { pl.innerHTML = _playerHtml(_status, _vs(_status)); _wirePlayer(); }
+  }
+  // the readiness banner shown under the countdown for an upcoming COMMUNITY live
+  function _readyBannerHtml(s) {
+    var when = s && s.scheduled_at ? new Date(s.scheduled_at) : null;
+    var at = "";
+    try { if (when) at = " שמתחיל ב-" + when.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }); } catch (e) {}
+    if (_ready === "ok") return '<div class="live-ready ok">✅ אתה מחובר ומאומת — מוכן ללייב הקהילה' + at + "! 🎉</div>";
+    if (_ready === "checking" || _ready === "unknown") return '<div class="live-ready wait">🔄 בודקים אם אתה מחובר ומוכן…</div>';
+    var msg = (_ready === "nomember")
+      ? "⚠️ אתה מחובר, אבל עדיין לא אימתנו חברות קהילה. חבר את ה-Discord שלך או הצטרף לקהילה כדי להיות מוכן ללייב" + at + "."
+      : "⚠️ אתה לא מחובר עם חשבון Discord. התחבר עכשיו כדי להיות מוכן ללייב הקהילה" + at + ".";
+    return '<div class="live-ready warn">' + msg +
+      '<div class="live-row" style="justify-content:center;margin-top:10px">' +
+        '<button class="btn primary" id="liveDiscord" style="background:#5865F2;color:#fff;font-weight:800;font-size:13px;padding:8px 14px">התחבר עם Discord</button>' +
+        '<a class="btn" href="' + PATREON_JOIN + '" target="_blank" rel="noopener" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:8px 14px;text-decoration:none">🎁 הצטרף לקהילה</a>' +
+      "</div></div>";
+  }
+
   function _injectCss() {
     if ($("liveCss")) return;
     var s = document.createElement("style");
@@ -115,6 +152,10 @@ window.Live = (function () {
       ".live-off h3{margin:0;font-size:22px;text-shadow:0 1px 10px rgba(0,0,0,.6)}",
       ".live-off p{margin:0;color:var(--muted);max-width:46ch}",
       ".live-off .live-cd{text-shadow:0 2px 14px rgba(0,0,0,.7)}",
+      ".live-ready{margin-top:14px;max-width:52ch;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;line-height:1.55}",   // readiness banner on the community countdown screen
+      ".live-ready.ok{background:rgba(34,197,94,.16);color:#86efac;border:1px solid rgba(34,197,94,.45)}",
+      ".live-ready.warn{background:rgba(245,158,11,.16);color:#fcd34d;border:1px solid rgba(245,158,11,.45)}",
+      ".live-ready.wait{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}",
       ".live-badge{display:inline-flex;align-items:center;gap:7px;font-weight:800;font-size:13px;padding:5px 12px;border-radius:999px}",
       ".live-badge.on{background:#dc2626;color:#fff;box-shadow:0 0 0 0 rgba(220,38,38,.55);animation:livePulse 1.8s infinite}",
       ".live-badge.off{background:var(--panel2);color:var(--muted);border:1px solid var(--line)}",
@@ -219,6 +260,7 @@ window.Live = (function () {
       return '<div class="live-stage"' + ts.bg + '>' + ts.scrim + '<div class="live-off"><div class="lo-ico">⏳</div>' +
         '<h3>השידור יתחיל בקרוב</h3>' +
         (when ? '<div class="live-cd" id="liveCountdown">—</div>' : '<p>תכף מתחילים — הישאר בעמוד.</p>') +
+        (_isCommunity(s) ? _readyBannerHtml(s) : "") +
         "</div></div>";
     }
     if (vs === "unknown") {
@@ -517,8 +559,11 @@ window.Live = (function () {
     // COMMUNITY vault: resolve access once the live is on; reset the gate when it's no longer a community live.
     if (_isCommunity(s) && vs === "live") _ensureCommunity();
     else if (_accessTried) _resetCommunity();
+    // COMMUNITY readiness: on the SOON/countdown screen, resolve whether the viewer is already a verified member.
+    if (_isCommunity(s) && vs === "soon") _ensureReady();
+    else if (_readyTried) _resetReady();
     var sig = vs + "|" + (s && s.playback && s.playback.uid || "") + "|" + (s && s.live_video_uid || "") +
-      "|" + (_isCommunity(s) ? "c" : "p") + "|" + _access;   // also rebuild when visibility / vault-access changes
+      "|" + (_isCommunity(s) ? "c" : "p") + "|" + _access + "|" + _ready;   // also rebuild when visibility / vault-access / readiness changes
     if (force || sig !== _playerSig) {
       _playerSig = sig;
       var pl = $("livePlayer"); if (pl) { pl.innerHTML = _playerHtml(s, vs); _wirePlayer(); }
