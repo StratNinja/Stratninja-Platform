@@ -45,7 +45,7 @@
       ".vod-thumb .vod-dur{position:absolute;inset-inline-end:7px;bottom:7px;background:rgba(0,0,0,.78);color:#fff;font-size:12px;font-weight:700;padding:2px 7px;border-radius:6px}",
       ".vod-meta{padding:10px 12px}",
       ".vod-date{font-size:13px;color:var(--ink);font-weight:700}",
-      ".vod-name{font-size:12.5px;color:var(--muted);margin-top:2px}",
+      ".vod-name{font-size:13.5px;color:var(--accent);font-weight:700;margin-top:4px;line-height:1.35}",
       // at-a-glance teaser under each card (first sentence of the auto summary), 2-line clamp
       ".vod-tldr{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5;opacity:.92;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}",
       ".vod-empty{color:var(--muted);font-size:14.5px;padding:30px 0;text-align:center}",
