@@ -48,12 +48,15 @@
       ".vod-name{font-size:12.5px;color:var(--muted);margin-top:2px}",
       ".vod-empty{color:var(--muted);font-size:14.5px;padding:30px 0;text-align:center}",
       ".vod-ov{position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.9);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:48px 16px 24px}",
-      ".vod-player{position:relative;width:min(1000px,96vw);margin:auto 0}",
-      ".vod-stage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden}",
+      ".vod-player{position:relative;width:min(1200px,96vw);margin:auto 0}",
+      ".vod-body{display:flex;flex-direction:column-reverse;gap:14px;align-items:stretch}",   // mobile: video on top, summary below
+      "@media(min-width:900px){.vod-body{flex-direction:row}}",                                 // wide (RTL row): summary on the RIGHT, video on the LEFT
+      ".vod-stage{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;flex:1 1 auto;min-width:0}",
       ".vod-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}",
       ".vod-close{position:absolute;top:-42px;inset-inline-end:0;background:var(--panel2);border:1px solid var(--line);color:var(--ink);width:38px;height:38px;border-radius:50%;font-size:17px;cursor:pointer}",
       // auto summary + key-moment chapters panel (under the player)
-      ".vod-sum{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;max-height:42vh;overflow:auto}",
+      ".vod-sum{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;max-height:42vh;overflow:auto}",
+      "@media(min-width:900px){.vod-sum{flex:0 0 340px;max-height:none}}",   // side column that matches the video height, scrolls internally
       ".vod-sum h4{margin:14px 0 6px;font-size:14px;color:var(--ink)}",
       ".vod-sum h4:first-child{margin-top:0}",
       ".vod-sum .vs-text{font-size:14px;line-height:1.65;color:var(--muted)}",
@@ -106,8 +109,10 @@
     var ov = document.createElement("div"); ov.className = "vod-ov"; ov.id = "vodOv";
     ov.innerHTML = '<div class="vod-player"><button class="vod-close" id="vodClose" title="סגור">✕</button>' +
       '<div class="vod-ttl" id="vodTtl"></div>' +
-      '<div class="vod-stage"><iframe id="vodFrame" src="' + esc(iframe) + '?autoplay=true" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>' +
-      '<div class="vod-sum" id="vodSum" style="display:none"></div></div>';
+      '<div class="vod-body">' +
+        '<div class="vod-sum" id="vodSum" style="display:none"></div>' +
+        '<div class="vod-stage"><iframe id="vodFrame" src="' + esc(iframe) + '?autoplay=true" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>' +
+      '</div></div>';
     document.body.appendChild(ov);
     ov.onclick = function (e) { if (e.target === ov || (e.target && e.target.id === "vodClose")) _closePlay(); };
     _renderTitle(uid, name || "");
