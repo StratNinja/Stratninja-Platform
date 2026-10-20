@@ -299,9 +299,10 @@ window.Live = (function () {
       }).join("") + "</div>";
     }
     var prev = (s && s.preview) ? '<span class="live-badge" style="background:#6a5cf0;color:#fff">🧪 PREVIEW</span>' : "";
-    // when the admin has announced a live giveaway, surface a prominent entry button right here on /live
+    // the giveaway entry button is ADMIN-ONLY: Adi runs the giveaway via screen-share during the live,
+    // so viewers don't need their own button (they watch it on the shared screen).
     var gvw = "";
-    try { if (window.LiveAlert && window.LiveAlert.active && window.LiveAlert.active()) gvw = '<button class="btn" id="liveGvw" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:6px 12px">🎁 השתתף בהגרלה</button>'; } catch (e) {}
+    try { if (isAdmin() && window.LiveAlert && window.LiveAlert.active && window.LiveAlert.active()) gvw = '<button class="btn" id="liveGvw" style="background:#dc2626;color:#fff;font-weight:800;font-size:13px;padding:6px 12px">🎁 הגרלה</button>'; } catch (e) {}
     var adm = isAdmin() ? '<button class="btn ghost" id="liveAdminBtn" style="font-size:13px;padding:6px 12px">🎛️ ניהול</button>' : "";
     return '<div class="live-meta">' +
       '<div class="live-row">' + badge + prev + gvw +
