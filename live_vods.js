@@ -81,7 +81,9 @@
 
   function wire() {
     _css();
-    fetch("/api/live-vods").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    // cache:"no-cache" → always revalidate with the server (cheap ETag 304), so a renamed recording
+    // shows on the next load without a hard refresh. The Vercel edge cache still serves the response.
+    fetch("/api/live-vods", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       var grid = $("vodGrid"); if (!grid) return;
       if (!j || !j.ok || !j.vods || !j.vods.length) {
         grid.innerHTML = '<div class="vod-empty">אין עדיין שידורים מוקלטים. אחרי הלייב הבא הם יופיעו כאן 🎬</div>';
