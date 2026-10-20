@@ -9574,7 +9574,7 @@
     // ── floating action dock (theme / share / draw) + collapse ──
     initFloatDock();
     // reveal the admin-only bits for Adi (and whenever auth state changes). Draw is now the DOCK pencil.
-    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "snDockDraw"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); if (adm) updateCommAdminBadge(); };   // מטריצת שימוש עברה לתוך פאנל הניהול
+    const _revealAdmin = () => { const adm = _snIsAdmin(); ["sideCommAdmin", "snDockDraw", "navGiveaway"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = adm ? "" : "none"; }); if (adm) updateCommAdminBadge(); };   // navGiveaway = admin-only (Adi runs giveaways via screen-share); מטריצת שימוש עברה לתוך פאנל הניהול
     _revealAdmin();
     try { if (window.SNAuth && SNAuth.onChange) SNAuth.onChange(_revealAdmin); } catch (e) {}
     setInterval(() => { if (_snIsAdmin()) updateCommAdminBadge(); }, 180000);   // refresh the pending-approval count every 3 min
