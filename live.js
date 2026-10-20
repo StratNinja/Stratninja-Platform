@@ -146,12 +146,13 @@ window.Live = (function () {
       ".live-main{min-width:0}.live-side{min-width:0}",
       ".live-stage{position:relative;width:100%;aspect-ratio:16/9;background:#05070c;border:1px solid var(--line);border-radius:16px;overflow:hidden}",
       ".live-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}",
-      ".live-scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,7,12,.45),rgba(5,7,12,.82));z-index:1}",   // darken the thumbnail so the countdown is readable
+      // darken the thumbnail so the text is readable: a strong radial darkening behind the centered text + an overall gradient
+      ".live-scrim{position:absolute;inset:0;background:radial-gradient(ellipse 78% 68% at 50% 46%,rgba(5,7,12,.9),rgba(5,7,12,.5)),linear-gradient(180deg,rgba(5,7,12,.55),rgba(5,7,12,.9));z-index:1}",
       ".live-off{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;text-align:center;padding:24px}",
-      ".live-off .lo-ico{font-size:46px;line-height:1}",
-      ".live-off h3{margin:0;font-size:22px;text-shadow:0 1px 10px rgba(0,0,0,.6)}",
-      ".live-off p{margin:0;color:var(--muted);max-width:46ch}",
-      ".live-off .live-cd{text-shadow:0 2px 14px rgba(0,0,0,.7)}",
+      ".live-off .lo-ico{font-size:46px;line-height:1;filter:drop-shadow(0 2px 10px rgba(0,0,0,.8))}",
+      ".live-off h3{margin:0;font-size:23px;font-weight:800;color:#fff;text-shadow:0 2px 16px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.85)}",
+      ".live-off p{margin:0;color:#dfe5ef;font-weight:500;max-width:46ch;text-shadow:0 1px 12px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.8)}",
+      ".live-off .live-cd{text-shadow:0 2px 16px rgba(0,0,0,.95),0 1px 3px rgba(0,0,0,.85)}",
       ".live-ready{margin-top:14px;max-width:52ch;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:700;line-height:1.55}",   // readiness banner on the community countdown screen
       ".live-ready.ok{background:rgba(34,197,94,.16);color:#86efac;border:1px solid rgba(34,197,94,.45)}",
       ".live-ready.warn{background:rgba(245,158,11,.16);color:#fcd34d;border:1px solid rgba(245,158,11,.45)}",
