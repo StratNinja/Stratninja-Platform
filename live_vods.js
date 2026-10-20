@@ -261,7 +261,7 @@
     try { fr.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
   }
   // ===== COURSE (gated "The Strat" course) =====
-  var COURSE_INFO_URL = "/";   // where "לפרטים והצטרפות" links (purchase/subscribe page) — tell me the real URL to wire
+  var COURSE_PATREON_URL = "https://www.patreon.com/14520383/join";   // purchase the course (Patreon $50+ tier)
 
   // load the curriculum + the viewer's course entitlement, then render the pane
   function _loadCourse() {
@@ -289,9 +289,12 @@
       (state.ok ? "יש לך גישה מלאה — לחץ על שיעור כדי לצפות." : (state.loggedIn ? "הגישה פתוחה לבעלי מנוי הקורס." : "התחבר כדי לצפות בשיעורים שרכשת.")) + "</div>";
     if (admin) html += '<div class="course-admin"><button type="button" class="course-add" id="courseAdd">➕ הוסף שיעור</button></div>';
     if (!state.ok) {
+      var cta = state.loggedIn
+        ? '<a class="course-cta" href="' + COURSE_PATREON_URL + '" target="_blank" rel="noopener">🔓 לרכישת הקורס</a>'
+        : '<a class="course-cta" href="/">🔑 התחבר</a>';
       html += '<div class="course-locked"><div class="cl-txt">🔒 ' +
-        (state.loggedIn ? "הגישה לקורס פתוחה למנויי הקורס. אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס." : "התחבר עם החשבון שלך כדי לצפות בקורס שרכשת.") +
-        '</div><a class="course-cta" href="' + COURSE_INFO_URL + '">' + (state.loggedIn ? "🔓 לפרטים והצטרפות" : "🔑 התחבר") + "</a></div>";
+        (state.loggedIn ? "הגישה לקורס פתוחה למנויי הקורס (Patreon, מסלול $50 ומעלה). אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס." : "התחבר עם החשבון שלך כדי לצפות בקורס שרכשת.") +
+        "</div>" + cta + "</div>";
     }
     if (!lessons.length) {
       html += '<div class="course-empty">' + (admin ? "אין עדיין שיעורים — הוסף את הראשון עם הכפתור למעלה. ⬆️" : "השיעורים יתווספו בקרוב 🎬") + "</div>";
