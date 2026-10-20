@@ -138,7 +138,10 @@
       fetch("/api/vod-rename", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ uid: uid, name: nn }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) {
-          if (j && j.ok) { _renderTitle(uid, nn); }   // the grid refreshes to the new name within the cache TTL
+          if (j && j.ok) {
+            _renderTitle(uid, nn);
+            _updateCardName(uid, nn);   // reflect it in the grid NOW (the API is edge-cached ~1-3 min, so a reload would lag)
+          }
           else {
             var det = (j && j.error ? " · " + j.error : "");
             if (j && j.http) det += " · HTTP " + j.http;
@@ -147,6 +150,19 @@
           }
         }).catch(function () { alert("שינוי השם נכשל."); });
     });
+  }
+
+  // after a successful rename, update the grid card immediately (data-name drives the modal title on
+  // re-open; the .vod-name line is the visible label). Avoids the ~1-3 min edge-cache lag on reload.
+  function _updateCardName(uid, name) {
+    var card = document.querySelector('.vod-card[data-uid="' + uid + '"]'); if (!card) return;
+    card.setAttribute("data-name", name || "");
+    var meta = card.querySelector(".vod-meta"); if (!meta) return;
+    var line = meta.querySelector(".vod-name");
+    if (name) {
+      if (!line) { line = document.createElement("div"); line.className = "vod-name"; meta.appendChild(line); }
+      line.textContent = name;
+    } else if (line) { line.parentNode.removeChild(line); }
   }
 
   // fetch + render the auto summary + clickable key-moment chapters for this recording
