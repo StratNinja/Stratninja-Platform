@@ -35,7 +35,8 @@ const CF_CODE = (process.env.CF_CUSTOMER_CODE || "").trim();
 // without the Production service-role key.
 const TEST_MODE = process.env.VERCEL_ENV === "preview";
 
-const RECONCILE_MS = 90000;   // reconcile against the Cloudflare API at most once per 90s
+const RECONCILE_MS = 90000;          // when LIVE: verify an ongoing stream against CF at most once per 90s (cheap)
+const OFFLINE_RECONCILE_MS = 15000;  // when OFFLINE: check more often (~15s) so a NEW broadcast is detected fast
 const CF_TIMEOUT_MS = 6000;   // abort the Cloudflare status fetch if it hangs past this
 const MAX_LIVE_MS = (Number(process.env.LIVE_MAX_HOURS) || 12) * 3600000;  // safety cap on an unconfirmed LIVE
 const ROW_ID = "public";
@@ -269,7 +270,9 @@ export default async function handler(req, res) {
   // one) when the row is in community mode. Everything else (is_live write path) is unchanged.
   const reconcileInput = (row.visibility === "community") ? CF_CLOSED : CF_INPUT;
   const cfConfigured = !!(CF_ACCOUNT && CF_TOKEN && reconcileInput);
-  const stale = !row.verified_at || (Date.now() - new Date(row.verified_at).getTime() > RECONCILE_MS);
+  // detect a NEW broadcast fast (short throttle while offline); verify an ongoing one cheaply (90s while live).
+  const throttleMs = row.is_live ? RECONCILE_MS : OFFLINE_RECONCILE_MS;
+  const stale = !row.verified_at || (Date.now() - new Date(row.verified_at).getTime() > throttleMs);
   if (stale) {
     if (cfConfigured) {
       const cf = await cfLiveStatus(reconcileInput);
