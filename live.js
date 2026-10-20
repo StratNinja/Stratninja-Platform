@@ -278,8 +278,12 @@ window.Live = (function () {
         '<h3>בודקים את מצב השידור…</h3><p>לא הצלחנו כרגע לקבל את סטטוס השידור מ-Cloudflare — מנסים שוב אוטומטית.</p></div></div>';
     }
     var to = _thumb(s);
-    return '<div class="live-stage"' + to.bg + '>' + to.scrim + '<div class="live-off"><div class="lo-ico">⚫</div>' +
-      '<h3>אין שידור כרגע</h3><p>כרגע לא משדרים בלייב. חזור בזמן השידור הבא — או הצטרף לקהילה כדי לקבל עדכון.</p></div></div>';
+    // COMMUNITY (private) live while offline: tell viewers it's a members-only live + show the readiness banner,
+    // so they prepare (log in + verify) before it starts. Public lives keep the generic message.
+    var offBody = _isCommunity(s)
+      ? '<h3>אין שידור כרגע</h3><p>השידור הבא הוא <b>פרטי — לחברי הקהילה בלבד</b>. התכוננו: ודאו שאתם מחוברים ומאומתים כדי להיכנס מיד כשמתחילים.</p>' + _readyBannerHtml(s)
+      : '<h3>אין שידור כרגע</h3><p>כרגע לא משדרים בלייב. חזור בזמן השידור הבא — או הצטרף לקהילה כדי לקבל עדכון.</p>';
+    return '<div class="live-stage"' + to.bg + '>' + to.scrim + '<div class="live-off"><div class="lo-ico">⚫</div>' + offBody + "</div></div>";
   }
 
   function _metaHtml(s, vs) {
@@ -571,8 +575,9 @@ window.Live = (function () {
     // COMMUNITY vault: resolve access once the live is on; reset the gate when it's no longer a community live.
     if (_isCommunity(s) && vs === "live") _ensureCommunity();
     else if (_accessTried) _resetCommunity();
-    // COMMUNITY readiness: on the SOON/countdown screen, resolve whether the viewer is already a verified member.
-    if (_isCommunity(s) && vs === "soon") _ensureReady();
+    // COMMUNITY readiness: on the SOON/countdown AND the OFFLINE screen, resolve whether the viewer is
+    // already a verified member — so they can "get ready" for the upcoming PRIVATE live.
+    if (_isCommunity(s) && (vs === "soon" || vs === "offline")) _ensureReady();
     else if (_readyTried) _resetReady();
     var sig = vs + "|" + (s && s.playback && s.playback.uid || "") + "|" + (s && s.live_video_uid || "") +
       "|" + (_isCommunity(s) ? "c" : "p") + "|" + _access + "|" + _ready;   // also rebuild when visibility / vault-access / readiness changes
