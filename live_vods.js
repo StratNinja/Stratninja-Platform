@@ -48,6 +48,9 @@
       ".vod-name{font-size:13.5px;color:var(--accent);font-weight:700;margin-top:4px;line-height:1.35}",
       // at-a-glance teaser under each card (first sentence of the auto summary), 2-line clamp
       ".vod-tldr{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5;opacity:.92;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}",
+      // "preparing summary" indicator — a gentle pulse so the viewer sees a summary is on the way
+      ".vod-tldr.vod-tldr-prep{font-style:italic;color:var(--muted);animation:vodPrep 1.6s ease-in-out infinite}",
+      "@keyframes vodPrep{0%,100%{opacity:.45}50%{opacity:.9}}",
       ".vod-empty{color:var(--muted);font-size:14.5px;padding:30px 0;text-align:center}",
       ".vod-ov{position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.9);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:48px 16px 24px}",
       ".vod-player{position:relative;width:min(1200px,96vw);margin:auto 0}",
@@ -211,11 +214,12 @@
   // fill the short at-a-glance teaser under every card, in ONE request (public + edge-cached)
   function _loadTeasers() {
     fetch("/api/vod-summaries").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      if (!j || !j.ok || !j.items) return;
+      var items = (j && j.ok && j.items) ? j.items : {};
       var slots = document.querySelectorAll(".vod-tldr[data-tldr]");
       for (var i = 0; i < slots.length; i++) {
-        var t = j.items[slots[i].getAttribute("data-tldr")];
-        if (t) slots[i].textContent = t;
+        var t = items[slots[i].getAttribute("data-tldr")];
+        if (t) { slots[i].textContent = t; slots[i].classList.remove("vod-tldr-prep"); }
+        else { slots[i].textContent = "⏳ מכין סיכום אוטומטי…"; slots[i].classList.add("vod-tldr-prep"); }   // not done yet → show it's in progress
       }
     }).catch(function () {});
   }
