@@ -608,14 +608,19 @@ window.Live = (function () {
       var btns = bar.querySelectorAll(".lr-btn");
       for (var i = 0; i < btns.length; i++) btns[i].onclick = function () { var e = this.getAttribute("data-e"); _reactSpawn(e); _reactSend(e); };
     }
+    _reactConnect(0);
+  }
+  // open the realtime broadcast channel; retry if the Supabase client isn't ready at mount time
+  // (otherwise an early reaction click would never broadcast to the other viewers).
+  function _reactConnect(tries) {
+    if (_rchan) return;
+    var c = window.SNAuth && SNAuth.getClient && SNAuth.getClient();
+    if (!c) { if ((tries || 0) < 12) setTimeout(function () { _reactConnect((tries || 0) + 1); }, 600); return; }
     try {
-      var c = window.SNAuth && SNAuth.getClient && SNAuth.getClient();
-      if (c && !_rchan) {
-        _rchan = c.channel("live-react-public", { config: { broadcast: { self: false } } });
-        _rchan.on("broadcast", { event: "r" }, function (p) { try { _reactSpawn(p && p.payload && p.payload.e); } catch (e) {} });
-        _rchan.subscribe();
-      }
-    } catch (e) {}
+      _rchan = c.channel("live-react-public", { config: { broadcast: { self: false } } });
+      _rchan.on("broadcast", { event: "r" }, function (p) { try { _reactSpawn(p && p.payload && p.payload.e); } catch (e) {} });
+      _rchan.subscribe();
+    } catch (e) { _rchan = null; }
   }
   function _reactSend(emoji) {
     var now = Date.now(); if (now - _rLast < 250) return; _rLast = now;   // debounce bursts
