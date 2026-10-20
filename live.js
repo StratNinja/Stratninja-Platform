@@ -146,6 +146,15 @@ window.Live = (function () {
       ".live-main{min-width:0}.live-side{min-width:0}",
       ".live-stage{position:relative;width:100%;aspect-ratio:16/9;background:#05070c;border:1px solid var(--line);border-radius:16px;overflow:hidden}",
       ".live-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}",
+      // live emoji reactions — a bar under the player; a click floats the emoji up over the video for EVERYONE (realtime broadcast)
+      ".live-player-wrap{position:relative}",
+      ".lr-floats{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:6;border-radius:16px}",
+      ".lr-emoji{position:absolute;bottom:6px;line-height:1;pointer-events:none;will-change:transform,opacity;text-shadow:0 2px 10px rgba(0,0,0,.5);animation:lrRise 2.8s ease-out forwards}",
+      "@keyframes lrRise{0%{transform:translateY(0) scale(.5);opacity:0}12%{opacity:1;transform:translateY(-16px) scale(1.05)}100%{transform:translateY(-62%) scale(1);opacity:0}}",
+      ".lr-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:12px}",
+      ".lr-btn{background:var(--panel);border:1px solid var(--line);border-radius:999px;width:46px;height:46px;font-size:22px;line-height:1;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .12s,border-color .12s}",
+      ".lr-btn:hover{border-color:var(--accent);transform:translateY(-2px) scale(1.08)}",
+      ".lr-btn:active{transform:scale(.9)}",
       // darken the thumbnail so the text is readable: a strong radial darkening behind the centered text + an overall gradient
       ".live-scrim{position:absolute;inset:0;background:radial-gradient(ellipse 78% 68% at 50% 46%,rgba(5,7,12,.9),rgba(5,7,12,.5)),linear-gradient(180deg,rgba(5,7,12,.55),rgba(5,7,12,.9));z-index:1}",
       ".live-off{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;text-align:center;padding:24px}",
@@ -403,7 +412,8 @@ window.Live = (function () {
     // two-column on desktop (video+meta on one side, chat on the other); stacks on mobile.
     return '<div class="live-grid">' +
         '<div class="live-main">' +
-          '<div id="livePlayer">' + _playerHtml(s, vs) + "</div>" +
+          '<div class="live-player-wrap"><div id="livePlayer">' + _playerHtml(s, vs) + '</div><div class="lr-floats" id="lrFloats"></div></div>' +
+          _reactBarHtml() +
           '<div id="liveMeta">' + _metaHtml(s, vs) + "</div>" +
         "</div>" +
         '<div class="live-side"><div id="liveChatRoot"></div></div>' +   // live chat + waiting/viewer count
@@ -582,6 +592,52 @@ window.Live = (function () {
     _get().then(function (r) { if (r) { _status = r; _apply(false); } });
   }
 
+  // ===== live emoji reactions (float over the player for EVERYONE via Supabase Realtime broadcast) =====
+  var REACT_EMOJIS = ["❤️", "🔥", "😂", "🎉", "👏", "💯", "🚀", "💪"];
+  var _rchan = null, _rLast = 0;
+  function _reactBarHtml() {
+    return '<div class="lr-bar" id="lrBar">' +
+      REACT_EMOJIS.map(function (e) { return '<button type="button" class="lr-btn" data-e="' + e + '" aria-label="ריאקציה">' + e + "</button>"; }).join("") +
+      "</div>";
+  }
+  function _reactMount() {
+    var bar = $("lrBar");
+    if (bar && !bar._wired) {
+      bar._wired = true;
+      var btns = bar.querySelectorAll(".lr-btn");
+      for (var i = 0; i < btns.length; i++) btns[i].onclick = function () { var e = this.getAttribute("data-e"); _reactSpawn(e); _reactSend(e); };
+    }
+    try {
+      var c = window.SNAuth && SNAuth.getClient && SNAuth.getClient();
+      if (c && !_rchan) {
+        _rchan = c.channel("live-react-public", { config: { broadcast: { self: false } } });
+        _rchan.on("broadcast", { event: "r" }, function (p) { try { _reactSpawn(p && p.payload && p.payload.e); } catch (e) {} });
+        _rchan.subscribe();
+      }
+    } catch (e) {}
+  }
+  function _reactSend(emoji) {
+    var now = Date.now(); if (now - _rLast < 250) return; _rLast = now;   // debounce bursts
+    try { if (_rchan) _rchan.send({ type: "broadcast", event: "r", payload: { e: emoji } }); } catch (e) {}
+  }
+  function _reactSpawn(emoji) {
+    if (!emoji) return;
+    var layer = $("lrFloats"); if (!layer) return;
+    if (layer.childElementCount > 60) return;   // cap on-screen floats
+    var el = document.createElement("div"); el.className = "lr-emoji"; el.textContent = emoji;
+    el.style.left = (6 + Math.random() * 86) + "%";
+    el.style.fontSize = (22 + Math.random() * 16) + "px";
+    el.style.animationDuration = (2.4 + Math.random() * 0.9) + "s";
+    layer.appendChild(el);
+    setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 3500);
+  }
+  function _reactUnmount() {
+    try {
+      if (_rchan) { var c = window.SNAuth && SNAuth.getClient && SNAuth.getClient(); if (c && c.removeChannel) c.removeChannel(_rchan); _rchan = null; }
+    } catch (e) {}
+    var layer = $("lrFloats"); if (layer) layer.innerHTML = "";
+  }
+
   function wire() {
     _injectCss();
     if (_timer) { clearInterval(_timer); _timer = null; }
@@ -594,6 +650,7 @@ window.Live = (function () {
     }, POLL_MS);
     _cd = setInterval(_tickCd, 1000);
     if (window.LiveChat && window.LiveChat.mount) window.LiveChat.mount();   // live chat + waiting/viewer count
+    _reactMount();   // emoji reactions bar + realtime broadcast
   }
 
   // Called by the SPA when leaving the /live page: stop the player so there is NO background
@@ -605,6 +662,7 @@ window.Live = (function () {
     _playerSig = ""; _resetCommunity();                    // force a fresh player + re-check the vault when the user returns
     var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
     if (window.LiveChat && window.LiveChat.unmount) window.LiveChat.unmount();   // stop chat/presence polling + heartbeat
+    _reactUnmount();   // drop the reactions realtime channel + clear floats
     closeAdmin();   // close the floating admin window when leaving /live
   }
 
