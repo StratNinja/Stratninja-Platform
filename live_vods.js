@@ -439,49 +439,42 @@
     });
   }
 
-  // Load the official tus-js-client (the Cloudflare-documented client for direct creator uploads
-  // >200MB). It handles CF's tus CORS preflight, offset re-sync (HEAD) and chunk headers correctly —
-  // the hand-rolled XHR version failed CF's CORS/network check. Pinned, injected on first use only.
-  var _tusLib = null;
-  function _loadTus() {
-    if (_tusLib) return _tusLib;
-    _tusLib = new Promise(function (resolve, reject) {
-      if (window.tus && window.tus.Upload) { resolve(window.tus); return; }
-      var s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/tus-js-client@4.3.1/dist/tus.min.js";
-      s.async = true;
-      s.onload = function () { (window.tus && window.tus.Upload) ? resolve(window.tus) : reject(new Error("tus_no_export")); };
-      s.onerror = function () { _tusLib = null; reject(new Error("tus_load_failed")); };
-      document.head.appendChild(s);
-    });
-    return _tusLib;
-  }
-
-  // Resumable upload of (large, multi-GB) file straight to Cloudflare Stream via the official
-  // tus-js-client, resuming into the server-created upload URL (`location`). onProg(done,total).
+  // minimal tus resumable uploader (chunked PATCH, no external lib). Cloudflare Stream speaks the tus core protocol.
   function _tusUpload(file, location, onProg, onDone, onErr) {
+    var CHUNK = 52428800;   // 50MB — a multiple of 256KB, as tus/CF require for non-final chunks
+    var offset = 0, retries = 0;
     var host = (function () { try { return new URL(location).host; } catch (e) { return String(location).slice(0, 48); } })();
-    _loadTus().then(function (tus) {
-      if (tus.isSupported === false) { onErr("הדפדפן לא תומך בהעלאה מתחדשת (tus)"); return; }
-      var up = new tus.Upload(file, {
-        uploadUrl: location,        // upload already created server-side — resume into it, don't create anew
-        chunkSize: 52428800,        // 50MB — a multiple of 256KB, as CF requires for non-final chunks
-        retryDelays: [0, 1000, 3000, 5000, 10000],
-        removeFingerprintOnSuccess: true,
-        onProgress: function (done, total) { onProg(done, total || file.size); },
-        onError: function (err) {
-          var resp = err && err.originalResponse;
-          var st = (resp && typeof resp.getStatus === "function") ? resp.getStatus() : 0;
-          var msg = (err && err.message) ? String(err.message) : String(err);
-          try { console.error("[course-upload] tus error", err); } catch (e) {}
-          onErr(msg.slice(0, 160) + " · host=" + host + " · status=" + st);
-        },
-        onSuccess: function () { onProg(file.size, file.size); onDone(); },
-      });
-      up.start();
-    }, function (e) {
-      onErr("לא ניתן לטעון את ספריית ההעלאה (" + ((e && e.message) || "tus") + ") · host=" + host);
-    });
+    function head() {
+      var x = new XMLHttpRequest();
+      x.open("HEAD", location, true);
+      x.setRequestHeader("Tus-Resumable", "1.0.0");
+      x.onload = function () { var o = parseInt(x.getResponseHeader("Upload-Offset"), 10); if (!isNaN(o)) offset = o; patch(); };
+      x.onerror = function () { patch(); };   // HEAD unsupported → just start from the current offset
+      x.send();
+    }
+    function patch() {
+      if (offset >= file.size) { onDone(); return; }
+      var end = Math.min(offset + CHUNK, file.size), base = offset;
+      var x = new XMLHttpRequest();
+      x.open("PATCH", location, true);
+      x.setRequestHeader("Tus-Resumable", "1.0.0");
+      x.setRequestHeader("Upload-Offset", String(offset));
+      x.setRequestHeader("Content-Type", "application/offset+octet-stream");
+      x.upload.onprogress = function (e) { if (e.lengthComputable) onProg(base + e.loaded, file.size); };
+      x.onload = function () {
+        if (x.status >= 200 && x.status < 300) {
+          var o = parseInt(x.getResponseHeader("Upload-Offset"), 10);
+          offset = isNaN(o) ? end : o; retries = 0; onProg(offset, file.size); patch();
+        } else if (retries < 3) { retries++; setTimeout(head, 1500 * retries); }   // transient → re-sync offset via HEAD and retry
+        else { try { console.error("[course-upload] PATCH failed", x.status, x.responseText); } catch (e) {} onErr("HTTP " + x.status + (x.responseText ? " · " + String(x.responseText).slice(0, 140) : "") + " · host=" + host); }
+      };
+      x.onerror = function () {
+        if (retries < 3) { retries++; setTimeout(head, 1500 * retries); }
+        else { try { console.error("[course-upload] PATCH network/CORS error, host=", host); } catch (e) {} onErr("חסום (CORS/רשת) · host=" + host + " · status=" + x.status); }
+      };
+      x.send(file.slice(offset, end));
+    }
+    patch();   // start directly — a fresh upload has offset 0; HEAD is only used to re-sync on a retry
   }
 
   function _courseDelete(uid) {
@@ -504,7 +497,7 @@
           if (!(j && j.ok)) { alert("לא ניתן לבדוק העלאות תקועות" + (j && j.error ? " · " + j.error : "")); return; }
           if (!j.count) { alert("אין העלאות תקועות — אין מה לנקות ✓"); return; }
           var mins = 0; for (var i = 0; i < j.pending.length; i++) mins += Math.round((j.pending[i].maxDurationSeconds || 0) / 60);
-          if (!window.confirm("נמצאו " + j.count + " העלאות שנכשלו/תקועות (תופסות ~" + mins + " דק' מהמכסה).\nלמחוק אותן מ-Cloudflare?")) return;
+          if (!window.confirm("נמצאו " + j.count + " העלאות שנכשלו/תקועות (תופסות ~" + mins + " דק' מהמכסה).\nלמחוק אותן מ-Cloudflare?\n\n⚠️ אם יש כרגע העלאה שרצה — סיים אותה קודם, אחרת היא תימחק גם.")) return;
           fetch("/api/course-cleanup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "purge" }) })
             .then(function (r) { return r.json().catch(function () { return {}; }); })
             .then(function (s) {

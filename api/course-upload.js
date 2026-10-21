@@ -63,14 +63,8 @@ export default async function handler(req, res) {
         "Upload-Metadata": meta.join(","),
       },
     });
-    let location = r.headers.get("location") || r.headers.get("Location");
+    const location = r.headers.get("location") || r.headers.get("Location");
     const uid = r.headers.get("stream-media-id");
-    // CF normally returns an ABSOLUTE tus upload URL, but resolve defensively in case it is ever
-    // relative — the browser tus client needs an absolute uploadUrl (a relative one would otherwise
-    // resolve against OUR origin and fail with a CORS/network error).
-    if (location && !/^https?:\/\//i.test(location)) {
-      try { location = new URL(location, "https://api.cloudflare.com").href; } catch (e) {}
-    }
     if (r.status === 201 && location && uid) { res.status(200).json({ ok: true, location: location, uid: uid }); return; }
     const txt = await r.text().catch(() => "");
     console.warn("[course-upload] tus create failed " + JSON.stringify({ http: r.status, hasLoc: !!location }));
