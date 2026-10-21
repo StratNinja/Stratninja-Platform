@@ -5927,7 +5927,7 @@
       if (scanState.universe === "etf" && !(t.tech && t.tech.etf)) return false;   // "📜 תעודות סל" — only ETF-flagged rows
       if (scanState.universe === "comm" && !t.comm) return false;
       if (scanState.sector.length && scanState.sector.indexOf(t.sector) < 0) return false;
-      if (scanState.subsec.length && scanState.subsec.indexOf(t.ind) < 0) return false;
+      if (scanState.subsec.length && scanState.subsec.indexOf(t.ind) < 0 && !(t.tech && t.tech.subx && t.tech.subx.some(x => scanState.subsec.indexOf(x) >= 0))) return false;   // match primary ind OR a secondary composite membership (e.g. Mag 7)
       if (scanState.sym && t.sym.indexOf(scanState.sym.toUpperCase()) < 0) return false;
       if (scanState.ftfc && !t.ftfc) return false;
       if (scanState.priceMin !== "" || scanState.priceMax !== "") {
