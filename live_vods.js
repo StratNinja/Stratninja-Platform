@@ -441,6 +441,7 @@
   function _tusUpload(file, location, onProg, onDone, onErr) {
     var CHUNK = 52428800;   // 50MB — a multiple of 256KB, as tus/CF require for non-final chunks
     var offset = 0, retries = 0;
+    var host = (function () { try { return new URL(location).host; } catch (e) { return String(location).slice(0, 48); } })();
     function head() {
       var x = new XMLHttpRequest();
       x.open("HEAD", location, true);
@@ -462,13 +463,16 @@
         if (x.status >= 200 && x.status < 300) {
           var o = parseInt(x.getResponseHeader("Upload-Offset"), 10);
           offset = isNaN(o) ? end : o; retries = 0; onProg(offset, file.size); patch();
-        } else if (retries < 4) { retries++; setTimeout(head, 1500 * retries); }   // transient → re-sync offset via HEAD and retry
-        else { onErr("HTTP " + x.status); }
+        } else if (retries < 3) { retries++; setTimeout(head, 1500 * retries); }   // transient → re-sync offset via HEAD and retry
+        else { try { console.error("[course-upload] PATCH failed", x.status, x.responseText); } catch (e) {} onErr("HTTP " + x.status + (x.responseText ? " · " + String(x.responseText).slice(0, 140) : "") + " · host=" + host); }
       };
-      x.onerror = function () { if (retries < 4) { retries++; setTimeout(head, 1500 * retries); } else onErr("network"); };
+      x.onerror = function () {
+        if (retries < 3) { retries++; setTimeout(head, 1500 * retries); }
+        else { try { console.error("[course-upload] PATCH network/CORS error, host=", host); } catch (e) {} onErr("חסום (CORS/רשת) · host=" + host + " · status=" + x.status); }
+      };
       x.send(file.slice(offset, end));
     }
-    head();
+    patch();   // start directly — a fresh upload has offset 0; HEAD is only used to re-sync on a retry
   }
 
   function _courseDelete(uid) {
