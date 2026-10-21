@@ -5671,9 +5671,9 @@
             '<div class="fgrp"><label>📊 ווליום מול הממוצע <span class="muted" style="font-size:10px">(ימים רצופים · עד 20)</span></label><div class="chips" style="align-items:center"><select id="tVolAvgDir">' +
               opt("off", techState.volAvgDir, "— הכל") + opt("above", techState.volAvgDir, "📈 מעל הממוצע") + opt("below", techState.volAvgDir, "📉 מתחת לממוצע") + "</select>" +
               (_volAvgActive() ? '<span class="muted">≥</span><input id="tVolAvgDays" type="number" min="1" max="20" step="1" style="width:52px" value="' + _volAvgDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
-            '<div class="fgrp"><label>💧 מגמת MFI <span class="muted" style="font-size:10px">(ימים רצופים · עד 7)</span></label><div class="chips" style="align-items:center"><select id="tMfiTrendDir">' +
+            '<div class="fgrp"><label>💧 מגמת MFI <span class="muted" style="font-size:10px">(ימים רצופים · עד 20)</span></label><div class="chips" style="align-items:center"><select id="tMfiTrendDir">' +
               opt("off", techState.mfiTrendDir, "— הכל") + opt("up", techState.mfiTrendDir, "📈 עולה") + opt("down", techState.mfiTrendDir, "📉 יורד") + "</select>" +
-              (_mfiTrendActive() ? '<span class="muted">≥</span><input id="tMfiTrendDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _mfiTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
+              (_mfiTrendActive() ? '<span class="muted">≥</span><input id="tMfiTrendDays" type="number" min="1" max="20" step="1" style="width:52px" value="' + _mfiTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>🔄 היפוך MFI <span class="muted" style="font-size:10px">(מקיצוניות)</span></label><div class="chips" style="align-items:center"><select id="tMfiTurn">' +
               opt("off", techState.mfiTurn, "— הכל") + opt("up", techState.mfiTurn, "📈 מלמטה (מתחת 20 ↑)") + opt("down", techState.mfiTurn, "📉 מלמעלה (מעל 80 ↓)") + opt("any", techState.mfiTurn, "⚡ שניהם") + "</select></div></div>" +
             '<div class="fgrp"><label>🗓️ דיווח תוצאות <span class="muted" style="font-size:10px">(קרבה לדוח הבא)</span></label><div class="chips" style="align-items:center"><select id="tEarnDir">' +
@@ -6300,7 +6300,7 @@
     bind("tVolAvgDir", "onchange", e => { techState.volAvgDir = e.target.value; reRender(); });
     bind("tVolAvgDays", "onchange", e => { techState.volAvgDays = Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTrendDir", "onchange", e => { techState.mfiTrendDir = e.target.value; reRender(); });
-    bind("tMfiTrendDays", "onchange", e => { techState.mfiTrendDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
+    bind("tMfiTrendDays", "onchange", e => { techState.mfiTrendDays = Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTurn", "onchange", e => { techState.mfiTurn = e.target.value; reRender(); });
     bind("tEarnMin", "onchange", e => { const v = e.target.value.trim(); techState.earnMin = v === "" ? "" : Math.max(1, Math.min(95, parseInt(v, 10) || 1)); reRender(); });
     bind("tEarnDir", "onchange", e => { techState.earnDir = e.target.value; reRender(); });
@@ -6465,7 +6465,7 @@
     volAvgDir: "off",            // volume vs 20d avg: off / above / below (consecutive days)
     volAvgDays: 3,               // min consecutive days above/below the avg (1–20)
     mfiTrendDir: "off",          // MFI trend direction: off / up (rising) / down (falling)
-    mfiTrendDays: 3,             // min consecutive MFI days in the streak (1–7)
+    mfiTrendDays: 3,             // min consecutive MFI days in the streak (1–20)
     mfiTurn: "off",              // MFI reversal at extremes: off / up (<20 turning up) / down (>80 turning down) / any
     earnMin: "",                 // earnings filter threshold in days (empty = off)
     earnDir: "far",              // "far" = report ≥N days away (safe) · "near" = report within N days (lead-up)
@@ -6687,7 +6687,7 @@
     return true;
   }
   function _mfiTrendActive() { return techState.mfiTrendDir === "up" || techState.mfiTrendDir === "down"; }
-  function _mfiTrendDays() { const d = parseInt(techState.mfiTrendDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(7, d)); }
+  function _mfiTrendDays() { const d = parseInt(techState.mfiTrendDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(20, d)); }
   function _mfiTrendPass(k) {
     if (!_mfiTrendActive()) return true;
     const v = k ? k.mfitrend : null;
