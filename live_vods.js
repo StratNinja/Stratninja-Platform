@@ -359,7 +359,12 @@
       fetch("/api/course-token", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ uid: uid }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) {
-          if (j && j.ok && j.iframe) { _play(j.iframe, null, title || "שיעור"); }
+          if (j && j.ok && j.iframe) {
+            _play(j.iframe, null, title || "שיעור");
+            // course videos share the vod_summaries table — load the auto summary + chapters by the REAL
+            // lesson uid (the iframe URL is a one-time signed token, so the uid can't be derived from it)
+            if (/^[a-f0-9]{32}$/i.test(uid)) _loadSummary(uid, j.iframe);
+          }
           else if (j && j.error === "not_entitled") { alert("אין לך גישה לקורס עדיין."); }
           else { alert("לא ניתן לנגן את השיעור כרגע" + (j && j.error ? " · " + j.error : "") + "."); }
         }).catch(function () { alert("שגיאה בניגון השיעור."); });
