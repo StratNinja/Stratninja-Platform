@@ -5521,6 +5521,23 @@
       '<span class="combo-caret">▾</span>' +
       '<div class="combo-list hidden">' + (opts.length ? '<div class="combo-clear" data-clear="1">✕ נקה בחירה (הכל)</div>' : "") + list + "</div></div>";
   }
+  // Apply a multi-combo change IMMEDIATELY (live), then reopen the SAME dropdown after the full
+  // re-render so the user can keep toggling options without it closing. Mirrors the #scanSym live-filter
+  // pattern (reRender first, then restore focus on the freshly-built node).
+  function _mcReopenCombo(id, q, scroll, apply) {
+    apply();   // full reRender (rebuilds the filter bar + the results table)
+    const wrap = document.querySelector('.search-combo[data-combo="' + id + '"]');
+    if (!wrap) return;
+    const input = wrap.querySelector(".combo-input");
+    const list = wrap.querySelector(".combo-list");
+    if (!input || !list) return;
+    list.classList.remove("hidden");
+    try { input.focus({ preventScroll: true }); } catch (e) { try { input.focus(); } catch (e2) {} }
+    input.value = q || "";                                     // restore the typed search (the focus handler clears it)
+    const ql = input.value.trim().toLowerCase();
+    list.querySelectorAll(".combo-opt-m").forEach(o => { o.style.display = o.textContent.toLowerCase().indexOf(ql) >= 0 ? "" : "none"; });
+    try { list.scrollTop = scroll || 0; } catch (e) {}
+  }
   // `arr` MUST be the live scanState array (mutated in place). onClose fires only if something changed.
   function wireMultiCombo(id, arr, onClose) {
     const wrap = document.querySelector('.search-combo[data-combo="' + id + '"]');
@@ -5541,10 +5558,11 @@
     opts.forEach(o => o.addEventListener("mousedown", e => {   // preventDefault keeps focus on the input → list stays open
       e.preventDefault(); const v = o.dataset.cval, i = arr.indexOf(v);
       if (i >= 0) arr.splice(i, 1); else arr.push(v);
-      setMark(o); dirty = true;
+      setMark(o);
+      _mcReopenCombo(id, input.value, list.scrollTop, onClose);   // apply the filter NOW; keep the dropdown open
     }));
     const clear = list.querySelector("[data-clear]");
-    if (clear) clear.addEventListener("mousedown", e => { e.preventDefault(); if (arr.length) { arr.length = 0; opts.forEach(setMark); dirty = true; } });
+    if (clear) clear.addEventListener("mousedown", e => { e.preventDefault(); if (arr.length) { arr.length = 0; opts.forEach(setMark); _mcReopenCombo(id, input.value, list.scrollTop, onClose); } });
     const caret = wrap.querySelector(".combo-caret");
     if (caret) caret.addEventListener("mousedown", e => { e.preventDefault(); if (list.classList.contains("hidden")) input.focus(); else { closeList(); input.blur(); } });
   }
