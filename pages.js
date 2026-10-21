@@ -5610,7 +5610,7 @@
               "</select>"
             : "") + "</div></div>" +
         // ── universe / identity row (Adi's row 2): forced onto its own line by enhanceFilterBar via .fgrp-uni ──
-        '<div class="fgrp fgrp-uni"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
+        '<div class="fgrp fgrp-uni"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("etf", "📜 תעודות סל") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
         '<div class="fgrp fgrp-uni"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp fgrp-uni"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp fgrp-uni"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
@@ -5924,6 +5924,7 @@
       // Exception: when the trader explicitly types a symbol, don't hide it.
       if (t.tech && t.tech.pin && !scanState.sym) return false;
       if (scanState.universe === "sp500" && !t.sp) return false;
+      if (scanState.universe === "etf" && !(t.tech && t.tech.etf)) return false;   // "📜 תעודות סל" — only ETF-flagged rows
       if (scanState.universe === "comm" && !t.comm) return false;
       if (scanState.sector.length && scanState.sector.indexOf(t.sector) < 0) return false;
       if (scanState.subsec.length && scanState.subsec.indexOf(t.ind) < 0) return false;
