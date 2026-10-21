@@ -274,7 +274,7 @@
   // load the curriculum + the viewer's course entitlement, then render the pane
   function _loadCourse() {
     var wrap = $("courseWrap"); if (!wrap) return;
-    fetch("/api/course-lessons").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    fetch("/api/course-lessons", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       var lessons = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : [];
       _courseEntitled().then(function (state) { _renderCourse(wrap, lessons, state); });
     }).catch(function () { wrap.innerHTML = '<div class="course-empty">לא ניתן לטעון את הקורס כרגע — נסו שוב.</div>'; });
