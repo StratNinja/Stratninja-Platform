@@ -24,7 +24,9 @@ const CF_CODE = (process.env.CF_CUSTOMER_CODE || "").trim();
 const KEY_ID = (process.env.CF_STREAM_KEY_ID || "").trim();
 const KEY_PEM_RAW = process.env.CF_STREAM_KEY_PEM || "";
 
-const SCOPE = "course_the_strat";
+// gate scope depends on the lesson's `kind`: the course needs the course entitlement,
+// community videos need only the (community) guild-membership entitlement.
+const SCOPE_BY_KIND = { course: "course_the_strat", community: "community" };
 const TTL_SEC = Math.min(Math.max(Number(process.env.COURSE_TOKEN_TTL_SEC) || 10800, 60), 86400);  // default 3h; clamp [60s,24h]
 const RE_HEX32 = /^[a-f0-9]{32}$/i;
 const RE_CF_CODE = /^[a-z0-9]+$/i;
@@ -45,10 +47,10 @@ async function userId(req) {
     return (u && u.id) || null;
   } catch (e) { return null; }
 }
-// Active, non-expired 'course_the_strat' entitlement for this user?
-async function isEntitled(uid) {
+// Active, non-expired entitlement for this user on the given scope?
+async function isEntitled(uid, scope) {
   try {
-    const r = await sb("entitlements?user_id=eq." + encodeURIComponent(uid) + "&scope=eq." + SCOPE + "&select=expires_at");
+    const r = await sb("entitlements?user_id=eq." + encodeURIComponent(uid) + "&scope=eq." + encodeURIComponent(scope) + "&select=expires_at");
     if (!r.ok) return false;
     const rows = await r.json().catch(() => []);
     if (!Array.isArray(rows) || !rows.length) return false;
@@ -56,14 +58,16 @@ async function isEntitled(uid) {
     return rows.some((row) => !row.expires_at || new Date(row.expires_at).getTime() > now);
   } catch (e) { return false; }
 }
-// Is `uid` a REAL published course lesson? (never sign an arbitrary account video)
-async function isLesson(uid) {
+// Return the kind ('course'|'community') of `uid` IF it is a REAL published lesson, else null.
+// (never sign an arbitrary account video — only a published row in course_lessons)
+async function lessonKind(uid) {
   try {
-    const r = await sb("course_lessons?video_uid=eq." + encodeURIComponent(uid) + "&published=is.true&select=video_uid&limit=1");
-    if (!r.ok) return false;
+    const r = await sb("course_lessons?video_uid=eq." + encodeURIComponent(uid) + "&published=is.true&select=kind&limit=1");
+    if (!r.ok) return null;
     const rows = await r.json().catch(() => []);
-    return Array.isArray(rows) && rows.length > 0;
-  } catch (e) { return false; }
+    if (!Array.isArray(rows) || !rows.length) return null;
+    return rows[0].kind === "community" ? "community" : "course";
+  } catch (e) { return null; }
 }
 
 function b64url(buf) {
@@ -106,8 +110,11 @@ export default async function handler(req, res) {
 
   const user = await userId(req);
   if (!user) { res.status(401).json({ error: "unauthorized" }); return; }
-  if (!(await isEntitled(user))) { res.status(403).json({ error: "not_entitled" }); return; }
-  if (!(await isLesson(uid))) { res.status(404).json({ error: "not_a_lesson" }); return; }
+  // resolve the lesson's kind FIRST (also proves it's a real published lesson), then check the
+  // entitlement that kind requires (course → course_the_strat; community → community).
+  const kind = await lessonKind(uid);
+  if (!kind) { res.status(404).json({ error: "not_a_lesson" }); return; }
+  if (!(await isEntitled(user, SCOPE_BY_KIND[kind]))) { res.status(403).json({ error: "not_entitled" }); return; }
 
   const token = signToken(uid);
   if (!token) { res.status(500).json({ error: "sign_failed" }); return; }

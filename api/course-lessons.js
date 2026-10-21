@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   if (req.method !== "GET") { res.setHeader("Cache-Control", "no-store"); res.status(405).json({ error: "method" }); return; }
   try {
     const url = SUPA_URL + "/rest/v1/course_lessons?published=is.true" +
-      "&select=video_uid,title,module,sort,duration,summary&order=module.asc,sort.asc,id.asc";
+      "&select=video_uid,title,module,sort,duration,summary,kind&order=module.asc,sort.asc,id.asc";
     const r = await fetch(url, { headers: { apikey: ANON, Authorization: "Bearer " + ANON } });
     const rows = r.ok ? await r.json().catch(() => []) : [];
     const lessons = (Array.isArray(rows) ? rows : []).map((v) => ({
@@ -24,6 +24,7 @@ export default async function handler(req, res) {
       sort: v.sort || 0,
       duration: v.duration || 0,
       summary: v.summary || "",
+      kind: v.kind === "community" ? "community" : "course",   // default/legacy rows are the course
     }));
     res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
     res.status(200).json({ ok: true, lessons: lessons });

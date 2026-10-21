@@ -111,9 +111,11 @@
     return '<div class="page-head"><h1>📼 שידורים קודמים</h1><div class="sub">צפו שוב בשידורים החיים הקודמים של StratNinja — בכל זמן.</div></div>' +
       '<div class="vod-tabs">' +
         '<button type="button" class="vod-tab active" data-tab="lives">📼 לייבי קהילה</button>' +
+        '<button type="button" class="vod-tab" data-tab="community">👥 סרטוני קהילה</button>' +
         '<button type="button" class="vod-tab" data-tab="course">🎓 קורס The Strat</button>' +
       '</div>' +
       '<div id="vodGrid" class="vod-grid"><div class="vod-empty">טוען הקלטות…</div></div>' +
+      '<div id="communityWrap" style="display:none"><div class="course-empty">טוען סרטונים…</div></div>' +
       '<div id="courseWrap" style="display:none"><div class="course-empty">טוען קורס…</div></div>';
   }
 
@@ -123,18 +125,21 @@
     _loadLives();
   }
 
-  // tab switching: show the lives grid or the course pane (course loads lazily on first open)
-  var _courseLoaded = false;
+  // tab switching: lives grid / community videos / the course pane. The gated panes load lazily
+  // on first open (each kind once). community + course both render via the shared course code,
+  // parameterized by `kind` (see KIND_CFG below).
+  var _loaded = { community: false, course: false };
   function _wireTabs() {
     var tabs = document.querySelectorAll(".vod-tab");
     for (var i = 0; i < tabs.length; i++) {
       tabs[i].onclick = function () {
         var which = this.getAttribute("data-tab");
         for (var k = 0; k < tabs.length; k++) tabs[k].classList.toggle("active", tabs[k] === this);
-        var grid = $("vodGrid"), course = $("courseWrap");
+        var grid = $("vodGrid"), community = $("communityWrap"), course = $("courseWrap");
         if (grid) grid.style.display = (which === "lives") ? "" : "none";
+        if (community) community.style.display = (which === "community") ? "" : "none";
         if (course) course.style.display = (which === "course") ? "" : "none";
-        if (which === "course" && !_courseLoaded) { _courseLoaded = true; _loadCourse(); }
+        if ((which === "community" || which === "course") && !_loaded[which]) { _loaded[which] = true; _loadCourse(which); }
       };
     }
   }
@@ -268,53 +273,94 @@
     fr.src = baseIframe + "?autoplay=true&startTime=" + (t || 0);
     try { fr.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) {}
   }
-  // ===== COURSE (gated "The Strat" course) =====
-  var COURSE_PATREON_URL = "https://www.patreon.com/14520383/join";   // purchase the course (Patreon $50+ tier)
+  // ===== GATED VIDEO LIBRARIES (shared code for the course + community-videos tabs) =====
+  // Both tabs are rows in course_lessons (distinguished by `kind`) and use the SAME upload /
+  // gated-playback / auto-summary / admin pipeline — only the entitlement that unlocks them and
+  // the on-screen copy differ. KIND_CFG holds those per-kind differences.
+  var PATREON_JOIN = "https://www.patreon.com/14520383/join";
+  var KIND_CFG = {
+    course: {
+      entField: "course",          // field in the entitlement-sync response that grants access
+      wrapId: "courseWrap", pfx: "course", word: "שיעור",
+      head: "🎓 <b>קורס The Strat</b> — סדרת שיעורים מובנית. ",
+      okMsg: "יש לך גישה מלאה — לחץ על שיעור כדי לצפות.",
+      inMsg: "הגישה פתוחה לבעלי מנוי הקורס.",
+      guestMsg: "התחבר כדי לצפות בשיעורים שרכשת.",
+      lockedIn: "הגישה לקורס פתוחה למנויי הקורס (Patreon, מסלול $50 ומעלה). אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס.",
+      lockedGuest: "התחבר עם החשבון שלך כדי לצפות בקורס שרכשת.",
+      ctaBuy: "🔓 לרכישת הקורס", ctaUrl: PATREON_JOIN,
+      unlock: "הגישה לקורס פתוחה למנויי הקורס. אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס.",
+      emptyAdmin: "אין עדיין שיעורים — הוסף את הראשון עם הכפתור למעלה. ⬆️",
+      emptyPublic: "השיעורים יתווספו בקרוב 🎬",
+      errLoad: "לא ניתן לטעון את הקורס כרגע — נסו שוב.",
+    },
+    community: {
+      entField: "entitled",        // the plain 'community' guild-membership entitlement (like the live vault)
+      wrapId: "communityWrap", pfx: "comm", word: "סרטון",
+      head: "👥 <b>סרטוני קהילה</b> — סרטונים לכל חברי הקהילה. ",
+      okMsg: "יש לך גישה — לחץ על סרטון כדי לצפות.",
+      inMsg: "הגישה פתוחה לחברי הקהילה.",
+      guestMsg: "התחבר כדי לצפות בסרטוני הקהילה.",
+      lockedIn: "הסרטונים פתוחים לחברי הקהילה. הצטרף לקהילה (Patreon) וחבר את חשבון ה-Discord שלך כדי שנאמת את החברות.",
+      lockedGuest: "התחבר עם החשבון שלך כדי לצפות בסרטוני הקהילה.",
+      ctaBuy: "🎁 הצטרף לקהילה", ctaUrl: PATREON_JOIN,
+      unlock: "הגישה פתוחה לחברי הקהילה. הצטרף לקהילה וחבר את חשבון ה-Discord שלך.",
+      emptyAdmin: "אין עדיין סרטונים — הוסף את הראשון עם הכפתור למעלה. ⬆️",
+      emptyPublic: "סרטונים יתווספו בקרוב 🎬",
+      errLoad: "לא ניתן לטעון את הסרטונים כרגע — נסו שוב.",
+    },
+  };
 
-  // load the curriculum + the viewer's course entitlement, then render the pane
+  // load the curriculum (filtered to this kind) + the viewer's entitlement, then render the pane.
   // fresh=true (after an admin edit/add/delete) adds a cache-buster so the Vercel edge cache (~60s) is
   // bypassed and the change shows IMMEDIATELY; a normal tab-open uses the cache.
-  function _loadCourse(fresh) {
-    var wrap = $("courseWrap"); if (!wrap) return;
+  function _loadCourse(kind, fresh) {
+    var cfg = KIND_CFG[kind]; if (!cfg) return;
+    var wrap = $(cfg.wrapId); if (!wrap) return;
     fetch("/api/course-lessons" + (fresh ? ("?_=" + Date.now()) : ""), { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      var lessons = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : [];
-      _courseEntitled().then(function (state) { _renderCourse(wrap, lessons, state); });
-    }).catch(function () { wrap.innerHTML = '<div class="course-empty">לא ניתן לטעון את הקורס כרגע — נסו שוב.</div>'; });
+      var all = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : [];
+      var lessons = all.filter(function (L) { return ((L.kind || "course") === kind); });
+      _entState().then(function (s) { _renderCourse(kind, wrap, lessons, { loggedIn: s.loggedIn, ok: !!s[cfg.entField] }); });
+    }).catch(function () { wrap.innerHTML = '<div class="course-empty">' + cfg.errLoad + "</div>"; });
   }
 
-  // { loggedIn, ok } — ok = this user holds an active course entitlement (server-verified)
-  function _courseEntitled() {
-    return _token().then(function (tok) {
-      if (!tok) return { loggedIn: false, ok: false };
+  // one server-verified entitlement call shared by both gated tabs → { loggedIn, course, entitled }.
+  // Cached (promise) so opening both tabs doesn't hit the endpoint twice.
+  var _entP = null;
+  function _entState() {
+    if (_entP) return _entP;
+    _entP = _token().then(function (tok) {
+      if (!tok) return { loggedIn: false, course: false, entitled: false };
       return fetch("/api/entitlement-sync", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok } })
         .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { return { loggedIn: true, ok: !!(j && j.course) }; })
-        .catch(function () { return { loggedIn: true, ok: false }; });
+        .then(function (j) { return { loggedIn: true, course: !!(j && j.course), entitled: !!(j && j.entitled) }; })
+        .catch(function () { return { loggedIn: true, course: false, entitled: false }; });
     });
+    return _entP;
   }
 
-  function _renderCourse(wrap, lessons, state) {
-    var admin = isAdmin();
-    var html = '<div class="course-head">🎓 <b>קורס The Strat</b> — סדרת שיעורים מובנית. ' +
-      (state.ok ? "יש לך גישה מלאה — לחץ על שיעור כדי לצפות." : (state.loggedIn ? "הגישה פתוחה לבעלי מנוי הקורס." : "התחבר כדי לצפות בשיעורים שרכשת.")) + "</div>";
+  function _renderCourse(kind, wrap, lessons, state) {
+    var cfg = KIND_CFG[kind], p = cfg.pfx, admin = isAdmin();
+    var html = '<div class="course-head">' + cfg.head +
+      (state.ok ? cfg.okMsg : (state.loggedIn ? cfg.inMsg : cfg.guestMsg)) + "</div>";
     if (admin) html += '<div class="course-admin">' +
-      '<button type="button" class="course-add" id="courseUpBtn">📤 העלה מהמחשב</button>' +
-      '<button type="button" class="course-add" id="courseAdd">➕ הוסף לפי מזהה</button>' +
-      '<button type="button" class="course-add" id="courseCleanBtn" title="מחק העלאות שנכשלו שתקועות ב-Cloudflare ותופסות מקום">🧹 נקה העלאות תקועות</button>' +
-      '<input type="file" id="courseFile" accept="video/*" style="display:none">' +
-      '<div class="course-prog" id="courseProg" style="display:none"><div class="cp-bar"><span id="cpFill"></span></div><div class="cp-txt" id="cpTxt"></div></div>' +
+      '<button type="button" class="course-add" id="' + p + 'UpBtn">📤 העלה מהמחשב</button>' +
+      '<button type="button" class="course-add" id="' + p + 'Add">➕ הוסף לפי מזהה</button>' +
+      '<button type="button" class="course-add" id="' + p + 'CleanBtn" title="מחק העלאות שנכשלו שתקועות ב-Cloudflare ותופסות מקום">🧹 נקה העלאות תקועות</button>' +
+      '<input type="file" id="' + p + 'File" accept="video/*" style="display:none">' +
+      '<div class="course-prog" id="' + p + 'Prog" style="display:none"><div class="cp-bar"><span id="' + p + 'Fill"></span></div><div class="cp-txt" id="' + p + 'Txt"></div></div>' +
       '</div>';
     if (!state.ok) {
       var cta = state.loggedIn
-        ? '<a class="course-cta" href="' + COURSE_PATREON_URL + '" target="_blank" rel="noopener">🔓 לרכישת הקורס</a>'
+        ? '<a class="course-cta" href="' + cfg.ctaUrl + '" target="_blank" rel="noopener">' + cfg.ctaBuy + '</a>'
         : '<a class="course-cta" href="/">🔑 התחבר</a>';
       html += '<div class="course-locked"><div class="cl-txt">🔒 ' +
-        (state.loggedIn ? "הגישה לקורס פתוחה למנויי הקורס (Patreon, מסלול $50 ומעלה). אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס." : "התחבר עם החשבון שלך כדי לצפות בקורס שרכשת.") +
+        (state.loggedIn ? cfg.lockedIn : cfg.lockedGuest) +
         "</div>" + cta + "</div>";
     }
     if (!lessons.length) {
-      html += '<div class="course-empty">' + (admin ? "אין עדיין שיעורים — הוסף את הראשון עם הכפתור למעלה. ⬆️" : "השיעורים יתווספו בקרוב 🎬") + "</div>";
-      wrap.innerHTML = html; _wireCourseActions(wrap, state); return;
+      html += '<div class="course-empty">' + (admin ? cfg.emptyAdmin : cfg.emptyPublic) + "</div>";
+      wrap.innerHTML = html; _wireCourseActions(kind, wrap, state); return;
     }
     var curMod = null;
     for (var i = 0; i < lessons.length; i++) {
@@ -335,28 +381,30 @@
     }
     if (curMod !== null) html += "</div>";
     wrap.innerHTML = html;
-    _wireCourseActions(wrap, state);
+    _wireCourseActions(kind, wrap, state);
   }
 
-  function _wireCourseActions(wrap, state) {
-    var add = $("courseAdd"); if (add) add.onclick = _courseAddPrompt;
-    var clean = $("courseCleanBtn"); if (clean) clean.onclick = _courseCleanup;
-    var up = $("courseUpBtn"), file = $("courseFile");
-    if (up && file) { up.onclick = function () { file.value = ""; file.click(); }; file.onchange = function () { if (file.files && file.files[0]) _courseUpload(file.files[0]); }; }
+  function _wireCourseActions(kind, wrap, state) {
+    var cfg = KIND_CFG[kind], p = cfg.pfx;
+    var add = $(p + "Add"); if (add) add.onclick = function () { _courseAddPrompt(kind); };
+    var clean = $(p + "CleanBtn"); if (clean) clean.onclick = function () { _courseCleanup(); };
+    var up = $(p + "UpBtn"), file = $(p + "File");
+    if (up && file) { up.onclick = function () { file.value = ""; file.click(); }; file.onchange = function () { if (file.files && file.files[0]) _courseUpload(kind, file.files[0]); }; }
     var dels = wrap.querySelectorAll(".cl-del");
-    for (var d = 0; d < dels.length; d++) dels[d].onclick = function (e) { e.stopPropagation(); _courseDelete(this.getAttribute("data-del")); };
+    for (var d = 0; d < dels.length; d++) dels[d].onclick = function (e) { e.stopPropagation(); _courseDelete(kind, this.getAttribute("data-del")); };
     var rens = wrap.querySelectorAll(".cl-ren");
-    for (var rn = 0; rn < rens.length; rn++) rens[rn].onclick = function (e) { e.stopPropagation(); _courseRename(this.getAttribute("data-ren"), this.getAttribute("data-rtitle"), this.getAttribute("data-rmod"), this.getAttribute("data-rsort")); };
+    for (var rn = 0; rn < rens.length; rn++) rens[rn].onclick = function (e) { e.stopPropagation(); _courseRename(kind, this.getAttribute("data-ren"), this.getAttribute("data-rtitle"), this.getAttribute("data-rmod"), this.getAttribute("data-rsort")); };
     var rows = wrap.querySelectorAll(".course-lesson");
     for (var i = 0; i < rows.length; i++) rows[i].onclick = function () {
       var uid = this.getAttribute("data-uid"), title = this.getAttribute("data-title");
-      if (state.ok) _playCourse(uid, title); else _promptUnlock(state);
+      if (state.ok) _playCourse(uid, title); else _promptUnlock(kind, state);
     };
   }
 
-  function _promptUnlock(state) {
-    if (!state.loggedIn) { alert("התחבר עם החשבון שלך כדי לצפות בקורס."); return; }
-    alert("הגישה לקורס פתוחה למנויי הקורס. אם כבר רכשת — ודא שחיברת Discord וקיבלת את רול הקורס.");
+  function _promptUnlock(kind, state) {
+    var cfg = KIND_CFG[kind];
+    if (!state.loggedIn) { alert("התחבר עם החשבון שלך כדי לצפות."); return; }
+    alert(cfg.unlock);
   }
 
   // mint a signed URL for the lesson (server checks entitlement) and play it in the modal
@@ -379,23 +427,24 @@
   }
 
   // admin: add/update a lesson (prompts for the Cloudflare video uid + title + module + order)
-  function _courseAddPrompt() {
+  function _courseAddPrompt(kind) {
+    var cfg = KIND_CFG[kind];
     var uid = window.prompt("מזהה הווידאו ב-Cloudflare (32 תווים hex):", ""); if (uid == null) return;
     uid = String(uid).trim();
     if (!/^[a-f0-9]{32}$/i.test(uid)) { alert("מזהה לא תקין — צריך 32 תווים hex."); return; }
-    var title = window.prompt("כותרת השיעור:", ""); if (title == null) return; title = String(title).trim();
+    var title = window.prompt("כותרת ה" + cfg.word + ":", ""); if (title == null) return; title = String(title).trim();
     if (!title) { alert("צריך כותרת."); return; }
     var module = window.prompt("מודול/פרק (אפשר להשאיר ריק):", "") || "";
     var sort = window.prompt("סדר (מספר — קטן יופיע ראשון):", "0");
     _token().then(function (tok) {
       if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
-      fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: uid, title: title, module: module, sort: parseInt(sort, 10) || 0 }) })
+      fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: uid, title: title, module: module, sort: parseInt(sort, 10) || 0, kind: kind }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) {
           if (j && j.ok) {
             if (j.warn === "video_not_gated") alert("נשמר ✓ — אבל שים לב: הסרטון ב-Cloudflare לא מסומן כ-'Require signed URLs'. סמן אותו כדי שיהיה מגודר.");
             else if (j.warn === "cf_lookup_failed") alert("נשמר ✓ (לא הצלחתי לאמת מול Cloudflare — ודא שהמזהה נכון).");
-            _loadCourse(true);
+            _loadCourse(kind, true);
           } else { alert("שמירה נכשלה" + (j && j.error ? " · " + j.error : "") + (j && j.detail ? "\n" + j.detail : "")); }
         }).catch(function () { alert("שמירה נכשלה."); });
     });
@@ -403,21 +452,22 @@
 
   // admin: UPLOAD a video straight from the computer → Cloudflare Stream (gated), RESUMABLE (tus) so it
   // handles multi-GB files, with live progress, then save the lesson.
-  function _progShow(txt, pct) { var p = $("courseProg"), f = $("cpFill"), t = $("cpTxt"); if (p) p.style.display = ""; if (f) f.style.width = (pct || 0) + "%"; if (t) t.textContent = txt || ""; }
-  function _progHide() { var p = $("courseProg"); if (p) p.style.display = "none"; }
-  function _courseUpload(file) {
+  function _progShow(pfx, txt, pct) { var p = $(pfx + "Prog"), f = $(pfx + "Fill"), t = $(pfx + "Txt"); if (p) p.style.display = ""; if (f) f.style.width = (pct || 0) + "%"; if (t) t.textContent = txt || ""; }
+  function _progHide(pfx) { var p = $(pfx + "Prog"); if (p) p.style.display = "none"; }
+  function _courseUpload(kind, file) {
     if (!file) return;
-    var title = window.prompt("כותרת השיעור:", (file.name || "").replace(/\.[^.]+$/, "")); if (title == null) return;
+    var cfg = KIND_CFG[kind], pfx = cfg.pfx;
+    var title = window.prompt("כותרת ה" + cfg.word + ":", (file.name || "").replace(/\.[^.]+$/, "")); if (title == null) return;
     title = String(title).trim(); if (!title) { alert("צריך כותרת."); return; }
     var module = window.prompt("מודול/פרק (אפשר להשאיר ריק):", "") || "";
     _token().then(function (tok) {
       if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
-      _progShow("מכין העלאה…", 0);
+      _progShow(pfx, "מכין העלאה…", 0);
       // 1) create a resumable (tus) upload on Cloudflare (server-side, with the CF token) → get the upload URL
       fetch("/api/course-upload", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ name: title, uploadLength: file.size }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) {
-          if (!(j && j.ok && j.location && j.uid)) { _progHide(); alert("לא ניתן להתחיל העלאה" + (j && j.error ? " · " + j.error : "") + (j && j.detail ? "\n" + j.detail : "")); return; }
+          if (!(j && j.ok && j.location && j.uid)) { _progHide(pfx); alert("לא ניתן להתחיל העלאה" + (j && j.error ? " · " + j.error : "") + (j && j.detail ? "\n" + j.detail : "")); return; }
           var t0 = Date.now();
           // 2) upload the file to Cloudflare in chunks (handles multi-GB), with progress + ETA
           _tusUpload(file, j.location,
@@ -426,21 +476,21 @@
               var mb = (done / 1048576).toFixed(0) + "/" + (total / 1048576).toFixed(0) + "MB";
               var sp = done / Math.max(1, (Date.now() - t0) / 1000) / 1048576;      // MB/s
               var eta = sp > 0.01 ? Math.ceil((total - done) / 1048576 / sp / 60) : 0;   // minutes
-              _progShow("מעלה… " + pct + "% · " + mb + (eta ? " · ~" + eta + " דק' נותרו" : ""), pct);
+              _progShow(pfx, "מעלה… " + pct + "% · " + mb + (eta ? " · ~" + eta + " דק' נותרו" : ""), pct);
             },
             function () {
-              _progShow("הועלה ✓ — שומר ומעבד…", 100);
-              fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: j.uid, title: title, module: module }) })
+              _progShow(pfx, "הועלה ✓ — שומר ומעבד…", 100);
+              fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: j.uid, title: title, module: module, kind: kind }) })
                 .then(function (r) { return r.json().catch(function () { return {}; }); })
                 .then(function (s) {
-                  _progHide();
-                  if (s && s.ok) { alert("הועלה ✓ — השיעור נוסף! (Cloudflare מעבד את הווידאו — כמה דקות עד שיתנגן.)"); _loadCourse(true); }
-                  else { alert("הקובץ הועלה אבל שמירת השיעור נכשלה. הוסף ידנית עם המזהה: " + j.uid); }
-                }).catch(function () { _progHide(); alert("הקובץ הועלה; שמירת השיעור נכשלה. מזהה: " + j.uid); });
+                  _progHide(pfx);
+                  if (s && s.ok) { alert("הועלה ✓ — ה" + cfg.word + " נוסף! (Cloudflare מעבד את הווידאו — כמה דקות עד שיתנגן.)"); _loadCourse(kind, true); }
+                  else { alert("הקובץ הועלה אבל השמירה נכשלה. הוסף ידנית עם המזהה: " + j.uid); }
+                }).catch(function () { _progHide(pfx); alert("הקובץ הועלה; השמירה נכשלה. מזהה: " + j.uid); });
             },
-            function (err) { _progHide(); alert("ההעלאה נכשלה (" + err + "). נסה שוב."); }
+            function (err) { _progHide(pfx); alert("ההעלאה נכשלה (" + err + "). נסה שוב."); }
           );
-        }).catch(function () { _progHide(); alert("שגיאה בבקשת ההעלאה."); });
+        }).catch(function () { _progHide(pfx); alert("שגיאה בבקשת ההעלאה."); });
     });
   }
 
@@ -484,26 +534,28 @@
 
   // admin: rename a lesson (and optionally change its module). Reuses the course-admin "save" upsert on
   // the same uid; also refreshes the CF duration as a bonus.
-  function _courseRename(uid, title, module, sort) {
-    var nt = window.prompt("שם חדש לשיעור:", title || ""); if (nt == null) return;
+  function _courseRename(kind, uid, title, module, sort) {
+    var cfg = KIND_CFG[kind];
+    var nt = window.prompt("שם חדש ל" + cfg.word + ":", title || ""); if (nt == null) return;
     nt = String(nt).trim(); if (!nt) { alert("צריך שם."); return; }
     var nm = window.prompt("מודול/פרק (אפשר להשאיר ריק):", module || ""); if (nm == null) nm = module || "";
     _token().then(function (tok) {
       if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
-      fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: uid, title: nt, module: nm, sort: parseInt(sort, 10) || 0 }) })
+      fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: uid, title: nt, module: nm, sort: parseInt(sort, 10) || 0, kind: kind }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
-        .then(function (j) { if (j && j.ok) { _loadCourse(true); } else { alert("עריכה נכשלה" + (j && j.error ? " · " + j.error : "")); } })
+        .then(function (j) { if (j && j.ok) { _loadCourse(kind, true); } else { alert("עריכה נכשלה" + (j && j.error ? " · " + j.error : "")); } })
         .catch(function () { alert("עריכה נכשלה."); });
     });
   }
 
-  function _courseDelete(uid) {
-    if (!uid || !window.confirm("להסיר את השיעור מהרשימה? (הסרטון עצמו ב-Cloudflare לא יימחק)")) return;
+  function _courseDelete(kind, uid) {
+    var cfg = KIND_CFG[kind];
+    if (!uid || !window.confirm("להסיר את ה" + cfg.word + " מהרשימה? (הסרטון עצמו ב-Cloudflare לא יימחק)")) return;
     _token().then(function (tok) {
       if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
       fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "delete", uid: uid }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
-        .then(function (j) { if (j && j.ok) { _loadCourse(true); } else { alert("ההסרה נכשלה."); } }).catch(function () { alert("ההסרה נכשלה."); });
+        .then(function (j) { if (j && j.ok) { _loadCourse(kind, true); } else { alert("ההסרה נכשלה."); } }).catch(function () { alert("ההסרה נכשלה."); });
     });
   }
 

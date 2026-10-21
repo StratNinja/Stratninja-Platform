@@ -72,12 +72,15 @@ export default async function handler(req, res) {
   const summary = String(body.summary == null ? "" : body.summary).replace(/[\x00-\x1f\x7f]/g, "").trim().slice(0, 400);
   const sort = Number.isFinite(+body.sort) ? Math.round(+body.sort) : 0;
   const published = body.published === false ? false : true;
+  // which tab this video belongs to — 'course' (The Strat course, gated by course_the_strat)
+  // or 'community' (community videos, gated by the community entitlement). Default: course.
+  const kind = body.kind === "community" ? "community" : "course";
 
   const cf = await cfVideo(uid);
   const duration = cf.ok ? cf.duration : (Number.isFinite(+body.duration) ? Math.round(+body.duration) : 0);
   const warn = !cf.ok ? "cf_lookup_failed" : (!cf.signed ? "video_not_gated" : "");
 
-  const row = { video_uid: uid, title: title, module: module, summary: summary || null, sort: sort, duration: duration, published: published, updated_at: new Date().toISOString() };
+  const row = { video_uid: uid, title: title, module: module, summary: summary || null, sort: sort, duration: duration, published: published, kind: kind, updated_at: new Date().toISOString() };
   const r = await sb("course_lessons?on_conflict=video_uid", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
