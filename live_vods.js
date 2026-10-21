@@ -94,9 +94,13 @@
       ".course-lesson .cl-sum{font-size:12px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
       ".course-lesson .cl-dur{flex:none;font-size:12.5px;color:var(--muted);font-weight:700;direction:ltr}",
       ".course-lesson.locked{opacity:.72}",
-      ".course-admin{max-width:860px;margin:2px 0 16px;display:flex;gap:8px;flex-wrap:wrap}",
+      ".course-admin{max-width:860px;margin:2px 0 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}",
       ".course-add{background:var(--panel2);border:1px dashed var(--line);color:var(--ink);border-radius:10px;padding:9px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}",
       ".course-add:hover{border-color:var(--accent)}",
+      ".course-prog{flex:1 1 220px;min-width:180px;display:flex;flex-direction:column;gap:4px;justify-content:center}",
+      ".course-prog .cp-bar{height:8px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;overflow:hidden}",
+      ".course-prog .cp-bar span{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}",
+      ".course-prog .cp-txt{font-size:12px;color:var(--muted)}",
       ".course-empty{color:var(--muted);font-size:14.5px;padding:24px 0}",
     ].join("");
     document.head.appendChild(s);
@@ -291,7 +295,12 @@
     var admin = isAdmin();
     var html = '<div class="course-head">🎓 <b>קורס The Strat</b> — סדרת שיעורים מובנית. ' +
       (state.ok ? "יש לך גישה מלאה — לחץ על שיעור כדי לצפות." : (state.loggedIn ? "הגישה פתוחה לבעלי מנוי הקורס." : "התחבר כדי לצפות בשיעורים שרכשת.")) + "</div>";
-    if (admin) html += '<div class="course-admin"><button type="button" class="course-add" id="courseAdd">➕ הוסף שיעור</button></div>';
+    if (admin) html += '<div class="course-admin">' +
+      '<button type="button" class="course-add" id="courseUpBtn">📤 העלה מהמחשב</button>' +
+      '<button type="button" class="course-add" id="courseAdd">➕ הוסף לפי מזהה</button>' +
+      '<input type="file" id="courseFile" accept="video/*" style="display:none">' +
+      '<div class="course-prog" id="courseProg" style="display:none"><div class="cp-bar"><span id="cpFill"></span></div><div class="cp-txt" id="cpTxt"></div></div>' +
+      '</div>';
     if (!state.ok) {
       var cta = state.loggedIn
         ? '<a class="course-cta" href="' + COURSE_PATREON_URL + '" target="_blank" rel="noopener">🔓 לרכישת הקורס</a>'
@@ -327,6 +336,8 @@
 
   function _wireCourseActions(wrap, state) {
     var add = $("courseAdd"); if (add) add.onclick = _courseAddPrompt;
+    var up = $("courseUpBtn"), file = $("courseFile");
+    if (up && file) { up.onclick = function () { file.value = ""; file.click(); }; file.onchange = function () { if (file.files && file.files[0]) _courseUpload(file.files[0]); }; }
     var dels = wrap.querySelectorAll(".cl-del");
     for (var d = 0; d < dels.length; d++) dels[d].onclick = function (e) { e.stopPropagation(); _courseDelete(this.getAttribute("data-del")); };
     var rows = wrap.querySelectorAll(".course-lesson");
@@ -376,6 +387,83 @@
           } else { alert("שמירה נכשלה" + (j && j.error ? " · " + j.error : "") + (j && j.detail ? "\n" + j.detail : "")); }
         }).catch(function () { alert("שמירה נכשלה."); });
     });
+  }
+
+  // admin: UPLOAD a video straight from the computer → Cloudflare Stream (gated), RESUMABLE (tus) so it
+  // handles multi-GB files, with live progress, then save the lesson.
+  function _progShow(txt, pct) { var p = $("courseProg"), f = $("cpFill"), t = $("cpTxt"); if (p) p.style.display = ""; if (f) f.style.width = (pct || 0) + "%"; if (t) t.textContent = txt || ""; }
+  function _progHide() { var p = $("courseProg"); if (p) p.style.display = "none"; }
+  function _courseUpload(file) {
+    if (!file) return;
+    var title = window.prompt("כותרת השיעור:", (file.name || "").replace(/\.[^.]+$/, "")); if (title == null) return;
+    title = String(title).trim(); if (!title) { alert("צריך כותרת."); return; }
+    var module = window.prompt("מודול/פרק (אפשר להשאיר ריק):", "") || "";
+    _token().then(function (tok) {
+      if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
+      _progShow("מכין העלאה…", 0);
+      // 1) create a resumable (tus) upload on Cloudflare (server-side, with the CF token) → get the upload URL
+      fetch("/api/course-upload", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ name: title, uploadLength: file.size }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (j) {
+          if (!(j && j.ok && j.location && j.uid)) { _progHide(); alert("לא ניתן להתחיל העלאה" + (j && j.error ? " · " + j.error : "") + (j && j.detail ? "\n" + j.detail : "")); return; }
+          var t0 = Date.now();
+          // 2) upload the file to Cloudflare in chunks (handles multi-GB), with progress + ETA
+          _tusUpload(file, j.location,
+            function (done, total) {
+              var pct = Math.round(done / total * 100);
+              var mb = (done / 1048576).toFixed(0) + "/" + (total / 1048576).toFixed(0) + "MB";
+              var sp = done / Math.max(1, (Date.now() - t0) / 1000) / 1048576;      // MB/s
+              var eta = sp > 0.01 ? Math.ceil((total - done) / 1048576 / sp / 60) : 0;   // minutes
+              _progShow("מעלה… " + pct + "% · " + mb + (eta ? " · ~" + eta + " דק' נותרו" : ""), pct);
+            },
+            function () {
+              _progShow("הועלה ✓ — שומר ומעבד…", 100);
+              fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: j.uid, title: title, module: module }) })
+                .then(function (r) { return r.json().catch(function () { return {}; }); })
+                .then(function (s) {
+                  _progHide();
+                  if (s && s.ok) { alert("הועלה ✓ — השיעור נוסף! (Cloudflare מעבד את הווידאו — כמה דקות עד שיתנגן.)"); _loadCourse(); }
+                  else { alert("הקובץ הועלה אבל שמירת השיעור נכשלה. הוסף ידנית עם המזהה: " + j.uid); }
+                }).catch(function () { _progHide(); alert("הקובץ הועלה; שמירת השיעור נכשלה. מזהה: " + j.uid); });
+            },
+            function (err) { _progHide(); alert("ההעלאה נכשלה (" + err + "). נסה שוב."); }
+          );
+        }).catch(function () { _progHide(); alert("שגיאה בבקשת ההעלאה."); });
+    });
+  }
+
+  // minimal tus resumable uploader (chunked PATCH, no external lib). Cloudflare Stream speaks the tus core protocol.
+  function _tusUpload(file, location, onProg, onDone, onErr) {
+    var CHUNK = 52428800;   // 50MB — a multiple of 256KB, as tus/CF require for non-final chunks
+    var offset = 0, retries = 0;
+    function head() {
+      var x = new XMLHttpRequest();
+      x.open("HEAD", location, true);
+      x.setRequestHeader("Tus-Resumable", "1.0.0");
+      x.onload = function () { var o = parseInt(x.getResponseHeader("Upload-Offset"), 10); if (!isNaN(o)) offset = o; patch(); };
+      x.onerror = function () { patch(); };   // HEAD unsupported → just start from the current offset
+      x.send();
+    }
+    function patch() {
+      if (offset >= file.size) { onDone(); return; }
+      var end = Math.min(offset + CHUNK, file.size), base = offset;
+      var x = new XMLHttpRequest();
+      x.open("PATCH", location, true);
+      x.setRequestHeader("Tus-Resumable", "1.0.0");
+      x.setRequestHeader("Upload-Offset", String(offset));
+      x.setRequestHeader("Content-Type", "application/offset+octet-stream");
+      x.upload.onprogress = function (e) { if (e.lengthComputable) onProg(base + e.loaded, file.size); };
+      x.onload = function () {
+        if (x.status >= 200 && x.status < 300) {
+          var o = parseInt(x.getResponseHeader("Upload-Offset"), 10);
+          offset = isNaN(o) ? end : o; retries = 0; onProg(offset, file.size); patch();
+        } else if (retries < 4) { retries++; setTimeout(head, 1500 * retries); }   // transient → re-sync offset via HEAD and retry
+        else { onErr("HTTP " + x.status); }
+      };
+      x.onerror = function () { if (retries < 4) { retries++; setTimeout(head, 1500 * retries); } else onErr("network"); };
+      x.send(file.slice(offset, end));
+    }
+    head();
   }
 
   function _courseDelete(uid) {
