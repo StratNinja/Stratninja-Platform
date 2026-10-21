@@ -49,7 +49,10 @@ export default async function handler(req, res) {
   if (name) meta.push("name " + b64(name));
 
   try {
-    const r = await fetch("https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream", {
+    // ?direct_user=true → the returned Location is a one-time upload URL the BROWSER can PATCH to
+    // directly (CORS-enabled, no API token needed). Without it the browser upload fails with a
+    // network/CORS error.
+    const r = await fetch("https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream?direct_user=true", {
       method: "POST",
       headers: {
         Authorization: "Bearer " + CF_TOKEN,
