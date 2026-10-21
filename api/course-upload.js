@@ -42,7 +42,9 @@ export default async function handler(req, res) {
   const name = String(body.name == null ? "" : body.name).replace(/[\x00-\x1f\x7f]/g, "").trim().slice(0, 160);
   const uploadLength = parseInt(body.uploadLength, 10);
   if (!(uploadLength > 0)) { res.status(400).json({ error: "bad_length" }); return; }
-  const maxDur = Math.min(Math.max(parseInt(body.maxDurationSeconds, 10) || 21600, 60), 43200);
+  // maxDurationSeconds is the MAX allowed length — but CF RESERVES it against your storage minutes for
+  // a pending upload, so keep it tight (a long lesson is ~1.5h). Default 2h; hard cap 3h.
+  const maxDur = Math.min(Math.max(parseInt(body.maxDurationSeconds, 10) || 7200, 60), 10800);
 
   // tus Upload-Metadata: comma-separated "key base64value" (or bare key for a flag).
   const meta = ["requiresignedurls", "maxDurationSeconds " + b64(String(maxDur))];
