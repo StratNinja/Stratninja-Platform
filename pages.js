@@ -5665,12 +5665,12 @@
             '<div class="fgrp"><label>ווליום ≥</label><select id="tVolMin">' +
               opt("0", techState.volMin, "— הכל") + opt("500000", techState.volMin, "500K") + opt("1000000", techState.volMin, "1M") + opt("2000000", techState.volMin, "2M") +
               opt("5000000", techState.volMin, "5M") + opt("10000000", techState.volMin, "10M") + opt("20000000", techState.volMin, "20M") + "</select></div>" +
-            '<div class="fgrp"><label>📊 מגמת ווליום <span class="muted" style="font-size:10px">(ימים רצופים · עד 7)</span></label><div class="chips" style="align-items:center"><select id="tVolTrendDir">' +
+            '<div class="fgrp"><label>📊 מגמת ווליום <span class="muted" style="font-size:10px">(ימים רצופים · עד 20)</span></label><div class="chips" style="align-items:center"><select id="tVolTrendDir">' +
               opt("off", techState.volTrendDir, "— הכל") + opt("up", techState.volTrendDir, "📈 עולה") + opt("down", techState.volTrendDir, "📉 יורד") + "</select>" +
-              (_volTrendActive() ? '<span class="muted">≥</span><input id="tVolTrendDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _volTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
-            '<div class="fgrp"><label>📊 ווליום מול הממוצע <span class="muted" style="font-size:10px">(ימים רצופים · עד 7)</span></label><div class="chips" style="align-items:center"><select id="tVolAvgDir">' +
+              (_volTrendActive() ? '<span class="muted">≥</span><input id="tVolTrendDays" type="number" min="1" max="20" step="1" style="width:52px" value="' + _volTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
+            '<div class="fgrp"><label>📊 ווליום מול הממוצע <span class="muted" style="font-size:10px">(ימים רצופים · עד 20)</span></label><div class="chips" style="align-items:center"><select id="tVolAvgDir">' +
               opt("off", techState.volAvgDir, "— הכל") + opt("above", techState.volAvgDir, "📈 מעל הממוצע") + opt("below", techState.volAvgDir, "📉 מתחת לממוצע") + "</select>" +
-              (_volAvgActive() ? '<span class="muted">≥</span><input id="tVolAvgDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _volAvgDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
+              (_volAvgActive() ? '<span class="muted">≥</span><input id="tVolAvgDays" type="number" min="1" max="20" step="1" style="width:52px" value="' + _volAvgDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>💧 מגמת MFI <span class="muted" style="font-size:10px">(ימים רצופים · עד 7)</span></label><div class="chips" style="align-items:center"><select id="tMfiTrendDir">' +
               opt("off", techState.mfiTrendDir, "— הכל") + opt("up", techState.mfiTrendDir, "📈 עולה") + opt("down", techState.mfiTrendDir, "📉 יורד") + "</select>" +
               (_mfiTrendActive() ? '<span class="muted">≥</span><input id="tMfiTrendDays" type="number" min="1" max="7" step="1" style="width:52px" value="' + _mfiTrendDays() + '"><span class="muted">ימים רצוף</span>' : "") + "</div></div>" +
@@ -6296,9 +6296,9 @@
     bind("tRvolMin", "onchange", e => { techState.rvolMin = e.target.value; reRender(); });
     bind("tVolMin", "onchange", e => { techState.volMin = parseInt(e.target.value, 10) || 0; reRender(); });
     bind("tVolTrendDir", "onchange", e => { techState.volTrendDir = e.target.value; reRender(); });
-    bind("tVolTrendDays", "onchange", e => { techState.volTrendDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
+    bind("tVolTrendDays", "onchange", e => { techState.volTrendDays = Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tVolAvgDir", "onchange", e => { techState.volAvgDir = e.target.value; reRender(); });
-    bind("tVolAvgDays", "onchange", e => { techState.volAvgDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
+    bind("tVolAvgDays", "onchange", e => { techState.volAvgDays = Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTrendDir", "onchange", e => { techState.mfiTrendDir = e.target.value; reRender(); });
     bind("tMfiTrendDays", "onchange", e => { techState.mfiTrendDays = Math.max(1, Math.min(7, parseInt(e.target.value, 10) || 1)); reRender(); });
     bind("tMfiTurn", "onchange", e => { techState.mfiTurn = e.target.value; reRender(); });
@@ -6461,9 +6461,9 @@
     rvolMin: "",
     volMin: 0,
     volTrendDir: "off",          // volume trend direction: off / up (rising) / down (falling)
-    volTrendDays: 3,             // min consecutive days in the streak (3–7)
+    volTrendDays: 3,             // min consecutive days in the streak (1–20)
     volAvgDir: "off",            // volume vs 20d avg: off / above / below (consecutive days)
-    volAvgDays: 3,               // min consecutive days above/below the avg (1–7)
+    volAvgDays: 3,               // min consecutive days above/below the avg (1–20)
     mfiTrendDir: "off",          // MFI trend direction: off / up (rising) / down (falling)
     mfiTrendDays: 3,             // min consecutive MFI days in the streak (1–7)
     mfiTurn: "off",              // MFI reversal at extremes: off / up (<20 turning up) / down (>80 turning down) / any
@@ -6665,7 +6665,7 @@
   function _extOf(sym) { return (LIVE && LIVE.ext && LIVE.ext[sym] != null) ? LIVE.ext[sym] : null; }
   function _extActive() { return techState.extMove === "up" || techState.extMove === "down" || techState.extMove === "any"; }
   function _volTrendActive() { return techState.volTrendDir === "up" || techState.volTrendDir === "down"; }
-  function _volTrendDays() { const d = parseInt(techState.volTrendDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(7, d)); }
+  function _volTrendDays() { const d = parseInt(techState.volTrendDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(20, d)); }
   function _volTrendPass(k) {
     if (!_volTrendActive()) return true;
     const v = k ? k.voltrend : null;
@@ -6676,7 +6676,7 @@
     return true;
   }
   function _volAvgActive() { return techState.volAvgDir === "above" || techState.volAvgDir === "below"; }
-  function _volAvgDays() { const d = parseInt(techState.volAvgDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(7, d)); }
+  function _volAvgDays() { const d = parseInt(techState.volAvgDays, 10); return isNaN(d) ? 3 : Math.max(1, Math.min(20, d)); }
   function _volAvgPass(k) {
     if (!_volAvgActive()) return true;
     const v = k ? k.volavgtrend : null;
