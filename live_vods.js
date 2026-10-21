@@ -272,9 +272,11 @@
   var COURSE_PATREON_URL = "https://www.patreon.com/14520383/join";   // purchase the course (Patreon $50+ tier)
 
   // load the curriculum + the viewer's course entitlement, then render the pane
-  function _loadCourse() {
+  // fresh=true (after an admin edit/add/delete) adds a cache-buster so the Vercel edge cache (~60s) is
+  // bypassed and the change shows IMMEDIATELY; a normal tab-open uses the cache.
+  function _loadCourse(fresh) {
     var wrap = $("courseWrap"); if (!wrap) return;
-    fetch("/api/course-lessons", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    fetch("/api/course-lessons" + (fresh ? ("?_=" + Date.now()) : ""), { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       var lessons = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : [];
       _courseEntitled().then(function (state) { _renderCourse(wrap, lessons, state); });
     }).catch(function () { wrap.innerHTML = '<div class="course-empty">לא ניתן לטעון את הקורס כרגע — נסו שוב.</div>'; });
@@ -393,7 +395,7 @@
           if (j && j.ok) {
             if (j.warn === "video_not_gated") alert("נשמר ✓ — אבל שים לב: הסרטון ב-Cloudflare לא מסומן כ-'Require signed URLs'. סמן אותו כדי שיהיה מגודר.");
             else if (j.warn === "cf_lookup_failed") alert("נשמר ✓ (לא הצלחתי לאמת מול Cloudflare — ודא שהמזהה נכון).");
-            _loadCourse();
+            _loadCourse(true);
           } else { alert("שמירה נכשלה" + (j && j.error ? " · " + j.error : "") + (j && j.detail ? "\n" + j.detail : "")); }
         }).catch(function () { alert("שמירה נכשלה."); });
     });
@@ -432,7 +434,7 @@
                 .then(function (r) { return r.json().catch(function () { return {}; }); })
                 .then(function (s) {
                   _progHide();
-                  if (s && s.ok) { alert("הועלה ✓ — השיעור נוסף! (Cloudflare מעבד את הווידאו — כמה דקות עד שיתנגן.)"); _loadCourse(); }
+                  if (s && s.ok) { alert("הועלה ✓ — השיעור נוסף! (Cloudflare מעבד את הווידאו — כמה דקות עד שיתנגן.)"); _loadCourse(true); }
                   else { alert("הקובץ הועלה אבל שמירת השיעור נכשלה. הוסף ידנית עם המזהה: " + j.uid); }
                 }).catch(function () { _progHide(); alert("הקובץ הועלה; שמירת השיעור נכשלה. מזהה: " + j.uid); });
             },
@@ -490,7 +492,7 @@
       if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
       fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: uid, title: nt, module: nm, sort: parseInt(sort, 10) || 0 }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
-        .then(function (j) { if (j && j.ok) { _loadCourse(); } else { alert("עריכה נכשלה" + (j && j.error ? " · " + j.error : "")); } })
+        .then(function (j) { if (j && j.ok) { _loadCourse(true); } else { alert("עריכה נכשלה" + (j && j.error ? " · " + j.error : "")); } })
         .catch(function () { alert("עריכה נכשלה."); });
     });
   }
@@ -501,7 +503,7 @@
       if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
       fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "delete", uid: uid }) })
         .then(function (r) { return r.json().catch(function () { return {}; }); })
-        .then(function (j) { if (j && j.ok) { _loadCourse(); } else { alert("ההסרה נכשלה."); } }).catch(function () { alert("ההסרה נכשלה."); });
+        .then(function (j) { if (j && j.ok) { _loadCourse(true); } else { alert("ההסרה נכשלה."); } }).catch(function () { alert("ההסרה נכשלה."); });
     });
   }
 
