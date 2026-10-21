@@ -327,7 +327,8 @@
         '<span class="cl-ico">' + ico + "</span>" +
         '<div class="cl-main"><div class="cl-title">' + esc(L.title) + "</div>" + (L.summary ? '<div class="cl-sum">' + esc(L.summary) + "</div>" : "") + "</div>" +
         (L.duration ? '<span class="cl-dur">' + fmtDur(L.duration) + "</span>" : "") +
-        (admin ? '<button type="button" class="vt-edit cl-del" data-del="' + esc(L.uid) + '" title="מחק">🗑️</button>' : "") +
+        (admin ? '<button type="button" class="vt-edit cl-ren" data-ren="' + esc(L.uid) + '" data-rtitle="' + esc(L.title) + '" data-rmod="' + esc(L.module || "") + '" data-rsort="' + (parseInt(L.sort, 10) || 0) + '" title="ערוך שם">✏️</button>' +
+          '<button type="button" class="vt-edit cl-del" data-del="' + esc(L.uid) + '" title="מחק">🗑️</button>' : "") +
         "</div>";
     }
     if (curMod !== null) html += "</div>";
@@ -342,6 +343,8 @@
     if (up && file) { up.onclick = function () { file.value = ""; file.click(); }; file.onchange = function () { if (file.files && file.files[0]) _courseUpload(file.files[0]); }; }
     var dels = wrap.querySelectorAll(".cl-del");
     for (var d = 0; d < dels.length; d++) dels[d].onclick = function (e) { e.stopPropagation(); _courseDelete(this.getAttribute("data-del")); };
+    var rens = wrap.querySelectorAll(".cl-ren");
+    for (var rn = 0; rn < rens.length; rn++) rens[rn].onclick = function (e) { e.stopPropagation(); _courseRename(this.getAttribute("data-ren"), this.getAttribute("data-rtitle"), this.getAttribute("data-rmod"), this.getAttribute("data-rsort")); };
     var rows = wrap.querySelectorAll(".course-lesson");
     for (var i = 0; i < rows.length; i++) rows[i].onclick = function () {
       var uid = this.getAttribute("data-uid"), title = this.getAttribute("data-title");
@@ -475,6 +478,21 @@
       x.send(file.slice(offset, end));
     }
     patch();   // start directly — a fresh upload has offset 0; HEAD is only used to re-sync on a retry
+  }
+
+  // admin: rename a lesson (and optionally change its module). Reuses the course-admin "save" upsert on
+  // the same uid; also refreshes the CF duration as a bonus.
+  function _courseRename(uid, title, module, sort) {
+    var nt = window.prompt("שם חדש לשיעור:", title || ""); if (nt == null) return;
+    nt = String(nt).trim(); if (!nt) { alert("צריך שם."); return; }
+    var nm = window.prompt("מודול/פרק (אפשר להשאיר ריק):", module || ""); if (nm == null) nm = module || "";
+    _token().then(function (tok) {
+      if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
+      fetch("/api/course-admin", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ action: "save", uid: uid, title: nt, module: nm, sort: parseInt(sort, 10) || 0 }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (j) { if (j && j.ok) { _loadCourse(); } else { alert("עריכה נכשלה" + (j && j.error ? " · " + j.error : "")); } })
+        .catch(function () { alert("עריכה נכשלה."); });
+    });
   }
 
   function _courseDelete(uid) {
