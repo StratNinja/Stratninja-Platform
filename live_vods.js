@@ -320,21 +320,50 @@
     fetch("/api/course-lessons" + (fresh ? ("?_=" + Date.now()) : ""), { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
       var all = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : [];
       var lessons = all.filter(function (L) { return ((L.kind || "course") === kind); });
-      _entState().then(function (s) { _renderCourse(kind, wrap, lessons, { loggedIn: s.loggedIn, ok: !!s[cfg.entField] }); });
+      // PHASE 1 — render the lessons right away using a best-guess entitlement (last-known,
+      // cached in localStorage), so the list shows instantly instead of the "טוען…" spinner.
+      var pre = _entPeek();
+      _renderCourse(kind, wrap, lessons, { loggedIn: !!pre.loggedIn, ok: !!pre[cfg.entField] });
+      // PHASE 2 — verify against the server (with a hard timeout) and re-render if it differs.
+      _entState().then(function (s) {
+        if (s.loggedIn !== !!pre.loggedIn || !!s[cfg.entField] !== !!pre[cfg.entField]) {
+          _renderCourse(kind, wrap, lessons, { loggedIn: s.loggedIn, ok: !!s[cfg.entField] });
+        }
+      });
     }).catch(function () { wrap.innerHTML = '<div class="course-empty">' + cfg.errLoad + "</div>"; });
   }
 
+  // last-known entitlement cached in localStorage → instant best-guess render (verified after).
+  var _ENT_LS = "sn_ent_v1";
+  function _entPeek() {
+    try { var o = JSON.parse(localStorage.getItem(_ENT_LS) || "null"); if (o && typeof o === "object") return o; } catch (e) {}
+    return { loggedIn: false, course: false, entitled: false };
+  }
+  function _entSave(s) { try { localStorage.setItem(_ENT_LS, JSON.stringify(s)); } catch (e) {} }
+
   // one server-verified entitlement call shared by both gated tabs → { loggedIn, course, entitled }.
-  // Cached (promise) so opening both tabs doesn't hit the endpoint twice.
+  // Cached (promise) so opening both tabs doesn't hit the endpoint twice. The entitlement-sync
+  // call can be slow (it syncs Discord membership), so we abort it after ENT_TIMEOUT_MS and fall
+  // back to the last-known cached state instead of leaving the tab spinning for minutes.
   var _entP = null;
+  var ENT_TIMEOUT_MS = 8000;
   function _entState() {
     if (_entP) return _entP;
     _entP = _token().then(function (tok) {
-      if (!tok) return { loggedIn: false, course: false, entitled: false };
-      return fetch("/api/entitlement-sync", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok } })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { return { loggedIn: true, course: !!(j && j.course), entitled: !!(j && j.entitled) }; })
-        .catch(function () { return { loggedIn: true, course: false, entitled: false }; });
+      if (!tok) { var guest = { loggedIn: false, course: false, entitled: false }; _entSave(guest); return guest; }
+      var ctl = null, timer = null;
+      try { ctl = new AbortController(); timer = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, ENT_TIMEOUT_MS); } catch (e) { ctl = null; }
+      return fetch("/api/entitlement-sync", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, signal: ctl ? ctl.signal : undefined })
+        .then(function (r) { if (timer) clearTimeout(timer); return r.ok ? r.json() : null; })
+        .then(function (j) { var s = { loggedIn: true, course: !!(j && j.course), entitled: !!(j && j.entitled) }; _entSave(s); return s; })
+        .catch(function () {
+          if (timer) clearTimeout(timer);
+          // timeout / network error — keep the last-known entitlement (don't lock out a paid user),
+          // but let the next tab open retry the server by clearing the shared promise.
+          _entP = null;
+          var prev = _entPeek();
+          return { loggedIn: true, course: !!prev.course, entitled: !!prev.entitled };
+        });
     });
     return _entP;
   }
