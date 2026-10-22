@@ -17,6 +17,8 @@
 //   DISCORD_BOT_TOKEN           the bot token (needs "Server Members Intent")
 //   DISCORD_GUILD_ID            the community guild (server) id
 //   DISCORD_REQUIRED_ROLE_ID    (optional) require this role id too — future tiers
+//   DISCORD_COURSE_ROLE_ID      (optional) role id(s) that grant the course — comma/space separated
+//                               (e.g. the Advanced + Advanced_Founder + Pro tier roles). ANY match unlocks.
 // (SUPABASE_URL / SUPABASE_ANON_KEY as in api/live-presence.js.)
 
 const SUPA_URL = process.env.SUPABASE_URL || "https://iujeekdtimlmgwzzlauj.supabase.co";
@@ -27,7 +29,9 @@ const ANON = process.env.SUPABASE_ANON_KEY ||
 const BOT_TOKEN = (process.env.DISCORD_BOT_TOKEN || "").trim();
 const GUILD_ID = (process.env.DISCORD_GUILD_ID || "").trim();
 const REQUIRED_ROLE = (process.env.DISCORD_REQUIRED_ROLE_ID || "").trim();  // optional — role gate for community
-const COURSE_ROLE = (process.env.DISCORD_COURSE_ROLE_ID || "").trim();      // optional — role that grants the course
+// one OR MORE role ids that grant the course (comma/space separated) — e.g. Advanced + Advanced_Founder + Pro.
+// Having ANY of these roles unlocks course_the_strat. Empty ⇒ nobody auto-granted via Discord (manual grants stand).
+const COURSE_ROLES = (process.env.DISCORD_COURSE_ROLE_ID || "").split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
 const SCOPE = "community";
 const COURSE_SCOPE = "course_the_strat";
 const DISCORD_TIMEOUT_MS = 6000;
@@ -165,12 +169,12 @@ export default async function handler(req, res) {
   const roles = gm.roles || [];
   // community: guild membership (optionally gated by a required role).
   const entitled = gm.member && (!REQUIRED_ROLE || roles.indexOf(REQUIRED_ROLE) >= 0);
-  // course: a member who holds the dedicated course role. If no course role is configured yet,
-  // nobody is auto-granted the course via Discord (manual grants in the table still stand).
-  let course = gm.member && !!COURSE_ROLE && roles.indexOf(COURSE_ROLE) >= 0;
+  // course: a member who holds ANY of the configured course roles (Advanced / Pro tiers). If no
+  // course role is configured yet, nobody is auto-granted via Discord (manual grants still stand).
+  let course = gm.member && COURSE_ROLES.length > 0 && roles.some((r) => COURSE_ROLES.indexOf(r) >= 0);
 
   await syncScope(u.id, discordId, SCOPE, entitled);
-  if (COURSE_ROLE) await syncScope(u.id, discordId, COURSE_SCOPE, course);  // only manage the role-sourced course row when a role is set
+  if (COURSE_ROLES.length) await syncScope(u.id, discordId, COURSE_SCOPE, course);  // only manage the role-sourced course row when role(s) are set
   // reflect a manual/admin grant too, so the UI unlocks even without the Discord role
   if (!course) course = await hasActiveEntitlement(u.id, COURSE_SCOPE);
 
