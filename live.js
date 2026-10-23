@@ -507,17 +507,41 @@ window.Live = (function () {
       });
     };
   }
+  // Downscale an image file to a JPEG data URL that stays well under YouTube's 2MB thumbnail cap (and the
+  // site's 3MB). Max 1600×900 (16:9-ish, aspect preserved), JPEG q0.85 → typically <500KB, great quality
+  // for both the web banner and the YouTube thumbnail. Falls back to the raw file via cb(null) on any error.
+  function _scaleThumbForUpload(file, cb) {
+    try {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var maxW = 1600, maxH = 900;
+          var w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          var scale = Math.min(1, maxW / w, maxH / h);
+          var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+          var c = document.createElement("canvas"); c.width = cw; c.height = ch;
+          c.getContext("2d").drawImage(img, 0, 0, cw, ch);
+          var out = c.toDataURL("image/jpeg", 0.85);
+          URL.revokeObjectURL(url);
+          cb(out && out.indexOf("data:image/jpeg") === 0 ? out : null);
+        } catch (e) { try { URL.revokeObjectURL(url); } catch (e2) {} cb(null); }
+      };
+      img.onerror = function () { try { URL.revokeObjectURL(url); } catch (e) {} cb(null); };
+      img.src = url;
+    } catch (e) { cb(null); }
+  }
   // upload a scheduled-live thumbnail to its own storage slot (NOT bound to the live_status row).
+  // Downscaled first so it also fits YouTube's 2MB limit (an oversized image used to upload fine to the
+  // site but get silently skipped on YouTube → the broadcast showed a default thumbnail).
   function _uploadSchedThumb(file) {
-    if (file.size > 3 * 1024 * 1024) { toast("התמונה גדולה מדי (מקס׳ 3MB)"); return; }
+    if (file.size > 10 * 1024 * 1024) { toast("התמונה גדולה מדי (מקס׳ 10MB)"); return; }
     toast("מעלה תמונה…");
-    var reader = new FileReader();
-    reader.onerror = function () { toast("קריאת הקובץ נכשלה"); };
-    reader.onload = function () {
+    function send(dataUrl) {
       _accessToken().then(function (tok) {
         if (!tok) { toast("יש להתחבר מחדש"); return; }
         var slot = _schedEditId ? _schedEditId.replace(/[^a-z0-9]/gi, "").slice(0, 32) : ("new" + Date.now());
-        fetch("/api/live-thumb", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ data_url: reader.result, slot: slot }) })
+        fetch("/api/live-thumb", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ data_url: dataUrl, slot: slot }) })
           .then(function (r) { return r.json(); })
           .then(function (r) {
             if (r && r.ok && r.thumbnail_url) {
@@ -527,8 +551,16 @@ window.Live = (function () {
             } else { toast("העלאה נכשלה" + (r && r.error ? " · " + r.error : "")); }
           }).catch(function () { toast("העלאה נכשלה"); });
       });
-    };
-    reader.readAsDataURL(file);
+    }
+    // try to downscale (keeps YouTube happy); if that fails, fall back to the raw file.
+    _scaleThumbForUpload(file, function (scaled) {
+      if (scaled) { send(scaled); return; }
+      if (file.size > 3 * 1024 * 1024) { toast("התמונה גדולה מדי להעלאה (מקס׳ 3MB)"); return; }
+      var reader = new FileReader();
+      reader.onerror = function () { toast("קריאת הקובץ נכשלה"); };
+      reader.onload = function () { send(reader.result); };
+      reader.readAsDataURL(file);
+    });
   }
   function _dragWin(win, handle) {
     if (!handle) return;
