@@ -1571,7 +1571,10 @@
         date: m.exitDate || m.entryDate, side: isShort ? "B" : "S", qty: qty, price: parseFloat(m.exitPrice) || 0,
         kind: "close", openQty: 0, closeQty: qty, _manual: true });
     });
-    fills.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));   // newest first
+    // chronological (oldest first) so a position's פתיחה always precedes its סגירה; on the same
+    // date, opens sort before flips before closes.
+    const _kord = k => k === "open" ? 0 : k === "flip" ? 1 : 2;
+    fills.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : (_kord(a.kind) - _kord(b.kind))));
     const info = el("div", "note");
     info.style.cssText = "margin:2px 0 10px;font-size:12px";
     info.innerHTML = "🔎 <b>ביצועים בודדים</b> — כל קנייה/מכירה בנפרד, מסומנת אם היא <b>פותחת</b> פוזיציה או <b>סוגרת</b> אותה. עסקאות ידניות מפורקות לרגל פתיחה (ורגל סגירה אם הוזן מחיר יציאה); ביצועים מיובאים מסומנים לפי סדר ה-FIFO. כך רואים כניסה גולמית (למשל קנייה ראשונית של 10 חוזים) שבעסקאות הסגורות מתפצלת.";
