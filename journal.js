@@ -1551,14 +1551,33 @@
   function renderFillsInto(wrap) {
     const acct = state.account;
     let csvFills = Store.getFills() || [];
-    if (acct !== ALL) csvFills = csvFills.filter(f => (f.account || "").trim() === acct);
-    const fills = E.computeFills(csvFills).slice().reverse();   // newest first
+    let manual = Store.getManual() || [];
+    if (acct !== ALL) {
+      csvFills = csvFills.filter(f => (f.account || "").trim() === acct);
+      manual = manual.filter(m => (m.account || "").trim() === acct);
+    }
+    const fills = E.computeFills(csvFills).slice();   // CSV executions, FIFO-tagged open/close
+    // MANUAL trades are entered as a whole round-trip → decompose each into an OPEN leg (buy for a
+    // long / sell for a short) and, if it has an exit, a CLOSE leg. So a manual entry is visible
+    // here as its raw buy/sell with an open/close tag, just like an imported fill.
+    manual.forEach(m => {
+      const isShort = m.direction === "short";
+      const qty = Math.abs(parseFloat(m.qty) || 0);
+      const hasExit = m.exitPrice !== "" && m.exitPrice != null && !isNaN(parseFloat(m.exitPrice));
+      fills.push({ account: m.account, symbol: m.symbol, assetType: m.assetType, optType: m.optType,
+        date: m.entryDate, side: isShort ? "S" : "B", qty: qty, price: parseFloat(m.entryPrice) || 0,
+        kind: "open", openQty: qty, closeQty: 0, _manual: true });
+      if (hasExit) fills.push({ account: m.account, symbol: m.symbol, assetType: m.assetType, optType: m.optType,
+        date: m.exitDate || m.entryDate, side: isShort ? "B" : "S", qty: qty, price: parseFloat(m.exitPrice) || 0,
+        kind: "close", openQty: 0, closeQty: qty, _manual: true });
+    });
+    fills.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));   // newest first
     const info = el("div", "note");
     info.style.cssText = "margin:2px 0 10px;font-size:12px";
-    info.innerHTML = "🔎 <b>ביצועים בודדים</b> — כל קנייה/מכירה בנפרד, מסומנת אם היא <b>פותחת</b> פוזיציה או <b>סוגרת</b> אותה (לפי סדר ה-FIFO לכל סימבול+חשבון). כך רואים כניסה גולמית (למשל קנייה ראשונית של 10 חוזים) שבעסקאות הסגורות מתפצלת לכמה שורות.";
+    info.innerHTML = "🔎 <b>ביצועים בודדים</b> — כל קנייה/מכירה בנפרד, מסומנת אם היא <b>פותחת</b> פוזיציה או <b>סוגרת</b> אותה. עסקאות ידניות מפורקות לרגל פתיחה (ורגל סגירה אם הוזן מחיר יציאה); ביצועים מיובאים מסומנים לפי סדר ה-FIFO. כך רואים כניסה גולמית (למשל קנייה ראשונית של 10 חוזים) שבעסקאות הסגורות מתפצלת.";
     wrap.appendChild(info);
     if (!fills.length) {
-      wrap.appendChild(el("div", "note", "אין ביצועים מיובאים בחשבון זה. ייבא דוח ברוקר (CSV) כדי לראות כל קנייה/מכירה בנפרד. (עסקאות ידניות מוזנות כעסקה שלמה, לא כביצועים.)"));
+      wrap.appendChild(el("div", "note", "אין עדיין ביצועים/עסקאות בחשבון זה. (אם ה-AMZN שלך בחשבון אחר — החלף חשבון למעלה, או בחר 'כל החשבונות'.)"));
       return;
     }
     const showAcct = acct === ALL;
