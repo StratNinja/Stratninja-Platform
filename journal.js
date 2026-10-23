@@ -352,7 +352,7 @@
       content.appendChild(renderStatCards(trades));
       content.appendChild(renderTotalPnl(trades, manualOpen, openPositions));
       content.appendChild(renderAssetBreakdown(trades));
-      content.appendChild(renderTrades(trades, openPositions));
+      content.appendChild(renderTrades(trades, openPositions, manualOpen));
     } else if (state.tab === "calendar") {
       content.appendChild(renderCalendar(trades));
     } else if (state.tab === "equity") {
@@ -1609,64 +1609,79 @@
     wrap.appendChild(box);
   }
 
-  function renderTrades(trades, openPositions) {
+  function renderTrades(trades, openPositions, manualOpen) {
     const wrap = el("div");
-    // view toggle: full round-trips (default) vs individual executions (each tagged open/close)
-    const viewBar = el("div", "trades-viewbar");
-    viewBar.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 10px";
-    viewBar.innerHTML = '<label class="agg-toggle"><input type="checkbox" id="fillsToggle"' + (state.showFills ? " checked" : "") + '><span>🔎 הצג ביצועים בודדים (קנייה/מכירה · פתיחה/סגירה)</span></label>' +
-      '<span class="muted" style="font-size:11px">כל קנייה ומכירה בנפרד — כולל כניסות שטרם נסגרו. כבוי = עסקאות סגורות מלאות.</span>';
-    wrap.appendChild(viewBar);
-    { const tg = viewBar.querySelector("#fillsToggle"); if (tg) tg.onchange = () => { state.showFills = tg.checked; try { localStorage.setItem("sn_show_fills", tg.checked ? "1" : "0"); } catch (e) {} render(); }; }
-    if (state.showFills) { renderFillsInto(wrap); return wrap; }
     const agg = state.aggTrades !== false;
     const base = agg ? aggregateTrades(trades) : trades;
     // exposure = entry notional (qty × entry price × multiplier); exit value = same at the exit price.
-    const withPv = base.map(t => { const pv = (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1); const xv = (t.exitPrice || 0) * (t.qty || 0) * (t.mult || 1); return Object.assign({}, t, { posValue: pv, exitValue: xv, pnlPct: pv > 0 ? (t.pnl || 0) / pv * 100 : 0 }); });
+    const withPv = base.map(t => { const pv = (t.entryPrice || 0) * (t.qty || 0) * (t.mult || 1); const xv = (t.exitPrice || 0) * (t.qty || 0) * (t.mult || 1); return Object.assign({}, t, { posValue: pv, exitValue: xv, pnlPct: pv > 0 ? (t.pnl || 0) / pv * 100 : 0, _open: false }); });
     const sorted = withPv.sort((a, b) => {
       let av = a[state.sortKey], bv = b[state.sortKey];
       if (typeof av === "string") { return (av < bv ? -1 : av > bv ? 1 : 0) * state.sortDir; }
       return (av - bv) * state.sortDir;
     });
+    // OPEN positions (bought, not yet sold) shown in the SAME table, tagged "פתוחה" and pinned on top,
+    // so "open vs closed" is a single column. From the CSV-FIFO leftovers + manual open trades.
+    const mkOpen = (p, src, entryPrice, mult) => ({
+      id: p.id, symbol: p.symbol, account: p.account, direction: p.direction,
+      assetType: p.assetType, optType: p.optType, qty: p.qty, mult: mult, entryPrice: entryPrice,
+      entryDate: p.entryDate, exitDate: "", source: src,
+      posValue: (entryPrice || 0) * (p.qty || 0) * (mult || 1), _open: true,
+    });
+    const openRows = (openPositions || []).map(p => mkOpen(p, "csv", p.avgPrice, p.assetType === "option" ? 100 : 1))
+      .concat((manualOpen || []).map(p => mkOpen(p, "manual", p.entryPrice, p.mult || (p.assetType === "option" ? 100 : 1))));
+    openRows.sort((a, b) => (a.entryDate < b.entryDate ? 1 : a.entryDate > b.entryDate ? -1 : 0));
+    const allRows = openRows.concat(sorted);   // open positions always on top
     const showAcct = state.account === ALL;   // combined view → show which account each trade is in
     const cols = [
       ...(showAcct ? [["account", "חשבון"]] : []),
+      ["_status", "פתיחה/סגירה"],
       ["exitDate", "תאריך יציאה"], ["symbol", "סימבול"], ["assetType", "סוג"],
       ["direction", "כיוון"], ["qty", "כמות"], ["entryPrice", "כניסה"], ["posValue", "חשיפה"],
       ["exitPrice", "יציאה"], ["exitValue", "שווי ביציאה"], ["fees", "עמלות"], ["pnl", "נטו"], ["pnlPct", "% נטו"], ["source", "מקור"],
     ];
     let head = "<tr>";
     cols.forEach(([k, l]) => {
+      if (k.charAt(0) === "_") { head += "<th>" + l + "</th>"; return; }   // status column — not sortable
       const arrow = state.sortKey === k ? (state.sortDir < 0 ? " ▾" : " ▴") : "";
       head += '<th data-k="' + k + '">' + l + arrow + "</th>";
     });
     head += "<th></th></tr>";
     let rows = "";
-    sorted.forEach(t => {
+    const em = "<td class='muted'>—</td>";   // empty cell for fields an open position doesn't have yet
+    allRows.forEach(t => {
       const srcTxt = t.source === "mixed" ? "מעורב" : t.source === "manual" ? "ידני" : "CSV";
       const nBadge = (t._n > 1) ? ' <span class="agg-badge" title="' + t._n + ' עסקאות מאוגדות — כבה \'אגד\' כדי לפצל">×' + t._n + "</span>" : "";
+      const statusCell = t._open
+        ? '<td><span class="pill long" title="פוזיציה פתוחה — נקנתה וטרם נסגרה">🟢 פתוחה</span></td>'
+        : '<td><span class="pill src" title="פוזיציה שנסגרה — נקנתה ונמכרה">✓ סגורה</span></td>';
       rows += "<tr>" +
         (showAcct ? '<td class="muted" style="white-space:nowrap">' + (t.account || "—") + "</td>" : "") +
-        "<td>" + t.exitDate + "</td>" +
+        statusCell +
+        "<td>" + (t._open ? '<span class="muted">—</span>' : t.exitDate) + "</td>" +
         "<td>" + chartSym(t.symbol) + nBadge + "</td>" +
         '<td><span class="pill ' + (t.assetType === "option" ? "opt" : "stk") + '">' + (t.assetType === "option" ? "אופ׳" + (t.optType ? " · " + t.optType.toUpperCase() : "") : "מניה") + "</span></td>" +
         '<td><span class="pill ' + t.direction + '">' + (t.direction === "long" ? "לונג" : "שורט") + "</span></td>" +
         "<td>" + (Math.round((t.qty || 0) * 1e4) / 1e4) + "</td>" +
         "<td>" + money(t.entryPrice, 2) + "</td>" +
         "<td>" + money(t.posValue, 0) + "</td>" +
-        "<td>" + money(t.exitPrice, 2) + "</td>" +
-        "<td>" + money(t.exitValue, 0) + "</td>" +
-        '<td class="zero">' + money(-t.fees, 2) + "</td>" +
-        '<td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td>" +
-        '<td class="' + cls(t.pnl) + '">' + (t.posValue > 0 ? (t.pnlPct >= 0 ? "+" : "") + t.pnlPct.toFixed(2) + "%" : "—") + "</td>" +
+        (t._open ? em : "<td>" + money(t.exitPrice, 2) + "</td>") +
+        (t._open ? em : "<td>" + money(t.exitValue, 0) + "</td>") +
+        (t._open ? em : '<td class="zero">' + money(-t.fees, 2) + "</td>") +
+        (t._open ? em : '<td class="' + cls(t.pnl) + '">' + money(t.pnl, 2) + "</td>") +
+        (t._open ? em : '<td class="' + cls(t.pnl) + '">' + (t.posValue > 0 ? (t.pnlPct >= 0 ? "+" : "") + t.pnlPct.toFixed(2) + "%" : "—") + "</td>") +
         '<td><span class="pill src">' + srcTxt + "</span></td>" +
         "<td>" +
-          (t._agg ? '<span class="muted" style="font-size:11px" title="פצל כדי לערוך/למחוק עסקה בודדת">מאוגד</span>' :
-            ('<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
-             (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
-             (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
-             (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
-             '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>')) +
+          (t._open
+            ? (t.source === "manual" && t.id
+                ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך / הוסף מחיר יציאה">✏️</button> <button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>'
+                : '<span class="muted" style="font-size:11px">פתוחה</span>')
+            : (t._agg ? '<span class="muted" style="font-size:11px" title="פצל כדי לערוך/למחוק עסקה בודדת">מאוגד</span>' :
+              ('<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
+               (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
+               (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
+               (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
+               '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>'))) +
         "</td>" +
         "</tr>";
     });
@@ -1685,15 +1700,12 @@
         render();
       };
     });
-    wireTradeActions(box, sorted, null);
+    wireTradeActions(box, allRows, null);
     wrap.appendChild(box);
-
-    if (openPositions && openPositions.length) {
-      const op = el("div", "note");
-      op.innerHTML = "<b>פוזיציות פתוחות (לא נסגרו, לא נכללות ברווח/הפסד):</b> " +
-        openPositions.map(p => p.symbol + " " + (p.qty > 0 ? "+" : "") + p.qty).join(" · ");
-      wrap.appendChild(op);
-    }
+    const lg = el("div", "note");
+    lg.style.cssText = "margin-top:8px;font-size:12px";
+    lg.innerHTML = "הטור <b>פתיחה/סגירה</b>: 🟢 <b>פתוחה</b> = פוזיציה שנקנתה וטרם נסגרה (מופיעה למעלה) · ✓ <b>סגורה</b> = נקנתה ונמכרה. פוזיציות פתוחות אינן נכללות ברווח/הפסד הממומש.";
+    wrap.appendChild(lg);
     return wrap;
   }
 
