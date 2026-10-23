@@ -314,23 +314,46 @@
   // load the curriculum (filtered to this kind) + the viewer's entitlement, then render the pane.
   // fresh=true (after an admin edit/add/delete) adds a cache-buster so the Vercel edge cache (~60s) is
   // bypassed and the change shows IMMEDIATELY; a normal tab-open uses the cache.
+  // show a friendly "couldn't load — try again" instead of an endless spinner, and let a re-open retry.
+  function _showRetry(kind, cfg, wrap) {
+    wrap.innerHTML = '<div class="course-empty">' + cfg.errLoad +
+      ' <button type="button" id="' + cfg.pfx + 'Retry" class="course-add" style="margin-inline-start:8px">🔄 נסה שוב</button></div>';
+    try { if (typeof _loaded !== "undefined") _loaded[kind] = false; } catch (e) {}   // allow a tab re-open to retry
+    var b = $(cfg.pfx + "Retry");
+    if (b) b.onclick = function () { wrap.innerHTML = '<div class="course-empty">טוען…</div>'; _loadCourse(kind, true); };
+  }
+
   function _loadCourse(kind, fresh) {
     var cfg = KIND_CFG[kind]; if (!cfg) return;
     var wrap = $(cfg.wrapId); if (!wrap) return;
-    fetch("/api/course-lessons" + (fresh ? ("?_=" + Date.now()) : ""), { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      var all = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : [];
-      var lessons = all.filter(function (L) { return ((L.kind || "course") === kind); });
-      // PHASE 1 — render the lessons right away using a best-guess entitlement (last-known,
-      // cached in localStorage), so the list shows instantly instead of the "טוען…" spinner.
-      var pre = _entPeek();
-      _renderCourse(kind, wrap, lessons, { loggedIn: !!pre.loggedIn, ok: !!pre[cfg.entField] });
-      // PHASE 2 — verify against the server (with a hard timeout) and re-render if it differs.
-      _entState().then(function (s) {
-        if (s.loggedIn !== !!pre.loggedIn || !!s[cfg.entField] !== !!pre[cfg.entField]) {
-          _renderCourse(kind, wrap, lessons, { loggedIn: s.loggedIn, ok: !!s[cfg.entField] });
-        }
-      });
-    }).catch(function () { wrap.innerHTML = '<div class="course-empty">' + cfg.errLoad + "</div>"; });
+    var LS = "sn_lessons_" + kind;
+    var pre = _entPeek();
+    var cur = null;   // lessons currently painted (cached first, then fresh)
+    function paint(lessons, ent) { cur = lessons; _renderCourse(kind, wrap, lessons, ent); }
+
+    // 0) INSTANT render from the last-known lessons (localStorage) — so the tab NEVER sits on a
+    //    spinner, even if the network is slow/stuck. The fresh fetch below replaces it when it lands.
+    try { var c = JSON.parse(localStorage.getItem(LS) || "null"); if (Array.isArray(c)) paint(c, { loggedIn: !!pre.loggedIn, ok: !!pre[cfg.entField] }); } catch (e) {}
+
+    // verify entitlement once (own 8s timeout, inside _entState); re-paint current lessons if it differs
+    _entState().then(function (s) {
+      if (cur && (s.loggedIn !== !!pre.loggedIn || !!s[cfg.entField] !== !!pre[cfg.entField])) paint(cur, { loggedIn: s.loggedIn, ok: !!s[cfg.entField] });
+    });
+
+    // 1) fetch fresh WITH A HARD TIMEOUT so a stuck request can never leave the tab hanging
+    var ctl = null, timer = null;
+    try { ctl = new AbortController(); timer = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 10000); } catch (e) { ctl = null; }
+    fetch("/api/course-lessons" + (fresh ? ("?_=" + Date.now()) : ""), { cache: "no-cache", signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { if (timer) clearTimeout(timer); return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var all = (j && j.ok && Array.isArray(j.lessons)) ? j.lessons : null;
+        if (!all) { if (!cur) _showRetry(kind, cfg, wrap); return; }
+        var lessons = all.filter(function (L) { return ((L.kind || "course") === kind); });
+        try { localStorage.setItem(LS, JSON.stringify(lessons)); } catch (e) {}
+        var es = _entPeek();   // freshest entitlement (may have been refined by _entState above)
+        paint(lessons, { loggedIn: !!es.loggedIn, ok: !!es[cfg.entField] });
+      })
+      .catch(function () { if (timer) clearTimeout(timer); if (!cur) _showRetry(kind, cfg, wrap); });
   }
 
   // last-known entitlement cached in localStorage → instant best-guess render (verified after).
