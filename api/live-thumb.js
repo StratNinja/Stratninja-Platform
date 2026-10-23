@@ -3,7 +3,10 @@
 // on the live_status row — all with the service role, so it bypasses the storage RLS (a client upload
 // was failing with "new row violates row-level security policy"). No new env needed.
 //
-//   POST /api/live-thumb  (Authorization: Bearer <token>)  { data_url }  → { ok, thumbnail_url }
+//   POST /api/live-thumb  (Authorization: Bearer <token>)  { data_url }          → { ok, thumbnail_url }
+//   POST /api/live-thumb  (Authorization: Bearer <token>)  { data_url, slot }    → upload to a UNIQUE
+//     path and return its URL WITHOUT binding it to the live_status row. Used by the scheduled-lives
+//     admin form so each planned live can carry its own thumbnail (slot = a short safe id).
 
 const SUPA_URL = process.env.SUPABASE_URL || "https://iujeekdtimlmgwzzlauj.supabase.co";
 const SVC = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -59,7 +62,10 @@ export default async function handler(req, res) {
   const buf = Buffer.from(m[3], "base64");
   if (!buf.length || buf.length > 3 * 1024 * 1024) { res.status(413).json({ error: "too_large" }); return; }
 
-  const path = "public-live." + ext;
+  // slot → a per-event thumbnail (scheduled lives): unique path, NOT bound to live_status.
+  // Default (no slot) → the single public-live thumbnail bound to the live_status row (unchanged).
+  const slot = String(body.slot || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 40);
+  const path = slot ? ("sched-" + slot + "." + ext) : ("public-live." + ext);
   try {
     const up = await fetch(SUPA_URL + "/storage/v1/object/" + BUCKET + "/" + path, {
       method: "POST",
@@ -68,11 +74,13 @@ export default async function handler(req, res) {
     });
     if (!up.ok) { res.status(502).json({ error: "upload_failed" }); return; }
     const thumbnail_url = SUPA_URL + "/storage/v1/object/public/" + BUCKET + "/" + path + "?t=" + Date.now();
-    await fetch(SUPA_URL + "/rest/v1/live_status?id=eq.public", {
-      method: "PATCH",
-      headers: { apikey: SVC, Authorization: "Bearer " + SVC, "Content-Type": "application/json" },
-      body: JSON.stringify({ thumbnail_url: thumbnail_url, updated_at: new Date().toISOString() }),
-    });
+    if (!slot) {
+      await fetch(SUPA_URL + "/rest/v1/live_status?id=eq.public", {
+        method: "PATCH",
+        headers: { apikey: SVC, Authorization: "Bearer " + SVC, "Content-Type": "application/json" },
+        body: JSON.stringify({ thumbnail_url: thumbnail_url, updated_at: new Date().toISOString() }),
+      });
+    }
     res.status(200).json({ ok: true, thumbnail_url: thumbnail_url });
   } catch (e) {
     res.status(502).json({ error: "upload_failed" });

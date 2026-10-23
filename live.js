@@ -21,6 +21,12 @@ window.Live = (function () {
   var _cd = null;               // countdown 1s timer
   var _playerSig = "";          // only rebuild the <iframe> when this changes (avoids reload/flicker)
 
+  // ---- scheduled lives (planned future broadcasts: /api/scheduled-lives) ----
+  var _sched = [];              // last GET /api/scheduled-lives payload (upcoming + live rows)
+  var _schedSig = "";           // re-render the banner only when the "next" live changes
+  var _schedThumbUrl = "";      // thumbnail URL staged in the admin "new/edit" form (from live-thumb slot upload)
+  var _schedEditId = "";        // the row currently being edited in the admin form ("" = creating new)
+
   // ---- community "vault" gate state ----
   var _access = "unknown";      // "unknown" | "checking" | "ok" | "locked"  (for the CURRENT community live)
   var _commIframe = "";         // the signed iframe URL once minted (entitled users only)
@@ -200,6 +206,29 @@ window.Live = (function () {
       ".live-admin .la-stat{font-size:12px;color:var(--muted);margin-top:10px}",
       "@media(max-width:640px){.live-admin .la-grid{grid-template-columns:1fr}.live-meta h2{font-size:19px}}",
       ".lc-locked{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--muted);font-size:13.5px;text-align:center;padding:22px 16px}",   // community: chat is members-only
+      // ---- scheduled-live banner ("🔴 לייב קרוב" + countdown), shown ABOVE the player when a live is planned ----
+      ".live-sched{display:flex;gap:14px;align-items:center;margin:0 0 16px;padding:14px 16px;border:1px solid rgba(220,38,38,.4);border-radius:14px;background:linear-gradient(90deg,rgba(220,38,38,.14),var(--panel));position:relative;overflow:hidden}",
+      ".live-sched .ls-thumb{flex:0 0 auto;width:120px;height:68px;border-radius:10px;background-size:cover;background-position:center;background-color:#05070c;border:1px solid var(--line)}",
+      ".live-sched .ls-body{min-width:0;flex:1}",
+      ".live-sched .ls-tag{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:12px;color:#fff;background:#dc2626;border-radius:999px;padding:3px 10px}",
+      ".live-sched .ls-tag .dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:livePulse 1.8s infinite}",
+      ".live-sched .ls-title{font-weight:800;font-size:17px;margin:7px 0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+      ".live-sched .ls-when{font-weight:800;font-size:14px;color:#fca5a5}",
+      ".live-sched .ls-when .ls-cd{font-variant-numeric:tabular-nums}",
+      ".live-sched .ls-desc{color:var(--muted);font-size:13px;line-height:1.5;margin-top:5px;max-height:3em;overflow:hidden;white-space:pre-wrap}",
+      ".live-sched .ls-yt{display:inline-flex;align-items:center;gap:6px;margin-top:7px;font-size:12.5px;text-decoration:none;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:4px 11px}",
+      "@media(max-width:640px){.live-sched .ls-thumb{width:84px;height:48px}.live-sched .ls-title{font-size:15px}}",
+      // ---- scheduled-lives admin section (inside the floating 🎛️ window) ----
+      ".law-sched{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}",
+      ".law-sched h4{margin:0 0 8px;font-size:13px;color:var(--muted)}",
+      ".law-sl-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;padding:7px 0;border-bottom:1px solid var(--line)}",
+      ".law-sl-row .sl-info{min-width:0}",
+      ".law-sl-row .sl-t{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}",
+      ".law-sl-row .sl-w{font-size:11.5px;color:var(--muted);margin-top:1px}",
+      ".law-sl-row .sl-yt{color:#f87171;font-weight:700}",
+      ".law-sl-row .sl-btns{display:flex;gap:5px;flex:0 0 auto}",
+      ".law-sl-row .sl-btns button{font-size:11.5px;padding:3px 9px}",
+      ".law-sl-new{margin-top:10px}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -368,13 +397,138 @@ window.Live = (function () {
     win.innerHTML =
       '<div class="law-head" id="lawHead"><span>🎛️ ניהול שידור</span><button class="law-x" id="lawClose" title="סגור">✕</button></div>' +
       '<div class="law-body live-admin">' + _adminFields(s) +
+        '<div class="law-sched" id="lawSched"><h4>📅 לייבים מתוזמנים</h4><div id="lawSchedBody"><div class="muted" style="font-size:12px">טוען…</div></div></div>' +
         '<div class="law-bans" id="lawBans"><div class="muted" style="font-size:12px">טוען חסומים…</div></div>' +
       "</div>";
     document.body.appendChild(win);
     _wireAdmin();
     var close = $("lawClose"); if (close) close.onclick = closeAdmin;
     _dragWin(win, $("lawHead"));
-    if (!(s && s.preview)) _loadBans();
+    if (!(s && s.preview)) { _loadSchedAdmin(); _loadBans(); }
+    else { var ls = $("lawSched"); if (ls) ls.style.display = "none"; }
+  }
+
+  // ---- scheduled-lives admin: list upcoming + a create/edit/cancel form ----
+  function _schedFmtWhen(iso) {
+    try { return new Date(iso).toLocaleString("he-IL", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }); }
+    catch (e) { return iso; }
+  }
+  function _schedAdminListHtml() {
+    var rows = (_sched || []).filter(function (s) { return s.status === "scheduled" || s.status === "live"; });
+    var list = rows.length ? rows.map(function (s) {
+      var yt = s.youtube_watch_url ? ' · <span class="sl-yt">YouTube ✓</span>' : "";
+      var liveBadge = s.status === "live" ? ' · 🔴 חי' : "";
+      return '<div class="law-sl-row"><div class="sl-info">' +
+        '<div class="sl-t">' + esc(s.title || "ללא כותרת") + "</div>" +
+        '<div class="sl-w">⏰ ' + esc(_schedFmtWhen(s.scheduled_start)) + yt + liveBadge + "</div>" +
+        '</div><div class="sl-btns">' +
+          '<button class="btn ghost" data-sl-edit="' + esc(s.id) + '">עריכה</button>' +
+          '<button class="btn ghost" data-sl-cancel="' + esc(s.id) + '" style="color:#ff9b9b">ביטול</button>' +
+        "</div></div>";
+    }).join("") : '<div class="muted" style="font-size:12px">אין לייבים מתוזמנים.</div>';
+    return list +
+      '<div class="law-sl-new"><button class="btn primary" id="slNewBtn" style="font-size:12.5px;padding:6px 12px">➕ לייב חדש</button></div>' +
+      '<div id="slForm"></div>';
+  }
+  function _schedFormHtml(edit) {
+    edit = edit || null;
+    var schVal = "";
+    if (edit && edit.scheduled_start) { var d = new Date(edit.scheduled_start); if (!isNaN(d)) { var off = d.getTime() - d.getTimezoneOffset() * 60000; schVal = new Date(off).toISOString().slice(0, 16); } }
+    var th = (edit && edit.thumbnail_url) || "";
+    return '<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">' +
+      '<label>כותרת</label><input id="slTitle" maxlength="200" value="' + esc(edit && edit.title) + '">' +
+      '<label>תיאור</label><textarea id="slDesc" maxlength="1000">' + esc(edit && edit.description) + "</textarea>" +
+      '<label>זמן התחלה</label><input type="datetime-local" id="slSched" value="' + schVal + '">' +
+      '<label>תמונה (Thumbnail)</label>' +
+      '<div class="la-thumb">' + (th ? '<img src="' + esc(th) + '" class="la-thumb-prev" alt="">' : "") + '<input type="file" id="slThumb" accept="image/*"></div>' +
+      '<div class="live-row" style="margin-top:8px">' +
+        '<button class="btn primary" id="slSave" style="font-size:12.5px;padding:6px 12px">💾 ' + (edit ? "עדכן" : "צור לייב") + "</button>" +
+        '<button class="btn ghost" id="slCancelForm" style="font-size:12.5px;padding:6px 12px">בטל</button>' +
+      "</div>" +
+      '<div class="la-stat">בעת יצירה — אם YouTube מחובר, ייווצר גם שידור מתוזמן בערוץ אוטומטית. התראת "עוד 30 דק\'" נשלחת אוטומטית.</div>' +
+      "</div>";
+  }
+  function _loadSchedAdmin() {
+    var box = $("lawSchedBody"); if (!box) return;
+    _schedGet().then(function (r) {
+      if (!box.parentNode) return;
+      if (r && r.ok) _sched = r.lives || [];
+      box.innerHTML = _schedAdminListHtml();
+      _wireSchedAdmin();
+    });
+  }
+  function _wireSchedAdmin() {
+    var box = $("lawSchedBody"); if (!box) return;
+    var nb = $("slNewBtn"); if (nb) nb.onclick = function () { _schedEditId = ""; _schedThumbUrl = ""; _openSchedForm(null); };
+    var eds = box.querySelectorAll("[data-sl-edit]");
+    for (var i = 0; i < eds.length; i++) eds[i].onclick = function () {
+      var id = this.getAttribute("data-sl-edit");
+      var row = (_sched || []).filter(function (s) { return s.id === id; })[0];
+      if (row) { _schedEditId = id; _schedThumbUrl = row.thumbnail_url || ""; _openSchedForm(row); }
+    };
+    var cns = box.querySelectorAll("[data-sl-cancel]");
+    for (var j = 0; j < cns.length; j++) cns[j].onclick = function () {
+      var id = this.getAttribute("data-sl-cancel");
+      if (!confirm("לבטל את הלייב המתוזמן? (אם מחובר YouTube — גם השידור שם יימחק)")) return;
+      var btn = this; btn.disabled = true; btn.textContent = "מבטל…";
+      _schedPost({ action: "cancel", id: id }).then(function (r) {
+        if (r && r.ok) { toast("הלייב בוטל ✓"); _loadSchedAdmin(); _refreshSched(); }
+        else { btn.disabled = false; btn.textContent = "ביטול"; toast("הביטול נכשל" + (r && r.error ? " · " + r.error : "")); }
+      });
+    };
+  }
+  function _openSchedForm(edit) {
+    var f = $("slForm"); if (!f) return;
+    f.innerHTML = _schedFormHtml(edit);
+    var cf = $("slCancelForm"); if (cf) cf.onclick = function () { f.innerHTML = ""; _schedEditId = ""; _schedThumbUrl = ""; };
+    var th = $("slThumb"); if (th) th.onchange = function () { var file = th.files && th.files[0]; if (file) _uploadSchedThumb(file); };
+    var save = $("slSave");
+    if (save) save.onclick = function () {
+      var title = ($("slTitle") && $("slTitle").value) || "";
+      var desc = ($("slDesc") && $("slDesc").value) || "";
+      var sched = ($("slSched") && $("slSched").value) || "";
+      if (!title.trim()) { toast("צריך כותרת"); return; }
+      if (!sched) { toast("צריך זמן התחלה"); return; }
+      var body = { action: "save", title: title, description: desc, scheduled_start: new Date(sched).toISOString() };
+      if (_schedThumbUrl) body.thumbnail_url = _schedThumbUrl;
+      if (_schedEditId) body.id = _schedEditId;
+      save.disabled = true; save.textContent = "שומר…";
+      _schedPost(body).then(function (r) {
+        save.disabled = false;
+        if (r && r.ok) {
+          var warn = r.yt_warn;
+          if (warn === "yt_not_configured") toast("נשמר ✓ (YouTube עדיין לא מחובר — רק באתר)");
+          else if (warn && warn.indexOf("yt_") === 0) toast("נשמר באתר ✓ אבל יצירת השידור ביוטיוב נכשלה (" + warn + ")");
+          else if (r.youtube) toast("נשמר ✓ + שידור יוטיוב נוצר");
+          else toast("נשמר ✓");
+          _schedEditId = ""; _schedThumbUrl = "";
+          _loadSchedAdmin(); _refreshSched();
+        } else { save.textContent = "💾 שמור"; toast("שמירה נכשלה" + (r && r.error ? " · " + r.error : "")); }
+      });
+    };
+  }
+  // upload a scheduled-live thumbnail to its own storage slot (NOT bound to the live_status row).
+  function _uploadSchedThumb(file) {
+    if (file.size > 3 * 1024 * 1024) { toast("התמונה גדולה מדי (מקס׳ 3MB)"); return; }
+    toast("מעלה תמונה…");
+    var reader = new FileReader();
+    reader.onerror = function () { toast("קריאת הקובץ נכשלה"); };
+    reader.onload = function () {
+      _accessToken().then(function (tok) {
+        if (!tok) { toast("יש להתחבר מחדש"); return; }
+        var slot = _schedEditId ? _schedEditId.replace(/[^a-z0-9]/gi, "").slice(0, 32) : ("new" + Date.now());
+        fetch("/api/live-thumb", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ data_url: reader.result, slot: slot }) })
+          .then(function (r) { return r.json(); })
+          .then(function (r) {
+            if (r && r.ok && r.thumbnail_url) {
+              _schedThumbUrl = r.thumbnail_url; toast("התמונה הועלתה ✓");
+              var tw = document.querySelector("#slForm .la-thumb");
+              if (tw) { var img = tw.querySelector(".la-thumb-prev"); if (!img) { img = document.createElement("img"); img.className = "la-thumb-prev"; tw.insertBefore(img, tw.firstChild); } img.src = r.thumbnail_url; }
+            } else { toast("העלאה נכשלה" + (r && r.error ? " · " + r.error : "")); }
+          }).catch(function () { toast("העלאה נכשלה"); });
+      });
+    };
+    reader.readAsDataURL(file);
   }
   function _dragWin(win, handle) {
     if (!handle) return;
@@ -429,7 +583,7 @@ window.Live = (function () {
   function render() {
     _injectCss();
     var head = '<div class="page-head"><h1>🔴 שידור חי</h1><div class="sub">צפה בשידור החי של StratNinja — ניתוח שוק וסריקות בזמן אמת.</div></div>';
-    return head + '<div class="live-wrap" id="liveRoot">' + _body(_status) + "</div>";
+    return head + '<div class="live-wrap" id="liveRoot"><div id="liveSchedBanner"></div>' + _body(_status) + "</div>";
   }
 
   function _fmtCd(ms) {
@@ -439,6 +593,7 @@ window.Live = (function () {
     return (h > 0 ? h + ":" : "") + p(m) + ":" + p(sec);
   }
   function _tickCd() {
+    _tickSched();   // keep the scheduled-live banner countdown fresh too (1s tick)
     var el = $("liveCountdown"); if (!el) return;
     if (!_status || !_status.scheduled_at) { el.textContent = ""; return; }
     el.textContent = _fmtCd(new Date(_status.scheduled_at).getTime() - Date.now());
@@ -598,6 +753,62 @@ window.Live = (function () {
     _get().then(function (r) { if (r) { _status = r; _apply(false); } });
   }
 
+  // ===== scheduled lives (planned future broadcasts) ========================
+  // Public banner "🔴 לייב קרוב" + countdown on /live, fed by GET /api/scheduled-lives.
+  function _schedGet() { return fetch("/api/scheduled-lives", { headers: { "Cache-Control": "no-cache" } }).then(function (r) { return r.json(); }).catch(function () { return null; }); }
+  function _schedPost(body) {
+    return _accessToken().then(function (tok) {
+      if (!tok) return { error: "no_token" };
+      return fetch("/api/scheduled-lives", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json(); }).catch(function () { return { error: "net" }; });
+    });
+  }
+  // the soonest live still worth showing: live-now first, else the next future scheduled one.
+  function _nextSched() {
+    if (!_sched || !_sched.length) return null;
+    var now = Date.now();
+    var liveNow = _sched.filter(function (s) { return s.status === "live"; })
+      .sort(function (a, b) { return new Date(a.scheduled_start) - new Date(b.scheduled_start); })[0];
+    if (liveNow) return liveNow;
+    return _sched.filter(function (s) { return s.status === "scheduled" && new Date(s.scheduled_start).getTime() > now; })
+      .sort(function (a, b) { return new Date(a.scheduled_start) - new Date(b.scheduled_start); })[0] || null;
+  }
+  function _schedBannerHtml(s) {
+    if (!s) return "";
+    var isLive = s.status === "live";
+    var when = new Date(s.scheduled_start);
+    var at = "";
+    try { at = when.toLocaleString("he-IL", { weekday: "short", hour: "2-digit", minute: "2-digit", day: "numeric", month: "numeric" }); } catch (e) { at = s.scheduled_start; }
+    var thumbOk = /^https:\/\/[^\s'"()]+$/i.test(String(s.thumbnail_url || ""));
+    var thumb = thumbOk ? '<div class="ls-thumb" style="background-image:url(\'' + s.thumbnail_url + '\')"></div>' : '<div class="ls-thumb"></div>';
+    var tag = isLive ? '<span class="ls-tag"><span class="dot"></span>משדר עכשיו</span>' : '<span class="ls-tag"><span class="dot"></span>🔴 לייב קרוב</span>';
+    var whenLine = isLive
+      ? '<div class="ls-when">🔴 השידור התחיל — הצטרפו עכשיו</div>'
+      : '<div class="ls-when">⏰ עוד <span class="ls-cd" id="lsCd">—</span> · ' + esc(at) + "</div>";
+    var desc = s.description ? '<div class="ls-desc">' + esc(s.description) + "</div>" : "";
+    var yt = (s.youtube_watch_url && /^https:\/\/[^\s'"()]+$/i.test(s.youtube_watch_url))
+      ? '<a class="ls-yt" href="' + esc(s.youtube_watch_url) + '" target="_blank" rel="noopener">▶️ ביוטיוב ↗</a>' : "";
+    return '<div class="live-sched">' + thumb +
+      '<div class="ls-body">' + tag +
+        '<div class="ls-title">' + esc(s.title || "שידור חי") + "</div>" + whenLine + desc + yt +
+      "</div></div>";
+  }
+  function _applySched() {
+    var box = $("liveSchedBanner"); if (!box) return;
+    var s = _nextSched();
+    var sig = s ? (s.id + "|" + s.status + "|" + s.scheduled_start + "|" + (s.youtube_watch_url || "") + "|" + (s.thumbnail_url || "")) : "";
+    if (sig !== _schedSig) { _schedSig = sig; box.innerHTML = _schedBannerHtml(s); }
+    _tickSched();
+  }
+  function _tickSched() {
+    var el = $("lsCd"); if (!el) return;
+    var s = _nextSched(); if (!s || s.status === "live") { el.textContent = ""; return; }
+    el.textContent = _fmtCd(new Date(s.scheduled_start).getTime() - Date.now());
+  }
+  function _refreshSched() {
+    _schedGet().then(function (r) { if (r && r.ok) { _sched = r.lives || []; _applySched(); } });
+  }
+
   // ===== live emoji reactions (float over the player for EVERYONE via Supabase Realtime broadcast) =====
   var REACT_EMOJIS = ["❤️", "🔥", "😂", "🎉", "👏", "💯", "🚀", "💪"];
   var _rchan = null, _rLast = 0;
@@ -655,9 +866,11 @@ window.Live = (function () {
     if (_cd) { clearInterval(_cd); _cd = null; }
     _wireMeta(); _wireAdmin();
     _refresh();
+    _refreshSched();   // load the "לייב קרוב" banner (planned future broadcasts)
     _timer = setInterval(function () {
       if (!$("liveRoot")) { clearInterval(_timer); _timer = null; if (_cd) { clearInterval(_cd); _cd = null; } return; }  // left the page
       _refresh();
+      _refreshSched();
     }, POLL_MS);
     _cd = setInterval(_tickCd, 1000);
     if (window.LiveChat && window.LiveChat.mount) window.LiveChat.mount();   // live chat + waiting/viewer count
@@ -670,7 +883,7 @@ window.Live = (function () {
   function teardown() {
     if (_timer) { clearInterval(_timer); _timer = null; }
     if (_cd) { clearInterval(_cd); _cd = null; }
-    _playerSig = ""; _resetCommunity();                    // force a fresh player + re-check the vault when the user returns
+    _playerSig = ""; _schedSig = ""; _resetCommunity();    // force a fresh player + banner + re-check the vault when the user returns
     var pl = $("livePlayer"); if (pl) pl.innerHTML = "";   // remove the Cloudflare iframe → stops video + audio
     if (window.LiveChat && window.LiveChat.unmount) window.LiveChat.unmount();   // stop chat/presence polling + heartbeat
     _reactUnmount();   // drop the reactions realtime channel + clear floats
