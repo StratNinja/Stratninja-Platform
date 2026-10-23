@@ -89,7 +89,7 @@
   const state = { account: null, tab: "positions", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
     aggTrades: (function () { try { return localStorage.getItem("sn_agg_trades") !== "0"; } catch (e) { return true; } })(),
     calGran: (function () { try { return localStorage.getItem("sn_cal_gran") || "month"; } catch (e) { return "month"; } })(),
-    showFills: (function () { try { return localStorage.getItem("sn_show_fills") === "1"; } catch (e) { return false; } })(),
+    tradeFilter: "",   // ticker filter text for the closed-trades table
     calYear: null, calQ: null };   // anchor for the quarterly / yearly calendar views
   let manualEditId = null;  // when editing a manual trade, its id; null = adding new
   const OPEN_WARN = 5;      // discipline nudge: warn at this many concurrent open positions
@@ -1611,6 +1611,11 @@
 
   function renderTrades(trades, openPositions, manualOpen) {
     const wrap = el("div");
+    // ticker filter for the closed-trades table (client-side; no re-render → keeps input focus)
+    const filterBar = el("div", "trades-filterbar");
+    filterBar.style.cssText = "margin:4px 0 8px";
+    filterBar.innerHTML = '<input id="tradeFilter" type="text" placeholder="🔍 סינון לפי טיקר — הקלד למשל AMZN" autocomplete="off" style="padding:7px 11px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:inherit;font-family:Heebo,Rubik,sans-serif;font-size:13px;width:260px;max-width:100%">';
+    wrap.appendChild(filterBar);
     const agg = state.aggTrades !== false;
     const base = agg ? aggregateTrades(trades) : trades;
     // exposure = entry notional (qty × entry price × multiplier); exit value = same at the exit price.
@@ -1655,7 +1660,7 @@
       const statusCell = t._open
         ? '<td><span class="pill long" title="פוזיציה פתוחה — נקנתה וטרם נסגרה">🟢 פתוחה</span></td>'
         : '<td><span class="pill src" title="פוזיציה שנסגרה — נקנתה ונמכרה">✓ סגורה</span></td>';
-      rows += "<tr>" +
+      rows += '<tr data-sym="' + String(t.symbol || "").toUpperCase().replace(/[^A-Z0-9 ]/g, "") + '">' +
         (showAcct ? '<td class="muted" style="white-space:nowrap">' + (t.account || "—") + "</td>" : "") +
         statusCell +
         "<td>" + (t._open ? '<span class="muted">—</span>' : t.exitDate) + "</td>" +
@@ -1702,6 +1707,11 @@
     });
     wireTradeActions(box, allRows, null);
     wrap.appendChild(box);
+    // wire the ticker filter: show/hide rows by data-sym (keeps input focus; persists via state.tradeFilter)
+    const _applyFilt = (q) => { q = String(q || "").toUpperCase().trim(); box.querySelectorAll("tbody tr").forEach(tr => { const s = tr.getAttribute("data-sym") || ""; tr.style.display = (!q || s.indexOf(q) >= 0) ? "" : "none"; }); };
+    const _fi = filterBar.querySelector("#tradeFilter");
+    if (_fi) { _fi.value = state.tradeFilter || ""; _fi.oninput = () => { state.tradeFilter = _fi.value; _applyFilt(_fi.value); }; }
+    _applyFilt(state.tradeFilter);
     const lg = el("div", "note");
     lg.style.cssText = "margin-top:8px;font-size:12px";
     lg.innerHTML = "הטור <b>פתיחה/סגירה</b>: 🟢 <b>פתוחה</b> = פוזיציה שנקנתה וטרם נסגרה (מופיעה למעלה) · ✓ <b>סגורה</b> = נקנתה ונמכרה. פוזיציות פתוחות אינן נכללות ברווח/הפסד הממומש.";
