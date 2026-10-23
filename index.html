@@ -73,31 +73,8 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   .yt-outage .yto-x{position:absolute;top:5px;left:7px;background:transparent;border:none;color:rgba(255,255,255,.7);font-size:15px;cursor:pointer;line-height:1}
   @media(max-width:600px){.yt-outage{left:8px;right:8px;bottom:10px;max-width:none}}
 </style>
-<div id="ytOutage" class="yt-outage" role="status">
-  <button class="yto-x" id="ytoX" type="button" aria-label="סגור">✕</button>
-  <div class="yto-ico">📺</div>
-  <div class="yto-body">
-    <b>הערוץ ביוטיוב חסום זמנית</b>
-    <span>עקב תקלה של YouTube, הערוץ חסום כרגע. אבל אנחנו ממשיכים לפעול 💪</span>
-    <a href="https://www.patreon.com/14520383/join" target="_blank" rel="noopener" class="yto-join">הצטרפות לקהילה →</a>
-  </div>
-</div>
-<script>
-  (function () {
-    // show ONCE per day, auto-hide after 5 minutes, then not again until tomorrow (per browser).
-    var el = document.getElementById("ytOutage"); if (!el) return;
-    var KEY = "sn_ytoutage_day";
-    function today() { try { return new Date().toISOString().slice(0, 10); } catch (e) { return ""; } }
-    function hide() { el.style.display = "none"; }
-    var shownToday = false;
-    try { shownToday = localStorage.getItem(KEY) === today(); } catch (e) {}
-    if (shownToday) { hide(); return; }                 // already shown today → don't show again
-    try { localStorage.setItem(KEY, today()); } catch (e) {}
-    var timer = setTimeout(hide, 5 * 60 * 1000);        // auto-hide after 5 minutes
-    var x = document.getElementById("ytoX");
-    if (x) x.onclick = function () { clearTimeout(timer); hide(); };
-  })();
-</script>
+<!-- YouTube outage banner removed 2026-10-23 — the channel was reinstated and is live again. -->
+
 
 <!-- ===================== LANDING ===================== -->
 <section id="landing">
