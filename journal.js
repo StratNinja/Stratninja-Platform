@@ -89,6 +89,7 @@
   const state = { account: null, tab: "positions", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
     aggTrades: (function () { try { return localStorage.getItem("sn_agg_trades") !== "0"; } catch (e) { return true; } })(),
     calGran: (function () { try { return localStorage.getItem("sn_cal_gran") || "month"; } catch (e) { return "month"; } })(),
+    showFills: (function () { try { return localStorage.getItem("sn_show_fills") === "1"; } catch (e) { return false; } })(),
     calYear: null, calQ: null };   // anchor for the quarterly / yearly calendar views
   let manualEditId = null;  // when editing a manual trade, its id; null = adding new
   const OPEN_WARN = 5;      // discipline nudge: warn at this many concurrent open positions
@@ -1544,8 +1545,58 @@
       };
     });
   }
+  // individual executions (raw fills), each tagged opening/closing a position. Answers "is this
+  // a buy or sell / opening or closing?" and surfaces a raw entry (e.g. a 10-lot buy) that the
+  // FIFO round-trip view splits across rows. Only CSV-imported fills (manual trades are whole trades).
+  function renderFillsInto(wrap) {
+    const acct = state.account;
+    let csvFills = Store.getFills() || [];
+    if (acct !== ALL) csvFills = csvFills.filter(f => (f.account || "").trim() === acct);
+    const fills = E.computeFills(csvFills).slice().reverse();   // newest first
+    const info = el("div", "note");
+    info.style.cssText = "margin:2px 0 10px;font-size:12px";
+    info.innerHTML = "🔎 <b>ביצועים בודדים</b> — כל קנייה/מכירה בנפרד, מסומנת אם היא <b>פותחת</b> פוזיציה או <b>סוגרת</b> אותה (לפי סדר ה-FIFO לכל סימבול+חשבון). כך רואים כניסה גולמית (למשל קנייה ראשונית של 10 חוזים) שבעסקאות הסגורות מתפצלת לכמה שורות.";
+    wrap.appendChild(info);
+    if (!fills.length) {
+      wrap.appendChild(el("div", "note", "אין ביצועים מיובאים בחשבון זה. ייבא דוח ברוקר (CSV) כדי לראות כל קנייה/מכירה בנפרד. (עסקאות ידניות מוזנות כעסקה שלמה, לא כביצועים.)"));
+      return;
+    }
+    const showAcct = acct === ALL;
+    const sideLbl = f => f.side === "B" ? '<span class="pill long">🟢 קנייה</span>' : '<span class="pill short">🔴 מכירה</span>';
+    const kindLbl = r => r.kind === "flip"
+      ? '<span class="pill" title="חלק סוגר פוזיציה קיימת וחלק פותח חדשה">🔄 סגירה ' + r.closeQty + " + פתיחה " + r.openQty + "</span>"
+      : (r.kind === "close" ? '<span class="pill short">סגירה</span>' : '<span class="pill long">פתיחה</span>');
+    const cols = (showAcct ? ["חשבון"] : []).concat(["תאריך", "סימבול", "סוג", "פעולה", "כמות", "מחיר", "פתיחה/סגירה"]);
+    let head = "<tr>" + cols.map(c => "<th>" + c + "</th>").join("") + "</tr>";
+    let rows = "";
+    fills.forEach(f => {
+      const isOpt = f.assetType === "option";
+      rows += "<tr>" +
+        (showAcct ? '<td class="muted" style="white-space:nowrap">' + (f.account || "—") + "</td>" : "") +
+        '<td style="white-space:nowrap">' + (f.date || "—") + "</td>" +
+        "<td>" + chartSym(f.symbol) + "</td>" +
+        '<td><span class="pill ' + (isOpt ? "opt" : "stk") + '">' + (isOpt ? "אופ׳" + (f.optType ? " · " + f.optType.toUpperCase() : "") : "מניה") + "</span></td>" +
+        "<td>" + sideLbl(f) + "</td>" +
+        "<td>" + (Math.round((f.qty || 0) * 1e4) / 1e4) + "</td>" +
+        "<td>" + money(f.price, 2) + "</td>" +
+        "<td>" + kindLbl(f) + "</td>" +
+        "</tr>";
+    });
+    const box = el("div", "tablebox");
+    box.innerHTML = "<table><thead>" + head + "</thead><tbody>" + rows + "</tbody></table>";
+    wrap.appendChild(box);
+  }
+
   function renderTrades(trades, openPositions) {
     const wrap = el("div");
+    // view toggle: full round-trips (default) vs individual executions (each tagged open/close)
+    const viewBar = el("div", "trades-viewbar");
+    viewBar.style.cssText = "display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 10px";
+    viewBar.innerHTML = '<label class="agg-toggle"><input type="checkbox" id="fillsToggle"' + (state.showFills ? " checked" : "") + '><span>🔎 הצג ביצועים בודדים (קנייה/מכירה · פתיחה/סגירה)</span></label>' +
+      '<span class="muted" style="font-size:11px">כל קנייה ומכירה בנפרד — כולל כניסות שטרם נסגרו. כבוי = עסקאות סגורות מלאות.</span>';
+    wrap.appendChild(viewBar);
+    { const tg = viewBar.querySelector("#fillsToggle"); if (tg) tg.onchange = () => { state.showFills = tg.checked; try { localStorage.setItem("sn_show_fills", tg.checked ? "1" : "0"); } catch (e) {} render(); }; }
+    if (state.showFills) { renderFillsInto(wrap); return wrap; }
     const agg = state.aggTrades !== false;
     const base = agg ? aggregateTrades(trades) : trades;
     // exposure = entry notional (qty × entry price × multiplier); exit value = same at the exit price.

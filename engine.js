@@ -317,6 +317,39 @@ window.Engine = (function () {
     return { trades, openPositions };
   }
 
+  /* fills -> per-EXECUTION rows, each tagged as opening or closing a position.
+     Walks the same FIFO order per (account+symbol): a fill in the SAME direction as the running
+     position OPENS/adds (פתיחה); a fill in the OPPOSITE direction CLOSES existing lots first
+     (סגירה), and any remainder beyond a full close flips → opens the other side (פתיחה+סגירה).
+     Used by the journal "ביצועים בודדים" view so a raw entry (e.g. a 10-lot buy) is visible as-is. */
+  function computeFills(fillsRaw) {
+    const fills = applyCorporateActions(fillsRaw || []);
+    const sorted = fills.slice().sort((a, b) => {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return (a.exec || "") < (b.exec || "") ? -1 : 1;
+    });
+    const pos = {};   // (account|symbol) -> net signed position (shares / contracts)
+    const out = [];
+    for (const f of sorted) {
+      const key = (f.account || "") + "|" + f.symbol;
+      const before = pos[key] || 0;
+      const signed = (f.side === "B" ? 1 : -1) * (f.qty || 0);
+      let closeQty = 0, openQty = Math.abs(signed);
+      if (before !== 0 && (before > 0) !== (signed > 0)) {        // opposite side → closes first
+        closeQty = Math.min(Math.abs(signed), Math.abs(before));
+        openQty = Math.abs(signed) - closeQty;                   // remainder opens (a flip)
+      }
+      const after = before + signed;
+      pos[key] = round(after, 4);
+      const kind = (closeQty > 0 && openQty > 0) ? "flip" : (closeQty > 0 ? "close" : "open");
+      out.push(Object.assign({}, f, {
+        openQty: round(openQty, 4), closeQty: round(closeQty, 4),
+        posBefore: round(before, 4), posAfter: round(after, 4), kind: kind,
+      }));
+    }
+    return out;
+  }
+
   // ---- Manual trade -> unified Trade -------------------------------------
   function manualToTrade(m) {
     const mult = m.assetType === "option" ? 100 : 1;
@@ -414,7 +447,7 @@ window.Engine = (function () {
   function round(v, n) { const p = Math.pow(10, n || 0); return Math.round(v * p) / p; }
 
   return {
-    parseCSV, computeTrades, manualToTrade, fillKey,
+    parseCSV, computeTrades, computeFills, manualToTrade, fillKey,
     dailyFromTrades, stats, equityCurve, isOptionSymbol,
   };
 })();
