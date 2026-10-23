@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StratNinja — טיימר ספירה לאחור</title>
+<!--
+  OBS countdown overlay for StratNinja.
+  Add in OBS: Sources → + → Browser → URL = https://www.stratninja.win/timer.html
+  The countdown starts the moment the page loads — right-click the Browser Source → "Refresh"
+  (or re-show the scene) to restart it.
+  URL params (all optional):
+    ?min=3            minutes to count down (default 3). Supports decimals, e.g. min=1.5
+    &sec=0            extra seconds to add
+    &label=...        text above the clock (default "הלייב מתחיל בעוד")
+    &done=...         text shown at 0:00 (default "מתחילים! 🔴")
+    &autohide=1       fade the whole thing out ~4s after it reaches 0:00
+  Example: https://www.stratninja.win/timer.html?min=3&label=מתחילים בעוד
+-->
+<style>
+  :root{
+    --bg: transparent;
+    --card: rgba(10,14,20,.78);
+    --line: rgba(255,255,255,.10);
+    --txt: #f2f6ff;
+    --muted: #9fb0c7;
+    --accent: #22d39a;        /* StratNinja green */
+    --accent2: #16b3ff;
+    --danger: #ff4d5e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);overflow:hidden}
+  body{
+    display:flex;align-items:center;justify-content:center;
+    font-family:"Heebo","Rubik","Segoe UI",system-ui,sans-serif;color:var(--txt);
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    display:flex;flex-direction:column;align-items:center;gap:18px;
+    padding:38px 54px;border-radius:28px;
+    background:var(--card);border:1px solid var(--line);
+    box-shadow:0 24px 80px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter:blur(8px);
+    transition:opacity .8s ease;
+  }
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand img{width:46px;height:46px;border-radius:12px;display:block}
+  .brand b{font-size:22px;font-weight:800;letter-spacing:.5px}
+  .brand .live{
+    font-size:12px;font-weight:800;color:#fff;background:var(--danger);
+    padding:3px 9px;border-radius:999px;letter-spacing:1px;
+    animation:blink 1.4s ease-in-out infinite;
+  }
+  .label{font-size:26px;font-weight:700;color:var(--muted)}
+  .clock{
+    font-size:148px;line-height:1;font-weight:900;letter-spacing:4px;
+    font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,#ffffff, #cfe9ff 60%, var(--accent));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 42px rgba(34,211,154,.25);
+    direction:ltr;
+  }
+  .clock.warn{
+    background:linear-gradient(180deg,#fff,#ffd4d9 60%,var(--danger));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:pulse 1s ease-in-out infinite;
+  }
+  .bar{width:min(560px,70vw);height:8px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+  .bar > i{display:block;height:100%;width:100%;border-radius:999px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 1s linear}
+  .done .clock{font-size:92px}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+  @keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+</style>
+</head>
+<body>
+  <div class="wrap" id="wrap">
+    <div class="brand">
+      <img src="ninja-icon.png" alt="" onerror="this.style.display='none'">
+      <b>StratNinja</b>
+      <span class="live">LIVE</span>
+    </div>
+    <div class="label" id="label">הלייב מתחיל בעוד</div>
+    <div class="clock" id="clock">3:00</div>
+    <div class="bar"><i id="bar"></i></div>
+  </div>
+
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var mins = parseFloat(q.get("min"));
+    if (!(mins >= 0)) mins = 3;
+    var extra = parseInt(q.get("sec"), 10); if (isNaN(extra)) extra = 0;
+    var total = Math.max(0, Math.round(mins * 60 + extra));   // seconds
+    var doneTxt = q.get("done") || "מתחילים! 🔴";
+    if (q.get("label") != null) document.getElementById("label").textContent = q.get("label");
+    var autohide = q.get("autohide") === "1";
+
+    var clock = document.getElementById("clock");
+    var bar = document.getElementById("bar");
+    var wrap = document.getElementById("wrap");
+    var label = document.getElementById("label");
+
+    var start = Date.now();
+    function fmt(s) {
+      var m = Math.floor(s / 60), ss = s % 60;
+      return m + ":" + (ss < 10 ? "0" : "") + ss;
+    }
+    function tick() {
+      var elapsed = Math.floor((Date.now() - start) / 1000);
+      var left = Math.max(0, total - elapsed);
+      clock.textContent = fmt(left);
+      bar.style.width = (total ? (left / total * 100) : 0) + "%";
+      clock.classList.toggle("warn", left <= 10 && left > 0);
+      if (left <= 0) {
+        clearInterval(iv);
+        clock.textContent = doneTxt;
+        clock.classList.remove("warn");
+        label.style.display = "none";
+        bar.parentNode.style.display = "none";
+        wrap.classList.add("done");
+        if (autohide) setTimeout(function () { wrap.style.opacity = "0"; }, 4000);
+        return;
+      }
+    }
+    tick();
+    var iv = setInterval(tick, 250);
+  })();
+</script>
+</body>
+</html>
