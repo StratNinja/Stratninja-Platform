@@ -144,31 +144,51 @@
     }
   }
 
+  function _renderVods(vods) {
+    var grid = $("vodGrid"); if (!grid) return;
+    if (!vods || !vods.length) {
+      grid.innerHTML = '<div class="vod-empty">אין עדיין שידורים מוקלטים. אחרי הלייב הבא הם יופיעו כאן 🎬</div>';
+      return;
+    }
+    grid.innerHTML = vods.map(function (v) {
+      var bg = safeBg(v.thumbnail);
+      return '<div class="vod-card" data-iframe="' + esc(v.iframe) + '" data-uid="' + esc(v.uid) + '" data-name="' + esc(v.name || "") + '">' +
+        '<div class="vod-thumb"' + (bg ? ' style="background-image:url(\'' + bg + '\')"' : "") + '>' +
+          '<span class="vod-play">▶</span><span class="vod-dur">' + fmtDur(v.duration) + "</span></div>" +
+        '<div class="vod-meta"><div class="vod-date">' + esc(fmtDate(v.created)) + "</div>" +
+          (v.name ? '<div class="vod-name">' + esc(v.name) + "</div>" : "") +
+          '<div class="vod-tldr" data-tldr="' + esc(v.uid) + '"></div>' +
+        "</div></div>";
+    }).join("");
+    var cards = grid.querySelectorAll(".vod-card");
+    for (var i = 0; i < cards.length; i++) cards[i].onclick = function () { _play(this.getAttribute("data-iframe"), this.getAttribute("data-uid"), this.getAttribute("data-name")); };
+    _loadTeasers();   // fill the at-a-glance blurbs under each card (one request for all)
+  }
+
   function _loadLives() {
-    // cache:"no-cache" → always revalidate with the server (cheap ETag 304), so a renamed recording
-    // shows on the next load without a hard refresh. The Vercel edge cache still serves the response.
-    fetch("/api/live-vods", { cache: "no-cache" }).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
-      var grid = $("vodGrid"); if (!grid) return;
-      if (!j || !j.ok || !j.vods || !j.vods.length) {
-        grid.innerHTML = '<div class="vod-empty">אין עדיין שידורים מוקלטים. אחרי הלייב הבא הם יופיעו כאן 🎬</div>';
-        return;
-      }
-      grid.innerHTML = j.vods.map(function (v) {
-        var bg = safeBg(v.thumbnail);
-        return '<div class="vod-card" data-iframe="' + esc(v.iframe) + '" data-uid="' + esc(v.uid) + '" data-name="' + esc(v.name || "") + '">' +
-          '<div class="vod-thumb"' + (bg ? ' style="background-image:url(\'' + bg + '\')"' : "") + '>' +
-            '<span class="vod-play">▶</span><span class="vod-dur">' + fmtDur(v.duration) + "</span></div>" +
-          '<div class="vod-meta"><div class="vod-date">' + esc(fmtDate(v.created)) + "</div>" +
-            (v.name ? '<div class="vod-name">' + esc(v.name) + "</div>" : "") +
-            '<div class="vod-tldr" data-tldr="' + esc(v.uid) + '"></div>' +
-          "</div></div>";
-      }).join("");
-      var cards = grid.querySelectorAll(".vod-card");
-      for (var i = 0; i < cards.length; i++) cards[i].onclick = function () { _play(this.getAttribute("data-iframe"), this.getAttribute("data-uid"), this.getAttribute("data-name")); };
-      _loadTeasers();   // fill the at-a-glance blurbs under each card (one request for all)
-    }).catch(function () {
-      var grid = $("vodGrid"); if (grid) grid.innerHTML = '<div class="vod-empty">לא ניתן לטעון כרגע — נסו שוב.</div>';
-    });
+    // HANG-PROOF (same approach as _loadCourse): show the last-known recordings from localStorage
+    // instantly, fetch fresh with a hard 10s timeout, and offer a retry — never sit on "טוען הקלטות…".
+    var LS = "sn_vods", grid = $("vodGrid");
+    var cached = null, shown = false;
+    try { cached = JSON.parse(localStorage.getItem(LS) || "null"); } catch (e) {}
+    if (Array.isArray(cached) && cached.length) { _renderVods(cached); shown = true; }
+    var ctl = null, timer = null;
+    try { ctl = new AbortController(); timer = setTimeout(function () { try { ctl.abort(); } catch (e) {} }, 10000); } catch (e) { ctl = null; }
+    fetch("/api/live-vods", { cache: "no-cache", signal: ctl ? ctl.signal : undefined })
+      .then(function (r) { if (timer) clearTimeout(timer); return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var vods = (j && j.ok && Array.isArray(j.vods)) ? j.vods : null;
+        if (!vods) { if (!shown && grid) grid.innerHTML = '<div class="vod-empty">אין עדיין שידורים מוקלטים. אחרי הלייב הבא הם יופיעו כאן 🎬</div>'; return; }
+        try { localStorage.setItem(LS, JSON.stringify(vods)); } catch (e) {}
+        _renderVods(vods); shown = true;
+      })
+      .catch(function () {
+        if (timer) clearTimeout(timer);
+        if (!shown && grid) {
+          grid.innerHTML = '<div class="vod-empty">לא ניתן לטעון כרגע — <button type="button" id="vodRetry" class="course-add" style="margin-inline-start:8px">🔄 נסה שוב</button></div>';
+          var b = $("vodRetry"); if (b) b.onclick = function () { grid.innerHTML = '<div class="vod-empty">טוען הקלטות…</div>'; _loadLives(); };
+        }
+      });
   }
 
   function _play(iframe, uid, name) {
