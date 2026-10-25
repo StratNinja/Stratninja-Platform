@@ -85,8 +85,8 @@ body { font-family: 'Heebo', 'Rubik', 'Segoe UI', 'Assistant', Arial, sans-serif
 
 /* ---------- luxury emerald replaces the old Discord-violet on active toggles ---------- */
 /* one brand green for every "on" accent button, so the UI reads uniform + premium (no purple). */
-:root { --lux-g1:#0c9160; --lux-g2:#17c08a; --lux-gsoft:rgba(23,192,138,.5); }
-html[data-theme="light"] { --lux-g1:#0a875a; --lux-g2:#12b07d; --lux-gsoft:rgba(18,176,125,.5); }
+:root { --lux-g1:#1fae95; --lux-g2:#4fd6bd; --lux-gsoft:rgba(79,214,189,.5); }   /* mint-teal — aligned with Strat School accent */
+html[data-theme="light"] { --lux-g1:#0e9e86; --lux-g2:#17c0a6; --lux-gsoft:rgba(23,192,166,.5); }
 .uni-btn.on,
 .secftfc-btn.on,
 .flow-tf-btn.on {

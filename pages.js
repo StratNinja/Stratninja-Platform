@@ -8414,9 +8414,6 @@
     return _svgWrap(s, "Measured Move — יעד לפי גודל התנועה");
   }
   function renderLearn() {
-    // Strat School is now EMBEDDED — "STRAT SCHOOL" keeps you on stratninja.win and loads the academy in a frame.
-    return '<div class="panel" style="padding:0;overflow:hidden;border-radius:14px">' +
-      '<iframe src="https://school.stratninja.win/" title="Strat School" style="display:block;width:100%;height:calc(100vh - 118px);min-height:560px;border:0"></iframe></div>';
     const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
     // card with a CUSTOM diagram + "open in scanner" button + a video slot (filled later, platform-agnostic)
     const vslot = '<span style="font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px">🎬 סרטון — בקרוב</span>';
@@ -8530,7 +8527,6 @@
     _newbiePopup();
   }
   function wireLearn() {
-    return;   // learn is now an embedded Strat School iframe — nothing to wire
     const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
     const b = $("#lrnToToday"); if (b) b.onclick = () => setPage("today");
     { const rb = $("#lrnRemoveBadge"); if (rb) rb.onclick = () => _newbiePopup(); }   // re-open the remove dialog on demand

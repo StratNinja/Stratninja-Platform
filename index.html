@@ -42,7 +42,7 @@
 <link rel="stylesheet" href="landing.css">
 <link rel="stylesheet" href="app.css?v=1005p">
 <link rel="stylesheet" href="share-fonts.css"><!-- embedded Heebo+Inter for share-card PNGs (html2canvas) -->
-<link rel="stylesheet" href="redesign.css?v=1005g"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
+<link rel="stylesheet" href="redesign.css?v=1005h"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
 <!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
 <script>
 (function(){try{if(localStorage.getItem('sn_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
@@ -181,7 +181,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
         <div class="nav-group-label">סביבת העבודה שלי</div>
         <a data-page="favorites">⭐ <span class="lbl">מועדפים</span></a>
         <a data-page="journal">📅 <span class="lbl">יומן מסחר</span></a>
-        <a data-page="learn">🎓 <span class="lbl">STRAT SCHOOL</span> <span class="nav-newbie">התחל כאן 👋</span></a>
+        <a href="https://school.stratninja.win" target="_blank" rel="noopener">🎓 <span class="lbl">STRAT SCHOOL</span> <span class="nav-newbie">התחל כאן 👋</span></a>
         <a data-page="draw" id="navDraw" style="display:none">✏️ <span class="lbl">שרטוט נרות</span></a><!-- kept for routing; hidden from sidebar, opened via the floating dock -->
         <a data-page="analytics" id="navAnalytics" style="display:none">📈 <span class="lbl">מטריצת שימוש</span></a>
         <a class="side-act" id="sideAlerts">🔔 <span class="lbl">מרכז התראות</span><span class="al-badge" id="alBadgeSide"></span></a>
@@ -268,7 +268,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <script src="live_alert.js?v=1009c"></script>
 <script src="live.js?v=1011b"></script>
 <script src="live_vods.js?v=1010c"></script>
-<script src="pages.js?v=1007u"></script>
+<script src="pages.js?v=1007v"></script>
 <script src="platform.js"></script>
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>
