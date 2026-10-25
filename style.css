@@ -1,26 +1,27 @@
 :root{
-  --bg:#0c0f14; --panel:#12171f; --panel2:#191f29; --cell:#191f29; --line:#262e3c;   /* concept palette: cooler, more uniform */
-  --green:#16b877; --greenbg:rgba(22,184,119,.13); --greenbd:rgba(22,184,119,.5);
-  --red:#e0524f; --redbg:rgba(224,82,79,.13); --redbd:rgba(224,82,79,.5);
-  --ink:#edf0f7; --muted:#6a7789; --accent:#cfd6e2; --accentbg:#23272f;   /* graphite accent + concept ink/muted */
+  /* REDESIGN 2026-10-25 — aligned with Strat School (academy): warm violet-charcoal base + mint-teal
+     accent, softer cards/shadows. Bullish/bearish (green/red) kept for data clarity. */
+  --bg:#100d16; --panel:#1a1622; --panel2:#241e2e; --cell:#241e2e; --line:#362e44;
+  --green:#2ec98a; --greenbg:rgba(46,201,138,.13); --greenbd:rgba(46,201,138,.5);   /* up — clear green, distinct from mint accent */
+  --red:#ef5a6a; --redbg:rgba(239,90,106,.13); --redbd:rgba(239,90,106,.5);         /* down — clear red (not pink) */
+  --ink:#f4f2f7; --muted:#b6adc2; --accent:#65ddc6; --accent-ink:#08241e; --accentbg:#241e2e;   /* mint-teal accent (academy) */
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
-  --soft:rgba(255,255,255,.06);      /* subtle on-panel overlay — flips to a dark tint in light mode */
-  --soft2:rgba(255,255,255,.035);
-  /* panel edge: NO bright rim on dark (the old grey border read as faint lines between stacked
-     panels) — panels are defined by their fill + a soft shadow, like floating cards. */
+  --soft:rgba(255,255,255,.055);
+  --soft2:rgba(255,255,255,.03);
   --panelbd:transparent;
-  --panelsh:0 2px 6px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.35);
-  --tline:rgba(255,255,255,.05);   /* table row separator — a whisper, not the old grey line */
+  --panelsh:0 10px 30px rgba(0,0,0,.35);   /* soft floating card (academy) */
+  --tline:rgba(255,255,255,.05);
 }
 html[data-theme="light"]{
-  --bg:#eef1f6; --panel:#ffffff; --panel2:#f0f3f8; --cell:#e6ebf2; --line:#dbe1eb;   /* concept light palette */
+  /* warm, clean light (academy-style) — the "serious/professional" default feel */
+  --bg:#f5f3fa; --panel:#ffffff; --panel2:#f1eef8; --cell:#ece8f3; --line:#e4def0;
   --green:#0e9d63; --greenbg:rgba(14,157,99,.13); --greenbd:rgba(14,157,99,.45);
-  --red:#cf3a37; --redbg:rgba(207,58,55,.13); --redbd:rgba(207,58,55,.45);
-  --ink:#172033; --muted:#7a869c; --accent:#2b303a; --accentbg:#eaedf2;   /* graphite accent + concept ink/muted */
-  --soft:rgba(20,26,38,.06); --soft2:rgba(20,26,38,.04);
-  --panelbd:var(--line);   /* light theme keeps a crisp edge (it reads fine on white) */
-  --panelsh:0 1px 3px rgba(20,26,38,.11),0 1px 2px rgba(20,26,38,.06);
-  --tline:var(--line);     /* light theme keeps a crisp row separator */
+  --red:#d4455a; --redbg:rgba(212,69,90,.12); --redbd:rgba(212,69,90,.45);
+  --ink:#1d1726; --muted:#796f8c; --accent:#12b89a; --accent-ink:#ffffff; --accentbg:#eaf7f3;   /* teal accent */
+  --soft:rgba(29,23,38,.05); --soft2:rgba(29,23,38,.035);
+  --panelbd:var(--line);
+  --panelsh:0 1px 3px rgba(29,23,38,.10),0 6px 20px rgba(29,23,38,.06);
+  --tline:var(--line);
 }
 html[data-theme="light"] body{ background:var(--bg); color:var(--ink); }
 html[data-theme="light"] .panel{ box-shadow:var(--panelsh); }
@@ -44,7 +45,7 @@ button{font-family:inherit}
 .btn{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;
   padding:8px 14px;cursor:pointer;font-size:13px}
 .btn:hover{border-color:#3a4150}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.ghost{background:transparent}
 .sel{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;
