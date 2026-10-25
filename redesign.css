@@ -1109,3 +1109,8 @@ body.sn-broadcast .page-head h1 { font-size: 46px; }
   .main { padding: 18px; }
 }
 @media (max-width: 1000px) { .page-head h1 { font-size: 30px; } }
+
+/* ===== professional pass (2026-10-25) — calmer & more serious, aligned with Strat School ===== */
+.confetti { display: none !important; }                 /* no falling confetti in the community banner */
+.cta-trophy { animation: none !important; }             /* static trophy — no bounce */
+.community-cta .cta-arrow { background: var(--lux-g2); color: var(--accent-ink); }   /* mint accent, on-brand */
