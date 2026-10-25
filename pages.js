@@ -9540,6 +9540,7 @@
     };
     setThemeIcon();
     { const t = document.getElementById("snDockTheme"); if (t) t.onclick = () => { try { if (window.snToggleTheme) snToggleTheme(); } catch (e) {} setThemeIcon(); }; }
+    { const p = document.getElementById("snDockPal"); if (p) { const setPalIcon = () => { const g = document.documentElement.getAttribute("data-pal") === "green"; p.textContent = g ? "🟢" : "🔵"; p.title = g ? "ערכת צבע: ירוק — לחץ לכחול" : "ערכת צבע: כחול — לחץ לירוק"; }; setPalIcon(); p.onclick = () => { try { if (window.snTogglePal) snTogglePal(); } catch (e) {} setPalIcon(); }; } }
     { const c = document.getElementById("snDockCam"); if (c) c.onclick = () => captureShare(); }
     { const d = document.getElementById("snDockDraw"); if (d) d.onclick = () => setPage("draw"); }
     { const bl = document.getElementById("snDockBell"); if (bl) bl.onclick = () => openAlertsFeed("feed"); }

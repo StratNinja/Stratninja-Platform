@@ -45,11 +45,14 @@
 <link rel="stylesheet" href="redesign.css?v=1005j"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
 <!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
 <script>
-(function(){try{if(localStorage.getItem('sn_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();
+(function(){try{var d=document.documentElement;if(localStorage.getItem('sn_theme')==='light')d.setAttribute('data-theme','light');if(localStorage.getItem('sn_pal')==='green')d.setAttribute('data-pal','green');}catch(e){}})();
 function snToggleTheme(){var d=document.documentElement,light=d.getAttribute('data-theme')==='light';
   if(light){d.removeAttribute('data-theme');try{localStorage.setItem('sn_theme','dark');}catch(e){}}
   else{d.setAttribute('data-theme','light');try{localStorage.setItem('sn_theme','light');}catch(e){}}
   snUpdateThemeLabel();}
+function snTogglePal(){var d=document.documentElement,green=d.getAttribute('data-pal')==='green';
+  if(green){d.removeAttribute('data-pal');try{localStorage.setItem('sn_pal','blue');}catch(e){}}
+  else{d.setAttribute('data-pal','green');try{localStorage.setItem('sn_pal','green');}catch(e){}}}
 function snUpdateThemeLabel(){var b=document.getElementById('themeLbl');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'מצב כהה':'מצב בהיר';}
 document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 </script>
@@ -216,6 +219,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
           <button class="snd-btn snd-toggle" id="snDockToggle" title="הסתר/הצג כלים" aria-label="הסתר/הצג">›</button>
           <div class="snd-icons" id="sndIcons">
             <button class="snd-btn" id="snDockTheme" title="מצב בהיר / כהה" aria-label="מצב בהיר / כהה">🌙</button>
+            <button class="snd-btn" id="snDockPal" title="ערכת צבע — כחול / ירוק" aria-label="ערכת צבע">🔵</button>
             <button class="snd-btn snd-dens" id="snDockDensity" title="צפיפות תצוגה — רגיל / קומפקטי / צפוף" aria-label="צפיפות תצוגה">⇳</button>
             <button class="snd-btn" id="snDockCam" title="שתף מסך" aria-label="שתף מסך">📷</button>
             <button class="snd-btn" id="snDockDraw" title="שרטוט נרות" aria-label="שרטוט נרות" style="display:none">✏️</button>

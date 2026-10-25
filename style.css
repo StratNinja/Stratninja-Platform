@@ -1,27 +1,38 @@
 :root{
-  /* REDESIGN 2026-10-25 — aligned with Strat School (academy): warm violet-charcoal base + mint-teal
-     accent, softer cards/shadows. Bullish/bearish (green/red) kept for data clarity. */
-  --bg:#100d16; --panel:#1a1622; --panel2:#241e2e; --cell:#241e2e; --line:#362e44;
-  --green:#2ec98a; --greenbg:rgba(46,201,138,.13); --greenbd:rgba(46,201,138,.5);   /* up — clear green, distinct from mint accent */
-  --red:#ef5a6a; --redbg:rgba(239,90,106,.13); --redbd:rgba(239,90,106,.5);         /* down — clear red (not pink) */
-  --ink:#f4f2f7; --muted:#b6adc2; --accent:#65ddc6; --accent-ink:#08241e; --accentbg:#241e2e;   /* mint-teal accent (academy) */
+  /* REDESIGN 2026-10 — deep-blue base + futuristic teal accent (blue palette · dark = default).
+     Two theme axes: data-pal (blue default / green) × data-theme (dark default / light) → 4 combos.
+     Bullish/bearish (green/red) kept for data clarity, separate from the teal accent. */
+  --bg:#090e18; --panel:#111a2c; --panel2:#15233a; --cell:#15233a; --line:#26314a;
+  --green:#2fcf8e; --greenbg:rgba(47,207,142,.14); --greenbd:rgba(47,207,142,.5);   /* up */
+  --red:#fb6a7f; --redbg:rgba(251,106,127,.14); --redbd:rgba(251,106,127,.5);        /* down */
+  --ink:#eef3fb; --muted:#9fb1ca; --accent:#34e0d0; --accent-ink:#06231d; --accentbg:rgba(52,224,208,.12);   /* teal accent */
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
   --soft:rgba(255,255,255,.055);
   --soft2:rgba(255,255,255,.03);
   --panelbd:transparent;
-  --panelsh:0 10px 30px rgba(0,0,0,.35);   /* soft floating card (academy) */
+  --panelsh:0 16px 40px rgba(0,0,0,.42);   /* premium floating card */
   --tline:rgba(255,255,255,.05);
 }
 html[data-theme="light"]{
-  /* warm, clean light (academy-style) — the "serious/professional" default feel */
-  --bg:#f5f3fa; --panel:#ffffff; --panel2:#f1eef8; --cell:#ece8f3; --line:#e4def0;
-  --green:#0e9d63; --greenbg:rgba(14,157,99,.13); --greenbd:rgba(14,157,99,.45);
-  --red:#d4455a; --redbg:rgba(212,69,90,.12); --redbd:rgba(212,69,90,.45);
-  --ink:#1d1726; --muted:#796f8c; --accent:#12b89a; --accent-ink:#ffffff; --accentbg:#eaf7f3;   /* teal accent */
-  --soft:rgba(29,23,38,.05); --soft2:rgba(29,23,38,.035);
+  /* blue · light */
+  --bg:#eef2f8; --panel:#ffffff; --panel2:#f6f8fc; --cell:#eef2f8; --line:#d9e0ec;
+  --green:#12a56e; --greenbg:rgba(18,165,110,.13); --greenbd:rgba(18,165,110,.45);
+  --red:#e24863; --redbg:rgba(226,72,99,.12); --redbd:rgba(226,72,99,.45);
+  --ink:#131a2b; --muted:#56617a; --accent:#0fb6a4; --accent-ink:#ffffff; --accentbg:rgba(15,182,164,.12);
+  --soft:rgba(16,24,40,.05); --soft2:rgba(16,24,40,.035);
   --panelbd:var(--line);
-  --panelsh:0 1px 3px rgba(29,23,38,.10),0 6px 20px rgba(29,23,38,.06);
+  --panelsh:0 1px 3px rgba(16,24,40,.08),0 10px 26px rgba(16,24,40,.07);
   --tline:var(--line);
+}
+/* ===== GREEN palette (data-pal="green") — overrides only the palette tokens ===== */
+html[data-pal="green"]{
+  --bg:#07140f; --panel:#0f1f18; --panel2:#132a20; --cell:#132a20; --line:#20392c;
+  --accent:#3ddc84; --accent-ink:#032417; --accentbg:rgba(61,220,132,.13);
+  --muted:#9ac3ac;
+}
+html[data-pal="green"][data-theme="light"]{
+  --bg:#eef4f0; --panel:#ffffff; --panel2:#f5faf6; --cell:#eef4f0; --line:#d6e5db;
+  --ink:#122018; --muted:#50685b; --accent:#14ad7d; --accent-ink:#ffffff; --accentbg:rgba(20,173,125,.12);
 }
 html[data-theme="light"] body{ background:var(--bg); color:var(--ink); }
 html[data-theme="light"] .panel{ box-shadow:var(--panelsh); }
