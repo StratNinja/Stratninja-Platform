@@ -72,8 +72,35 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   .yt-outage .yto-join{margin-top:6px;display:inline-block;background:#f59e0b;color:#1a1200;font-weight:800;text-decoration:none;padding:6px 13px;border-radius:9px;font-size:13px;align-self:flex-start}
   .yt-outage .yto-x{position:absolute;top:5px;left:7px;background:transparent;border:none;color:rgba(255,255,255,.7);font-size:15px;cursor:pointer;line-height:1}
   @media(max-width:600px){.yt-outage{left:8px;right:8px;bottom:10px;max-width:none}}
+  .ss-announce{position:fixed;bottom:16px;left:14px;z-index:4000;max-width:340px;display:flex;gap:11px;align-items:flex-start;background:linear-gradient(180deg,#0e1a16,#0b1512);color:#eafff6;border:1.5px solid #22d39a;border-radius:16px;padding:13px 15px 13px 32px;box-shadow:0 14px 38px rgba(0,0,0,.55);font-family:Heebo,Rubik,sans-serif;direction:rtl;text-align:right}
+  .ss-announce .ss-ico{font-size:26px;line-height:1.1}
+  .ss-announce .ss-body{display:flex;flex-direction:column;gap:4px;font-size:13px;line-height:1.5}
+  .ss-announce .ss-body b{font-size:15px;color:#6ff0c4}
+  .ss-announce .ss-cta{margin-top:7px;display:inline-block;background:#22d39a;color:#05231a;font-weight:800;text-decoration:none;padding:7px 14px;border-radius:10px;font-size:13px;align-self:flex-start}
+  .ss-announce .ss-x{position:absolute;top:6px;left:8px;background:transparent;border:none;color:rgba(255,255,255,.65);font-size:15px;cursor:pointer;line-height:1}
+  @media(max-width:600px){.ss-announce{left:8px;right:8px;bottom:10px;max-width:none}}
 </style>
 <!-- YouTube outage banner removed 2026-10-23 — the channel was reinstated and is live again. -->
+<div id="ssAnnounce" class="ss-announce" role="status" style="display:none">
+  <button class="ss-x" id="ssX" type="button" aria-label="סגור">✕</button>
+  <div class="ss-ico">🎓</div>
+  <div class="ss-body">
+    <b>חדש: Strat School</b>
+    <span>בית הספר של StratNinja ללימוד שיטת הסטראט בעברית — שיעורים, תרשימים ותרגול. חינם.</span>
+    <a href="https://school.stratninja.win" target="_blank" rel="noopener" class="ss-cta">כניסה ל-Strat School →</a>
+  </div>
+</div>
+<script>
+  (function () {
+    var el = document.getElementById("ssAnnounce"); if (!el) return;
+    var KEY = "sn_strat_school_announce_v1";
+    try { if (localStorage.getItem(KEY) === "dismissed") return; } catch (e) {}
+    el.style.display = "flex";
+    function hide(remember) { el.style.display = "none"; if (remember) { try { localStorage.setItem(KEY, "dismissed"); } catch (e) {} } }
+    var x = document.getElementById("ssX"); if (x) x.onclick = function () { hide(true); };
+    var cta = el.querySelector(".ss-cta"); if (cta) cta.addEventListener("click", function () { hide(true); });
+  })();
+</script>
 
 
 <!-- ===================== LANDING ===================== -->
