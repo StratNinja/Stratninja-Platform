@@ -79,6 +79,15 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   .ss-announce .ss-cta{margin-top:7px;display:inline-block;background:#22d39a;color:#05231a;font-weight:800;text-decoration:none;padding:7px 14px;border-radius:10px;font-size:13px;align-self:flex-start}
   .ss-announce .ss-x{position:absolute;top:6px;left:8px;background:transparent;border:none;color:rgba(255,255,255,.65);font-size:15px;cursor:pointer;line-height:1}
   @media(max-width:600px){.ss-announce{left:8px;right:8px;bottom:10px;max-width:none}}
+  .ss-home{max-width:1100px;margin:26px auto 0;padding:24px 26px;border-radius:20px;background:linear-gradient(135deg,rgba(34,211,154,.13),rgba(22,179,255,.06));border:1.5px solid rgba(34,211,154,.5);display:flex;align-items:center;gap:22px;flex-wrap:wrap;text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}
+  .ss-home:hover{transform:translateY(-2px);border-color:#22d39a;text-decoration:none}
+  .ss-home .ssh-ico{font-size:52px;line-height:1}
+  .ss-home .ssh-txt{flex:1;min-width:240px}
+  .ss-home .ssh-txt h3{margin:0 0 6px;font-size:1.45rem;color:var(--text,#eef3fb)}
+  .ss-home .ssh-txt h3 b{color:#22d39a}
+  .ss-home .ssh-txt p{margin:0;color:var(--muted,#9fb0c7);font-size:.98rem;line-height:1.55}
+  .ss-home .ssh-cta{background:#22d39a;color:#05231a;font-weight:800;padding:12px 22px;border-radius:12px;font-size:1rem;white-space:nowrap}
+  @media(max-width:600px){.ss-home{flex-direction:column;text-align:center;align-items:stretch}}
 </style>
 <!-- YouTube outage banner removed 2026-10-23 — the channel was reinstated and is live again. -->
 <div id="ssAnnounce" class="ss-announce" role="status" style="display:none">
@@ -140,6 +149,15 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
     <div class="fcard"><div class="fico">⭐</div><h3>מועדפים אישיים</h3><p>בחר מניות למעקב וצור רשימת מעקב אישית שנשמרת בענן.</p></div>
     <div class="fcard"><div class="fico">📅</div><h3>יומן מסחר</h3><p>העלה דוח ברוקר וקבל דשבורד רווח/הפסד, לוח שנה וסטטיסטיקות.</p></div>
   </div>
+
+  <a class="ss-home" href="https://school.stratninja.win" target="_blank" rel="noopener" aria-label="Strat School — בית הספר לשיטת הסטראט">
+    <div class="ssh-ico">🎓</div>
+    <div class="ssh-txt">
+      <h3>חדש: <b>Strat School</b> — בית הספר לשיטת הסטראט</h3>
+      <p>שיעורים בעברית מאפס ועד מתקדם, תרשימים אינטראקטיביים, הקלטות קוליות, תרגול ומעקב התקדמות. חינם לגמרי.</p>
+    </div>
+    <span class="ssh-cta">כניסה ל-Strat School →</span>
+  </a>
 
   <div class="site-footer-mount"></div>
 </section>
