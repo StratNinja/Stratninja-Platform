@@ -2872,25 +2872,40 @@
   }
   // 🔔 feed tab: recently-fired alerts + direction chips + clear
   function _hubFeedHtml() {
+    // mockup "מרכז התראות": direction pills (.fc) + category-grouped premium rows (.alc)
     const presets = Prefs.scanPresets() || [], feed = Prefs.alertFeed();
     const feedById = {}; presets.forEach(p => { feedById[p.id] = p; });
     const _p2 = n => String(n).padStart(2, "0");
-    const _dcol = { bull: "#16b877", bear: "#e0524f", neutral: "#5a6678" };
+    const DIRICO = { bull: "▲", bear: "▼", neutral: "◆" };
     const _feedItems = feed.map(e => { const p = feedById[e.pid]; if (!p) return null; /* preset gone → hide stale alert */
       const dir = _alertDir(p.name);
       const d = new Date(e.ts), when = d.getDate() + "." + (d.getMonth() + 1) + " " + _p2(d.getHours()) + ":" + _p2(d.getMinutes());
-      const fpx = (e.px != null && !isNaN(+e.px)) ? '<span class="al-fpx" title="מחיר המניה ברגע ההתראה">@' + (+e.px).toFixed(2) + "</span>" : "";
-      return { dir: dir, html: '<div class="al-frow" style="border-inline-start:3px solid ' + _dcol[dir] + ';padding-inline-start:8px"><span class="tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + '</span><span class="muted al-fname" title="' + escAttr(p.name) + '">' + escHtml(p.name) + "</span>" + fpx + '<span class="muted al-time">' + when + "</span></div>" };
+      const fpx = (e.px != null && !isNaN(+e.px)) ? '<span class="alc-px" title="מחיר המניה ברגע ההתראה">@' + (+e.px).toFixed(2) + "</span>" : "";
+      return { dir: dir, cat: (p.cat || ""), html:
+        '<div class="alc ' + dir + '">' +
+          '<span class="alc-ico">' + DIRICO[dir] + "</span>" +
+          '<div class="alc-mid"><span class="alc-sym tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + "</span>" +
+            '<div class="alc-preset" title="' + escAttr(p.name) + '">' + escHtml(p.name) + "</div></div>" +
+          '<div class="alc-right">' + fpx + '<div class="alc-time">' + when + "</div></div>" +
+        "</div>" };
     }).filter(Boolean);
     const _dcnt = { bull: 0, bear: 0, neutral: 0 }; _feedItems.forEach(it => _dcnt[it.dir]++);
-    const _dchip = (dir, lbl, cnt, col) => '<button data-aldir="' + dir + '" class="btn ghost" style="font-size:11px;font-weight:700;padding:3px 9px' + (_alFeedDir === dir ? ";border-color:" + col + ";background:" + col + "22;color:#fff" : "") + '">' + lbl + " <b>" + cnt + "</b></button>";
-    const dirChips = _feedItems.length ? '<span style="display:inline-flex;gap:5px;flex-wrap:wrap">' + _dchip("all", "הכל", _feedItems.length, "#8878ff") + _dchip("bull", "🟢 בוליש", _dcnt.bull, "#16b877") + _dchip("bear", "🔴 בריש", _dcnt.bear, "#e0524f") + "</span>" : "";
-    const flistRows = (_alFeedDir === "all" ? _feedItems : _feedItems.filter(it => it.dir === _alFeedDir)).slice(0, 500).map(it => it.html).join("");
-    const flist = flistRows || (_feedItems.length
-      ? '<div class="muted">אין התראות ' + (_alFeedDir === "bull" ? "בוליש 🟢" : "בריש 🔴") + " כרגע.</div>"
-      : '<div class="muted">עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.</div>');
-    return '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">' + dirChips + (feed.length ? ' <button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + "</div>" +
-      '<div class="al-flist">' + flist + "</div>";
+    const _chip = (dir, lbl, cnt, cls) => '<button data-aldir="' + dir + '" class="fc ' + cls + (_alFeedDir === dir ? " on" : "") + '">' + lbl + ' <span class="n">' + cnt + "</span></button>";
+    const dirChips = _feedItems.length ? '<div class="alc-fchips">' + _chip("all", "הכול", _feedItems.length, "") + _chip("bull", "🟢 שוריות", _dcnt.bull, "up") + _chip("bear", "🔴 דוביות", _dcnt.bear, "down") + (_dcnt.neutral ? _chip("neutral", "נייטרלי", _dcnt.neutral, "") : "") + "</div>" : "";
+    const shown = _alFeedDir === "all" ? _feedItems : _feedItems.filter(it => it.dir === _alFeedDir);
+    let body;
+    if (!shown.length) {
+      body = '<div class="muted">' + (_feedItems.length
+        ? "אין התראות " + (_alFeedDir === "bull" ? "שוריות 🟢" : _alFeedDir === "bear" ? "דוביות 🔴" : "בכיוון הזה") + " כרגע."
+        : "עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.") + "</div>";
+    } else {
+      const groups = {}; shown.forEach(it => { (groups[it.cat] = groups[it.cat] || []).push(it); });
+      body = Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c =>
+        '<div class="alc-cat"><h3 class="alc-cathead">' + _catLabel(c) + ' <span class="alc-catn">' + groups[c].length + '</span><span class="alc-catline"></span></h3>' +
+        '<div class="alc-list">' + groups[c].map(it => it.html).join("") + "</div></div>").join("");
+    }
+    return '<div class="alc-bar">' + dirChips + (feed.length ? ' <button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + "</div>" +
+      '<div class="al-flist alc-scroll">' + body + "</div>";
   }
   function _hubWireFeed() {
     document.querySelectorAll("[data-aldir]").forEach(b => b.onclick = () => { _alFeedDir = b.dataset.aldir; _hubRenderBody(); });

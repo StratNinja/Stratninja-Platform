@@ -1265,6 +1265,35 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 #page .lr-btn { background: linear-gradient(180deg, var(--panel2), var(--panel)); box-shadow: 0 6px 16px rgba(0,0,0,.28); }
 #page .lr-btn:hover { border-color: var(--accent); }
 
+/* === מרכז התראות (מוקאפ): צ'יפי כיוון + שורות מקובצות לקטגוריה === */
+.al-modal .alc-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.al-modal .alc-fchips { display: flex; gap: 7px; flex-wrap: wrap; }
+.al-modal .fc { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--muted); background: var(--chip, rgba(255,255,255,.03)); border: 1px solid var(--line); border-radius: 11px; padding: 7px 12px; cursor: pointer; transition: all .14s; }
+.al-modal .fc:hover { color: var(--ink); }
+.al-modal .fc .n { font-size: 11px; font-weight: 800; opacity: .85; }
+.al-modal .fc.on { background: var(--accentbg); border-color: var(--accent); color: var(--accent); }
+.al-modal .fc.up.on { background: rgba(47,207,142,.15); border-color: var(--green); color: var(--green); }
+.al-modal .fc.down.on { background: rgba(251,106,127,.15); border-color: var(--red); color: var(--red); }
+.al-modal .alc-scroll { max-height: 60vh; overflow-y: auto; }
+.al-modal .alc-cat { margin-top: 16px; }
+.al-modal .alc-cat:first-child { margin-top: 0; }
+.al-modal .alc-cathead { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 800; color: var(--muted); margin: 0 0 10px; }
+.al-modal .alc-catn { font-size: 11px; color: var(--accent); background: var(--accentbg); border: 1px solid var(--accentbg); padding: 1px 8px; border-radius: 999px; font-weight: 800; }
+.al-modal .alc-catline { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+.al-modal .alc-list { display: flex; flex-direction: column; gap: 9px; }
+.al-modal .alc { display: flex; align-items: center; gap: 13px; padding: 12px 15px; border-radius: 14px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); box-shadow: var(--panelsh); transition: border-color .14s, transform .14s; }
+.al-modal .alc:hover { border-color: var(--accent); transform: translateY(-1px); }
+.al-modal .alc-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: 0 0 auto; font-size: 15px; font-weight: 900; }
+.al-modal .alc.bull .alc-ico { background: rgba(47,207,142,.15); color: var(--green); }
+.al-modal .alc.bear .alc-ico { background: rgba(251,106,127,.15); color: var(--red); }
+.al-modal .alc.neutral .alc-ico { background: var(--chip, rgba(255,255,255,.05)); color: var(--muted); }
+.al-modal .alc-mid { flex: 1; min-width: 0; }
+.al-modal .alc-sym { font-weight: 800; font-size: 15px; letter-spacing: .02em; cursor: pointer; }
+.al-modal .alc-preset { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-modal .alc-right { text-align: start; flex: 0 0 auto; }
+.al-modal .alc-px { font-weight: 800; font-size: 13px; direction: ltr; color: var(--ink); }
+.al-modal .alc-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
 /* === מועדפים: premium polish + palette fix (teal accent, drop legacy violet) === */
 #page .fav-card { background: linear-gradient(180deg, var(--panel2), var(--panel)); box-shadow: var(--panelsh); border-radius: 15px; }
 #page .fav-card:hover { border-color: var(--accent); }
