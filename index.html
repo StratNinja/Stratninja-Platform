@@ -42,7 +42,7 @@
 <link rel="stylesheet" href="landing.css">
 <link rel="stylesheet" href="app.css?v=1005p">
 <link rel="stylesheet" href="share-fonts.css"><!-- embedded Heebo+Inter for share-card PNGs (html2canvas) -->
-<link rel="stylesheet" href="redesign.css?v=1005v"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
+<link rel="stylesheet" href="redesign.css?v=1005x"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
 <!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
 <script>
 (function(){try{var d=document.documentElement;if(localStorage.getItem('sn_theme')==='light')d.setAttribute('data-theme','light');if(localStorage.getItem('sn_pal')==='green')d.setAttribute('data-pal','green');}catch(e){}})();
@@ -250,6 +250,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
           <button class="btn ghost" id="menuBtn">⚙️ נתונים</button>
         </div>
         <div class="tabs">
+          <div class="tab active" data-tab="dashboard">📊 דאשבורד</div>
           <div class="tab" data-tab="positions">📌 פוזיציות פתוחות</div>
           <div class="tab" data-tab="calendar">📅 לוח שנה</div>
           <div class="tab" data-tab="equity">📈 עקומת הון</div>
@@ -266,7 +267,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="engine.js?v=1007a"></script>
-<script src="journal.js?v=1008b"></script>
+<script src="journal.js?v=1008c"></script>
 <script src="prefs.js?v=1006f"></script>
 <script src="giveaway.js?v=1016"></script>
 <script src="live_chat.js?v=1009m"></script>

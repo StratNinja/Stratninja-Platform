@@ -1208,14 +1208,49 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .scan-wb-rail .filters.fbar .fpop[data-fname="טיימפריימים"] .chips .chip { flex: 1 1 0; min-width: 0; padding-inline: 0; justify-content: center; text-align: center; }
 .scan-wb-rail .filters.fbar .fpop[data-fname="טיימפריימים"] .chips .tf-addbtn { flex: 0 0 auto; min-width: 30px; }
 
-/* === יומן מסחר: premium polish (stat cards / equity / calendar) === */
-#journalContainer .cards .card { border-radius: 14px; box-shadow: var(--panelsh); background: linear-gradient(180deg, var(--panel2), var(--panel)); transition: transform .14s, border-color .14s; }
-#journalContainer .cards .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+/* === יומן מסחר: premium stat cards + tabs (makeover, not touch-up) === */
+#journalContainer .jr-scope-lbl { color: var(--accent); }
+/* tabs → pill-style with accent-filled active tab */
+#journalContainer .tabs { gap: 4px; }
+#journalContainer .tab { border-radius: 10px 10px 0 0; transition: background .14s, color .14s; }
+#journalContainer .tab:hover { color: var(--ink); background: var(--chip, rgba(255,255,255,.05)); }
+#journalContainer .tab.active { background: var(--accentbg); color: var(--accent); font-weight: 800; border-bottom-color: var(--accent); }
+/* KPI stat cards — elevated, accent top-strip, bold value, hover lift */
+#journalContainer .cards .card { position: relative; border-radius: 15px; background: linear-gradient(180deg, var(--panel2), var(--panel)); box-shadow: var(--panelsh); overflow: hidden; transition: transform .14s, border-color .14s, box-shadow .14s; }
+#journalContainer .cards .card::before { content: ""; position: absolute; top: 0; inset-inline: 0; height: 3px; background: linear-gradient(90deg, var(--accent), transparent); opacity: .75; }
+#journalContainer .cards .card:hover { transform: translateY(-3px); border-color: var(--accent); box-shadow: 0 18px 44px rgba(0,0,0,.5); }
 #journalContainer .cards .card .lbl { font-weight: 700; letter-spacing: .02em; }
-#journalContainer .cards .card .val { font-size: 23px; letter-spacing: -.01em; }
-#journalContainer .chartbox { border-radius: 14px; box-shadow: var(--panelsh); }
-#journalContainer .tablebox { border-radius: 14px; }
+#journalContainer .cards .card .val { font-size: 26px; font-weight: 900; letter-spacing: -.02em; }
+#journalContainer .cards .card .val.pos { color: var(--green); }
+#journalContainer .cards .card .val.neg { color: var(--red); }
+#journalContainer .cards .card .sub { color: var(--muted); font-size: 11.5px; margin-top: 4px; }
+/* equity curve + yearly box + calendar depth */
+#journalContainer .chartbox { border-radius: 15px; box-shadow: var(--panelsh); background: linear-gradient(180deg, var(--panel2), var(--panel)); }
+#journalContainer .tablebox { border-radius: 14px; box-shadow: var(--panelsh); }
 #journalContainer .cell { border-radius: 10px; }
+
+/* === יומן מסחר · דאשבורד (מוקאפ): שורת KPI, עקומה+לוח זה-לצד-זה, כותרות סקשן === */
+#journalContainer .jr-kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin: 6px 0 18px; }
+#journalContainer .jr-stat { position: relative; overflow: hidden; padding: 15px 16px; border-radius: 15px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); box-shadow: var(--panelsh); transition: transform .14s, border-color .14s; }
+#journalContainer .jr-stat::before { content: ""; position: absolute; top: 0; inset-inline: 0; height: 3px; background: linear-gradient(90deg, var(--accent), transparent); opacity: .75; }
+#journalContainer .jr-stat:hover { transform: translateY(-2px); border-color: var(--accent); }
+#journalContainer .jr-stat .l { color: var(--muted); font-size: 11.5px; font-weight: 700; letter-spacing: .03em; }
+#journalContainer .jr-stat .v { font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 23px; line-height: 1.1; margin-top: 5px; letter-spacing: -.01em; }
+#journalContainer .jr-stat .v.up { color: var(--green); }
+#journalContainer .jr-stat .v.down { color: var(--red); }
+#journalContainer .jr-stat .d { font-size: 11.5px; font-weight: 700; margin-top: 3px; color: var(--muted); }
+/* equity (wide) + calendar (narrow) side by side */
+#journalContainer .jr-jcols { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; align-items: start; margin-bottom: 4px; }
+#journalContainer .jr-jcols > * { margin: 0 !important; }
+#journalContainer .jr-calwrap > h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; }
+/* section headers (open positions / recent trades) */
+#journalContainer .jr-dashsec { margin-top: 22px; }
+#journalContainer .jr-th { display: flex; align-items: center; gap: 9px; margin-bottom: 12px; }
+#journalContainer .jr-th h2 { font-size: 15px; font-weight: 800; margin: 0; }
+#journalContainer .jr-th .jr-c { color: var(--muted); font-size: 12px; }
+#journalContainer .jr-th .jr-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+@media (max-width: 980px) { #journalContainer .jr-kpis { grid-template-columns: repeat(3, 1fr); } #journalContainer .jr-jcols { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { #journalContainer .jr-kpis { grid-template-columns: repeat(2, 1fr); } }
 
 /* === מועדפים: premium polish + palette fix (teal accent, drop legacy violet) === */
 #page .fav-card { background: linear-gradient(180deg, var(--panel2), var(--panel)); box-shadow: var(--panelsh); border-radius: 15px; }

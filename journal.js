@@ -86,7 +86,7 @@
 
   // ---- App state ---------------------------------------------------------
   const ALL = "__ALL__";    // pseudo-account: combined view of every account
-  const state = { account: null, tab: "positions", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
+  const state = { account: null, tab: "dashboard", monthIdx: 0, months: [], sortKey: "exitDate", sortDir: -1,
     aggTrades: (function () { try { return localStorage.getItem("sn_agg_trades") !== "0"; } catch (e) { return true; } })(),
     calGran: (function () { try { return localStorage.getItem("sn_cal_gran") || "month"; } catch (e) { return "month"; } })(),
     tradeFilter: "",   // ticker filter text for the closed-trades table
@@ -309,6 +309,32 @@
       if (el) { e.stopPropagation(); e.preventDefault(); if (window._snOpenChart) window._snOpenChart(el.dataset.jchart); }
     }, true);
   }
+  // dashboard section header (mockup): title + count + fading rule
+  function _dashSecHdr(title, count) {
+    const d = el("div", "jr-th");
+    d.innerHTML = "<h2>" + title + "</h2>" + (count ? '<span class="jr-c">' + count + "</span>" : "") + '<span class="jr-line"></span>';
+    return d;
+  }
+  // dashboard KPI row (mockup): 6 headline stats from the real engine, big display values + context line
+  function renderDashKpis(trades, manualOpen, fifoOpen) {
+    const s = E.stats(trades);
+    const ud = v => (v > 0 ? "up" : (v < 0 ? "down" : ""));
+    const pf = s.profitFactor === Infinity ? "∞" : s.profitFactor.toFixed(2);
+    const wins = s.count ? Math.round((s.winRate / 100) * s.count) : 0;
+    const items = [
+      ["רווח נקי", money(s.net, 0), ud(s.net), "ממומש · כל הזמן"],
+      ["אחוז הצלחה", s.winRate + "%", "", wins + " / " + s.count],
+      ["Profit Factor", pf, s.profitFactor >= 1 ? "up" : "down", "רווח / הפסד"],
+      ["מס' עסקאות", String(s.count), "", "סגורות"],
+      ["רווח ממוצע", money(s.avgWin, 0), "up", "לעסקה מרוויחה"],
+      ["העסקה הטובה", money(s.bestTrade, 0), "up", "שיא"],
+    ];
+    const wrap = el("div", "jr-kpis num");
+    wrap.innerHTML = items.map(it =>
+      '<div class="jr-stat"><div class="l">' + it[0] + '</div><div class="v ' + (it[2] || "") + '">' + it[1] + '</div><div class="d">' + it[3] + "</div></div>"
+    ).join("");
+    return wrap;
+  }
   function render() {
     _wireJournalCharts();
     const root = $("#view");
@@ -344,7 +370,26 @@
     const content = el("div", "jr-content");
     // Each tab shows ONLY its own content. Open positions live in their own "positions" tab
     // (Adi: don't jam the open-positions panel on top of calendar/equity/etc.).
-    if (state.tab === "positions") {
+    if (state.tab === "dashboard") {
+      // single-page overview (mockup): KPI row → equity + calendar side-by-side → open positions → recent trades
+      content.appendChild(renderDashKpis(trades, manualOpen, openPositions));
+      const jcols = el("div", "jr-jcols");
+      jcols.appendChild(renderEquity(trades));
+      const calWrap = el("div", "chartbox jr-calwrap");
+      calWrap.appendChild(el("h3", null, "לוח רווחיות יומי"));
+      calWrap.appendChild(renderCalendar(trades));
+      jcols.appendChild(calWrap);
+      content.appendChild(jcols);
+      const posSec = el("div", "jr-dashsec");
+      posSec.appendChild(_dashSecHdr("פוזיציות פתוחות", ((manualOpen ? manualOpen.length : 0)) + " פתוחות"));
+      if (manualOpen && manualOpen.length) posSec.appendChild(renderOpenPositions(manualOpen));
+      else { const n = el("div", "note"); n.innerHTML = "📌 אין פוזיציות פתוחות כרגע."; posSec.appendChild(n); }
+      content.appendChild(posSec);
+      const trSec = el("div", "jr-dashsec");
+      trSec.appendChild(_dashSecHdr("עסקאות אחרונות", "סגורות"));
+      trSec.appendChild(renderTrades(trades, openPositions, manualOpen));
+      content.appendChild(trSec);
+    } else if (state.tab === "positions") {
       content.appendChild(renderTotalPnl(trades, manualOpen, openPositions));
       if (manualOpen && manualOpen.length) content.appendChild(renderOpenPositions(manualOpen));
       else { const n = el("div", "note"); n.style.marginTop = "12px"; n.innerHTML = "📌 אין פוזיציות פתוחות כרגע. פוזיציות שתפתח (או תייבא ולא נסגרו) יופיעו כאן עם ה-P&L הלא-ממומש בזמן אמת."; content.appendChild(n); }
