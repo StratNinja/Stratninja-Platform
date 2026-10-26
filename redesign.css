@@ -1199,6 +1199,10 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .scan-wb-rail .filters.fbar .fpop-body { position: static; z-index: auto; top: auto; inset-inline-start: auto; margin: 2px 2px 10px; padding: 4px 8px 10px; box-shadow: none; border: none; background: transparent; width: auto; max-width: none; }
 .scan-wb-rail .filters.fbar .fpop.fpop-panel .fpop-body, .scan-wb-rail .filters.fbar .fpop.fpop-wide .fpop-body { max-width: none; max-height: none; overflow: visible; }
 .scan-wb-rail .filters.fbar .fbar-break { display: none; }
+/* Timeframes exposed at the top of the rail (D/W/M/Q/Y + ➕ for extra), not collapsed into an accordion */
+.scan-wb-rail .filters.fbar .fpop[data-fname="טיימפריימים"] { border-top: none; }
+.scan-wb-rail .filters.fbar .fpop[data-fname="טיימפריימים"] .fpop-btn { display: none; }
+.scan-wb-rail .filters.fbar .fpop[data-fname="טיימפריימים"] .fpop-body { display: block; margin-top: 0; padding-top: 2px; }
 @media (max-width: 1040px) { .scan-wb { grid-template-columns: 1fr; } .scan-wb-rail .filters.fbar .frow, .scan-wb-rail .filters .frow { flex-direction: row; flex-wrap: wrap; } .scan-wb-rail .filters.fbar .fpop { width: auto; position: relative; border-top: none; } .scan-wb-rail .filters.fbar .fpop-btn { border: 1px solid var(--line); background: var(--panel2); } .scan-wb-rail .filters.fbar .fpop-body { position: absolute; } }
 /* launcher match counts + insights band */
 .sl-cnt { margin-top: 6px; font-size: 11px; font-weight: 800; color: var(--accent); }

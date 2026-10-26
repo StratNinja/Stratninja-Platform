@@ -6057,7 +6057,6 @@
         ? '<div class="scan-yday-note">📅 <b>תצוגת אתמול</b> — ' + (SCAN_YDAY ? "הסריקה כפי שנסגרה" + (SCAN_YDAY.snapDate ? " (" + SCAN_YDAY.snapDate + ")" : "") + ", עם נרות יומיים מושלמים. " : (_ydayLoaded ? "אין עדיין נתוני אתמול — הסנאפשוט נשמר אוטומטית אחרי סגירת המסחר בארה\"ב. " : "טוען נתונים… ")) + '<button class="btn ghost sm" data-scanview="live">🔴 חזור ללייב</button></div>'
         : (isLive ? liveBanner() : DEMO)) +
       topBar +
-      _scanLauncher(_scanLaunchCounts(all)) +
       '<div class="scan-wb">' +
         '<div class="scan-wb-rail">' + filters + mtfPanel + techPanel + indPanel + "</div>" +
         '<div class="scan-wb-main">' + _scanInsights(all) + '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div></div>" +
