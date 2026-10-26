@@ -5997,8 +5997,10 @@
         : (isLive ? liveBanner() : DEMO)) +
       topBar +
       _scanLauncher() +
-      filters + mtfPanel + techPanel + indPanel +   // all four filter panels always render now (show/hide removed)
-      '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div>"
+      '<div class="scan-wb">' +
+        '<div class="scan-wb-rail">' + filters + mtfPanel + techPanel + indPanel + "</div>" +
+        '<div class="scan-wb-main"><div class="scan-layout">' + resultsPanel + insightsPanel + "</div></div>" +
+      "</div>"
     );
   }
   function filterRows(all) {
