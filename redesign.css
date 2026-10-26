@@ -1281,18 +1281,18 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .al-modal .alc-catn { font-size: 11px; color: var(--accent); background: var(--accentbg); border: 1px solid var(--accentbg); padding: 1px 8px; border-radius: 999px; font-weight: 800; }
 .al-modal .alc-catline { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
 .al-modal .alc-list { display: flex; flex-direction: column; gap: 9px; }
-.al-modal .alc { display: flex; align-items: center; gap: 13px; padding: 12px 15px; border-radius: 14px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); box-shadow: var(--panelsh); transition: border-color .14s, transform .14s; }
+.al-modal .alc { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: 15px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); box-shadow: var(--panelsh); transition: border-color .14s, transform .14s; }
 .al-modal .alc:hover { border-color: var(--accent); transform: translateY(-1px); }
-.al-modal .alc-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: 0 0 auto; font-size: 15px; font-weight: 900; }
+.al-modal .alc-ico { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; flex: 0 0 auto; font-size: 20px; font-weight: 900; }
 .al-modal .alc.bull .alc-ico { background: rgba(47,207,142,.15); color: var(--green); }
 .al-modal .alc.bear .alc-ico { background: rgba(251,106,127,.15); color: var(--red); }
 .al-modal .alc.neutral .alc-ico { background: var(--chip, rgba(255,255,255,.05)); color: var(--muted); }
 .al-modal .alc-mid { flex: 1; min-width: 0; }
-.al-modal .alc-sym { font-weight: 800; font-size: 15px; letter-spacing: .02em; cursor: pointer; }
-.al-modal .alc-preset { font-size: 12px; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.al-modal .alc-sym { font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 22px; letter-spacing: .02em; cursor: pointer; }
+.al-modal .alc-preset { font-size: 13.5px; color: var(--muted); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .al-modal .alc-right { text-align: start; flex: 0 0 auto; }
-.al-modal .alc-px { font-weight: 800; font-size: 13px; direction: ltr; color: var(--ink); }
-.al-modal .alc-time { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.al-modal .alc-px { font-weight: 800; font-size: 15px; direction: ltr; color: var(--ink); }
+.al-modal .alc-time { font-size: 12px; color: var(--muted); margin-top: 3px; }
 
 /* === עמוד חדשות (מוקאפ): סיכום AI + דיווחים + פיד סנטימנט + יומן כלכלי === */
 #page .news-status { color: var(--muted); font-size: 12.5px; margin: 6px 2px 0; }

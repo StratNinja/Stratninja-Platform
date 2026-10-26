@@ -2877,7 +2877,10 @@
     const feedById = {}; presets.forEach(p => { feedById[p.id] = p; });
     const _p2 = n => String(n).padStart(2, "0");
     const DIRICO = { bull: "▲", bear: "▼", neutral: "◆" };
-    const _feedItems = feed.map(e => { const p = feedById[e.pid]; if (!p) return null; /* preset gone → hide stale alert */
+    // DEDUP: the scanner re-fires the same (stock + preset) every cycle → one row per stock+scan,
+    // keeping the NEWEST (the feed is newest-first) so the list isn't flooded with 02:20/02:21 repeats.
+    const _seenK = Object.create(null);
+    const _feedItems = feed.filter(e => { const k = (e.sym || "") + "|" + e.pid; if (_seenK[k]) return false; _seenK[k] = 1; return true; }).map(e => { const p = feedById[e.pid]; if (!p) return null; /* preset gone → hide stale alert */
       const dir = _alertDir(p.name);
       const d = new Date(e.ts), when = d.getDate() + "." + (d.getMonth() + 1) + " " + _p2(d.getHours()) + ":" + _p2(d.getMinutes());
       const fpx = (e.px != null && !isNaN(+e.px)) ? '<span class="alc-px" title="מחיר המניה ברגע ההתראה">@' + (+e.px).toFixed(2) + "</span>" : "";
