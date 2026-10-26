@@ -5620,19 +5620,59 @@
 
   // Strategy Launcher (redesign): ready-made scans. Each applies ONLY scanState fields via resetScan()
   // (deterministic clean slate) — no change to the filter engine. Results are the existing scanner's.
-  function _scanLauncher() {
-    const P = [
-      ["green5", "🟢", "ירוק · כל הזמנים", "נר עולה על D·W·M·Q·Y"],
-      ["revup", "🔼", "היפוך שורי", "היפוך Strat שורי · יומי"],
-      ["cont2u", "📈", "2U · המשכיות", "נר כיווני עולה · D+W"],
-      ["out3", "💥", "נר חיצוני (3)", "התרחבות טווח · D+W"],
-      ["red5", "🔴", "אדום · כל הזמנים", "נר יורד על D·W·M·Q·Y"],
-      ["revdn", "🔽", "היפוך דובי", "היפוך Strat דובי · יומי"],
-    ];
-    const cards = P.map(p => '<button class="sl-card" data-launch="' + p[0] + '"><span class="sl-ico">' + p[1] + '</span><span class="sl-nm">' + p[2] + '</span><span class="sl-ds">' + p[3] + "</span></button>").join("");
+  var _SCAN_PRESETS = [
+    ["green5", "🟢", "ירוק · כל הזמנים", "נר עולה על D·W·M·Q·Y"],
+    ["revup", "🔼", "היפוך שורי", "היפוך Strat שורי · יומי"],
+    ["cont2u", "📈", "2U · המשכיות", "נר כיווני עולה · D+W"],
+    ["out3", "💥", "נר חיצוני (3)", "התרחבות טווח · D+W"],
+    ["red5", "🔴", "אדום · כל הזמנים", "נר יורד על D·W·M·Q·Y"],
+    ["revdn", "🔽", "היפוך דובי", "היפוך Strat דובי · יומי"]
+  ];
+  function _scanApplyPreset(id) {
+    if (id === "green5") { scanState.dir = "up"; scanState.tfs = ["D", "W", "M", "Q", "Y"]; }
+    else if (id === "red5") { scanState.dir = "down"; scanState.tfs = ["D", "W", "M", "Q", "Y"]; }
+    else if (id === "revup") { scanState.broad = "up"; scanState.tfs = ["D"]; }
+    else if (id === "revdn") { scanState.broad = "down"; scanState.tfs = ["D"]; }
+    else if (id === "out3") { scanState.patterns = ["3"]; scanState.tfs = ["D", "W"]; }
+    else if (id === "cont2u") { scanState.patterns = ["2U"]; scanState.tfs = ["D", "W"]; }
+  }
+  // match counts: snapshot state, run each preset through the REAL filter engine, restore
+  function _scanLaunchCounts(all) {
+    const counts = {};
+    if (!all || !all.length) return counts;
+    const snapS = {}, snapT = {};
+    for (const k in scanState) snapS[k] = Array.isArray(scanState[k]) ? scanState[k].slice() : scanState[k];
+    for (const k in techState) snapT[k] = Array.isArray(techState[k]) ? techState[k].slice() : techState[k];
+    try { _SCAN_PRESETS.forEach(p => { resetScan(); _scanApplyPreset(p[0]); counts[p[0]] = filterRows(all).length; }); } catch (e) {}
+    for (const k in snapS) scanState[k] = snapS[k];
+    for (const k in snapT) techState[k] = snapT[k];
+    return counts;
+  }
+  function _scanLauncher(counts) {
+    counts = counts || {};
+    const cards = _SCAN_PRESETS.map(p => {
+      const c = counts[p[0]];
+      const cnt = (c != null) ? '<span class="sl-cnt">● ' + c + " התאמות</span>" : "";
+      return '<button class="sl-card" data-launch="' + p[0] + '"><span class="sl-ico">' + p[1] + '</span><span class="sl-nm">' + p[2] + '</span><span class="sl-ds">' + p[3] + "</span>" + cnt + "</button>";
+    }).join("");
     const custom = '<button class="sl-card sl-custom" data-launch="custom"><span class="sl-ico">⚙️</span><span class="sl-nm">מותאם אישית</span></button>';
     return '<div class="panel scan-launch"><div class="sl-head"><span class="sl-h-ic">⚡</span><h3>התחל מאסטרטגיה</h3><span class="muted sl-h-sub">סריקה מוכנה בלחיצה — או בנה מותאם</span></div>' +
       '<div class="sl-row">' + cards + custom + "</div></div>";
+  }
+  // insights band above the results (live market breadth + filtered-result stats)
+  function _scanInsights(all) {
+    const rows = (all && all.length) ? filterRows(all) : [];
+    const b = (mktU().breadth) || {};
+    const ap = b.total ? Math.round(b.above / b.total * 100) : null;
+    const bull = rows.length ? Math.round(rows.filter(r => (r.chg != null ? r.chg : 0) > 0).length / rows.length * 100) : null;
+    const ftfc = rows.filter(r => r.ftfc).length;
+    const sl = mktU().sectorLeaders; const sec = (sl && sl[0] && (sl[0].name || sl[0].sym)) || "—";
+    return '<div class="scan-insband">' +
+      '<div class="sib hl"><span class="l">כיוון שורי</span><span class="v" style="color:var(--green)">' + (bull == null ? "—" : bull + "%") + "</span></div>" +
+      '<div class="sib"><span class="l">FTFC מלא</span><span class="v">' + ftfc + "</span></div>" +
+      '<div class="sib"><span class="l">סקטור מוביל</span><span class="v sib-sec">' + sec + "</span></div>" +
+      '<div class="sib warn"><span class="l">רוחב שוק</span><span class="v">' + (ap == null ? "—" : ap + "%") + "</span></div>" +
+      "</div>";
   }
   function renderScanner() {
     const all = scanRowsView();
@@ -5996,10 +6036,10 @@
         ? '<div class="scan-yday-note">📅 <b>תצוגת אתמול</b> — ' + (SCAN_YDAY ? "הסריקה כפי שנסגרה" + (SCAN_YDAY.snapDate ? " (" + SCAN_YDAY.snapDate + ")" : "") + ", עם נרות יומיים מושלמים. " : (_ydayLoaded ? "אין עדיין נתוני אתמול — הסנאפשוט נשמר אוטומטית אחרי סגירת המסחר בארה\"ב. " : "טוען נתונים… ")) + '<button class="btn ghost sm" data-scanview="live">🔴 חזור ללייב</button></div>'
         : (isLive ? liveBanner() : DEMO)) +
       topBar +
-      _scanLauncher() +
+      _scanLauncher(_scanLaunchCounts(all)) +
       '<div class="scan-wb">' +
         '<div class="scan-wb-rail">' + filters + mtfPanel + techPanel + indPanel + "</div>" +
-        '<div class="scan-wb-main"><div class="scan-layout">' + resultsPanel + insightsPanel + "</div></div>" +
+        '<div class="scan-wb-main">' + _scanInsights(all) + '<div class="scan-layout">' + resultsPanel + insightsPanel + "</div></div>" +
       "</div>"
     );
   }
@@ -6366,14 +6406,7 @@
     const reset = $("#scanReset"); if (reset) reset.onclick = () => { resetScan(); _selPreset = ""; scanSort.col = "chg"; scanSort.dir = -1; if (window.Prefs && window.Prefs.setScanPanels) window.Prefs.setScanPanels(ALL_PANELS_ON); reRender(); };   // clearing filters clears the preset + restores all panels
     // Strategy Launcher: each card resets to a clean slate then applies ONLY scanState fields
     document.querySelectorAll("#page [data-launch]").forEach(el => el.onclick = () => {
-      const id = el.dataset.launch; resetScan();
-      if (id === "green5") { scanState.dir = "up"; scanState.tfs = ["D", "W", "M", "Q", "Y"]; }
-      else if (id === "red5") { scanState.dir = "down"; scanState.tfs = ["D", "W", "M", "Q", "Y"]; }
-      else if (id === "revup") { scanState.broad = "up"; scanState.tfs = ["D"]; }
-      else if (id === "revdn") { scanState.broad = "down"; scanState.tfs = ["D"]; }
-      else if (id === "out3") { scanState.patterns = ["3"]; scanState.tfs = ["D", "W"]; }
-      else if (id === "cont2u") { scanState.patterns = ["2U"]; scanState.tfs = ["D", "W"]; }
-      _selPreset = ""; reRender();
+      resetScan(); _scanApplyPreset(el.dataset.launch); _selPreset = ""; reRender();
     });
     // live / yesterday view toggle (buttons in the top bar + the yesterday banner)
     document.querySelectorAll("[data-scanview]").forEach(b => b.onclick = () => { const v = b.dataset.scanview; if (v === scanView) return; scanView = v; if (v === "yday") fetchYesterday(); reRender(); });
