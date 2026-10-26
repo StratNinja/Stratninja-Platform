@@ -83,7 +83,7 @@ window.Giveaway = (function () {
       ".gvw-pill.idle{background:var(--panel2);color:var(--muted)}",
       ".gvw-pill.open{background:rgba(34,197,94,.16);color:var(--green)}",
       ".gvw-pill.closed{background:rgba(234,179,8,.16);color:#eab308}",
-      ".gvw-pill.drawing{background:rgba(99,102,241,.18);color:#818cf8}",
+      ".gvw-pill.drawing{background:var(--accentbg);color:var(--accent)}",
       ".gvw-pill.done{background:rgba(236,72,153,.16);color:#ec4899}",
       ".gvw-stage{margin:16px 0;text-align:center}",
       ".gvw-count{font-size:15px;color:var(--muted);margin:10px 0}",
@@ -98,7 +98,7 @@ window.Giveaway = (function () {
       "@keyframes gvwSpin{to{transform:rotate(360deg)}}",
       ".gvw-winner{animation:gvwReveal .6s ease}",
       "@keyframes gvwReveal{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}",
-      ".gvw-winner .wn-name{font-size:40px;font-weight:900;margin:6px 0;background:linear-gradient(90deg,#fbbf24,#f472b6,#818cf8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}",
+      ".gvw-winner .wn-name{font-size:40px;font-weight:900;margin:6px 0;background:linear-gradient(90deg,#fbbf24,#f472b6,var(--accent));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}",
       ".gvw-winner .wn-prize{font-size:22px;font-weight:700;margin-top:4px}",
       ".gvw-admin{background:var(--panel);border:1px dashed var(--accent);border-radius:14px;padding:14px;margin-bottom:18px}",
       ".gvw-admin h3{margin:0 0 10px;font-size:15px}",
@@ -116,7 +116,7 @@ window.Giveaway = (function () {
       ".gvw-ptr{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:30px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5));z-index:2;line-height:1}",
       ".gvw-wheel-cap{font-size:16px;color:var(--muted);margin-bottom:4px}",
       ".gvw-roller{position:relative;height:322px;overflow:hidden;width:min(440px,92vw);margin:10px auto;-webkit-mask-image:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent);mask-image:linear-gradient(180deg,transparent,#000 20%,#000 80%,transparent)}",
-      ".gvw-roller-sel{position:absolute;left:4px;right:4px;top:138px;height:46px;background:var(--panel2);border:2px solid var(--accent);border-radius:12px;z-index:0;box-shadow:0 0 18px rgba(99,102,241,.35)}",
+      ".gvw-roller-sel{position:absolute;left:4px;right:4px;top:138px;height:46px;background:var(--panel2);border:2px solid var(--accent);border-radius:12px;z-index:0;box-shadow:0 0 18px rgba(52,224,208,.3)}",
       ".gvw-roller-strip{position:relative;z-index:1;will-change:transform}",
       ".gvw-roller-row{height:46px;line-height:46px;text-align:center;font-size:21px;font-weight:800;color:var(--fg)}",
       ".gvw-ov{position:fixed;inset:0;z-index:99999;background:radial-gradient(circle at 50% 38%,rgba(8,18,12,.98),rgba(0,0,0,.99));display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto}",
@@ -130,7 +130,7 @@ window.Giveaway = (function () {
       ".gvw-ov-win .wn-prize{font-size:clamp(18px,5vw,26px);font-weight:800;margin-top:4px}",
       ".gvw-aw{margin:16px auto 0;max-width:460px;text-align:right}",
       ".gvw-aw .aw-row{display:flex;justify-content:space-between;gap:10px;padding:8px 13px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--panel);font-size:14px}",
-      ".gvw-aw .aw-row.new{border-color:var(--accent);box-shadow:0 0 12px rgba(99,102,241,.3)}",
+      ".gvw-aw .aw-row.new{border-color:var(--accent);box-shadow:0 0 12px rgba(52,224,208,.3)}",
       ".gvw-ov-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px}",
       ".gvw-timer{display:block;width:100%;text-align:center;font-size:30px;font-weight:900;color:var(--accent);margin:4px 0 2px;letter-spacing:1px;min-height:38px;font-variant-numeric:tabular-nums}",
       ".gvw-reveal{animation:gvwReveal .5s ease}",
@@ -152,12 +152,17 @@ window.Giveaway = (function () {
       '<div class="gvw-stage" id="gvwStage"></div>' +
       '<div class="gvw-count" id="gvwCount"></div>' +
       '<div class="gvw-list" id="gvwList"></div>' +
+      '<div class="gvw-steps"><div class="gvw-steps-h"><h2>איך זה עובד?</h2><span class="gvw-steps-line"></span></div>' +
+        '<div class="gvw-step"><span class="gvw-stepn">1</span><div class="gvw-stept"><b>כתוב NINJA בלייב</b><p>כשההרשמה פתוחה, כתוב את מילת הקוד בצ׳אט של הלייב — נרשמת פעם אחת.</p></div></div>' +
+        '<div class="gvw-step"><span class="gvw-stepn">2</span><div class="gvw-stept"><b>צפה בהגרלה</b><p>כשההרשמה נסגרת, זוכה נבחר אקראית ובשקיפות מלאה — על המסך.</p></div></div>' +
+        '<div class="gvw-step"><span class="gvw-stepn">3</span><div class="gvw-stept"><b>זכייה והכרזה</b><p>הזוכה מוכרז בלייב ובדיסקורד, והפרס נשלח ישירות.</p></div></div>' +
+      '</div>' +
     '</div>';
   }
 
   function _adminPanel() {
     return '<div class="gvw-admin" id="gvwAdmin">' +
-      '<h3>🛠️ ניהול הגרלה (אדמין)</h3>' +
+      '<h3>🛠️ ניהול הגרלה <span class="gvw-adm-lock">🔒 גלוי רק לך</span></h3>' +
       '<div class="gvw-btnrow" id="gvwAdmBtns"></div>' +
       '<div class="muted" style="font-size:11px;margin-top:8px" id="gvwAdmHint"></div>' +
       '<div class="muted" style="font-size:11px;margin-top:4px" id="gvwChatStat"></div>' +
@@ -405,7 +410,7 @@ window.Giveaway = (function () {
     var tIdx = last.detour ? (last.respinIdx != null ? last.respinIdx : 0) : (last.realIdx != null ? last.realIdx : 0);
     if (tIdx < 0 || tIdx >= units.length) tIdx = 0;
     var n = units.length || 1, center = (tIdx + 0.5) * (360 / n), total = 360 * SPINS + (360 - center);
-    body.innerHTML = '<h2 style="color:#818cf8">🥁 מגרילים את ההטבה…</h2><div class="gvw-timer" id="gvwTimer"></div>' +
+    body.innerHTML = '<h2 style="color:var(--accent)">🥁 מגרילים את ההטבה…</h2><div class="gvw-timer" id="gvwTimer"></div>' +
       _wheelBlock(units.length ? units.map(_unitLabel) : ["🎁"]) +
       (isAdmin() ? '<div class="gvw-ov-btns"><button class="btn ghost" data-gadm="cancelDraw">✕ עצור / בטל</button></div>' : "");
     if (isAdmin()) body.querySelectorAll("[data-gadm]").forEach(function (b) { b.onclick = function () { _admAction(b.dataset.gadm); }; });
@@ -422,7 +427,7 @@ window.Giveaway = (function () {
       var ctrl = isAdmin()
         ? '<div class="gvw-ov-btns"><button class="btn primary" data-gadm="respin">🔄 סובב שוב!</button></div>'
         : '<div class="note" style="margin-top:14px">מסובבים את הגלגל שוב… ⏳</div>';
-      body.innerHTML = '<div class="gvw-ov-win gvw-reveal"><div class="wn-prize" style="font-size:clamp(26px,8vw,46px);color:#818cf8">🔄 סיבוב נוסף!</div>' +
+      body.innerHTML = '<div class="gvw-ov-win gvw-reveal"><div class="wn-prize" style="font-size:clamp(26px,8vw,46px);color:var(--accent)">🔄 סיבוב נוסף!</div>' +
         '<div style="font-size:16px;color:var(--muted);margin-top:8px">הגלגל מסתובב עוד פעם 🎡</div></div>' + ctrl;
       if (isAdmin()) body.querySelectorAll("[data-gadm]").forEach(function (b) { b.onclick = function () { _admAction(b.dataset.gadm); }; });
       return;
