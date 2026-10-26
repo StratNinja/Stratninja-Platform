@@ -1216,6 +1216,20 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 #journalContainer .chartbox { border-radius: 14px; box-shadow: var(--panelsh); }
 #journalContainer .tablebox { border-radius: 14px; }
 #journalContainer .cell { border-radius: 10px; }
+
+/* === מועדפים: premium polish + palette fix (teal accent, drop legacy violet) === */
+#page .fav-card { background: linear-gradient(180deg, var(--panel2), var(--panel)); box-shadow: var(--panelsh); border-radius: 15px; }
+#page .fav-card:hover { border-color: var(--accent); }
+#page .fav-card.fc-pos { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accentbg); }
+#page .fav-section-1 .fav-sec-hdr { border-inline-start-color: var(--accent); }
+#page .fav-section-2 .fav-sec-hdr { border-inline-start-color: var(--green); }
+#page .fc-chg.pos { color: var(--green); }
+#page .fc-chg.neg { color: var(--red); }
+#page .fav-pdrop-sum.on { border-color: var(--accent); color: var(--accent); background: var(--accentbg); }
+#page .fpd-item.on { background: var(--accentbg); color: var(--accent); }
+#page .fpd-item input { accent-color: var(--accent); }
+#page .fav-selchip { color: var(--accent); background: var(--accentbg); border-color: var(--accent); }
+#page .fav-selx { color: var(--accent); }
 @media (max-width: 1040px) { .scan-wb { grid-template-columns: 1fr; } .scan-wb-rail .filters.fbar .frow, .scan-wb-rail .filters .frow { flex-direction: row; flex-wrap: wrap; } .scan-wb-rail .filters.fbar .fpop { width: auto; position: relative; border-top: none; } .scan-wb-rail .filters.fbar .fpop-btn { border: 1px solid var(--line); background: var(--panel2); } .scan-wb-rail .filters.fbar .fpop-body { position: absolute; } }
 /* launcher match counts + insights band */
 .sl-cnt { margin-top: 6px; font-size: 11px; font-weight: 800; color: var(--accent); }
