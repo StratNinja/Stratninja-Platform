@@ -1060,6 +1060,25 @@
     document.querySelectorAll("#page [data-goto]").forEach(el => el.onclick = () => setPage(el.dataset.goto));
     { const cb = document.getElementById("cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
   }
+  // סקירת שוק: compact sector heat-map (reuses LIVE.sectors — colored tiles by daily change)
+  function _marketSectorHeat() {
+    const secs = (LIVE && LIVE.sectors) || [];
+    if (!secs.length) return "";
+    const sorted = secs.slice().sort((a, b) => ((b.chg || 0) - (a.chg || 0)));
+    const tiles = sorted.map(s => {
+      const v = s.chg || 0;
+      const etf = etfFor(s.name) || "";
+      const he = secHe(s.name) || s.name;
+      const lvl = Math.min(3, Math.max(1, Math.ceil(Math.abs(v) / 1.0)));
+      const cls = v > 0.05 ? "mh-u" + lvl : v < -0.05 ? "mh-d" + lvl : "mh-flat";
+      return '<div class="mh-tile ' + cls + ' tsym clickable" data-chart="' + etf + '" data-tf="D">' +
+        '<span class="mh-etf">' + (etf || he) + "</span>" +
+        '<span class="mh-chg" style="color:' + (v >= 0 ? "var(--green)" : "var(--red)") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>" +
+        '<span class="mh-he">' + he + "</span></div>";
+    }).join("");
+    return '<div class="panel mh-panel"><div class="mh-head"><h3>🗺️ מפת חום · סקטורים</h3><span class="mh-full" data-goto-heat="1">מפה מלאה →</span></div>' +
+      '<div class="mh-grid">' + tiles + "</div></div>";
+  }
   function renderMarket() {
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
@@ -1076,6 +1095,7 @@
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
         marketCockpit() +
         indexCards() +
+        _marketSectorHeat() +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-rank-grid">' +
           '<div class="panel"><h3>🟢 סקטורים מובילים</h3>' + mkLead(LIVE ? (mktU().sectorLeaders || []).slice(0, 5) : dSecUp, "up", true) + "</div>" +
@@ -1089,6 +1109,7 @@
   }
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
+    document.querySelectorAll("#page [data-goto-heat]").forEach(el => el.onclick = () => setPage("sp500"));
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => { techState.gapDir = "any"; if (!(parseFloat(techState.gapPct) > 0)) techState.gapPct = 3; setPage("scanner"); }; }   // gappers page retired → open the scanner with the gap filter on

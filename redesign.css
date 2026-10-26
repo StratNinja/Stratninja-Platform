@@ -1209,3 +1209,20 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .sib .sib-sec { font-size: 14px; }
 .sib.hl { background: var(--accentbg); border-color: var(--accent); }
 .sib.warn .v { color: #e0a73a; }
+
+/* === סקירת שוק polish (redesign) === */
+.cockpit { border-radius: 16px; box-shadow: var(--panelsh); }
+.mh-panel { margin-top: 2px; }
+.mh-head { display: flex; align-items: center; gap: 10px; margin-bottom: 11px; }
+.mh-head h3 { margin: 0; font-size: 15px; }
+.mh-full { margin-inline-start: auto; color: var(--accent); font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.mh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(94px, 1fr)); gap: 7px; }
+.mh-tile { border-radius: 10px; padding: 9px 11px; display: flex; flex-direction: column; gap: 2px; border: 1px solid var(--line); cursor: pointer; transition: transform .12s, border-color .12s; min-height: 56px; }
+.mh-tile:hover { transform: translateY(-2px); border-color: var(--accent); }
+.mh-u1 { background: rgba(47,207,142,.13); } .mh-u2 { background: rgba(47,207,142,.26); } .mh-u3 { background: rgba(47,207,142,.42); }
+.mh-d1 { background: rgba(251,106,127,.13); } .mh-d2 { background: rgba(251,106,127,.26); } .mh-d3 { background: rgba(251,106,127,.42); }
+.mh-flat { background: var(--chip); }
+.mh-etf { font-weight: 800; font-size: 13px; letter-spacing: .02em; }
+.mh-chg { font-weight: 800; font-size: 12px; direction: ltr; }
+.mh-he { font-size: 10px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mkt-rank-grid .panel { border-radius: 14px; }
