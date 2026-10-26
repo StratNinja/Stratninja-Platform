@@ -1279,6 +1279,9 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .al-modal .alc-cat:first-child { margin-top: 0; }
 .al-modal .alc-cathead { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 800; color: var(--muted); margin: 0 0 10px; }
 .al-modal .alc-catn { font-size: 11px; color: var(--accent); background: var(--accentbg); border: 1px solid var(--accentbg); padding: 1px 8px; border-radius: 999px; font-weight: 800; }
+.al-modal .alc-copy { font-family: inherit; font-size: 11.5px; font-weight: 800; color: var(--accent); background: var(--accentbg); border: 1px solid var(--accent); border-radius: 999px; padding: 3px 11px; cursor: pointer; transition: background .14s, color .14s; flex: 0 0 auto; }
+.al-modal .alc-copy:hover { background: var(--accent); color: var(--accent-ink); }
+.al-modal .alc-copy.done { background: var(--green); border-color: var(--green); color: #04150e; }
 .al-modal .alc-catline { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
 .al-modal .alc-list { display: flex; flex-direction: column; gap: 9px; }
 .al-modal .alc { display: flex; align-items: center; gap: 16px; padding: 16px 20px; border-radius: 15px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); box-shadow: var(--panelsh); transition: border-color .14s, transform .14s; }

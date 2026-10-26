@@ -2884,7 +2884,7 @@
       const dir = _alertDir(p.name);
       const d = new Date(e.ts), when = d.getDate() + "." + (d.getMonth() + 1) + " " + _p2(d.getHours()) + ":" + _p2(d.getMinutes());
       const fpx = (e.px != null && !isNaN(+e.px)) ? '<span class="alc-px" title="מחיר המניה ברגע ההתראה">@' + (+e.px).toFixed(2) + "</span>" : "";
-      return { dir: dir, cat: (p.cat || ""), html:
+      return { dir: dir, cat: (p.cat || ""), sym: e.sym, html:
         '<div class="alc ' + dir + '">' +
           '<span class="alc-ico">' + DIRICO[dir] + "</span>" +
           '<div class="alc-mid"><span class="alc-sym tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + "</span>" +
@@ -2903,9 +2903,13 @@
         : "עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.") + "</div>";
     } else {
       const groups = {}; shown.forEach(it => { (groups[it.cat] = groups[it.cat] || []).push(it); });
-      body = Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c =>
-        '<div class="alc-cat"><h3 class="alc-cathead">' + _catLabel(c) + ' <span class="alc-catn">' + groups[c].length + '</span><span class="alc-catline"></span></h3>' +
-        '<div class="alc-list">' + groups[c].map(it => it.html).join("") + "</div></div>").join("");
+      body = Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c => {
+        const syms = groups[c].map(it => it.sym).filter(Boolean).join(", ");   // tickers to copy (dedup'd already)
+        return '<div class="alc-cat"><h3 class="alc-cathead">' + _catLabel(c) + ' <span class="alc-catn">' + groups[c].length + "</span>" +
+          '<button class="alc-copy" data-copy="' + escAttr(syms) + '" title="העתק את כל הטיקרים בקטגוריה — נוח להדביק ברשימת מעקב">📋 העתק</button>' +
+          '<span class="alc-catline"></span></h3>' +
+          '<div class="alc-list">' + groups[c].map(it => it.html).join("") + "</div></div>";
+      }).join("");
     }
     return '<div class="alc-bar">' + dirChips + (feed.length ? ' <button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + "</div>" +
       '<div class="al-flist alc-scroll">' + body + "</div>";
@@ -2913,6 +2917,17 @@
   function _hubWireFeed() {
     document.querySelectorAll("[data-aldir]").forEach(b => b.onclick = () => { _alFeedDir = b.dataset.aldir; _hubRenderBody(); });
     { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); _hubRenderBody(); }; }
+    // 📋 copy a whole category's tickers to the clipboard (quick-scan: paste into a watchlist / TradingView)
+    document.querySelectorAll(".al-modal [data-copy]").forEach(b => b.onclick = async (ev) => {
+      ev.stopPropagation();
+      const txt = b.getAttribute("data-copy") || "";
+      let ok = false;
+      try { await navigator.clipboard.writeText(txt); ok = true; }
+      catch (e) { try { const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select(); ok = document.execCommand("copy"); ta.remove(); } catch (e2) {} }
+      const n = txt ? txt.split(",").length : 0;
+      if (ok) { snToast("📋 הועתקו " + n + " טיקרים"); const o = b.textContent; b.textContent = "✓ הועתק"; b.classList.add("done"); setTimeout(() => { b.textContent = o; b.classList.remove("done"); }, 1500); }
+      else snToast("ההעתקה נכשלה");
+    });
     wireCharts(document.getElementById("pgModal") || document);
   }
   window._snCheckAlerts = checkPresetAlerts;
