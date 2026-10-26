@@ -108,12 +108,14 @@
 
   function render() {
     _css();
-    return '<div class="page-head"><h1>📼 שידורים קודמים</h1><div class="sub">צפו שוב בשידורים החיים הקודמים של StratNinja — בכל זמן.</div></div>' +
+    return '<div class="vod-head"><div class="page-head" style="margin:0"><h1>📼 שידורים קודמים</h1><div class="sub">ספריית הלייבים הקודמים — עם פרקים, חיפוש וסיכום אוטומטי.</div></div>' +
+        '<label class="vod-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="vodSearch" type="text" placeholder="חפש הקלטה..." autocomplete="off"></label></div>' +
       '<div class="vod-tabs">' +
         '<button type="button" class="vod-tab active" data-tab="lives">📼 לייבי קהילה</button>' +
         '<button type="button" class="vod-tab" data-tab="community">👥 סרטוני קהילה</button>' +
         '<button type="button" class="vod-tab" data-tab="course">🎓 קורס The Strat</button>' +
       '</div>' +
+      '<div id="vodFeatured"></div>' +
       '<div id="vodGrid" class="vod-grid"><div class="vod-empty">טוען הקלטות…</div></div>' +
       '<div id="communityWrap" style="display:none"><div class="course-empty">טוען סרטונים…</div></div>' +
       '<div id="courseWrap" style="display:none"><div class="course-empty">טוען קורס…</div></div>';
@@ -145,12 +147,27 @@
   }
 
   function _renderVods(vods) {
-    var grid = $("vodGrid"); if (!grid) return;
+    var grid = $("vodGrid"), feat = $("vodFeatured"); if (!grid) return;
     if (!vods || !vods.length) {
       grid.innerHTML = '<div class="vod-empty">אין עדיין שידורים מוקלטים. אחרי הלייב הבא הם יופיעו כאן 🎬</div>';
+      if (feat) feat.innerHTML = "";
       return;
     }
-    grid.innerHTML = vods.map(function (v) {
+    // featured = the newest recording (mockup hero); the grid shows the rest
+    var top = vods[0], rest = vods.slice(1);
+    if (feat) {
+      var fbg = safeBg(top.thumbnail);
+      feat.innerHTML = '<div class="vod-feat" data-iframe="' + esc(top.iframe) + '" data-uid="' + esc(top.uid) + '" data-name="' + esc(top.name || "") + '">' +
+        '<div class="vod-thumb"' + (fbg ? ' style="background-image:url(\'' + fbg + '\')"' : "") + '><span class="vod-play">▶</span><span class="vod-dur">' + fmtDur(top.duration) + '</span></div>' +
+        '<div class="vf-meta"><span class="vf-tag">▶ השידור האחרון</span>' +
+          '<h2>' + esc(top.name || fmtDate(top.created)) + '</h2>' +
+          '<div class="vod-tldr vf-tldr" data-tldr="' + esc(top.uid) + '"></div>' +
+          '<div class="vf-chips"><span>' + esc(fmtDate(top.created)) + '</span><span>משך<b>' + fmtDur(top.duration) + '</b></span></div>' +
+        '</div></div>';
+      var fc = feat.querySelector(".vod-feat");
+      if (fc) fc.onclick = function () { _play(this.getAttribute("data-iframe"), this.getAttribute("data-uid"), this.getAttribute("data-name")); };
+    }
+    grid.innerHTML = rest.map(function (v) {
       var bg = safeBg(v.thumbnail);
       return '<div class="vod-card" data-iframe="' + esc(v.iframe) + '" data-uid="' + esc(v.uid) + '" data-name="' + esc(v.name || "") + '">' +
         '<div class="vod-thumb"' + (bg ? ' style="background-image:url(\'' + bg + '\')"' : "") + '>' +
@@ -159,9 +176,16 @@
           (v.name ? '<div class="vod-name">' + esc(v.name) + "</div>" : "") +
           '<div class="vod-tldr" data-tldr="' + esc(v.uid) + '"></div>' +
         "</div></div>";
-    }).join("");
+    }).join("") || '<div class="vod-empty" style="grid-column:1/-1">זו ההקלטה היחידה כרגע — תיהנה! 🎬</div>';
     var cards = grid.querySelectorAll(".vod-card");
     for (var i = 0; i < cards.length; i++) cards[i].onclick = function () { _play(this.getAttribute("data-iframe"), this.getAttribute("data-uid"), this.getAttribute("data-name")); };
+    var sb = document.getElementById("vodSearch");
+    if (sb) sb.oninput = function () {
+      var q = (this.value || "").trim().toLowerCase();
+      var cs = grid.querySelectorAll(".vod-card");
+      for (var k = 0; k < cs.length; k++) { var nm = (cs[k].getAttribute("data-name") || "").toLowerCase(); cs[k].style.display = (!q || nm.indexOf(q) >= 0) ? "" : "none"; }
+      if (feat) feat.style.display = q ? "none" : "";   // hide the hero while searching
+    };
     _loadTeasers();   // fill the at-a-glance blurbs under each card (one request for all)
   }
 
