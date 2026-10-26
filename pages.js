@@ -9102,6 +9102,7 @@
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
     learn: { render: renderLearn, wire: wireLearn },
+    news: { render: renderNews, wire: wireNews },
     giveaway: { render: function () { return window.Giveaway ? window.Giveaway.render() : '<div class="page-head"><h1>🎁 הגרלות</h1></div>'; }, wire: function () { if (window.Giveaway) window.Giveaway.wire(); } },
     live: { render: function () { return window.Live ? window.Live.render() : '<div class="page-head"><h1>🔴 שידור חי</h1></div>'; }, wire: function () { if (window.Live) window.Live.wire(); } },
     vods: { render: function () { return window.LiveVods ? window.LiveVods.render() : '<div class="page-head"><h1>📼 שידורים קודמים</h1></div>'; }, wire: function () { if (window.LiveVods) window.LiveVods.wire(); } },
@@ -9401,7 +9402,7 @@
     try {
       const cfg = window.SN_CONFIG; if (!cfg || !cfg.SUPABASE_URL) return;
       const j = await snCachedFetch("market_snapshot", "news");
-      if (j && j[0] && j[0].data) { NEWS = j[0].data; if (_newsOpen) renderNewsFeed(); updateNewsNav(); }
+      if (j && j[0] && j[0].data) { NEWS = j[0].data; if (_newsOpen) renderNewsFeed(); if (state.page === "news") reRender(); updateNewsNav(); }
     } catch (e) {}
   }
   function updateNewsNav() {
@@ -9456,6 +9457,93 @@
       '<div class="nf-list">' + (list || '<div class="muted" style="padding:12px">אין חדשות כרגע.</div>') + "</div>";
     const cl = document.getElementById("nfClose"); if (cl) cl.onclick = () => toggleNews();
   }
+
+  // ===== NEWS as a full PAGE (mockup): AI summary + earnings + sentiment feed + economic calendar =====
+  // Consumes server fields when present (NEWS.summary / card.sent / NEWS.earnings / NEWS.calendar),
+  // with graceful client-side fallbacks (keyword sentiment + a LIVE-data summary) so it's useful either way.
+  function _newsSent(c) {
+    if (c.sent) return c.sent;   // server-provided wins
+    const t = ((c.he || "") + " " + (c.en || "")).toLowerCase();
+    if (/קופ|מזנק|זינוק|מרקיע|עליי|עולה|שיא|חזק|רווח|beat|surge|soar|jump|rall|rise|gain|record|upgrade|tops|strong/.test(t)) return "bull";
+    if (/צונח|נופל|צולל|ירידה|יורד|חולש|אזהר|הפסד|קריס|miss|plunge|fall|drop|sink|slump|warn|cut|downgrade|tumble|slide|weak/.test(t)) return "bear";
+    return "neu";
+  }
+  function _newsClientSummary() {
+    const idx = (window.LIVE && LIVE.indices) || [], get = s => idx.find(x => x.sym === s);
+    const spy = get("SPY"), vixo = (window.LIVE && LIVE.vix) || {}, br = (window.LIVE && LIVE.breadth) || {};
+    if (!spy) return "טוען נתוני שוק…";
+    const dir = spy.chg > 0.15 ? "בעליות קלות" : spy.chg < -0.15 ? "בירידות" : "ללא כיוון ברור";
+    const vixTxt = (vixo.chg != null) ? (vixo.chg > 0 ? " ה-VIX עולה — עצבנות גוברת בשוק." : " ה-VIX יורד — רוגע יחסי.") : "";
+    const brTxt = (br.above != null && br.total) ? (" רוחב השוק: " + Math.round(100 * br.above / br.total) + "% מהמניות מעל הפתיחה.") : "";
+    return "המדדים נסחרים " + dir + "." + vixTxt + brTxt;
+  }
+  function _newsClientBullets() {
+    const secs = ((window.LIVE && LIVE.sectors) || []).filter(s => s.chg != null).slice().sort((a, b) => b.chg - a.chg);
+    if (!secs.length) return [];
+    const out = [], top = secs[0], bot = secs[secs.length - 1];
+    if (top && top.chg > 0) out.push("הכסף זורם ל" + secHe(top.name) + " (" + (top.chg >= 0 ? "+" : "") + top.chg.toFixed(2) + "%).");
+    if (bot && bot.chg < 0) out.push("חולשה בסקטור " + secHe(bot.name) + " (" + bot.chg.toFixed(2) + "%).");
+    return out;
+  }
+  function _newsSummaryHtml(n) {
+    const idx = (window.LIVE && LIVE.indices) || [], get = s => idx.find(x => x.sym === s), vixo = (window.LIVE && LIVE.vix) || {};
+    const chip = (s, v) => (v != null) ? '<span>' + s + '<b>' + v + "</b></span>" : "";
+    const spy = get("SPY"), qqq = get("QQQ"), dia = get("DIA");
+    const ground = '<div class="ai-gt"><span class="lab">נתוני אמת:</span>' +
+      (spy ? chip("SPY", spy.price) : "") + (qqq ? chip("QQQ", qqq.price) : "") + (dia ? chip("DIA", dia.price) : "") +
+      (vixo.level != null ? chip("VIX", vixo.level) : "") + "</div>";
+    const s = n.summary; let text, bullets;
+    if (s && s.text) { text = escHtml(s.text); bullets = (s.bullets || []).map(escHtml); }
+    else { text = escHtml(_newsClientSummary()); bullets = _newsClientBullets().map(escHtml); }
+    const pts = bullets.length ? '<div class="ai-pts">' + bullets.map(b => '<div class="ai-pt"><span class="b">▸</span><span>' + b + "</span></div>").join("") + "</div>" : "";
+    return '<section class="ai-card"><div class="ai-h"><span class="ai-ic">🤖</span><h2>סיכום השוק</h2><span class="ai-tag">⚡ AI</span></div>' +
+      "<p>" + text + "</p>" + pts + ground + "</section>";
+  }
+  function _newsEarningsHtml(earn) {
+    if (!earn || !earn.length) return "";
+    const cards = earn.slice(0, 8).map(e => {
+      const beat = e.beat !== false, rxCls = (e.rx != null && e.rx < 0) ? "down" : "up";
+      const rxTxt = (e.rx != null) ? ((e.rx >= 0 ? "+" : "") + e.rx + "%") : "";
+      return '<div class="ecard"><div class="etop"><span class="esym">' + escHtml(e.sym || "") + '</span><span class="ebm ' + (beat ? "beat" : "miss") + '">' + (beat ? "BEAT ▲" : "MISS ▼") + "</span></div>" +
+        (rxTxt ? '<div class="erx ' + rxCls + '">' + rxTxt + "</div>" : "") +
+        (e.eps != null ? '<div class="erow"><span class="el">EPS</span><span class="ev">' + escHtml(String(e.eps)) + (e.epsEst != null ? ' <span class="es">/ ' + escHtml(String(e.epsEst)) + "</span>" : "") + "</span></div>" : "") +
+        (e.rev ? '<div class="erow"><span class="el">הכנסות</span><span class="ev">' + escHtml(String(e.rev)) + "</span></div>" : "") +
+        (e.yoy != null ? '<div class="erow"><span class="el">צמיחה YoY</span><span class="ev pos">' + (e.yoy >= 0 ? "+" : "") + e.yoy + "%</span></div>" : "") + "</div>";
+    }).join("");
+    return '<section class="earn-sec"><div class="earn-head"><h2>📊 דיווחי תוצאות</h2><span class="ec">הדוחות האחרונים</span><span class="eline"></span></div><div class="earn-grid num">' + cards + "</div></section>";
+  }
+  function _newsFeedHtml(cards) {
+    if (!cards.length) return '<div class="muted" style="padding:16px">אין חדשות כרגע.</div>';
+    return cards.map(c => {
+      const sent = _newsSent(c), sc = sent === "bull" ? "bull" : sent === "bear" ? "bear" : "neu";
+      const pill = sent === "bull" ? '<span class="npill bull">▲ חיובי</span>' : sent === "bear" ? '<span class="npill bear">▼ שלילי</span>' : '<span class="npill neu">● ניטרלי</span>';
+      const ticks = (c.tk || []).slice(0, 4).map(t => '<span class="ntk">' + escAttr(t) + "</span>").join("");
+      const src = (c.pub ? escHtml(c.pub) : "") + (c.ts ? (c.pub ? " · " : "") + timeAgoHe(c.ts) : "");
+      return '<a class="nart ' + sc + '" href="' + escAttr(c.url || "#") + '" target="_blank" rel="noopener"><span class="nsent"></span><div class="nbody">' +
+        '<div class="nmeta">' + pill + '<span class="nsrc">' + src + "</span></div>" +
+        "<h3>" + escHtml(c.he || c.en || "") + "</h3>" +
+        (ticks ? '<div class="nticks">' + ticks + "</div>" : "") + "</div></a>";
+    }).join("");
+  }
+  function _newsCalHtml(cal) {
+    if (!cal || !cal.length) return "";
+    const evs = cal.slice(0, 10).map(e => {
+      const imp = e.imp === "h" ? "h" : e.imp === "m" ? "m" : "l";
+      return '<div class="nev"><span class="nevt num">' + escHtml(e.time || "") + '</span><div class="nevm"><div class="nevn">' + escHtml(e.name || "") + "</div>" +
+        (e.note ? '<div class="nevd">' + escHtml(e.note) + "</div>" : "") + '</div><span class="nevimp ' + imp + '"><i></i><i></i><i></i></span></div>';
+    }).join("");
+    return '<aside class="news-cal"><div class="nch"><h2>יומן כלכלי</h2><span class="ncline"></span></div>' + evs + "</aside>";
+  }
+  function renderNews() {
+    if (!NEWS) loadNews();   // async; loadNews re-renders this page when data arrives
+    const n = NEWS || {};
+    const head = '<div class="page-head"><h1>🗞️ חדשות</h1><div class="sub">מה שחשוב לדעת היום — סיכום שוק, סנטימנט ואירועים כלכליים.</div></div>';
+    const status = n.updated ? '<div class="news-status">' + newsSession() + " · עודכן " + timeAgoHe(n.updated) + "</div>" : "";
+    const calHtml = _newsCalHtml(n.calendar);
+    const cols = '<div class="news-cols' + (calHtml ? "" : " nocal") + '"><div class="news-feedcol">' + _newsFeedHtml(n.cards || []) + "</div>" + calHtml + "</div>";
+    return head + status + _newsSummaryHtml(n) + _newsEarningsHtml(n.earnings) + cols;
+  }
+  function wireNews() { if (!NEWS) loadNews(); }
 
   // ---- persistent live ticker (SPY / QQQ / BTC) ----
   let _btc = null, _btcTs = 0, _liveTs = 0;
@@ -9732,7 +9820,7 @@
     setInterval(updateSync, 1000);
     startCtaRotator();
     { const cam = document.getElementById("sideCam"); if (cam) cam.onclick = () => captureShare(); }
-    { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => toggleNews(); }
+    { const nb = document.getElementById("sideNews"); if (nb) nb.onclick = () => setPage("news"); }
     { const sa = document.getElementById("sideAlerts"); if (sa) sa.onclick = () => openAlertsFeed("feed"); }
     // merged "בקשות והצעות" — one entry that offers both the feature-request form and the suggest-ticker flow
     { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestChooser(); }
