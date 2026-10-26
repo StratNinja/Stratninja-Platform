@@ -1009,6 +1009,57 @@
       });
     });
   }
+  // ===== Command Center home (redesign 2026-10) — reuses marketCockpit/mkLead for live data =====
+  function _ccTile(goto, ico, title, desc) {
+    return '<a class="cc-tile" data-goto="' + goto + '"><span class="cc-ic">' + ico + '</span>' +
+      '<span class="cc-tt">' + title + '</span><span class="cc-ds">' + desc + '</span></a>';
+  }
+  function _ccTileExt(href, ico, title, desc) {
+    return '<a class="cc-tile" href="' + href + '" target="_blank" rel="noopener"><span class="cc-ic">' + ico + '</span>' +
+      '<span class="cc-tt">' + title + '</span><span class="cc-ds">' + desc + '</span></a>';
+  }
+  function _ccZone(title, sub, tiles, cls) {
+    return '<div class="cc-zone' + (cls ? " " + cls : "") + '"><div class="cc-zhead"><h2>' + title + '</h2><span class="cc-zsub">' + sub + '</span></div>' +
+      '<div class="cc-tiles">' + tiles + '</div></div>';
+  }
+  function renderHome() {
+    const adm = (typeof _snIsAdmin === "function") && _snIsAdmin();
+    const live = LIVE && LIVE.updated;
+    const quick = '<div class="cc-quick">' +
+      '<a class="cc-qa feat" data-goto="scanner"><span class="cc-qi">🔍</span><span class="cc-qx"><b>סרוק הזדמנויות</b><span>לפי השיטה · חי</span></span><span class="cc-qar">‹</span></a>' +
+      '<a class="cc-qa" data-goto="journal"><span class="cc-qi">📓</span><span class="cc-qx"><b>יומן המסחר שלי</b><span>עקוב · למד · השתפר</span></span><span class="cc-qar">‹</span></a>' +
+      '<a class="cc-qa" data-goto="live"><span class="cc-qi">🔴</span><span class="cc-qx"><b>שידור חי</b><span>הצטרף ללייב</span></span><span class="cc-qar">‹</span></a>' +
+      "</div>";
+    const snap = '<div class="cc-snap">' +
+      '<div class="panel"><h3>🟢 מובילי השוק היום</h3>' + mkLead(live ? (mktU().leaders || []).slice(0, 5) : [], "up", false) + "</div>" +
+      '<div class="panel"><h3>🔴 מפגרים היום</h3>' + mkLead(live ? (mktU().laggards || []).slice(0, 5) : [], "down", false) + "</div>" +
+      "</div>";
+    const zoneFind = _ccZone("איתור הזדמנויות", "מצא את הדיל הבא",
+      _ccTile("scanner", "🔍", "סורק עסקאות", "סינון לפי תבניות Strat וטיימפריימים") +
+      _ccTile("sp500", "🗺️", "מפת חום", "כל ה-S&P במבט אחד") +
+      _ccTile("pulse", "💓", "דופק השוק", "סקטורים, רוחב ומובילים") +
+      _ccTile("favorites", "⭐", "מועדפים", "רשימת המעקב עם התראות"));
+    const zoneWork = _ccZone("סביבת העבודה שלי", "הנתונים שלך",
+      _ccTile("journal", "📓", "יומן מסחר", "עקוב, למד, השתפר") +
+      _ccTile("favorites", "🔔", "התראות ומעקב", "הסריקות שלך"));
+    const zoneComm = _ccZone("קהילה ולמידה", "גלוי לכולם",
+      _ccTile("live", "🔴", "שידור חי", "ניתוח בזמן אמת") +
+      _ccTile("vods", "📼", "הקלטות", "לייבים קודמים") +
+      _ccTile("learn", "📚", "לימוד", "שיעורי TheStrat") +
+      _ccTileExt("https://school.stratninja.win", "🎓", "Strat School", "הקורס המלא"));
+    const zoneAdmin = adm ? _ccZone('🔒 אזור הניהול שלך', "גלוי רק לך",
+      _ccTile("giveaway", "🎁", "ניהול הגרלות", "צור, תזמן והגרל") +
+      _ccTile("live", "🎛️", "בקרת שידור", "פתח לייב ומודרציה"), "cc-admin") : "";
+    return (
+      '<div class="page-head compact"><h1>מרכז בקרה <span class="mkt-live">' + (live ? "🟢 חי" : "🧪 דמו") + "</span></h1>" +
+        '<div class="sub">הכול במבט אחד — מצב השוק, הכלים שלך, והפעולות המהירות.</div></div>' +
+      marketCockpit() + quick + zoneFind + snap + zoneWork + zoneComm + zoneAdmin
+    );
+  }
+  function wireHome() {
+    document.querySelectorAll("#page [data-goto]").forEach(el => el.onclick = () => setPage(el.dataset.goto));
+    { const cb = document.getElementById("cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
+  }
   function renderMarket() {
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
@@ -8940,6 +8991,7 @@
     if (_pulseWire[tab]) _pulseWire[tab]();
   }
   const PAGES = {
+    home: { render: renderHome, wire: wireHome },
     market: { render: renderMarket, wire: wireMarket },
     pulse: { render: renderPulse, wire: wirePulse },
     analytics: { render: renderAnalytics, wire: wireAnalytics },
@@ -9564,7 +9616,7 @@
     { const gb = document.getElementById("guideBtn"); if (gb) gb.onclick = () => guideStart(); }
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
-    try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}
+    try { last = localStorage.getItem("sn_last_page") || "home"; } catch (e) {}
     // direct entry / refresh on /live (served via the vercel rewrite) or #live → open the live page
     var _wantLive = false;
     try { _wantLive = /^\/live\/?$/.test(location.pathname) || /(^|#)live$/.test(location.hash); } catch (e) {}
