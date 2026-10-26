@@ -123,6 +123,11 @@
 
   function wire() {
     _css();
+    // RE-ARM the lazy course/community loaders on every (re)render of this page. Without this, a
+    // re-render (e.g. when auth resolves just after first paint) rebuilds the panes back to "טוען…"
+    // while the _loaded guards stay true — so those tabs would sit on the spinner until a full refresh.
+    // (Lives never had this bug because _loadLives() runs unconditionally here.)
+    _loaded.community = false; _loaded.course = false;
     _wireTabs();
     _loadLives();
   }
@@ -373,7 +378,9 @@
     var LS = "sn_lessons_" + kind;
     var pre = _entPeek();
     var cur = null;   // lessons currently painted (cached first, then fresh)
-    function paint(lessons, ent) { cur = lessons; _renderCourse(kind, wrap, lessons, ent); }
+    // re-query the wrap at paint time: if the page was re-rendered since this load started, the captured
+    // `wrap` is detached — painting into the CURRENT element is what actually shows the lessons.
+    function paint(lessons, ent) { cur = lessons; var w = $(cfg.wrapId) || wrap; _renderCourse(kind, w, lessons, ent); }
 
     // 0) INSTANT render from the last-known lessons (localStorage) — so the tab NEVER sits on a
     //    spinner, even if the network is slow/stuck. The fresh fetch below replaces it when it lands.
