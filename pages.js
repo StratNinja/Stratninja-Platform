@@ -3082,6 +3082,116 @@
   }
   window._snCommunityAdmin = openCommunityAdmin;
 
+  // ===== COMMUNITY TICKERS as a full PAGE (mockup): submit card + approved grid + admin queue (🔒) =====
+  var _COMM_AVCOL = ["#34e0d0", "#2fcf8e", "#f0883e", "#4f8cff", "#ff6a81", "#f4b64e", "#8878ff"];
+  function _commAvatar(email) {
+    var ch = (email && email[0]) ? email[0].toUpperCase() : "⭐";
+    var col = _COMM_AVCOL[(email || "x").charCodeAt(0) % _COMM_AVCOL.length];
+    var ink = (col === "#34e0d0" || col === "#2fcf8e" || col === "#f4b64e") ? "#04150e" : "#fff";
+    return '<span class="cc-av" style="background:' + col + ";color:" + ink + '">' + escHtml(ch) + "</span>";
+  }
+  function _commCard(r) {
+    var tk = (r.ticker || "").toUpperCase();
+    var etf = r.sector ? (typeof etfFor === "function" ? (etfFor(r.sector) || r.sector) : r.sector) : "";
+    return '<div class="comm-cc"><div class="cc-top"><span class="cc-sym tsym clickable" data-chart="' + escAttr(tk) + '" data-tf="D">' + escHtml(tk) + "</span>" +
+      (etf ? '<span class="cc-etf">' + escHtml(etf) + "</span>" : "") +
+      '<span class="cc-st">✓ אושר</span></div>' +
+      '<div class="cc-by">' + _commAvatar(r.requested_by) + "הוצע ע״י חבר הקהילה</div></div>";
+  }
+  async function _commLoadApproved() {
+    var box = document.getElementById("commApproved"); if (!box) return;
+    var cfg = window.SN_CONFIG || {};
+    if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { box.innerHTML = '<div class="muted" style="padding:12px">השירות אינו זמין כרגע.</div>'; return; }
+    try {
+      var r = await fetch(cfg.SUPABASE_URL + "/rest/v1/community_tickers?status=eq.approved&select=ticker,sector,requested_by,created_at&order=created_at.desc&limit=24",
+        { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      var rows = r.ok ? await r.json() : [];
+      box.innerHTML = rows.length ? rows.map(_commCard).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1">עוד לא נוספו מניות קהילה — היה הראשון להציע! ⭐</div>';
+      wireCharts(box);
+    } catch (e) { box.innerHTML = '<div class="muted" style="padding:12px">שגיאה בטעינה.</div>'; }
+  }
+  function _commPendRow(r) {
+    var tk = (r.ticker || "").toUpperCase();
+    var valid = r.validated ? '<span class="pr-ok">✓ עברה ולידציה</span>' : "⏳ בבדיקת השרת";
+    var acts = '<button class="cq-ok" data-cq="approve" data-id="' + r.id + '">אשר</button><button class="cq-no" data-cq="reject" data-id="' + r.id + '">דחה</button>';
+    return '<div class="comm-pr"><span class="pr-sym">$' + escHtml(tk) + "</span>" +
+      '<div class="pr-mid"><div class="pr-re">' + escHtml(r.reason || "—") + "</div>" +
+        '<div class="pr-meta">' + (r.sector ? escHtml(r.sector) + " · " : "") + valid + "</div></div>" +
+      '<div class="pr-act">' + acts + "</div></div>";
+  }
+  async function _commLoadQueue() {
+    var box = document.getElementById("commAdminQueue"); if (!box) return;
+    var client = window.SNAuth && SNAuth.getClient && SNAuth.getClient();
+    if (!client) { box.innerHTML = '<div class="muted" style="padding:6px">התחבר עם Google כדי לנהל.</div>'; return; }
+    try {
+      var res = await client.from("community_tickers").select("*").eq("status", "pending").order("created_at", { ascending: false });
+      var rows = res.data || [];
+      var cnt = document.getElementById("commQCnt"); if (cnt) cnt.textContent = rows.length || "";
+      box.innerHTML = rows.length ? rows.map(_commPendRow).join("") : '<div class="muted" style="padding:6px">אין הצעות ממתינות ✨</div>';
+      box.querySelectorAll("[data-cq]").forEach(function (b) {
+        b.onclick = async function () {
+          var id = b.dataset.id, act = b.dataset.cq; b.disabled = true; b.textContent = "…";
+          try {
+            if (act === "approve") await client.from("community_tickers").update({ status: "approved", validated: true, reason: null }).eq("id", id);
+            else await client.from("community_tickers").update({ status: "rejected", reason: "נדחה ידנית" }).eq("id", id);
+            _commLoadQueue(); _commLoadApproved(); if (window.updateCommAdminBadge) updateCommAdminBadge();
+          } catch (e) { b.disabled = false; b.textContent = act === "approve" ? "אשר" : "דחה"; snToast("שגיאה: " + (e.message || e)); }
+        };
+      });
+    } catch (e) { box.innerHTML = '<div class="muted" style="padding:6px">שגיאה בטעינה.</div>'; }
+  }
+  async function _commSubmit() {
+    var loggedIn = !!(window.SNAuth && SNAuth.user && SNAuth.user());
+    var cloud = !!(window.SNAuth && SNAuth.isCloud && SNAuth.isCloud());
+    var st = document.getElementById("commSubStatus");
+    var show = function (color, html) { if (st) { st.style.display = "block"; st.style.color = color; st.innerHTML = html; } };
+    if (cloud && !loggedIn) { show("var(--muted)", '🔓 כדי להציע מניה צריך <b>להתחבר עם Google</b> — <a id="commLogin" style="color:var(--accent);cursor:pointer">התחבר</a>'); var lb = document.getElementById("commLogin"); if (lb) lb.onclick = function () { try { SNAuth.signInWithGoogle(); } catch (e) {} }; return; }
+    var tk = (document.getElementById("commTk").value || "").trim().toUpperCase();
+    var reason = (document.getElementById("commReason").value || "").trim().slice(0, 120);
+    if (!/^[A-Z][A-Z.\-]{0,7}$/.test(tk)) { show("var(--red)", "❌ הזן סימבול תקין (אותיות לועזיות, למשל AAPL)"); return; }
+    try { var last = +localStorage.getItem("sn_sug_last") || 0; if (Date.now() - last < 60000) { show("var(--red)", "הצעת מניה זה עתה — נסה שוב בעוד רגע 🙏"); return; } } catch (e) {}
+    var cfg = window.SN_CONFIG || {};
+    if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) { show("var(--red)", "השירות אינו זמין כרגע"); return; }
+    var email = ((window.SNAuth && SNAuth.user() || {}).email) || null;
+    var btn = document.getElementById("commSend"); if (btn) { btn.disabled = true; btn.textContent = "שולח…"; }
+    try {
+      var res = await fetch(cfg.SUPABASE_URL + "/rest/v1/community_tickers", {
+        method: "POST",
+        headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ ticker: tk, requested_by: email, reason: reason || null }),
+      });
+      if (res.ok) {
+        try { localStorage.setItem("sn_sug_last", String(Date.now())); } catch (e) {}
+        show("var(--green)", "✅ <b>$" + escHtml(tk) + "</b> נשלחה! נבדוק אותה ונוסיף לרשימת הקהילה אם היא מתאימה. תודה 🙏");
+        document.getElementById("commTk").value = ""; document.getElementById("commReason").value = "";
+        if (btn) { btn.disabled = false; btn.textContent = "שלח הצעה"; }
+      } else if (res.status === 409) { show("var(--muted)", "ℹ️ <b>$" + escHtml(tk) + "</b> כבר הוצעה — היא בתהליך."); if (btn) { btn.disabled = false; btn.textContent = "שלח הצעה"; } }
+      else { throw new Error("http " + res.status); }
+    } catch (e) { show("var(--red)", "❌ שליחה נכשלה — נסה שוב מאוחר יותר."); if (btn) { btn.disabled = false; btn.textContent = "שלח הצעה"; } }
+  }
+  function renderCommunity() {
+    var admin = _snIsAdmin();
+    var submit = '<section class="comm-submit">' +
+      '<div class="cs-h"><span class="cs-ic">➕</span><h2>הצע מניה לסורק</h2></div>' +
+      '<p class="cs-d">יש מניה אמריקאית שחסרה לך בסורק? הצע אותה — השרת בודק אוטומטית (סחירות, שווי) ועדי מאשר.</p>' +
+      '<div class="cs-form"><input id="commTk" class="cs-tk" type="text" maxlength="8" placeholder="טיקר" autocomplete="off" style="text-transform:uppercase">' +
+      '<input id="commReason" class="cs-re" type="text" maxlength="120" placeholder="למה כדאי להוסיף? (לא חובה)" autocomplete="off">' +
+      '<button class="cs-send" id="commSend">שלח הצעה</button></div>' +
+      '<div class="cs-hint">⚠️ חייבת להיות מניה אמריקאית נסחרת · כל הצעה עוברת ולידציה אוטומטית לפני אישור.</div>' +
+      '<div id="commSubStatus" class="note" style="display:none;margin-top:10px"></div></section>';
+    var approved = '<div class="comm-head"><h2>✓ נוספו לאחרונה</h2><span class="comm-c">מניות שהקהילה הציעה ואושרו</span><span class="comm-line"></span></div>' +
+      '<div id="commApproved" class="comm-grid"><div class="muted" style="padding:12px;grid-column:1/-1">טוען…</div></div>';
+    var adminQ = admin ? '<section class="comm-admin"><div class="ca2-h"><span class="ca2-ic">✅</span><h2>ממתינות לאישור</h2><span class="ca2-cnt" id="commQCnt"></span><span class="ca2-lock">🔒 גלוי רק לך</span><span class="ca2-line"></span></div><div id="commAdminQueue"><div class="muted" style="padding:6px">טוען…</div></div></section>' : "";
+    return '<div class="page-head"><h1>⭐ מניות קהילה</h1><div class="sub">הקהילה מציעה מניות לסורק — אחרי בדיקה ואישור הן נכנסות ליקום הסריקה.</div></div>' +
+      submit + approved + adminQ;
+  }
+  function wireCommunity() {
+    var btn = document.getElementById("commSend"); if (btn) btn.onclick = _commSubmit;
+    var tk = document.getElementById("commTk"); if (tk) tk.onkeydown = function (e) { if (e.key === "Enter") _commSubmit(); };
+    _commLoadApproved();
+    if (_snIsAdmin()) _commLoadQueue();
+  }
+
   // ---- Web Push subscription (phone alerts even when the app is closed) ----
   function urlB64ToUint8(b64) {
     const pad = "=".repeat((4 - (b64.length % 4)) % 4);
@@ -9103,6 +9213,7 @@
     favorites: { render: renderFavorites, wire: wireFavorites },
     learn: { render: renderLearn, wire: wireLearn },
     news: { render: renderNews, wire: wireNews },
+    community: { render: renderCommunity, wire: wireCommunity },
     giveaway: { render: function () { return window.Giveaway ? window.Giveaway.render() : '<div class="page-head"><h1>🎁 הגרלות</h1></div>'; }, wire: function () { if (window.Giveaway) window.Giveaway.wire(); } },
     live: { render: function () { return window.Live ? window.Live.render() : '<div class="page-head"><h1>🔴 שידור חי</h1></div>'; }, wire: function () { if (window.Live) window.Live.wire(); } },
     vods: { render: function () { return window.LiveVods ? window.LiveVods.render() : '<div class="page-head"><h1>📼 שידורים קודמים</h1></div>'; }, wire: function () { if (window.LiveVods) window.LiveVods.wire(); } },
@@ -9826,7 +9937,8 @@
     { const sr = document.getElementById("sideRequest"); if (sr) sr.onclick = () => openRequestChooser(); }
     { const sy = document.getElementById("sideSync"); if (sy) sy.onclick = () => openCloudSync(); }
     { const sg = document.getElementById("sideSuggest"); if (sg) sg.onclick = () => openSuggestTicker(); }
-    { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => openCommunityAdmin(); }
+    { const cm = document.getElementById("sideCommunity"); if (cm) cm.onclick = () => setPage("community"); }
+    { const ca = document.getElementById("sideCommAdmin"); if (ca) ca.onclick = () => setPage("community"); }
     // universe toggle (rendered on the market overview + continuity Candle Map) → delegated so any instance works
     document.addEventListener("click", e => { const b = e.target.closest && e.target.closest("[data-uni]"); if (b) _setUniverse(b.dataset.uni); });
     // ── floating action dock (theme / share / draw) + collapse ──
