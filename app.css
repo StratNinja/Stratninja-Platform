@@ -453,6 +453,8 @@ html, body, button, input, select, textarea, h1, h2, h3, h4, h5, h6,
 .ap-pin.pinned { background:#17c08a; border-color:#17c08a; color:#fff; }
 .ap-cmp { background:rgba(23,192,138,.22); border:1px solid rgba(23,192,138,.5); color:#cfd6e2; cursor:pointer; font-size:13px; border-radius:8px; padding:3px 8px; line-height:1; }
 .ap-cmp.on { background:#17c08a; border-color:#17c08a; color:#fff; }
+.ap-copy { background:rgba(23,192,138,.22); border:1px solid rgba(23,192,138,.5); color:#cfd6e2; cursor:pointer; font-size:13px; border-radius:8px; padding:3px 8px; line-height:1; }
+.ap-copy.ok { background:#17c08a; border-color:#17c08a; color:#fff; }
 .ap-x { background:none; border:none; color:var(--muted); cursor:pointer; font-size:15px; }
 .ap-body { padding:8px 15px 13px; overflow-y:auto; flex:1; -webkit-overflow-scrolling:touch; }
 /* compact view — one tight line per alert (opt-in, remembered) */

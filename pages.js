@@ -2596,6 +2596,7 @@
     box.innerHTML = '<div class="ap-head"><span>🔔 התראה חדשה! <span class="ap-count">(' + fresh.length + ')</span></span>' +
       '<span class="ap-ctrls">' +
         '<span class="ap-timer" title="הרשימה תיעלם בעוד (שניות)">' + secs + '</span>' +
+        '<button class="ap-copy" aria-label="העתק טיקרים" title="העתק את כל הטיקרים ללוח">📋</button>' +
         '<button class="ap-grp' + (grouped ? " on" : "") + '" aria-label="קבץ לפי קטגוריה" title="קבץ לפי קטגוריה">📂</button>' +
         '<button class="ap-cmp' + (compact ? " on" : "") + '" aria-label="תצוגה קומפקטית" title="תצוגה קומפקטית">▤</button>' +
         '<button class="ap-pin" aria-label="נעל" title="נעל — שהרשימה לא תיעלם">📌</button>' +
@@ -2635,6 +2636,19 @@
       box.classList.toggle("grouped", grouped);   // widen ↔ narrow with the layout
       try { localStorage.setItem("sn_alert_group", grouped ? "1" : "0"); } catch (e) {}
       const bodyEl = box.querySelector(".ap-body"); if (bodyEl) bodyEl.innerHTML = _apBodyHtml(fresh, grouped);
+    };
+    // quick-copy ALL tickers in the popup to the clipboard (unique, display order) — Adi wants to
+    // grab the batch fast and paste into a watchlist / scanner.
+    const _apSyms = () => { const seen = {}, out = []; fresh.forEach(e => { const s = ((e && e.sym) || "").trim(); if (s && !seen[s]) { seen[s] = 1; out.push(s); } }); return out; };
+    const copyBtn = box.querySelector(".ap-copy");
+    if (copyBtn) copyBtn.onclick = () => {
+      const syms = _apSyms();
+      if (!syms.length) return;
+      copyToClipboard(syms.join(", "), () => {
+        copyBtn.textContent = "✓"; copyBtn.classList.add("ok");
+        if (typeof snToast === "function") snToast("📋 הועתקו " + syms.length + " טיקרים ללוח");
+        setTimeout(() => { copyBtn.textContent = "📋"; copyBtn.classList.remove("ok"); }, 1400);
+      });
     };
     const x = box.querySelector(".ap-x"); if (x) x.onclick = close;
   }
