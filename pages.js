@@ -1826,10 +1826,14 @@
     // sub-sector breadth: group the S&P stocks by sub-sector (.ind), count above-open
     const subMap = {};
     secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
-    // ALL 18 SPDR sub-sectors (from the live map) so every pulse tab carries the SAME assets
-    const subArr = (LIVE && LIVE.subsectors && LIVE.subsectors.length)
+    // ALL 18 SPDR sub-sectors (from the live map) so every pulse tab carries the SAME assets.
+    // BREADTH is only meaningful with enough S&P members (10+, the SPDR-industry design target):
+    // thin thematic/merged ETFs like GDX/TAN hold ~1 S&P constituent → a "1/1" is noise, not breadth.
+    // Hide them HERE only — they stay on the money-flow / continuity tabs where the ETF's own move counts.
+    const _SUB_BREADTH_MIN = 10;
+    const subArr = ((LIVE && LIVE.subsectors && LIVE.subsectors.length)
       ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 })
-      : Object.keys(subMap).map(k => subMap[k]).filter(o => o.total >= 4);
+      : Object.keys(subMap).map(k => subMap[k])).filter(o => o.total >= _SUB_BREADTH_MIN);
     const secGridBtn = '<button class="btn ghost" id="spSectorGrid" style="font-size:12px;font-weight:600" title="פתח את כל תעודות-הסל של הסקטורים בתצוגת גרפים">📊 כל הסקטורים בגרפים</button>';
     // single-ETF composite card (macro row + WGMI): bar/tier by the ETF's own above-open, big number = day move
     const _brdSingle = s => {
