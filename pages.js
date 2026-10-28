@@ -2710,6 +2710,7 @@
   // auto-detect an alert's DIRECTION (bull/bear/neutral) from its preset name, so a flood of alerts
   // can be triaged by side. Reads the 🟢/🔴 + ▲/▼ markers and Strat keywords the presets already carry.
   let _alFeedDir = "all";   // alerts-center direction filter: all / bull / bear
+  let _alFeedSort = (function () { try { return localStorage.getItem("sn_alfeed_sort") || "cat"; } catch (e) { return "cat"; } })();   // feed ordering: cat (grouped) / time / sym
   function _alertDir(name) {
     const l = String(name || "").toLowerCase();
     if (/🔴|🔻|🔽|▼|⬇|\bred\b|down|shooter|ירידה|שורט|\bbear/.test(l)) return "bear";
@@ -2884,7 +2885,7 @@
       const dir = _alertDir(p.name);
       const d = new Date(e.ts), when = d.getDate() + "." + (d.getMonth() + 1) + " " + _p2(d.getHours()) + ":" + _p2(d.getMinutes());
       const fpx = (e.px != null && !isNaN(+e.px)) ? '<span class="alc-px" title="מחיר המניה ברגע ההתראה">@' + (+e.px).toFixed(2) + "</span>" : "";
-      return { dir: dir, cat: (p.cat || ""), sym: e.sym, html:
+      return { dir: dir, cat: (p.cat || ""), sym: e.sym, ts: e.ts, html:
         '<div class="alc ' + dir + '">' +
           '<span class="alc-ico">' + DIRICO[dir] + "</span>" +
           '<div class="alc-mid"><span class="alc-sym tsym clickable" data-chart="' + escAttr(e.sym) + '" data-tf="D">' + e.sym + "</span>" +
@@ -2896,26 +2897,37 @@
     const _chip = (dir, lbl, cnt, cls) => '<button data-aldir="' + dir + '" class="fc ' + cls + (_alFeedDir === dir ? " on" : "") + '">' + lbl + ' <span class="n">' + cnt + "</span></button>";
     const dirChips = _feedItems.length ? '<div class="alc-fchips">' + _chip("all", "הכול", _feedItems.length, "") + _chip("bull", "🟢 שוריות", _dcnt.bull, "up") + _chip("bear", "🔴 דוביות", _dcnt.bear, "down") + (_dcnt.neutral ? _chip("neutral", "נייטרלי", _dcnt.neutral, "") : "") + "</div>" : "";
     const shown = _alFeedDir === "all" ? _feedItems : _feedItems.filter(it => it.dir === _alFeedDir);
+    // a titled block of rows + a "copy all its tickers" button (shared by the grouped + flat views)
+    const _catBlock = (title, items, copyLbl) => {
+      const syms = items.map(it => it.sym).filter(Boolean).join(", ");
+      return '<div class="alc-cat"><h3 class="alc-cathead">' + title + ' <span class="alc-catn">' + items.length + "</span>" +
+        '<button class="alc-copy" data-copy="' + escAttr(syms) + '" title="העתק את כל הטיקרים — נוח להדביק ברשימת מעקב">📋 ' + copyLbl + "</button>" +
+        '<span class="alc-catline"></span></h3>' +
+        '<div class="alc-list">' + items.map(it => it.html).join("") + "</div></div>";
+    };
     let body;
     if (!shown.length) {
       body = '<div class="muted">' + (_feedItems.length
         ? "אין התראות " + (_alFeedDir === "bull" ? "שוריות 🟢" : _alFeedDir === "bear" ? "דוביות 🔴" : "בכיוון הזה") + " כרגע."
         : "עוד לא נורו התראות. כשמניה מהמועדפים תיכנס לסריקה מסומנת — היא תופיע כאן.") + "</div>";
-    } else {
+    } else if (_alFeedSort === "cat") {   // 🗂️ grouped by category (default)
       const groups = {}; shown.forEach(it => { (groups[it.cat] = groups[it.cat] || []).push(it); });
-      body = Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c => {
-        const syms = groups[c].map(it => it.sym).filter(Boolean).join(", ");   // tickers to copy (dedup'd already)
-        return '<div class="alc-cat"><h3 class="alc-cathead">' + _catLabel(c) + ' <span class="alc-catn">' + groups[c].length + "</span>" +
-          '<button class="alc-copy" data-copy="' + escAttr(syms) + '" title="העתק את כל הטיקרים בקטגוריה — נוח להדביק ברשימת מעקב">📋 העתק</button>' +
-          '<span class="alc-catline"></span></h3>' +
-          '<div class="alc-list">' + groups[c].map(it => it.html).join("") + "</div></div>";
-      }).join("");
+      body = Object.keys(groups).sort((a, b) => _catOrder(a) - _catOrder(b)).map(c => _catBlock(_catLabel(c), groups[c], "העתק")).join("");
+    } else {   // 🕐 flat by time (newest-first) · 🔤 flat by symbol (A-Z)
+      const flat = shown.slice();
+      if (_alFeedSort === "sym") flat.sort((a, b) => (a.sym || "").localeCompare(b.sym || ""));
+      else flat.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      body = _catBlock(_alFeedSort === "sym" ? "לפי סימבול · א-ת" : "לפי זמן · מהחדש", flat, "העתק הכל");
     }
+    const _sortBtn = (k, lbl) => '<button data-alsort="' + k + '" class="alc-sortb' + (_alFeedSort === k ? " on" : "") + '">' + lbl + "</button>";
+    const sortCtl = _feedItems.length ? '<div class="alc-sort"><span class="alc-sort-l">מיון:</span>' + _sortBtn("cat", "🗂️ קטגוריה") + _sortBtn("time", "🕐 זמן") + _sortBtn("sym", "🔤 סימבול") + "</div>" : "";
     return '<div class="alc-bar">' + dirChips + (feed.length ? ' <button class="btn ghost" id="alClear" style="font-size:12px;font-weight:600">🗑 נקה</button>' : "") + "</div>" +
+      (sortCtl ? '<div class="alc-bar alc-bar2">' + sortCtl + "</div>" : "") +
       '<div class="al-flist alc-scroll">' + body + "</div>";
   }
   function _hubWireFeed() {
     document.querySelectorAll("[data-aldir]").forEach(b => b.onclick = () => { _alFeedDir = b.dataset.aldir; _hubRenderBody(); });
+    document.querySelectorAll("[data-alsort]").forEach(b => b.onclick = () => { _alFeedSort = b.dataset.alsort; try { localStorage.setItem("sn_alfeed_sort", _alFeedSort); } catch (e) {} _hubRenderBody(); });
     { const cl = $("#alClear"); if (cl) cl.onclick = () => { Prefs.feedClear(); _hubRenderBody(); }; }
     // 📋 copy a whole category's tickers to the clipboard (quick-scan: paste into a watchlist / TradingView)
     document.querySelectorAll(".al-modal [data-copy]").forEach(b => b.onclick = async (ev) => {
