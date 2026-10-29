@@ -1022,43 +1022,89 @@
     return '<div class="cc-zone' + (cls ? " " + cls : "") + '"><div class="cc-zhead"><h2>' + title + '</h2><span class="cc-zsub">' + sub + '</span></div>' +
       '<div class="cc-tiles">' + tiles + '</div></div>';
   }
+  // ===== Hot opportunities — strongest FTFC + directional-candle setups, straight from the live scanner =====
+  // Reuses the platform's established "ready setup" definition: full-timeframe-continuity (r.ftfc) + a
+  // directional daily candle (candleBucket). Bull buckets = 2U/3G/F2D · Bear = 2D/3R/F2U (same split as the
+  // Candle Map verdict). Ranked by move size, with a boost for volume confirmation (rvol ≥ 1.5×).
+  const _HOT_BULL = { "2U": 1, "3G": 1, "F2D": 1 };
+  const _HOT_BEAR = { "2D": 1, "3R": 1, "F2U": 1 };
+  const _HOT_LABEL = { "2U": "2U", "2D": "2D", "3G": "נר 3", "3R": "נר 3", "F2D": "היפוך", "F2U": "היפוך" };
+  function _hotOpps(limit) {
+    const rows = (SCAN && SCAN.rows) || [];
+    const picks = [];
+    rows.forEach(r => {
+      if (!r.ftfc) return;
+      const bk = candleBucket(r.D);
+      const dir = _HOT_BULL[bk] ? "bull" : (_HOT_BEAR[bk] ? "bear" : null);
+      if (!dir) return;
+      const chg = (r.c != null) ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0);
+      // skip contradictions (e.g. a "2U" that actually gapped down hard today)
+      if (dir === "bull" && chg < -0.5) return;
+      if (dir === "bear" && chg > 0.5) return;
+      const rvol = (r.tech && r.tech.rvol != null) ? r.tech.rvol : null;
+      const score = Math.abs(chg || 0) + (rvol && rvol >= 1.5 ? 1.5 : 0);
+      picks.push({ s: r.s, sec: r.sec, dir: dir, label: _HOT_LABEL[bk] || bk, chg: chg, rvol: rvol, score: score });
+    });
+    picks.sort((a, b) => b.score - a.score);
+    return picks.slice(0, limit || 6);
+  }
+  function _hotOppsPanel() {
+    const head = '<h3><span>🔥 הזדמנויות חמות היום</span><span class="cc-more" data-goto="scanner">פתח בסורק ←</span></h3>';
+    if (!(SCAN && SCAN.rows && SCAN.rows.length))
+      return '<div class="panel cc-hot">' + head + '<div class="muted" style="padding:16px 4px">טוען נתוני סורק…</div></div>';
+    const picks = _hotOpps(6);
+    if (!picks.length)
+      return '<div class="panel cc-hot">' + head + '<div class="muted" style="padding:16px 4px">אין כרגע סטאפים בהמשכיות-טיימפריימים מלאה (FTFC). נסה שוב כשהסורק יתעדכן.</div></div>';
+    const body = picks.map(p => {
+      const dftfc = p.dir === "bull" ? "FTFC🟢" : "FTFC🔴";
+      const rv = (p.rvol && p.rvol >= 1.5) ? '<span class="cc-op-badge">נפח ×' + p.rvol.toFixed(1) + "</span>" : "";
+      const chgTxt = (p.chg >= 0 ? "+" : "") + (p.chg || 0).toFixed(2) + "%";
+      return '<div class="cc-op tsym clickable" data-chart="' + p.s + '" data-tf="D">' +
+        '<span class="cc-op-sym">' + p.s + "</span>" +
+        '<span class="cc-op-setup ' + p.dir + '">' + p.label + " · " + dftfc + "</span>" +
+        '<span class="cc-op-meta">' + (p.sec ? secHe(p.sec) : "") + rv + "</span>" +
+        '<span class="cc-op-px ' + (p.chg >= 0 ? "pos" : "neg") + '">' + chgTxt + "</span>" +
+        '<span class="cc-op-go">‹</span></div>';
+    }).join("");
+    return '<div class="panel cc-hot">' + head + body + "</div>";
+  }
+  // ===== Auto "market read" — a few high-signal insights, all derived from live scanner data =====
+  function _homeMarketRead() {
+    const rows = (SCAN && SCAN.rows) || [];
+    if (!rows.length) return "";
+    const items = [];
+    const green = rows.filter(r => (r.D || {}).c === "up").length;
+    const gp = Math.round(green / rows.length * 100);
+    items.push((gp >= 55 ? "🟢" : gp <= 45 ? "🔴" : "⚖️") + " היום <b>" + gp + "%</b> מהמניות בנר יומי ירוק — " +
+      (gp >= 55 ? "הטיה שורית רחבה" : gp <= 45 ? "הטיה דובית" : "שוק מאוזן") + ".");
+    const ftfc = rows.filter(r => r.ftfc).length;
+    if (ftfc) items.push("🥷 <b>" + ftfc + "</b> מניות בהמשכיות-טיימפריימים מלאה (FTFC) — יישור חזק בין הזמנים.");
+    const sl = (mktU().sectorLeaders || [])[0];
+    if (sl) items.push("🔝 הסקטור המוביל היום: <b>" + secHe(sl.name) + "</b> (" + ((sl.chg || 0) >= 0 ? "+" : "") + (sl.chg || 0).toFixed(2) + "%).");
+    const c52 = _brd52wCounts("sp");
+    if (c52) items.push("📈 <b>" + c52.hi + "</b> מניות בשיא 52 שבועות · <b>" + c52.lo + "</b> בשפל.");
+    const bs = _brdState(_brdReadings("sp"));
+    if (bs) items.push((bs.lbl.split(" ")[0] || "🧭") + " רוחב מעל ממוצעים: <b>" + bs.score + "%</b> — " + bs.lbl.replace(/^\S+\s*/, "") + ".");
+    return '<div class="panel cc-readp"><h3>💡 קריאת שוק</h3><div class="cc-read">' +
+      items.map(t => '<div class="cc-ri">' + t + "</div>").join("") + "</div></div>";
+  }
   function renderHome() {
-    const adm = (typeof _snIsAdmin === "function") && _snIsAdmin();
     const live = LIVE && LIVE.updated;
-    const quick = '<div class="cc-quick">' +
-      '<a class="cc-qa feat" data-goto="scanner"><span class="cc-qi">🔍</span><span class="cc-qx"><b>סרוק הזדמנויות</b><span>לפי השיטה · חי</span></span><span class="cc-qar">‹</span></a>' +
-      '<a class="cc-qa" data-goto="journal"><span class="cc-qi">📓</span><span class="cc-qx"><b>יומן המסחר שלי</b><span>עקוב · למד · השתפר</span></span><span class="cc-qar">‹</span></a>' +
-      '<a class="cc-qa" data-goto="live"><span class="cc-qi">🔴</span><span class="cc-qx"><b>שידור חי</b><span>הצטרף ללייב</span></span><span class="cc-qar">‹</span></a>' +
-      "</div>";
-    const snap = '<div class="cc-snap">' +
-      '<div class="panel"><h3>🟢 מובילי השוק היום</h3>' + mkLead(live ? (mktU().leaders || []).slice(0, 5) : [], "up", false) + "</div>" +
-      '<div class="panel"><h3>🔴 מפגרים היום</h3>' + mkLead(live ? (mktU().laggards || []).slice(0, 5) : [], "down", false) + "</div>" +
-      "</div>";
-    const zoneFind = _ccZone("איתור הזדמנויות", "מצא את הדיל הבא",
-      _ccTile("scanner", "🔍", "סורק עסקאות", "סינון לפי תבניות Strat וטיימפריימים") +
-      _ccTile("sp500", "🗺️", "מפת חום", "כל ה-S&P במבט אחד") +
-      _ccTile("pulse", "💓", "דופק השוק", "סקטורים, רוחב ומובילים") +
-      _ccTile("favorites", "⭐", "מועדפים", "רשימת המעקב עם התראות"));
-    const zoneWork = _ccZone("סביבת העבודה שלי", "הנתונים שלך",
-      _ccTile("journal", "📓", "יומן מסחר", "עקוב, למד, השתפר") +
-      _ccTile("favorites", "🔔", "התראות ומעקב", "הסריקות שלך"));
-    const zoneComm = _ccZone("קהילה ולמידה", "גלוי לכולם",
-      _ccTile("live", "🔴", "שידור חי", "ניתוח בזמן אמת") +
-      _ccTile("vods", "📼", "הקלטות", "לייבים קודמים") +
-      _ccTile("learn", "📚", "לימוד", "שיעורי TheStrat") +
-      _ccTileExt("https://school.stratninja.win", "🎓", "Strat School", "הקורס המלא"));
-    const zoneAdmin = adm ? _ccZone('🔒 אזור הניהול שלך', "גלוי רק לך",
-      _ccTile("giveaway", "🎁", "ניהול הגרלות", "צור, תזמן והגרל") +
-      _ccTile("live", "🎛️", "בקרת שידור", "פתח לייב ומודרציה"), "cc-admin") : "";
+    const snap = '<div class="panel"><h3>🟢 מובילי השוק היום</h3>' + mkLead(live ? (mktU().leaders || []).slice(0, 5) : [], "up", false) +
+      '<h3 style="margin-top:14px">🔴 מפגרים היום</h3>' + mkLead(live ? (mktU().laggards || []).slice(0, 5) : [], "down", false) + "</div>";
     return (
       '<div class="page-head compact"><h1>מרכז בקרה <span class="mkt-live">' + (live ? "🟢 חי" : "🧪 דמו") + "</span></h1>" +
-        '<div class="sub">הכול במבט אחד — מצב השוק, הכלים שלך, והפעולות המהירות.</div></div>' +
-      marketCockpit() + quick + zoneFind + snap + zoneWork + zoneComm + zoneAdmin
+        '<div class="sub">הכול במבט אחד — מצב השוק, ההזדמנויות החמות של היום, והמובילים.</div></div>' +
+      marketCockpit() +
+      '<div class="cc-dash">' + _hotOppsPanel() + _homeMarketRead() + "</div>" +
+      '<div class="cc-dash">' + _marketSectorHeat() + snap + "</div>"
     );
   }
   function wireHome() {
     document.querySelectorAll("#page [data-goto]").forEach(el => el.onclick = () => setPage(el.dataset.goto));
+    document.querySelectorAll("#page [data-goto-heat]").forEach(el => el.onclick = () => setPage("sp500"));
     { const cb = document.getElementById("cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
+    if (typeof wireCharts === "function") wireCharts(document);
   }
   // סקירת שוק: compact sector heat-map (reuses LIVE.sectors — colored tiles by daily change)
   function _marketSectorHeat() {

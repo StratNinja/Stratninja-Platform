@@ -1165,6 +1165,30 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .cc-admin .cc-zsub { color: #e0a73a; font-weight: 800; background: rgba(244,182,78,.14); padding: 2px 9px; border-radius: 999px; font-size: 11px; }
 @media (max-width: 820px) { .cc-quick { grid-template-columns: 1fr; } .cc-tiles { grid-template-columns: repeat(2, 1fr); } .cc-snap { grid-template-columns: 1fr; } }
 
+/* ===== Command Center dashboard — hot opportunities + market read ===== */
+.cc-dash { display: grid; grid-template-columns: 1.4fr 1fr; gap: 14px; margin-top: 14px; align-items: start; }
+.cc-dash > .panel { margin: 0; }
+.cc-hot { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accentbg); }
+.cc-hot h3, .cc-readp h3 { display: flex; align-items: center; justify-content: space-between; }
+.cc-more { font-size: 12.5px; color: var(--accent); font-weight: 700; cursor: pointer; }
+.cc-op { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line); cursor: pointer; transition: background .12s; }
+.cc-op:last-child { border-bottom: 0; }
+.cc-op:hover { background: var(--accentbg); border-radius: 8px; }
+.cc-op-sym { font-weight: 800; font-size: 15.5px; min-width: 52px; }
+.cc-op-setup { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 7px; white-space: nowrap; }
+.cc-op-setup.bull { background: rgba(23,192,138,.15); color: var(--green); }
+.cc-op-setup.bear { background: rgba(240,91,107,.15); color: var(--red); }
+.cc-op-meta { flex: 1; min-width: 0; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-op-badge { font-size: 10px; font-weight: 800; color: var(--accent); border: 1px solid var(--accent); border-radius: 5px; padding: 0 5px; margin-inline-start: 7px; }
+.cc-op-px { font-weight: 800; font-size: 13.5px; }
+.cc-op-px.pos { color: var(--green); } .cc-op-px.neg { color: var(--red); }
+.cc-op-go { color: var(--muted); font-size: 18px; font-weight: 700; }
+.cc-read { display: flex; flex-direction: column; }
+.cc-ri { font-size: 13px; line-height: 1.55; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.cc-ri:last-child { border-bottom: 0; }
+.cc-read b { color: var(--accent); }
+@media (max-width: 820px) { .cc-dash { grid-template-columns: 1fr; } }
+
 /* ===== Scanner Strategy Launcher (redesign) ===== */
 .scan-launch { padding: 14px 16px; }
 .scan-launch .sl-head { display: flex; align-items: baseline; gap: 9px; margin-bottom: 11px; flex-wrap: wrap; }
