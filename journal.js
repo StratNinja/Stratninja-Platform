@@ -1878,8 +1878,7 @@
       if (sel.value === "__NEW__") { const nv = (document.getElementById("impAcctNew") || {}).value; forceAcct = (nv || "").trim() || null; }
       else if (sel.value && sel.value !== "__FILE__") forceAcct = sel.value;
     }
-    let pending = files.length, totalAdded = 0, errs = [];
-    const importedAccts = new Set();   // accounts that received data → so we can switch the view to them
+    let pending = files.length, errs = [], allFills = [];
     if (!pending) return;
     Array.from(files).forEach(file => {
       const rd = new FileReader();
@@ -1899,13 +1898,84 @@
             : (String(file.name || "").replace(/\.[^.]*$/, "").replace(/[^A-Za-z0-9]+/g, "").slice(0, 24) || "CSV");
           res.fills.forEach(f => { if (!(f.account || "").trim()) f.account = fromName; });
         }
-        totalAdded += Store.addFills(res.fills);
-        (res.fills || []).forEach(f => importedAccts.add((f.account || "").trim()));
-        if (--pending === 0) finishImport(totalAdded, errs, Array.from(importedAccts));
+        allFills = allFills.concat(res.fills || []);
+        if (--pending === 0) showImportSummary(allFills, errs);
       };
-      rd.onerror = () => { if (--pending === 0) finishImport(totalAdded, errs, Array.from(importedAccts)); };
+      rd.onerror = () => { if (--pending === 0) showImportSummary(allFills, errs); };
       rd.readAsText(file);
     });
+  }
+
+  // Preview the POST-import state for the accounts this import touches: how many round-trips close,
+  // how many stay open (bought, not sold), and how many SELLS have no matching buy ("orphans" — almost
+  // always closing a position opened BEFORE this file's date window, which FIFO would otherwise show as
+  // a phantom SHORT). Runs FIFO on existing + new fills so a sell matched by a buy already in the
+  // journal is NOT counted as an orphan.
+  function _importPreview(newFills) {
+    const affected = new Set(newFills.map(f => (f.account || "").trim()));
+    const pool = Store.getFills().concat(newFills).filter(f => affected.has((f.account || "").trim()));
+    const byAcct = {};
+    pool.forEach(f => { const a = (f.account || "").trim(); (byAcct[a] = byAcct[a] || []).push(f); });
+    let closed = 0, openLong = 0; const orphans = [];
+    Object.keys(byAcct).forEach(a => {
+      const c = E.computeTrades(byAcct[a]);
+      closed += c.trades.length;
+      (c.openPositions || []).forEach(p => { if (p.qty > 0) openLong++; else if (p.qty < 0) orphans.push(p); });
+    });
+    return { closed: closed, openLong: openLong, orphans: orphans };
+  }
+  // (account|symbol) keys that are pure orphan sells in the combined set (zero buys, net short) — the
+  // NEW fills under these keys are what "ייבא בלי יתומות" drops, so no phantom short is created.
+  function _orphanFillKeys(newFills) {
+    const affected = new Set(newFills.map(f => (f.account || "").trim()));
+    const pool = Store.getFills().concat(newFills).filter(f => affected.has((f.account || "").trim()));
+    const g = {};
+    pool.forEach(f => { const k = (f.account || "") + "|" + f.symbol; const o = g[k] || (g[k] = { b: 0, s: 0 }); if (f.side === "S") o.s += (+f.qty || 0); else o.b += (+f.qty || 0); });
+    const keys = new Set();
+    Object.keys(g).forEach(k => { if (g[k].b === 0 && g[k].s > 0) keys.add(k); });
+    return keys;
+  }
+  function showImportSummary(allFills, errs) {
+    if (!allFills.length) { finishImport(0, errs, []); return; }   // nothing parsed → existing error path
+    const exKeys = new Set(Store.getFills().map(E.fillKey));
+    const dupCount = allFills.filter(f => exKeys.has(E.fillKey(f))).length;
+    const pv = _importPreview(allFills);
+    const orphans = pv.orphans;
+    const orphanList = orphans.length
+      ? '<div style="max-height:120px;overflow:auto;margin:8px 0;padding:8px 10px;background:var(--panel2,rgba(255,255,255,.03));border-radius:8px;font-size:12.5px">' +
+        orphans.map(p => '<div>🔴 ' + _esc(p.symbol) + ' · ' + Math.abs(p.qty) + " יח׳</div>").join("") + "</div>"
+      : "";
+    const row = (emoji, n, label) => '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--line)"><span>' + emoji + " " + label + '</span><b style="font-size:16px">' + n + "</b></div>";
+    const body =
+      '<div style="font-size:13.5px;line-height:1.5">' +
+        '<p style="margin:0 0 10px">נמצאו <b>' + allFills.length + "</b> ביצועים" +
+          (dupCount ? ' · <span class="muted">' + dupCount + " כבר קיימים ויידלגו</span>" : "") + ".</p>" +
+        row("✅", pv.closed, "עסקאות סגורות (קנייה+מכירה הותאמו)") +
+        row("🟢", pv.openLong, "פוזיציות פתוחות (קנית, טרם מכרת)") +
+        (orphans.length ? row("🔴", orphans.length, "מכירות ללא קנייה תואמת") : "") +
+        (orphans.length
+          ? '<div class="note" style="margin-top:10px">🔴 למכירות האלה אין קנייה תואמת בקובץ — כנראה סגירה של פוזיציות שפתחת <b>לפני</b> התקופה שבקובץ. אם לא היבאת אותן כשורט אמיתי, עדיף לא לייבא אותן (אחרת יוצגו כפוזיציות שורט פתוחות שגויות).' + orphanList + "</div>"
+          : '<div class="note" style="margin-top:10px">הכול מתחבר יפה — אין מכירות יתומות.</div>') +
+      "</div>" +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">' +
+        '<button class="btn ghost" id="impCancel">ביטול</button>' +
+        (orphans.length ? '<button class="btn ghost" id="impAll">ייבא הכול (כולל שורט)</button>' : "") +
+        '<button class="btn primary" id="impGo">' + (orphans.length ? "ייבא בלי היתומות ✓" : "ייבא ✓") + "</button>" +
+      "</div>";
+    modal("📋 סיכום הייבוא", body);
+    const go = $("#impGo"), all = $("#impAll"), cancel = $("#impCancel");
+    if (cancel) cancel.onclick = () => closeModal();
+    if (go) go.onclick = () => {
+      const drop = orphans.length ? _orphanFillKeys(allFills) : null;
+      const toAdd = drop ? allFills.filter(f => !drop.has((f.account || "") + "|" + f.symbol)) : allFills;
+      commitImport(toAdd, errs);
+    };
+    if (all) all.onclick = () => commitImport(allFills, errs);
+  }
+  function commitImport(fills, errs) {
+    const added = Store.addFills(fills);
+    const importedAccts = Array.from(new Set(fills.map(f => (f.account || "").trim())));
+    finishImport(added, errs || [], importedAccts);
   }
   function finishImport(added, errs, importedAccts) {
     closeModal();
