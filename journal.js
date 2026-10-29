@@ -1213,7 +1213,7 @@
         '<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
         (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה">🧠</button> ' : "") +
         (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
-        (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
+        ((t.source === "manual" || (t.fillKeys && t.fillKeys.length)) ? '<button class="btn ghost" data-edit="' + t.id + '" title="' + (t.source === "manual" ? "ערוך" : "ערוך · המרה לעסקה ידנית") + '">✏️</button> ' : "") +
         '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>';
       const pv = posVal(t);
       return '<tr><td class="muted" style="white-space:nowrap">' + dstr(t.exitDate) + "</td><td>" + chartSym(t.symbol) +
@@ -1257,7 +1257,7 @@
       '<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
       (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
       (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
-      (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
+      ((t.source === "manual" || (t.fillKeys && t.fillKeys.length)) ? '<button class="btn ghost" data-edit="' + t.id + '" title="' + (t.source === "manual" ? "ערוך" : "ערוך · המרה לעסקה ידנית") + '">✏️</button> ' : "") +
       '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>';
     const posVal = Math.abs((+t.entryPrice || 0) * (+t.qty || 0) * (+t.mult || 1));   // capital deployed
     return "<tr><td>" + chartSym(t.symbol) + '</td><td><span class="pill ' + t.direction + '">' +
@@ -1271,7 +1271,11 @@
     const byId = {};
     tradesList.forEach(t => { byId[t.id] = t; });
     container.querySelectorAll("button[data-edit]").forEach(b => {
-      b.onclick = () => { const t = byId[b.dataset.edit]; if (t) { closeModal(); openManual(t); } };
+      b.onclick = () => {
+        const t = byId[b.dataset.edit]; if (!t) return;
+        if (t.source === "manual") { closeModal(); openManual(t); }
+        else editCsvTrade(t);   // CSV/imported → convert to manual, then edit
+      };
     });
     container.querySelectorAll("button[data-del]").forEach(b => {
       b.onclick = () => deleteTrade(byId[b.dataset.del], reopen);
@@ -1325,6 +1329,24 @@
     render();
     toast("נמחק");
     if (reopen) reopen();
+  }
+  // Edit a CSV-derived (imported) trade: convert it to a fully-editable MANUAL trade. We remove the raw
+  // fills and add an equivalent manual trade with the same values, then open the manual editor on it. Done
+  // atomically (convert on confirm) so cancelling the editor keeps the trade — it's just now "manual".
+  function editCsvTrade(t) {
+    if (!t) return;
+    if (!(t.fillKeys && t.fillKeys.length)) { toast("לא ניתן לערוך עסקה זו (פצל קודם עסקה מאוגדת)"); return; }
+    if (!confirm("לערוך עסקה מיובאת (CSV)?\n" + t.symbol + "\n\nהיא תומר לעסקה ידנית הניתנת לעריכה מלאה — הערכים יישמרו, ופקודות הביצוע המקוריות יוסרו.")) return;
+    const m = E.manualToTrade({
+      account: t.account, symbol: t.symbol, assetType: t.assetType || "stock", optType: t.optType,
+      direction: t.direction, qty: t.qty, entryPrice: t.entryPrice,
+      exitPrice: (t.exitPrice != null && t.exitPrice !== "") ? t.exitPrice : "",
+      entryDate: t.entryDate, exitDate: t.exitDate, fees: t.fees,
+    });
+    Store.deleteFills(t.fillKeys);
+    Store.addManual(m);
+    closeModal();
+    openManual(m);   // m.source === "manual" + has id → the editor treats it as an edit (updates in place)
   }
 
   // ---- Equity curve ------------------------------------------------------
@@ -1742,7 +1764,7 @@
               ('<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
                (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
                (t.img ? '<button class="btn ghost" data-img="' + t.id + '" title="צפה בצילום הגרף">📷</button> ' : "") +
-               (t.source === "manual" ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך">✏️</button> ' : "") +
+               ((t.source === "manual" || (t.fillKeys && t.fillKeys.length)) ? '<button class="btn ghost" data-edit="' + t.id + '" title="' + (t.source === "manual" ? "ערוך" : "ערוך · המרה לעסקה ידנית") + '">✏️</button> ' : "") +
                '<button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>'))) +
         "</td>" +
         "</tr>";
