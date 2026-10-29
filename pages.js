@@ -9340,7 +9340,9 @@
     breadth: { render: renderBreadth, wire: wireBreadth },
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
-    learn: { render: renderLearn, wire: wireLearn },
+    // Learn content moved to Strat School (school.stratninja.win). The old nav tab already links there;
+    // this redirects any lingering #learn bookmark/link to the school instead of the stale in-app page.
+    learn: { render: function () { try { window.location.replace("https://school.stratninja.win"); } catch (e) { try { window.location.href = "https://school.stratninja.win"; } catch (e2) {} } return '<div class="page-head"><h1>🎓 עובר ל-Strat School…</h1><div class="sub">תוכן הלימוד עבר לבית הספר. אם לא הועברת אוטומטית — <a href="https://school.stratninja.win" target="_blank" rel="noopener">כניסה ל-Strat School →</a></div></div>'; }, wire: function () {} },
     news: { render: renderNews, wire: wireNews },
     community: { render: renderCommunity, wire: wireCommunity },
     giveaway: { render: function () { return window.Giveaway ? window.Giveaway.render() : '<div class="page-head"><h1>🎁 הגרלות</h1></div>'; }, wire: function () { if (window.Giveaway) window.Giveaway.wire(); } },
