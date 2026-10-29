@@ -310,6 +310,7 @@ window.Engine = (function () {
           direction: net > 0 ? "long" : "short",
           avgPrice: b.ep.openQty ? b.ep.entryNotional / b.ep.openQty : 0,
           assetType: b.ep.assetType, entryDate: b.ep.entryDate,
+          fillKeys: b.ep.fillKeys.slice(),   // composing raw fills → lets the UI delete this open position
         });
       }
     });

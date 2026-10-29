@@ -1304,6 +1304,16 @@
   }
   function deleteTrade(t, reopen) {
     if (!t) return;
+    // Imported OPEN position (CSV-derived, not yet closed) — remove its composing fills. This is the way
+    // to clean up a position that shows as "open" by mistake, e.g. only one side (a buy with no sell) was
+    // imported, or buy/sell landed in different accounts.
+    if (t._open && t.source !== "manual") {
+      const q = Math.round((t.qty || 0) * 1e4) / 1e4;
+      if (!(t.fillKeys && t.fillKeys.length)) { toast("אין פקודות ביצוע למחיקה"); return; }
+      if (!confirm("למחוק את הפוזיציה הפתוחה המיובאת?\n" + t.symbol + " · " + q + " יח׳\n\nזה יסיר את פקודות הביצוע (fills) שמרכיבות אותה מהיומן.")) return;
+      Store.deleteFills(t.fillKeys);
+      render(); toast("הפוזיציה נמחקה"); if (reopen) reopen(); return;
+    }
     const label = t.symbol + " · " + money(t.pnl, 2);
     if (t.source === "manual") {
       if (!confirm("למחוק את העסקה הידנית?\n" + label)) return;
@@ -1675,7 +1685,7 @@
     const mkOpen = (p, src, entryPrice, mult) => ({
       id: p.id, symbol: p.symbol, account: p.account, direction: p.direction,
       assetType: p.assetType, optType: p.optType, qty: p.qty, mult: mult, entryPrice: entryPrice,
-      entryDate: p.entryDate, exitDate: "", source: src,
+      entryDate: p.entryDate, exitDate: "", source: src, fillKeys: p.fillKeys || [],
       posValue: (entryPrice || 0) * (p.qty || 0) * (mult || 1), _open: true,
     });
     const openRows = (openPositions || []).map(p => mkOpen(p, "csv", p.avgPrice, p.assetType === "option" ? 100 : 1))
@@ -1725,7 +1735,9 @@
           (t._open
             ? (t.source === "manual" && t.id
                 ? '<button class="btn ghost" data-edit="' + t.id + '" title="ערוך / הוסף מחיר יציאה">✏️</button> <button class="btn ghost" data-del="' + t.id + '" title="מחק">🗑</button>'
-                : '<span class="muted" style="font-size:11px">פתוחה</span>')
+                : ((t.fillKeys && t.fillKeys.length)
+                    ? '<button class="btn ghost" data-del="' + t.id + '" title="מחק את הפוזיציה הפתוחה המיובאת">🗑</button>'
+                    : '<span class="muted" style="font-size:11px">פתוחה</span>'))
             : (t._agg ? '<span class="muted" style="font-size:11px" title="פצל כדי לערוך/למחוק עסקה בודדת">מאוגד</span>' :
               ('<button class="btn ghost" data-sharetrade="' + t.id + '" title="שתף עסקה ככרטיס נינג׳ה">📸</button> ' +
                (_hasReflect(t) ? '<button class="btn ghost" data-reflect="' + t.id + '" title="רפלקציה — איך ניהלת את העסקה">🧠</button> ' : "") +
@@ -1766,13 +1778,36 @@
 
   // ---- Import modal ------------------------------------------------------
   function openImport() {
+    // Account selector — let the user pick which account the imported trades land in.
+    // Default = the account currently being viewed (so the import is visible), else "by file".
+    // Forcing ONE account also pairs buys↔sells across files (FIFO is per-account), which prevents
+    // round-trips from showing as stuck "open" positions just because the two sides were in two files.
+    const accts = Store.accounts();
+    const active = (state.account && state.account !== ALL && accts.indexOf(state.account) >= 0) ? state.account : "";
+    const optAccts = accts.map(a => '<option value="' + _esc(a) + '"' + (a === active ? " selected" : "") + ">" + _esc(a) + "</option>").join("");
+    const acctSel =
+      '<div class="imp-acct" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">' +
+        '<label style="font-weight:700;font-size:13px">ייבא לחשבון:</label>' +
+        '<select id="impAcct" style="min-width:170px;padding:7px 10px;border-radius:9px;background:var(--panel);color:var(--ink);border:1px solid var(--line);font-weight:600">' +
+          optAccts +
+          '<option value="__FILE__"' + (active ? "" : " selected") + ">📁 לפי הקובץ / הברוקר</option>" +
+          '<option value="__NEW__">➕ חשבון חדש…</option>' +
+        "</select>" +
+        '<input id="impAcctNew" class="hidden" placeholder="שם חשבון חדש" style="min-width:150px;padding:7px 10px;border-radius:9px;background:var(--panel);color:var(--ink);border:1px solid var(--line)">' +
+      "</div>";
     const body =
+      acctSel +
       '<div class="drop" id="drop"><div class="big" style="font-size:34px">📥</div>' +
       "<b>גרור לכאן קובץ CSV</b> מהברוקר<br><span style=\"font-size:12px\">או לחץ לבחירת קובץ · אפשר כמה קבצים יחד</span></div>" +
       '<input type="file" id="fileInput" accept=".csv" multiple class="hidden">' +
-      '<div class="note">כפילויות מזוהות אוטומטית לפי זמן ביצוע — אפשר להעלות קבצים חופפים בלי דאגה.</div>';
+      '<div class="note">כפילויות מזוהות אוטומטית לפי זמן ביצוע — אפשר להעלות קבצים חופפים בלי דאגה.<br>💡 בחירת חשבון מאחדת את כל הביצועים מהקבצים לאותו חשבון, כך שקנייה→מכירה מתחברות לעסקה סגורה אחת.</div>';
     modal("העלאת נתונים", body);
     const drop = $("#drop"), input = $("#fileInput");
+    const sel = $("#impAcct"), newInp = $("#impAcctNew");
+    if (sel) sel.onchange = () => {
+      const isNew = sel.value === "__NEW__";
+      if (newInp) { newInp.classList.toggle("hidden", !isNew); if (isNew) newInp.focus(); }
+    };
     drop.onclick = () => input.click();
     drop.ondragover = e => { e.preventDefault(); drop.classList.add("hot"); };
     drop.ondragleave = () => drop.classList.remove("hot");
@@ -1780,6 +1815,13 @@
     input.onchange = () => handleFiles(input.files);
   }
   function handleFiles(files) {
+    // Resolve the chosen target account (if any) BEFORE the modal closes.
+    let forceAcct = null;
+    const sel = document.getElementById("impAcct");
+    if (sel) {
+      if (sel.value === "__NEW__") { const nv = (document.getElementById("impAcctNew") || {}).value; forceAcct = (nv || "").trim() || null; }
+      else if (sel.value && sel.value !== "__FILE__") forceAcct = sel.value;
+    }
     let pending = files.length, totalAdded = 0, errs = [];
     const importedAccts = new Set();   // accounts that received data → so we can switch the view to them
     if (!pending) return;
@@ -1788,10 +1830,14 @@
       rd.onload = () => {
         const res = E.parseCSV(rd.result);
         if (res.errors.length) errs = errs.concat(res.errors.slice(0, 3));
-        // Some exports (e.g. Colmex "tradeHistory_COLH97415.csv") have NO account column — the account
-        // number lives only in the FILENAME. Stamp it so the trades group under a named account and stay
-        // visible (a blank account gets hidden whenever another named account already exists).
-        if ((res.fills || []).some(f => !(f.account || "").trim())) {
+        if (forceAcct) {
+          // user picked (or created) a target account → stamp EVERY fill with it, so all files
+          // merge into the one account and buys↔sells pair correctly.
+          (res.fills || []).forEach(f => { f.account = forceAcct; });
+        } else if ((res.fills || []).some(f => !(f.account || "").trim())) {
+          // "by file": some exports (e.g. Colmex "tradeHistory_COLH97415.csv") have NO account column —
+          // the account number lives only in the FILENAME. Stamp it so the trades group under a named
+          // account and stay visible (a blank account gets hidden whenever a named account exists).
           const m = String(file.name || "").match(/COL[A-Z]?\d+/i);
           const fromName = m ? m[0].toUpperCase()
             : (String(file.name || "").replace(/\.[^.]*$/, "").replace(/[^A-Za-z0-9]+/g, "").slice(0, 24) || "CSV");
