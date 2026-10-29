@@ -381,8 +381,11 @@
       jcols.appendChild(calWrap);
       content.appendChild(jcols);
       const posSec = el("div", "jr-dashsec");
-      posSec.appendChild(_dashSecHdr("פוזיציות פתוחות", ((manualOpen ? manualOpen.length : 0)) + " פתוחות"));
-      if (manualOpen && manualOpen.length) posSec.appendChild(renderOpenPositions(manualOpen));
+      // the panel shows BOTH manual opens AND CSV/FIFO-derived opens (imported buys with no matching
+      // sell) — otherwise an imported leftover showed "open" in the trades table yet was missing here.
+      const _dashOpen = (manualOpen || []).concat(_csvOpensAsTrades(openPositions));
+      posSec.appendChild(_dashSecHdr("פוזיציות פתוחות", _dashOpen.length + " פתוחות"));
+      if (_dashOpen.length) posSec.appendChild(renderOpenPositions(_dashOpen));
       else { const n = el("div", "note"); n.innerHTML = "📌 אין פוזיציות פתוחות כרגע."; posSec.appendChild(n); }
       content.appendChild(posSec);
       const trSec = el("div", "jr-dashsec");
@@ -391,7 +394,8 @@
       content.appendChild(trSec);
     } else if (state.tab === "positions") {
       content.appendChild(renderTotalPnl(trades, manualOpen, openPositions));
-      if (manualOpen && manualOpen.length) content.appendChild(renderOpenPositions(manualOpen));
+      const _posOpen = (manualOpen || []).concat(_csvOpensAsTrades(openPositions));
+      if (_posOpen.length) content.appendChild(renderOpenPositions(_posOpen));
       else { const n = el("div", "note"); n.style.marginTop = "12px"; n.innerHTML = "📌 אין פוזיציות פתוחות כרגע. פוזיציות שתפתח (או תייבא ולא נסגרו) יופיעו כאן עם ה-P&L הלא-ממומש בזמן אמת."; content.appendChild(n); }
     } else if (state.tab === "trades") {
       content.appendChild(renderStatCards(trades));
@@ -497,6 +501,19 @@
       };
       return { t: mt, isOpt: f.assetType === "option", cp: cp, un: un };
     });
+  }
+  // CSV/FIFO-derived open positions → trade-shaped rows for the open-positions panel (same normalization
+  // renderTrades uses for its pinned rows). Each keeps its composing fillKeys so the panel can DELETE it,
+  // or convert-to-manual (editCsvTrade) to add an exit price. source:"csv" routes the panel's actions.
+  function _csvOpensAsTrades(openPositions) {
+    return (openPositions || []).map(p => ({
+      id: "csvopen|" + ((p.fillKeys && p.fillKeys[0]) || (p.account + "|" + p.symbol + "|" + p.entryDate)),
+      symbol: p.symbol, account: p.account, direction: p.direction,
+      assetType: p.assetType, optType: p.optType || null,
+      qty: p.qty, entryPrice: p.avgPrice, mult: p.assetType === "option" ? 100 : 1,
+      entryDate: p.entryDate, exitDate: "", fees: 0,
+      source: "csv", fillKeys: (p.fillKeys || []).slice(), _open: true,
+    }));
   }
   function renderOpenPositions(openTrades) {
     const wrap = el("div", "panel open-pos");
@@ -796,11 +813,21 @@
       inp.onchange = () => { _setOptPrice(inp.dataset.optpx, inp.value); render(); };
     });
     // wire: click row or close button -> open the edit form (add exit price to close)
-    wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => editOpenTrade(tr.dataset.editopen));
-    wrap.querySelectorAll("[data-closepos]").forEach(b => b.onclick = e => { e.stopPropagation(); editOpenTrade(b.dataset.closepos); });
+    // a CSV-derived open (imported, unmatched) has no manual record — close/edit it by converting to a
+    // manual trade (editCsvTrade), and delete it by removing its fills (deleteTrade handles both).
+    wrap.querySelectorAll("[data-editopen]").forEach(tr => tr.onclick = () => {
+      const t = openTrades.find(x => x.id === tr.dataset.editopen);
+      if (t && t.source === "csv") editCsvTrade(t); else editOpenTrade(tr.dataset.editopen);
+    });
+    wrap.querySelectorAll("[data-closepos]").forEach(b => b.onclick = e => {
+      e.stopPropagation();
+      const t = openTrades.find(x => x.id === b.dataset.closepos);
+      if (t && t.source === "csv") editCsvTrade(t); else editOpenTrade(b.dataset.closepos);
+    });
     wrap.querySelectorAll("[data-delpos]").forEach(b => b.onclick = e => {
       e.stopPropagation();
       const t = openTrades.find(x => x.id === b.dataset.delpos);
+      if (t && t.source === "csv") { deleteTrade(t); return; }   // confirms + removes the composing fills
       if (!confirm("למחוק את הפוזיציה הפתוחה " + (t ? t.symbol : "") + "? פעולה זו אינה הפיכה.")) return;
       Store.deleteManual(b.dataset.delpos); render();
     });
