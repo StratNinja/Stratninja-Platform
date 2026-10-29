@@ -1088,16 +1088,49 @@
     return '<div class="panel cc-readp"><h3>💡 קריאת שוק</h3><div class="cc-read">' +
       items.map(t => '<div class="cc-ri">' + t + "</div>").join("") + "</div></div>";
   }
+  // ===== Home sector-flow heat map — sectors + indices + MAGS, colored by daily change =====
+  function _chgOf(sym) {
+    const r = (SCAN && SCAN.rows) ? SCAN.rows.find(x => x.s === sym) : null;
+    if (r) return (r.c != null) ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : null);
+    const i = ((LIVE && LIVE.indices) || []).find(x => x.sym === sym);
+    return i ? i.chg : null;
+  }
+  function _heatRow(items) {
+    return '<div class="mh-grid">' + items.map(it => {
+      const v = it.chg || 0;
+      const lvl = Math.min(3, Math.max(1, Math.ceil(Math.abs(v) / 1.0)));
+      const cls = v > 0.05 ? "mh-u" + lvl : v < -0.05 ? "mh-d" + lvl : "mh-flat";
+      return '<div class="mh-tile ' + cls + (it.chart ? ' tsym clickable" data-chart="' + it.chart + '" data-tf="D' : "") + '">' +
+        '<span class="mh-etf">' + it.label + "</span>" +
+        '<span class="mh-chg" style="color:' + (v >= 0 ? "var(--green)" : "var(--red)") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>" +
+        (it.he ? '<span class="mh-he">' + it.he + "</span>" : "") + "</div>";
+    }).join("") + "</div>";
+  }
+  const _HOME_IDX = ["SPY", "QQQ", "DIA", "IWM"];
+  const _HOME_MAGS = ["AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "TSLA"];
+  function _homeSectorFlow() {
+    const secs = (LIVE && LIVE.sectors) || [];
+    const head = '<h3><span>🗺️ מפת חום · סקטורים, מדדים ו-MAGS</span><span class="cc-more" data-goto-heat="1">מפה מלאה →</span></h3>';
+    const secItems = secs.slice().sort((a, b) => ((b.chg || 0) - (a.chg || 0)))
+      .map(s => ({ label: etfFor(s.name) || secHe(s.name), chart: etfFor(s.name) || "", chg: s.chg || 0, he: secHe(s.name) }));
+    const idxItems = _HOME_IDX.map(s => { const i = ((LIVE && LIVE.indices) || []).find(x => x.sym === s); return { label: s, chart: s, chg: i ? (i.chg || 0) : 0 }; });
+    const magItems = _HOME_MAGS.map(s => ({ label: s, chart: s, chg: _chgOf(s) || 0 }));
+    let html = '<div class="panel cc-heatp">' + head + '<div class="cc-heat-body">';
+    if (secItems.length) html += _heatRow(secItems);
+    html += '<div class="cc-heat-lbl">📊 מדדים</div>' + _heatRow(idxItems);
+    html += '<div class="cc-heat-lbl">🏆 MAGS · מגה-קאפ</div>' + _heatRow(magItems);
+    return html + "</div></div>";
+  }
   function renderHome() {
     const live = LIVE && LIVE.updated;
-    const snap = '<div class="panel"><h3>🟢 מובילי השוק היום</h3>' + mkLead(live ? (mktU().leaders || []).slice(0, 5) : [], "up", false) +
+    const snap = '<div class="panel cc-leadp"><h3>🟢 מובילי השוק היום</h3>' + mkLead(live ? (mktU().leaders || []).slice(0, 5) : [], "up", false) +
       '<h3 style="margin-top:14px">🔴 מפגרים היום</h3>' + mkLead(live ? (mktU().laggards || []).slice(0, 5) : [], "down", false) + "</div>";
     return (
       '<div class="page-head compact"><h1>מרכז בקרה <span class="mkt-live">' + (live ? "🟢 חי" : "🧪 דמו") + "</span></h1>" +
         '<div class="sub">הכול במבט אחד — מצב השוק, ההזדמנויות החמות של היום, והמובילים.</div></div>' +
       marketCockpit() +
       '<div class="cc-dash">' + _hotOppsPanel() + _homeMarketRead() + "</div>" +
-      '<div class="cc-dash">' + _marketSectorHeat() + snap + "</div>"
+      '<div class="cc-dash">' + _homeSectorFlow() + snap + "</div>"
     );
   }
   function wireHome() {
