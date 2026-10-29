@@ -510,7 +510,8 @@
       id: "csvopen|" + ((p.fillKeys && p.fillKeys[0]) || (p.account + "|" + p.symbol + "|" + p.entryDate)),
       symbol: p.symbol, account: p.account, direction: p.direction,
       assetType: p.assetType, optType: p.optType || null,
-      qty: p.qty, entryPrice: p.avgPrice, mult: p.assetType === "option" ? 100 : 1,
+      strike: p.strike != null ? p.strike : null, expiry: p.expiry || null,
+      qty: p.qty, entryPrice: p.avgPrice, mult: p.mult || (p.assetType === "option" ? 100 : 1),
       entryDate: p.entryDate, exitDate: "", fees: 0,
       source: "csv", fillKeys: (p.fillKeys || []).slice(), _open: true,
     }));
@@ -1364,8 +1365,13 @@
     if (!t) return;
     if (!(t.fillKeys && t.fillKeys.length)) { toast("לא ניתן לערוך עסקה זו (פצל קודם עסקה מאוגדת)"); return; }
     if (!confirm("לערוך עסקה מיובאת (CSV)?\n" + t.symbol + "\n\nהיא תומר לעסקה ידנית הניתנת לעריכה מלאה — הערכים יישמרו, ופקודות הביצוע המקוריות יוסרו.")) return;
+    // for a parsed option, use the clean underlying as the symbol (strike/expiry/type live in their own
+    // fields now) so the editor isn't cluttered with the packed broker string.
+    const isOpt = t.assetType === "option";
+    const sym = (isOpt && t.strike != null) ? String(t.symbol || "").split(" ")[0] : t.symbol;
     const m = E.manualToTrade({
-      account: t.account, symbol: t.symbol, assetType: t.assetType || "stock", optType: t.optType,
+      account: t.account, symbol: sym, assetType: t.assetType || "stock", optType: t.optType,
+      strike: (t.strike != null ? t.strike : ""), expiry: (t.expiry || ""),
       direction: t.direction, qty: t.qty, entryPrice: t.entryPrice,
       exitPrice: (t.exitPrice != null && t.exitPrice !== "") ? t.exitPrice : "",
       entryDate: t.entryDate, exitDate: t.exitDate, fees: t.fees,
@@ -1733,7 +1739,8 @@
     // so "open vs closed" is a single column. From the CSV-FIFO leftovers + manual open trades.
     const mkOpen = (p, src, entryPrice, mult) => ({
       id: p.id, symbol: p.symbol, account: p.account, direction: p.direction,
-      assetType: p.assetType, optType: p.optType, qty: p.qty, mult: mult, entryPrice: entryPrice,
+      assetType: p.assetType, optType: p.optType, strike: p.strike != null ? p.strike : null, expiry: p.expiry || null,
+      qty: p.qty, mult: mult, entryPrice: entryPrice,
       entryDate: p.entryDate, exitDate: "", source: src, fillKeys: p.fillKeys || [],
       posValue: (entryPrice || 0) * (p.qty || 0) * (mult || 1), _open: true,
     });

@@ -43,6 +43,25 @@ window.Engine = (function () {
     if (clrType && clrType.toLowerCase().indexOf("opt") >= 0) return true;   // "Options", "Equity and Index Options", "Opti"
     return /(CALL|PUT)\s*$/i.test(sym);
   }
+  // Broker option symbol "TICKER DDMMYY{STRIKE}{CALL|PUT}" (Colmex), e.g. "GOOGL 131126287.5CALL"
+  // → { underlying:"GOOGL", optType:"call", strike:287.5, expiry:"2026-11-13" }. Date is DD MM YY
+  // (confirmed by 0-DTE rows). Returns null when the symbol doesn't match this shape, so stocks and
+  // other formats are left untouched. The strike may carry a decimal (e.g. 287.5, 62.5, 92.5).
+  function parseOptionSymbol(sym) {
+    const m = String(sym || "").trim().match(/^([A-Za-z.]{1,6})\s+(\d{6})(\d+(?:\.\d+)?)(CALL|PUT|C|P)$/i);
+    if (!m) return null;
+    const dd = m[2].slice(0, 2), mm = m[2].slice(2, 4), yy = m[2].slice(4, 6);
+    if (+mm < 1 || +mm > 12 || +dd < 1 || +dd > 31) return null;
+    const strike = parseFloat(m[3]);
+    if (!(strike > 0)) return null;
+    const ty = m[4].toUpperCase();
+    return {
+      underlying: m[1].toUpperCase(),
+      optType: (ty === "PUT" || ty === "P") ? "put" : "call",
+      strike: strike,
+      expiry: "20" + yy + "-" + mm + "-" + dd,
+    };
+  }
 
   // flexible date → YYYY-MM-DD: handles MM/DD/YYYY, YYYY-MM-DD[ ,HH:MM], YYYYMMDD, DD/MM/YYYY-ish
   function toISOflex(s) {
@@ -172,6 +191,9 @@ window.Engine = (function () {
         mult: isOpt ? 100 : 1, assetType: isOpt ? "option" : "stock",
         exec: cExec >= 0 ? cell(row, cExec) : "",
       };
+      // parse the broker's packed option symbol → structured optType/strike/expiry (keeps `symbol` as the
+      // full string so FIFO still keys each contract uniquely). Enables CBOE pricing + breakeven/theta/DTE.
+      if (isOpt) { const op = parseOptionSymbol(sym); if (op) { fill.optType = op.optType; fill.strike = op.strike; fill.expiry = op.expiry; } }
       if (corp) fill.corp = true;
       fills.push(fill);
     }
@@ -229,6 +251,7 @@ window.Engine = (function () {
         entryDate: f.date, exitDate: f.date,
         mult: f.mult, assetType: f.assetType,
         symbol: f.symbol, account: f.account,
+        optType: f.optType, strike: f.strike, expiry: f.expiry,   // parsed option metadata (if any)
         fillKeys: [],  // keys of the raw fills that compose this episode (for safe deletion)
       };
     }
@@ -240,6 +263,7 @@ window.Engine = (function () {
         account: ep.account,
         symbol: ep.symbol,
         assetType: ep.assetType,
+        optType: ep.optType, strike: ep.strike, expiry: ep.expiry,
         direction: ep.dir > 0 ? "long" : "short",
         qty: round(ep.openQty, 4),
         mult: ep.mult || 1,
@@ -310,6 +334,8 @@ window.Engine = (function () {
           direction: net > 0 ? "long" : "short",
           avgPrice: b.ep.openQty ? b.ep.entryNotional / b.ep.openQty : 0,
           assetType: b.ep.assetType, entryDate: b.ep.entryDate,
+          optType: b.ep.optType, strike: b.ep.strike, expiry: b.ep.expiry,   // parsed option metadata
+          mult: b.ep.mult || 1,
           fillKeys: b.ep.fillKeys.slice(),   // composing raw fills → lets the UI delete this open position
         });
       }
