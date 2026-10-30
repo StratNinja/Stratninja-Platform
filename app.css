@@ -2475,6 +2475,14 @@ html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; backgr
 .ca-reason { font-size: 11px; flex: 1; min-width: 100px; }
 .ca-acts { margin-inline-start: auto; display: flex; gap: 6px; }
 .ca-btn { font-size: 12px; font-weight: 600; padding: 4px 10px; }
+/* collapsible admin sections (keep the ticker list from flooding the panel) */
+.ca-collapse { margin: 10px 0 2px; }
+.ca-collapse > summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel2); user-select: none; margin: 0; }
+.ca-collapse > summary::-webkit-details-marker { display: none; }
+.ca-collapse > summary::after { content: "▾"; margin-inline-start: auto; opacity: .6; transition: transform .15s ease; font-size: 12px; }
+.ca-collapse[open] > summary::after { transform: rotate(180deg); }
+.ca-collapse > summary:hover { border-color: var(--accent, var(--line)); }
+.ca-collapse-body { padding-top: 8px; max-height: 340px; overflow-y: auto; }
 
 /* ===== monospace data typography (terminal feel + perfect digit alignment) ===== */
 /* numbers + tickers → mono; Hebrew name cells (.tname) & headers stay in the UI font */

@@ -3193,9 +3193,9 @@
     html += '<div class="ca-sec-h">🟢 ממתין לאישור שלך (' + awaiting.length + ")</div>";
     html += awaiting.length ? awaiting.map(r => chip(r, [{ act: "approve", lbl: "✅ אשר" }, { act: "reject", lbl: "❌ דחה" }])).join("") : '<div class="muted" style="padding:4px 0">אין ממתינות ✨</div>';
     if (checking.length) { html += '<div class="ca-sec-h">⏳ בבדיקת השרת (' + checking.length + ")</div>"; html += checking.map(r => chip(r, [{ act: "del", lbl: "🗑️" }])).join(""); }
-    html += '<div class="ca-sec-h">⭐ מאושרות · בסורק (' + approved.length + ")</div>";
-    html += approved.length ? approved.map(r => chip(r, [{ act: "del", lbl: "🗑️ הסר" }])).join("") : '<div class="muted" style="padding:4px 0">עדיין אין</div>';
-    if (rejected.length) { html += '<div class="ca-sec-h">❌ נדחו (' + rejected.length + ")</div>"; html += rejected.map(r => chip(r, [{ act: "approve", lbl: "↩️ שחזר" }, { act: "del", lbl: "🗑️" }])).join(""); }
+    html += '<details class="ca-collapse"' + (approved.length && approved.length <= 10 ? " open" : "") + '><summary class="ca-sec-h">⭐ מאושרות · בסורק (' + approved.length + ")</summary>" +
+      (approved.length ? '<div class="ca-collapse-body">' + approved.map(r => chip(r, [{ act: "del", lbl: "🗑️ הסר" }])).join("") + "</div>" : '<div class="muted" style="padding:4px 0">עדיין אין</div>') + "</details>";
+    if (rejected.length) { html += '<details class="ca-collapse"><summary class="ca-sec-h">❌ נדחו (' + rejected.length + ")</summary><div class=\"ca-collapse-body\">" + rejected.map(r => chip(r, [{ act: "approve", lbl: "↩️ שחזר" }, { act: "del", lbl: "🗑️" }])).join("") + "</div></details>"; }
     box.innerHTML = html;
     { const rv = box.querySelector("#caReveal"); if (rv) rv.onclick = () => { _caReveal = !_caReveal; renderCommunityAdmin(client); }; }
     { const an = box.querySelector("#caAnalytics"); if (an) an.onclick = () => { closeModal(); setPage("analytics"); }; }
