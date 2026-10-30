@@ -1579,3 +1579,19 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
   /* פוטר דחוס */
   .site-footer-mount, .site-footer { padding-top: 12px !important; padding-bottom: 8px !important; }
 }
+
+/* === zoom למסך אולטרה-רחב (Adi: 3440×1440 ב-125% = ~2752 CSS px) — הגישה שמכניסה דפים בלי גלילה ===
+   מקטין את כל העמוד ל-83% על מסכים רחבים מאוד (≥2200px). ה-OS של Adi ב-125% מפצה,
+   כך שהטקסט הפיזי עדיין ~4% גדול מ-100%. כל הדפים הראשיים נכנסים בלי גלילה (פרט ל-sp500 — טריימאפ מלא).
+   ה-zoom על body (ולא על .scanner-app) שומר רוחב מלא בלי פס ריק בצד. */
+@media (min-width: 2200px) {
+  body { zoom: 0.83; }
+}
+/* פוטר קומפקטי (דסקטופ) — פחות גובה בתחתית כל דף */
+@media (min-width: 1000px) {
+  .site-footer { font-size: 12px !important; }
+  .site-footer .sf-top { padding-top: 8px !important; padding-bottom: 6px !important; }
+  .site-footer .sf-logo-img { width: 26px !important; height: 26px !important; }
+  .site-footer .sf-links { gap: 4px 14px !important; }
+  .site-footer .sf-bottom, .site-footer .sf-copy, .site-footer .sf-legal { padding-top: 5px !important; padding-bottom: 5px !important; font-size: 11px !important; }
+}
