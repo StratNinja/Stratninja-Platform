@@ -1097,6 +1097,9 @@ body[data-page="sectors"] .td-flow .bcell-list { display: grid; grid-template-co
 .brd-extremes { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: 8px 0 2px; font-size: 13.5px; font-weight: 600; }
 .brd-extremes .be-hi b { color: var(--green); font-size: 15px; }
 .brd-extremes .be-lo b { color: var(--red); font-size: 15px; }
+.brd-extremes .be-ob b { color: #f0a53a; font-size: 15px; }   /* MFI overbought (>80) — חם */
+.brd-extremes .be-os b { color: #5cc6e8; font-size: 15px; }   /* MFI oversold (<20) — קר */
+.brd-mfi { padding-inline-start: 4px; border-inline-start: 1px solid var(--line); }
 @media (max-width: 1200px) { .brd-charts { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 760px) { .brd-charts { grid-template-columns: 1fr; } .brd-chart .tvchart { height: 260px; } }
 

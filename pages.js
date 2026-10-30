@@ -1353,6 +1353,9 @@
     const stateBadge = st ? '<span class="brd-state ' + st.cls + '" title="שקלול 5 הממוצעים, משקל כבד יותר לארוכים (200/150)">' + st.lbl + ' · ' + st.score + "%</span>" : "";
     const ex = _brd52wCounts(uni);
     const exStrip = ex ? '<span class="brd-extremes"><span class="be-hi">📈 <b>' + ex.hi + '</b> בשיא 52ש׳</span><span class="be-lo">📉 <b>' + ex.lo + '</b> בשפל 52ש׳</span></span>' : "";
+    // MFI extremes (overbought >80 / oversold <20) — server-computed per universe (sp / ndx), same line (Adi)
+    const _mfiC = (BREADTH_DATA && BREADTH_DATA.mfi && BREADTH_DATA.mfi[uni]) || null;
+    const mfiStrip = _mfiC ? '<span class="brd-extremes brd-mfi"><span class="be-ob" title="מניות עם MFI מעל 80 — overbought (תזרים כסף קיצוני)">🔥 <b>' + _mfiC.ob + '</b> מעל 80 MFI</span><span class="be-os" title="מניות עם MFI מתחת 20 — oversold (מכירת יתר)">🧊 <b>' + _mfiC.os + '</b> מתחת 20 MFI</span></span>' : "";
     const data = BREADTH_DATA && BREADTH_DATA[uni];
     const haveOurs = data && BRD_MAS.some(n => (data[n] || []).length > 2);
     let charts;
@@ -1374,7 +1377,7 @@
     } else {
       charts = '<div class="note" style="margin:6px 0 4px">טוען נתונים… (יופיע אחרי הסריקה הבאה בשרת)</div>';
     }
-    return '<div class="brd-section"><div class="brd-sec-head"><h2>' + name + "</h2>" + stateBadge + exStrip + "</div>" + charts + "</div>";
+    return '<div class="brd-section"><div class="brd-sec-head"><h2>' + name + "</h2>" + stateBadge + exStrip + mfiStrip + "</div>" + charts + "</div>";
   }
   function renderBreadth() {
     const header = '<div class="page-head"><h1>רוחב שוק · מעל הממוצעים</h1><div class="sub">כמה מהמניות בכל מדד נמצאות <b>מעל</b> הממוצע הנע שלהן (20 / 50 / 100 / 150 / 200 יום). ' +
