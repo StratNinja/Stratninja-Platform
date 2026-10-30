@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <script src="live_alert.js?v=1009c"></script>
 <script src="live.js?v=1011b"></script>
 <script src="live_vods.js?v=1010e"></script>
-<script src="pages.js?v=1008o"></script>
+<script src="pages.js?v=1008p"></script>
 <script src="platform.js"></script>
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>
@@ -317,7 +317,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
   var seen = null; try { seen = localStorage.getItem(KEY); } catch (e) {}
   // site-wide click counter (ALL visitors, incl. logged-out) via an atomic Supabase RPC — fire-and-forget.
   // Admin sees the totals in "מטריצת שימוש". Needs counters.sql (counters table + bump_counter RPC) run once.
-  function bump(name) {
+  function _bumpOne(name) {
     try {
       var c = window.SN_CONFIG; if (!c || !c.SUPABASE_URL || !c.SUPABASE_ANON_KEY) return;
       fetch(c.SUPABASE_URL + "/rest/v1/rpc/bump_counter", {
@@ -326,6 +326,13 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
         body: JSON.stringify({ cname: name })
       }).catch(function () {});
     } catch (e) {}
+  }
+  // bump BOTH a lifetime total ("ninja_deal_open") and a per-day bucket ("ninja_deal_open:YYYY-MM-DD",
+  // UTC) so the admin matrix can slice ninja-deal clicks by the selected date range. Daily buckets only
+  // exist from the day this shipped onward; the lifetime total stays the since-launch figure.
+  function bump(name) {
+    _bumpOne(name);
+    try { _bumpOne(name + ":" + new Date().toISOString().slice(0, 10)); } catch (e) {}
   }
   function openDeal() {
     bump("ninja_deal_open");

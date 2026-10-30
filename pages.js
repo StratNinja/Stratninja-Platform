@@ -9290,13 +9290,19 @@
       try {
         const { data: cdata } = await client.from("counters").select("name,n");
         const cm = {}; (cdata || []).forEach(r => cm[r.name] = +r.n || 0);
-        const opens = cm["ninja_deal_open"] || 0, copies = cm["ninja_code_copy"] || 0;
+        const totOpens = cm["ninja_deal_open"] || 0, totCopies = cm["ninja_code_copy"] || 0;
+        // per-day buckets ("ninja_deal_open:YYYY-MM-DD", UTC) → sum the selected range (_anaDays days incl. today)
+        const _dayKeys = []; for (let i = 0; i < _anaDays; i++) _dayKeys.push(new Date(Date.now() - i * 86400000).toISOString().slice(0, 10));
+        const _sumRange = base => _dayKeys.reduce((s, dk) => s + (cm[base + ":" + dk] || 0), 0);
+        const opens = _sumRange("ninja_deal_open"), copies = _sumRange("ninja_code_copy");
+        const rangeLbl = _anaDays === 1 ? "היום" : _anaDays + " ימים";
         setTxt("anaNinja",
           '<div style="display:flex;flex-direction:column;gap:9px">' +
             '<div style="display:flex;justify-content:space-between;align-items:center"><span>👀 לחיצות על הנינג׳ה</span><b style="font-size:20px">' + opens + "</b></div>" +
             '<div style="display:flex;justify-content:space-between;align-items:center"><span>📋 העתקות הקוד</span><b style="font-size:20px">' + copies + "</b></div>" +
-            (opens ? '<div class="muted" style="font-size:11px">יחס העתקה ' + Math.round(copies / opens * 100) + '% · סה״כ מאז ההשקה · כל הגולשים</div>'
-                   : '<div class="muted" style="font-size:11px">סה״כ מאז ההשקה · כל הגולשים</div>') +
+            '<div class="muted" style="font-size:11px">' + (opens ? "יחס העתקה " + Math.round(copies / opens * 100) + "% · " : "") + "טווח " + rangeLbl + " · כל הגולשים</div>" +
+            '<div class="muted" style="font-size:11px;border-top:1px solid var(--line);padding-top:7px">סה״כ מאז ההשקה: <b>' + totOpens + '</b> לחיצות · <b>' + totCopies + "</b> העתקות</div>" +
+            '<div class="muted" style="font-size:10px;opacity:.7">הפילוח היומי נאסף מ-30/10/2026 ואילך</div>' +
           "</div>");
       } catch (e) { setTxt("anaNinja", '<div class="muted" style="font-size:12px">אין נתונים עדיין — ודא שהרצת את counters.sql ב-Supabase</div>'); }
     })();
