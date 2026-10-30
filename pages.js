@@ -1890,7 +1890,7 @@
     // ranked by breadth = % of the sector's stocks above their open. Leaders/laggards moved into the click.
     const _breadthTier = p => p == null ? "t-n" : p >= 70 ? "t-vg" : p >= 55 ? "t-mg" : p > 45 ? "t-n" : p > 30 ? "t-mr" : "t-vr";
     const _breadthRow = (o, isSub) => {
-      const p = o.total ? o.above / o.total * 100 : null;
+      const p = (o.total && !o.thin) ? o.above / o.total * 100 : null;
       const etf = isSub ? subEtfFor(o.name) : etfFor(o.name);
       const name = isSub ? o.name : secHe(o.name);
       const chip = '<span class="bc-etf flow-etf' + (etf ? "" : " bc-noetf") + '" data-secetf="' + escAttr(etf || "") +
@@ -1902,7 +1902,8 @@
         '<div class="bcc-bar"><span class="bcc-fill" style="width:' + w.toFixed(0) + '%"></span></div></div>';
     };
     const _breadthLadder = (arr, isSub) => {
-      const rows = arr.slice().sort((a, c) => (c.total ? c.above / c.total : 0) - (a.total ? a.above / a.total : 0));
+      const _sv = o => o.thin ? -1 : (o.total ? o.above / o.total : 0);   // thin sub-sectors (breadth = noise) sink to the bottom
+      const rows = arr.slice().sort((a, c) => _sv(c) - _sv(a));
       return rows.length ? rows.map(o => _breadthRow(o, isSub)).join("") : '<div class="muted" style="padding:10px">—</div>';
     };
     // sub-sector breadth: group the S&P stocks by sub-sector (.ind), count above-open
@@ -1912,10 +1913,14 @@
     // BREADTH is only meaningful with enough S&P members (10+, the SPDR-industry design target):
     // thin thematic/merged ETFs like GDX/TAN hold ~1 S&P constituent → a "1/1" is noise, not breadth.
     // Hide them HERE only — they stay on the money-flow / continuity tabs where the ETF's own move counts.
+    // Show the SAME sub-sector set as the money-flow (תזרים) tab — all 18 SPDR industries — so the two
+    // tabs line up 1:1. Thin ones (<10 S&P members) make breadth % meaningless, so they render "—" and
+    // sink to the bottom (see _breadthLadder / _breadthRow) while still appearing for consistency.
     const _SUB_BREADTH_MIN = 10;
-    const subArr = ((LIVE && LIVE.subsectors && LIVE.subsectors.length)
+    const subArr = (LIVE && LIVE.subsectors && LIVE.subsectors.length)
       ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 })
-      : Object.keys(subMap).map(k => subMap[k])).filter(o => o.total >= _SUB_BREADTH_MIN);
+      : Object.keys(subMap).map(k => subMap[k]);
+    subArr.forEach(o => { o.thin = o.total < _SUB_BREADTH_MIN; });
     const secGridBtn = '<button class="btn ghost" id="spSectorGrid" style="font-size:12px;font-weight:600" title="פתח את כל תעודות-הסל של הסקטורים בתצוגת גרפים">📊 כל הסקטורים בגרפים</button>';
     // single-ETF composite card (macro row + WGMI): bar/tier by the ETF's own above-open, big number = day move
     const _brdSingle = s => {

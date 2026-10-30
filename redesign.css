@@ -388,6 +388,13 @@ body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { fle
 .cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important; }
 /* bigger tiles (Adi 2026-10-04) — thicker bars + larger name; rows spread out to fill the height */
 body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 124px; justify-content: flex-start; gap: 6px; padding: 16px 14px; }   /* Adi 2026-10-30: +10% גובה, ממלא יותר מהמסך */
+/* Adi 2026-10-30: רוחב סקטוריאלי + תזרים סקטוריאלי — אריחים גבוהים יותר וזהים בין שני הטאבים (ניצול הנדל"ן האנכי) */
+body[data-page="today"] .td-flow2 .bc-card,
+body[data-page="sp500"] .td-flow2 .bc-card { min-height: 84px; justify-content: center; gap: 9px; padding: 14px 13px; }
+body[data-page="today"] .td-flow2 .bc-card .bcc-pct,
+body[data-page="sp500"] .td-flow2 .bc-card .bcc-pct { font-size: 21px; }
+body[data-page="today"] .td-flow2 .bc-card .bcc-name,
+body[data-page="sp500"] .td-flow2 .bc-card .bcc-name { font-size: 14px; }
 body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 16px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 10px; margin-top: 12px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 15px; }
