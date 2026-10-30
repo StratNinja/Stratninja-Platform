@@ -830,9 +830,9 @@ body[data-page="sp500"] .sp-heat-panel { padding: 4px; }
 .hm-mf-field input:focus { outline: none; border-color: var(--lux-g2, #17c08a); }
 .hm-mf-clear { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 6px; }
 .hm-mf-clear:hover { background: rgba(255,255,255,.08); color: var(--ink); }
-.hm-t-sym { font-size: 11px; font-weight: 800; line-height: 1.05; }
-.hm-t-chg { font-size: 9px; font-weight: 600; opacity: .92; }
-.hm-tile-sm .hm-t-sm { font-size: 8px; font-weight: 700; line-height: 1; letter-spacing: -.2px; }
+.hm-t-sym { font-size: 14px; font-weight: 800; line-height: 1.05; }   /* Adi: טיקרים גדולים/קריאים יותר */
+.hm-t-chg { font-size: 11px; font-weight: 600; opacity: .92; }
+.hm-tile-sm .hm-t-sm { font-size: 10.5px; font-weight: 700; line-height: 1; letter-spacing: -.2px; }   /* Adi: טיקרים קריאים גם באריח קטן */
 /* "מיצוע" mode: whole-sector single color + big average % */
 .hm-sec-body.hm-avg { display: flex; align-items: center; justify-content: center; }
 .hm-avg-pct { color: #fff; font-weight: 800; font-size: clamp(13px, 1.8vw, 30px); text-shadow: 0 1px 3px rgba(0,0,0,.6); }
@@ -1586,7 +1586,8 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
    ה-zoom על body (ולא על .scanner-app) שומר רוחב מלא בלי פס ריק בצד. */
 @media (min-width: 2200px) {
   body { zoom: 0.92; }                      /* Adi: 0.83 היה קטן מדי — 0.92 גדול/קריא יותר, התוכן עדיין נכנס בלי גלילה */
-  body[data-page="sp500"] { zoom: 0.83; }   /* מפת החום של S&P500 — קטנה ב-~10% (Adi אוהב כך; מותר קצת גלילה) */
+  /* ⚠️ אין zoom שונה לדף/טאב בודד — זה גרם ל"קפיצת" זום מורגשת במעבר בין טאבים (רוחב↔תזרים).
+     הקטנת מפת החום נעשית ברמת הרכיב (.sp-heat למטה), לא בזום של כל הדף. */
   /* ניצול המקום האנכי הפנוי במסך הרחב: גרפי רוחב-מעל-ממוצעים גבוהים יותר */
   .brd-svg { height: 210px; }
 }
