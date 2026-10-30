@@ -3313,7 +3313,7 @@
     var approved = '<details class="comm-collapse"' + (admin ? "" : " open") + '>' +
       '<summary class="comm-head"><h2>✓ נוספו לאחרונה</h2><span class="comm-count" id="commApprovedCnt"></span><span class="comm-c">מניות שהקהילה הציעה ואושרו</span><span class="comm-line"></span></summary>' +
       '<div id="commApproved" class="comm-grid"><div class="muted" style="padding:12px;grid-column:1/-1">טוען…</div></div></details>';
-    var adminQ = admin ? '<section class="comm-admin"><div class="ca2-h"><span class="ca2-ic">✅</span><h2>ממתינות לאישור</h2><span class="ca2-cnt" id="commQCnt"></span><span class="ca2-lock">🔒 גלוי רק לך</span><span class="ca2-line"></span></div><div id="commAdminQueue"><div class="muted" style="padding:6px">טוען…</div></div></section>' : "";
+    var adminQ = admin ? '<section class="comm-admin"><div class="ca2-h"><span class="ca2-ic">✅</span><h2>ממתינות לאישור</h2><span class="ca2-cnt" id="commQCnt"></span><span class="ca2-lock">🔒 גלוי רק לך</span><span class="ca2-line"></span><button class="btn ghost" id="commMatrix" style="font-size:13px;white-space:nowrap">📈 מטריצת שימוש</button></div><div id="commAdminQueue"><div class="muted" style="padding:6px">טוען…</div></div></section>' : "";
     return '<div class="page-head"><h1>⭐ מניות קהילה</h1><div class="sub">הקהילה מציעה מניות לסורק — אחרי בדיקה ואישור הן נכנסות ליקום הסריקה.</div></div>' +
       submit + approved + adminQ;
   }
@@ -3322,6 +3322,7 @@
     var tk = document.getElementById("commTk"); if (tk) tk.onkeydown = function (e) { if (e.key === "Enter") _commSubmit(); };
     _commLoadApproved();
     if (_snIsAdmin()) _commLoadQueue();
+    var mx = document.getElementById("commMatrix"); if (mx) mx.onclick = function () { setPage("analytics"); };
   }
 
   // ---- Web Push subscription (phone alerts even when the app is closed) ----
