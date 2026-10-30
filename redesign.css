@@ -1588,9 +1588,17 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
   body { zoom: 0.92; }                      /* Adi: 0.83 היה קטן מדי — 0.92 גדול/קריא יותר, התוכן עדיין נכנס בלי גלילה */
   /* ⚠️ אין zoom שונה לדף/טאב בודד — זה גרם ל"קפיצת" זום מורגשת במעבר בין טאבים (רוחב↔תזרים).
      הקטנת מפת החום נעשית ברמת הרכיב (.sp-heat למטה), לא בזום של כל הדף. */
-  /* ניצול המקום האנכי הפנוי במסך הרחב: גרפי רוחב-מעל-ממוצעים גבוהים יותר */
-  .brd-svg { height: 210px; }
+  /* ניצול המקום האנכי הפנוי במסך הרחב: גרפי רוחב-מעל-ממוצעים גבוהים יותר.
+     סלקטור ספציפי + !important כדי לגבור על הגדרות density (compact/dense) של המשתמש. */
+  body .brd-chart .brd-svg { height: 235px !important; }
+  /* סקירת שוק — אריחי מפת חום סקטורים גדולים/קריאים יותר */
+  .mkt-dash .mh-tile { min-height: 78px !important; padding: 11px 13px !important; }
+  .mkt-dash .mh-tile .mh-etf { font-size: 15px; }
+  .mkt-dash .mh-tile .mh-chg { font-size: 14px; }
+  .mkt-dash .mh-tile .mh-he { font-size: 11px; }
 }
+/* אריחי מפת-החום בסקירת שוק ממלאים את כל הרוחב (auto-fit במקום auto-fill) — Adi */
+.mkt-dash .mh-grid { grid-template-columns: repeat(auto-fit, minmax(94px, 1fr)) !important; gap: 9px; }
 /* פוטר קומפקטי (דסקטופ) — פחות גובה בתחתית כל דף */
 @media (min-width: 1000px) {
   .site-footer { font-size: 11px !important; }
