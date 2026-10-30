@@ -387,7 +387,7 @@ body[data-page="sectors"] .cont-right .cont-secgrid { display: grid; grid-templa
 body[data-page="sectors"] .cont-right > .td-flow:first-child .cont-secgrid { flex: 1 1 auto; align-content: space-between; }
 .cont-comp .cont-secgrid { grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)) !important; }
 /* bigger tiles (Adi 2026-10-04) — thicker bars + larger name; rows spread out to fill the height */
-body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 112px; justify-content: flex-start; gap: 6px; padding: 15px 14px; }
+body[data-page="sectors"] .cont-secgrid .bc-card { min-height: 124px; justify-content: flex-start; gap: 6px; padding: 16px 14px; }   /* Adi 2026-10-30: +10% גובה, ממלא יותר מהמסך */
 body[data-page="sectors"] .cont-secgrid .bcc-name { font-size: 16px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bars { gap: 10px; margin-top: 12px; }
 body[data-page="sectors"] .cont-secgrid .ftt-bar { height: 15px; }
