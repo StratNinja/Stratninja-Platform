@@ -408,6 +408,8 @@
       content.appendChild(renderEquity(trades));
     } else if (state.tab === "yearly") {
       content.appendChild(renderYearly(trades));
+    } else if (state.tab === "stats") {
+      content.appendChild(renderJournalStats(trades));
     }
 
     if (_journalPrivate && !_journalPeek) {
@@ -951,6 +953,133 @@
     });
     box.appendChild(wrap);
     return box;
+  }
+
+  // ====== 🧠 Journal Analytics (v1): style / ticker / direction breakdown + auto insights ======
+  function _holdDays(t) {
+    if (!t.entryDate || !t.exitDate) return null;
+    const a = new Date(t.entryDate + "T00:00:00"), b = new Date(t.exitDate + "T00:00:00");
+    if (isNaN(a) || isNaN(b)) return null;
+    return Math.max(0, Math.round((b - a) / 86400000));
+  }
+  const _undSym = t => String(t.symbol || "").split(" ")[0].toUpperCase();
+  function _maxDrawdown(trades) {
+    const sorted = trades.filter(t => t.exitDate).slice().sort((a, b) => a.exitDate < b.exitDate ? -1 : 1);
+    let cum = 0, peak = 0, maxDD = 0;
+    sorted.forEach(t => { cum += (t.pnl || 0); if (cum > peak) peak = cum; const dd = peak - cum; if (dd > maxDD) maxDD = dd; });
+    return maxDD;
+  }
+  function _greenDaysPct(trades) {
+    const byDay = {};
+    trades.forEach(t => { if (!t.exitDate) return; byDay[t.exitDate] = (byDay[t.exitDate] || 0) + (t.pnl || 0); });
+    const days = Object.values(byDay);
+    if (!days.length) return null;
+    return Math.round(100 * days.filter(v => v > 0).length / days.length);
+  }
+  // one card per group (label + subset) showing net · win-rate · avg/trade
+  function _statGroupCards(groups) {
+    const wrap = el("div", "cards");
+    groups.forEach(([label, sub]) => {
+      const card = el("div", "card"); card.style.gridColumn = "span 2";
+      if (!sub.length) { card.innerHTML = '<div class="lbl">' + label + '</div><div class="val zero">—</div><div class="sub">אין עסקאות</div>'; wrap.appendChild(card); return; }
+      const s = E.stats(sub);
+      card.innerHTML = '<div class="lbl">' + label + " · " + s.count + " עסקאות</div>" +
+        '<div class="val ' + cls(s.net) + '">' + money(s.net, 0) + "</div>" +
+        '<div class="sub">Win Rate ' + s.winRate + "% · ממוצע " + money(s.count ? s.net / s.count : 0, 0) + " לעסקה</div>";
+      wrap.appendChild(card);
+    });
+    return wrap;
+  }
+  // two columns: top-5 winning tickers / top-5 losing tickers (by underlying)
+  function _tickerTable(closed) {
+    const by = {};
+    closed.forEach(t => { const u = _undSym(t); const g = by[u] || (by[u] = { sym: u, net: 0, n: 0, w: 0 }); g.net += (t.pnl || 0); g.n++; if (t.pnl > 0) g.w++; });
+    const arr = Object.values(by);
+    const winners = arr.filter(g => g.net > 0).sort((a, b) => b.net - a.net).slice(0, 5);
+    const losers = arr.filter(g => g.net < 0).sort((a, b) => a.net - b.net).slice(0, 5);
+    const col = (title, rows) => {
+      let h = '<div class="jr-tcol"><div class="jr-tcol-h">' + title + "</div>";
+      if (!rows.length) h += '<div class="muted" style="font-size:12px;padding:6px 2px">—</div>';
+      rows.forEach(g => {
+        h += '<div class="jr-trow"><span class="jr-tsym">' + g.sym + '</span><span class="jr-twr">' +
+          Math.round(100 * g.w / g.n) + "% · " + g.n + ' עס׳</span><span class="jr-tnet ' + cls(g.net) + '">' + money(g.net, 0) + "</span></div>";
+      });
+      return h + "</div>";
+    };
+    const wrap = el("div", "jr-tcols");
+    wrap.innerHTML = col("🟢 הכי רווחיים", winners) + col("🔴 הכי מפסידים", losers);
+    return wrap;
+  }
+  function _autoInsights(closed, s, extra) {
+    const bul = [];
+    const scalp = E.stats(extra.styleBuckets[0][1]);
+    const swingNet = E.stats(extra.styleBuckets[1][1]).net + E.stats(extra.styleBuckets[2][1]).net;
+    const hasScalp = extra.styleBuckets[0][1].length, hasSwing = extra.styleBuckets[1][1].length + extra.styleBuckets[2][1].length;
+    if (hasScalp && hasSwing) {
+      if (scalp.net < 0 && swingNet > 0) bul.push("🎯 ה-edge שלך ב-<b>swing</b> (נטו " + money(swingNet, 0) + ") — ה-<b>scalp</b> התוך-יומי מפסיד (" + money(scalp.net, 0) + "). שקול להתמקד בהחזקות ארוכות יותר.");
+      else if (swingNet < 0 && scalp.net > 0) bul.push("⚡ דווקא ה-scalp עובד לך (" + money(scalp.net, 0) + ") וה-swing מפסיד (" + money(swingNet, 0) + ").");
+    }
+    if (s.avgLoss > s.avgWin && s.avgWin > 0) bul.push("⚖️ ההפסד הממוצע (" + money(s.avgLoss, 0) + ") <b>גדול</b> מהרווח הממוצע (" + money(s.avgWin, 0) + ") — אתה צריך Win Rate גבוה כדי להרוויח. שפר יחס סיכוי/סיכון או חתוך הפסדים מוקדם.");
+    const grossWin = closed.filter(t => t.pnl > 0).reduce((a, t) => a + (t.pnl || 0) + (t.fees || 0), 0);
+    if (grossWin > 0) { const drag = Math.round(100 * extra.totFees / grossWin); if (drag >= 15) bul.push("💸 עמלות אכלו <b>" + drag + "%</b> מהרווח הברוטו (" + money(extra.totFees, 0) + "). פחות עסקאות = יותר רווח נקי."); }
+    if (extra.maxDD > 0) bul.push("📉 ה-drawdown המקסימלי היה " + money(extra.maxDD, 0) + ". כלל יציאה (סגור חלק ברווח · עצור אחרי הפסד יומי) היה מרכך את זה.");
+    const by = {}; closed.forEach(t => { const u = _undSym(t); by[u] = (by[u] || 0) + (t.pnl || 0); });
+    const arr = Object.entries(by).sort((a, b) => b[1] - a[1]);
+    if (arr.length >= 2 && arr[0][1] > 0 && arr[arr.length - 1][1] < 0) bul.push("🏆 הכי רווחי: <b>" + arr[0][0] + "</b> (" + money(arr[0][1], 0) + "). הכי מפסיד: <b>" + arr[arr.length - 1][0] + "</b> (" + money(arr[arr.length - 1][1], 0) + ").");
+    if (!bul.length) bul.push("אסוף עוד עסקאות סגורות כדי לקבל תובנות מדויקות יותר.");
+    const box = el("div", "jr-insights");
+    box.innerHTML = bul.map(b => '<div class="jr-insight">' + b + "</div>").join("");
+    return box;
+  }
+  function renderJournalStats(trades) {
+    const root = el("div", "jr-stats");
+    const closed = (trades || []).filter(t => !t._open);
+    if (!closed.length) {
+      const n = el("div", "note"); n.innerHTML = "📌 אין עדיין עסקאות סגורות לניתוח. ייבא קובץ או הוסף עסקה כדי לראות אנליטיקות.";
+      root.appendChild(n); return root;
+    }
+    const s = E.stats(closed);
+    const totFees = closed.reduce((a, t) => a + (t.fees || 0), 0);
+    const holds = closed.map(_holdDays).filter(d => d != null);
+    const avgHold = holds.length ? holds.reduce((a, b) => a + b, 0) / holds.length : null;
+    const expc = s.count ? s.net / s.count : 0;
+    const greenPct = _greenDaysPct(closed), maxDD = _maxDrawdown(closed);
+    const styleBuckets = [
+      ["Scalp · תוך-יומי", closed.filter(t => _holdDays(t) === 0)],
+      ["Swing קצר · 1–3 ימים", closed.filter(t => { const d = _holdDays(t); return d != null && d >= 1 && d <= 3; })],
+      ["Swing · 3+ ימים", closed.filter(t => { const d = _holdDays(t); return d != null && d > 3; })],
+    ];
+    // 1. core metrics
+    root.appendChild(el("div", "jr-scope-lbl", "🧠 אנליטיקות · כל העסקאות הסגורות (לחשבון הנבחר)"));
+    const core = el("div", "cards");
+    [
+      ["תוחלת לעסקה", money(expc, 0), cls(expc), "רווח/הפסד ממוצע לעסקה"],
+      ["זמן החזקה ממוצע", avgHold == null ? "—" : (avgHold < 1 ? "תוך-יומי" : avgHold.toFixed(1) + " ימים"), "", "מכניסה ליציאה"],
+      ["% ימים ירוקים", greenPct == null ? "—" : greenPct + "%", (greenPct != null && greenPct >= 50) ? "pos" : "neg", "ימי מסחר רווחיים"],
+      ["עמלות סה״כ", money(-totFees, 0), "neg", "ששולמו על העסקאות"],
+      ["Max Drawdown", money(-maxDD, 0), "neg", "ירידה מקסימלית מהשיא"],
+    ].forEach(([l, v, c, sub]) => {
+      const card = el("div", "card");
+      card.innerHTML = '<div class="lbl">' + l + '</div><div class="val ' + (c || "") + '">' + v + "</div>" + (sub ? '<div class="sub">' + sub + "</div>" : "");
+      core.appendChild(card);
+    });
+    root.appendChild(core);
+    // 2. by holding style
+    root.appendChild(el("div", "jr-stats-h", "⏱️ לפי סגנון החזקה"));
+    root.appendChild(_statGroupCards(styleBuckets));
+    // 3. by ticker
+    root.appendChild(el("div", "jr-stats-h", "🎯 לפי טיקר"));
+    root.appendChild(_tickerTable(closed));
+    // 4. by direction
+    root.appendChild(el("div", "jr-stats-h", "↔️ לפי כיוון"));
+    root.appendChild(_statGroupCards([
+      ["🟢 לונג", closed.filter(t => t.direction === "long")],
+      ["🔴 שורט", closed.filter(t => t.direction === "short")],
+    ]));
+    // 5. auto insights
+    root.appendChild(el("div", "jr-stats-h", "💡 תובנות"));
+    root.appendChild(_autoInsights(closed, s, { styleBuckets: styleBuckets, totFees: totFees, maxDD: maxDD, avgHold: avgHold }));
+    return root;
   }
 
   /* compact Stocks vs Options breakdown */

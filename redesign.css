@@ -1255,6 +1255,22 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 #journalContainer .cards .card .val.pos { color: var(--green); }
 #journalContainer .cards .card .val.neg { color: var(--red); }
 #journalContainer .cards .card .sub { color: var(--muted); font-size: 11.5px; margin-top: 4px; }
+/* === 🧠 אנליטיקות (טאב stats): כותרות, פילוח טיקרים, תובנות === */
+#journalContainer .jr-stats-h { font-weight: 900; font-size: 15px; letter-spacing: .01em; margin: 22px 0 10px; color: var(--ink); }
+#journalContainer .jr-tcols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+#journalContainer .jr-tcol { border-radius: 14px; background: linear-gradient(180deg, var(--panel2), var(--panel)); box-shadow: var(--panelsh); border: 1px solid var(--line); padding: 10px 12px; }
+#journalContainer .jr-tcol-h { font-weight: 800; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+#journalContainer .jr-trow { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 8px; padding: 6px 2px; border-top: 1px solid var(--line); }
+#journalContainer .jr-trow:first-of-type { border-top: 0; }
+#journalContainer .jr-tsym { font-weight: 800; font-size: 13px; }
+#journalContainer .jr-twr { color: var(--muted); font-size: 11px; white-space: nowrap; }
+#journalContainer .jr-tnet { font-weight: 900; font-size: 13px; text-align: end; min-width: 68px; }
+#journalContainer .jr-tnet.pos { color: var(--green); }
+#journalContainer .jr-tnet.neg { color: var(--red); }
+#journalContainer .jr-insights { display: flex; flex-direction: column; gap: 8px; }
+#journalContainer .jr-insight { border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); border-inline-start: 3px solid var(--accent); padding: 10px 13px; font-size: 13.5px; line-height: 1.55; }
+@media (max-width: 640px) { #journalContainer .jr-tcols { grid-template-columns: 1fr; } }
+
 /* equity curve + yearly box + calendar depth */
 #journalContainer .chartbox { border-radius: 15px; box-shadow: var(--panelsh); background: linear-gradient(180deg, var(--panel2), var(--panel)); }
 #journalContainer .tablebox { border-radius: 14px; box-shadow: var(--panelsh); }
