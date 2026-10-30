@@ -1479,6 +1479,13 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 #page .comm-head h2 { font-size: 15px; font-weight: 800; margin: 0; }
 #page .comm-head .comm-c { color: var(--muted); font-size: 12.5px; }
 #page .comm-head .comm-line { flex: 1; height: 1px; background: linear-gradient(90deg, var(--line), transparent); }
+/* collapsible approved-tickers grid (keeps the showcase from flooding the page) */
+#page .comm-collapse > summary.comm-head { cursor: pointer; list-style: none; user-select: none; }
+#page .comm-collapse > summary.comm-head::-webkit-details-marker { display: none; }
+#page .comm-collapse > summary.comm-head .comm-count { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+#page .comm-collapse > summary.comm-head::after { content: "▾"; margin-inline-start: 8px; opacity: .6; font-size: 13px; transition: transform .15s ease; }
+#page .comm-collapse[open] > summary.comm-head::after { transform: rotate(180deg); }
+#page .comm-collapse > summary.comm-head:hover h2 { color: var(--accent, var(--ink)); }
 #page .comm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; }
 #page .comm-cc { padding: 14px 15px; border-radius: 15px; background: linear-gradient(180deg, var(--panel2), var(--panel)); border: 1px solid var(--line); box-shadow: var(--panelsh); transition: border-color .14s, transform .14s; }
 #page .comm-cc:hover { border-color: var(--accent); transform: translateY(-1px); }

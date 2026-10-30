@@ -3236,6 +3236,7 @@
       var r = await fetch(cfg.SUPABASE_URL + "/rest/v1/community_tickers?status=eq.approved&select=ticker,sector,requested_by,created_at&order=created_at.desc&limit=24",
         { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
       var rows = r.ok ? await r.json() : [];
+      var _cnt = document.getElementById("commApprovedCnt"); if (_cnt) _cnt.textContent = rows.length ? "(" + rows.length + ")" : "";
       box.innerHTML = rows.length ? rows.map(_commCard).join("") : '<div class="muted" style="padding:12px;grid-column:1/-1">עוד לא נוספו מניות קהילה — היה הראשון להציע! ⭐</div>';
       wireCharts(box);
     } catch (e) { box.innerHTML = '<div class="muted" style="padding:12px">שגיאה בטעינה.</div>'; }
@@ -3309,8 +3310,9 @@
       '<button class="cs-send" id="commSend">שלח הצעה</button></div>' +
       '<div class="cs-hint">⚠️ חייבת להיות מניה אמריקאית נסחרת · כל הצעה עוברת ולידציה אוטומטית לפני אישור.</div>' +
       '<div id="commSubStatus" class="note" style="display:none;margin-top:10px"></div></section>';
-    var approved = '<div class="comm-head"><h2>✓ נוספו לאחרונה</h2><span class="comm-c">מניות שהקהילה הציעה ואושרו</span><span class="comm-line"></span></div>' +
-      '<div id="commApproved" class="comm-grid"><div class="muted" style="padding:12px;grid-column:1/-1">טוען…</div></div>';
+    var approved = '<details class="comm-collapse"' + (admin ? "" : " open") + '>' +
+      '<summary class="comm-head"><h2>✓ נוספו לאחרונה</h2><span class="comm-count" id="commApprovedCnt"></span><span class="comm-c">מניות שהקהילה הציעה ואושרו</span><span class="comm-line"></span></summary>' +
+      '<div id="commApproved" class="comm-grid"><div class="muted" style="padding:12px;grid-column:1/-1">טוען…</div></div></details>';
     var adminQ = admin ? '<section class="comm-admin"><div class="ca2-h"><span class="ca2-ic">✅</span><h2>ממתינות לאישור</h2><span class="ca2-cnt" id="commQCnt"></span><span class="ca2-lock">🔒 גלוי רק לך</span><span class="ca2-line"></span></div><div id="commAdminQueue"><div class="muted" style="padding:6px">טוען…</div></div></section>' : "";
     return '<div class="page-head"><h1>⭐ מניות קהילה</h1><div class="sub">הקהילה מציעה מניות לסורק — אחרי בדיקה ואישור הן נכנסות ליקום הסריקה.</div></div>' +
       submit + approved + adminQ;
