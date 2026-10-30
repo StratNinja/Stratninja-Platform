@@ -540,7 +540,9 @@ window.Giveaway = (function () {
     var row = $("gvwAdmBtns"); if (!row) return;
     var s = _row.status, h = "";
     if (s === "idle" || s === "done") h = '<button class="btn primary" data-gadm="open">🚀 פתח הרשמה</button>';
-    else if (s === "open") h = '<button class="btn" data-gadm="close">🔒 סגור הרשמה</button><button class="btn ghost" data-gadm="manual">➕ ידני</button><button class="btn ghost" data-gadm="demo">🧪 דמה</button>';
+    else if (s === "open") h = '<button class="btn" data-gadm="close">🔒 סגור הרשמה</button>' +
+      '<button class="btn ghost" data-gadm="ytlink">' + (_row.yt_live_chat_id ? "🎥 יוטיוב מחובר ✓" : "🎥 חבר צ׳אט יוטיוב") + "</button>" +
+      '<button class="btn ghost" data-gadm="manual">➕ ידני</button><button class="btn ghost" data-gadm="demo">🧪 דמה</button>';
     else if (s === "closed") h = '<button class="btn primary" data-gadm="draw">🥁 הגרל זוכה!</button><button class="btn ghost" data-gadm="manual">➕ ידני</button><button class="btn ghost" data-gadm="demo">🧪 דמה</button>';
     else if (s === "drawing") h = '<button class="btn ghost" data-gadm="reset">עצור / איפוס</button>';
     // 📢 announce the live giveaway site-wide (flashing banner on every page → /live). Only while active.
@@ -553,7 +555,7 @@ window.Giveaway = (function () {
     var hint = $("gvwAdmHint");
     if (hint) hint.textContent = ({
       idle: 'לחץ "פתח הרשמה" כשאתה מוכן — אז תתחיל להתמלא רשימת המשתתפים.',
-      open: 'המשתתפים נכנסים (כותבים בצ׳אט). "דמה" מוסיף משתתפי בדיקה. כשסיימת — סגור הרשמה.',
+      open: 'משתתפים נכנסים בכפתור "השתתף" באתר. לקבלת כניסות גם מצ׳אט יוטיוב — לחץ "🎥 חבר צ׳אט יוטיוב" (כשהלייב כבר משדר). כשסיימת — סגור הרשמה.',
       closed: 'לחץ "הגרל זוכה" — הגלגל ייפתח במסך מלא. כל לחיצה = זוכה נוסף, עד שהפרסים נגמרים.',
       drawing: "מגריל…",
       done: 'ההגרלה הסתיימה. "פתח הרשמה" מתחיל סבב חדש.',
@@ -565,6 +567,7 @@ window.Giveaway = (function () {
     if (_busy) return;
     if (act === "save") return _save();
     if (act === "open") return _open();
+    if (act === "ytlink") return _linkYouTube();
     if (act === "close") return _patch({ status: "closed", closed_at: new Date().toISOString() });
     if (act === "draw") return _startDraw();
     if (act === "reveal") { _cancelAnim(); _draw.key = ""; return _patch({ winner: Object.assign({}, _row.winner, { phase: "winner", pstart: Date.now() }) }); }
@@ -624,6 +627,29 @@ window.Giveaway = (function () {
       yt_video_id: live.video_id || null, yt_live_chat_id: live.live_chat_id || null, yt_page_token: null,
       opened_at: new Date().toISOString(),
     }).then(function () { _entries = []; _endedToasted = false; _stageSig = ""; _paint(); toast("ההרשמה נפתחה 🎉 — המשתתפים נכנסים בלחיצה על 'השתתף'"); });
+  }
+
+  // Connect the active YouTube live chat to the ALREADY-OPEN giveaway (no reset, keeps current entrants)
+  // so keyword entries from the YouTube chat flow in alongside the site "השתתף" button. Auto-detects the
+  // active broadcast; falls back to a pasted link. Polling then auto-starts via _paint → _startChatPoll.
+  function _linkYouTube() {
+    if (!_row || _row.status !== "open") { toast("צריך הגרלה פתוחה כדי לחבר יוטיוב"); return; }
+    toast("מחפש לייב פעיל ביוטיוב…");
+    _apiCall("find").then(function (r) {
+      if (r && r.live && r.live.live_chat_id) {
+        return _patch({ yt_video_id: r.live.video_id || null, yt_live_chat_id: r.live.live_chat_id, yt_page_token: null })
+          .then(function () { toast("יוטיוב מחובר ✅ — כתיבת " + ((_row && _row.keyword) || "NINJA") + " בצ׳אט תיכנס להגרלה"); });
+      }
+      if (r && r.error) toast("חיפוש אוטומטי נכשל (" + r.error + ") — נסה להדביק קישור");
+      var url = window.prompt("לא נמצא לייב פעיל אוטומטית.\nהדבק קישור יוטיוב ללייב:", "");
+      if (!url) return;
+      _apiCall("resolve", { video: url }).then(function (rr) {
+        if (rr && rr.live_chat_id) {
+          _patch({ yt_video_id: rr.video_id || null, yt_live_chat_id: rr.live_chat_id, yt_page_token: null })
+            .then(function () { toast("יוטיוב מחובר ✅"); });
+        } else { toast("לא הצלחתי לחבר: " + ((rr && rr.error) || "שגיאה")); }
+      });
+    }).catch(function () { toast("שגיאה בחיבור יוטיוב"); });
   }
 
   function _startDraw() {
