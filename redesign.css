@@ -1591,11 +1591,11 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
   /* ניצול המקום האנכי הפנוי במסך הרחב: גרפי רוחב-מעל-ממוצעים גבוהים יותר.
      סלקטור ספציפי + !important כדי לגבור על הגדרות density (compact/dense) של המשתמש. */
   body .brd-chart .brd-svg { height: 235px !important; }
-  /* סקירת שוק — אריחי מפת חום סקטורים גדולים/קריאים יותר */
-  .mkt-dash .mh-tile { min-height: 78px !important; padding: 11px 13px !important; }
-  .mkt-dash .mh-tile .mh-etf { font-size: 15px; }
-  .mkt-dash .mh-tile .mh-chg { font-size: 14px; }
-  .mkt-dash .mh-tile .mh-he { font-size: 11px; }
+  /* סקירת שוק — אריחי מפת חום סקטורים: קומפקטיים (בלי גלילה) אך עם כיתוב גדול יותר + גופן האתר (Heebo) */
+  .mkt-dash .mh-tile { min-height: 56px !important; padding: 7px 13px !important; gap: 1px !important; }
+  .mkt-dash .mh-tile .mh-etf { font-size: 15px; line-height: 1.15; font-family: 'Heebo', 'Rubik', sans-serif; }
+  .mkt-dash .mh-tile .mh-chg { font-size: 14px; line-height: 1.15; font-family: 'Heebo', 'Rubik', sans-serif; }
+  .mkt-dash .mh-tile .mh-he { font-size: 11px; line-height: 1.1; font-family: 'Heebo', 'Rubik', sans-serif; }
 }
 /* אריחי מפת-החום בסקירת שוק ממלאים את כל הרוחב (auto-fit במקום auto-fill) — Adi */
 .mkt-dash .mh-grid { grid-template-columns: repeat(auto-fit, minmax(94px, 1fr)) !important; gap: 9px; }
