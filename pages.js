@@ -6081,9 +6081,9 @@
               opt("0", techState.avgVolMin, "— הכל") + opt("300000", techState.avgVolMin, "300K") + opt("500000", techState.avgVolMin, "500K") + opt("1000000", techState.avgVolMin, "1M") +
               opt("2000000", techState.avgVolMin, "2M") + opt("5000000", techState.avgVolMin, "5M") + opt("10000000", techState.avgVolMin, "10M") +
               '</select><select id="tAvgVolPer">' + opt("30", techState.avgVolPeriod, "30י") + opt("90", techState.avgVolPeriod, "90י") + "</select></div></div>" +
-            '<div class="fgrp"><label>52ש׳</label><div class="chips" style="align-items:center"><select id="tExt52">' +
-              opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "קרוב לשיא") + opt("low", techState.ext52, "קרוב לשפל") +
-              "</select>" + (techState.ext52 !== "off" ? '<span class="muted">±</span><input id="tExt52Pct" type="number" step="0.5" min="0" style="width:54px" value="' + techState.ext52Pct + '"><span class="muted">%</span>' : "") + "</div></div>" +
+            '<div class="fgrp"><label>52ש׳ <span class="muted" style="font-size:10px">(מרחק משיא/שפל · טווח מ-עד %. למשל 0–3=קרוב · 20–100=שוק דובי)</span></label><div class="chips" style="align-items:center;flex-wrap:wrap"><select id="tExt52">' +
+              opt("off", techState.ext52, "— הכל") + opt("high", techState.ext52, "מרחק מהשיא") + opt("low", techState.ext52, "מרחק מהשפל") +
+              "</select>" + (techState.ext52 !== "off" ? '<span class="muted">מ-</span><input id="tExt52From" type="number" step="0.5" min="0" placeholder="0" style="width:52px" value="' + techState.ext52From + '"><span class="muted">עד</span><input id="tExt52To" type="number" step="0.5" min="0" placeholder="∞" style="width:52px" value="' + techState.ext52To + '"><span class="muted">%</span>' : "") + "</div></div>" +
             '<div class="fgrp"><label>ATR% <span class="muted" style="font-size:10px">(תנודתיות · מ-עד)</span></label><div class="chips" style="align-items:center"><input id="tAtrpMin" type="number" step="0.5" min="0" placeholder="מ-" style="width:60px" value="' + techState.atrpMin + '"><span class="muted">–</span><input id="tAtrpMax" type="number" step="0.5" min="0" placeholder="עד" style="width:60px" value="' + techState.atrpMax + '"></div></div>' +
             '<div class="fgrp"><label>תנועה % <span class="muted" style="font-size:10px">(לפי מסגרת זמן)</span></label><div class="chips" style="align-items:center">' +
               '<select id="tChgTf" title="מסגרת הזמן של התנועה">' + opt("1d", techState.chgTf, "יומי") + opt("1w", techState.chgTf, "שבועי") + opt("1m", techState.chgTf, "חודשי") + opt("1q", techState.chgTf, "רבעוני") + opt("1y", techState.chgTf, "שנתי") + "</select>" +
@@ -6460,8 +6460,14 @@
           const av = techState.avgVolPeriod === "90" ? k.avol90 : k.avol30;
           if (av == null || av < techState.avgVolMin) return false;
         }
-        if (techState.ext52 === "high" && (k.dhi52 == null || Math.abs(k.dhi52) > techState.ext52Pct)) return false;
-        if (techState.ext52 === "low" && (k.dlo52 == null || Math.abs(k.dlo52) > techState.ext52Pct)) return false;
+        if (techState.ext52 === "high" || techState.ext52 === "low") {
+          const _e52 = techState.ext52 === "high" ? k.dhi52 : k.dlo52;   // dhi52 = % מתחת לשיא (≤0) · dlo52 = % מעל השפל (≥0)
+          if (_e52 == null) return false;
+          const _e52d = Math.abs(_e52);                                  // מרחק באחוזים מהשיא/שפל
+          const _e52f = parseFloat(techState.ext52From) || 0;            // מ- (ברירת מחדל 0)
+          const _e52t = (techState.ext52To === "" || techState.ext52To == null) ? Infinity : (parseFloat(techState.ext52To) || 0);   // עד ("" = ללא גבול)
+          if (_e52d < _e52f || _e52d > _e52t) return false;
+        }
         if (_atrpActive()) { const av2 = _techVal(k, "atrp"); if (av2 == null) return false; if (techState.atrpMin !== "" && av2 < _atrp()) return false; const _amx = _atrpMax(); if (_amx != null && av2 > _amx) return false; }
         if (techState.gapDir === "up" && (k.gap == null || k.gap < (parseFloat(techState.gapPct) || 0))) return false;
         if (techState.gapDir === "down" && (k.gap == null || k.gap > -(parseFloat(techState.gapPct) || 0))) return false;
@@ -6714,7 +6720,8 @@
     bind("tAvgVolMin", "onchange", e => { techState.avgVolMin = parseInt(e.target.value, 10) || 0; reRender(); });
     bind("tAvgVolPer", "onchange", e => { techState.avgVolPeriod = e.target.value; reRender(); });
     bind("tExt52", "onchange", e => { techState.ext52 = e.target.value; reRender(); });
-    bind("tExt52Pct", "onchange", e => { techState.ext52Pct = parseFloat(e.target.value) || 0; reRender(); });
+    bind("tExt52From", "onchange", e => { techState.ext52From = (e.target.value || "").trim(); reRender(); });
+    bind("tExt52To", "onchange", e => { techState.ext52To = (e.target.value || "").trim(); reRender(); });
     bind("tPopenTest", "onchange", e => {
       techState.popenTest = e.target.value;
       // re-enabling after all timeframes were cleared → restore the default Y/Q/M so the chips reappear
@@ -6877,7 +6884,7 @@
     earnMin: "",                 // earnings filter threshold in days (empty = off)
     earnDir: "far",              // "far" = report ≥N days away (safe) · "near" = report within N days (lead-up)
     avgVolPeriod: "30", avgVolMin: 0,
-    ext52: "off", ext52Pct: 3,
+    ext52: "off", ext52From: "", ext52To: 3,   // 52w distance-from-high/low RANGE (% מ-עד); to="" = ללא גבול עליון
     atrpMin: "", atrpMax: "",     // ATR as % of price — from/to range (from alone = X%+, to alone = ≤Y%, both = range)
     chgMin: "", chgMax: "", chgTf: "1d",   // % move, from–to (signed), over chgTf (1d/1w/1m/1q/1y → chg/c5/c20/c63/c252)
     gapDir: "off", gapPct: 3,    // gap: open vs prior close — up/down by ≥ %
@@ -7147,7 +7154,7 @@
     techState.rvolMin = ""; techState.volMin = 0; techState.volTrendDir = "off"; techState.volTrendDays = 3; techState.avgVolPeriod = "30"; techState.avgVolMin = 0;
     techState.volAvgDir = "off"; techState.volAvgDays = 3;
     techState.mfiTrendDir = "off"; techState.mfiTrendDays = 3; techState.mfiTurn = "off"; techState.earnMin = ""; techState.earnDir = "far";
-    techState.ext52 = "off"; techState.ext52Pct = 3;
+    techState.ext52 = "off"; techState.ext52From = ""; techState.ext52To = 3;
     techState.atrpMin = ""; techState.atrpMax = ""; techState.chgMin = ""; techState.chgMax = ""; techState.chgTf = "1d"; techState.gapDir = "off"; techState.gapPct = 3; techState.extMove = "off"; techState.extPct = 3;
     techState.compMax = ""; techState.flatSma = "20"; techState.flatDays = "40"; techState.flatMax = ""; techState.bbSqMax = ""; techState.sqzMode = "off"; techState.sqzMinBars = ""; techState.bbwMax = ""; techState.bbPeriod = "20"; techState.bbPos = []; techState.swSide = "off"; techState.swPct = 2; techState.swK = "5"; techState.pivRev = "off"; techState.pivPct = 2; techState.pivK = "5";
     techState.trendMode = "off"; techState.trendPct = 1.5;
@@ -9915,7 +9922,7 @@
     try {
       resetScan();
       techState.techOpen = true;
-      techState.ext52 = "high"; techState.ext52Pct = 1;
+      techState.ext52 = "high"; techState.ext52From = ""; techState.ext52To = 1;
       scanSort.col = "dhi52"; scanSort.dir = -1;   // closest to the 52-week high first
     } catch (e) {}
     setPage("scanner");
