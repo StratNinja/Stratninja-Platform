@@ -7607,64 +7607,6 @@
     wireCharts($("#page"));
   }
 
-  // ========== SMA COMPRESSION ==========
-  const SMA_ALL = ["5", "10", "20", "50", "100", "150", "200"];
-  const smaState = { periods: ["5", "10", "20", "50", "100", "200"], maxSpread: "" };
-  function smaSpread(t, sel) {
-    const k = t.tech && t.tech.dsma;
-    if (!k) return null;
-    const vals = sel.map(p => k[p]).filter(v => v != null);
-    if (vals.length < 2) return null;
-    return Math.max.apply(null, vals) - Math.min.apply(null, vals);
-  }
-  function smaRows() {
-    const sel = smaState.periods.filter(Boolean);
-    let rows = scanSource().map(t => ({ t: t, sp: smaSpread(t, sel) })).filter(x => x.sp != null);
-    const maxSp = parseFloat(smaState.maxSpread);
-    if (!isNaN(maxSp) && maxSp > 0) rows = rows.filter(x => x.sp <= maxSp);
-    rows.sort((a, b) => a.sp - b.sp);
-    return rows;
-  }
-  function renderSmaCompression() {
-    const head0 = '<div class="page-head"><h1>📉 דחיסת ממוצעים · SMA Compression</h1><div class="sub">מניות שבהן הממוצעים הנבחרים <b>הכי צפופים</b> (התכווצות → לרוב לפני תנועה חדה) · + המרחק של כל ממוצע מהמחיר</div></div>';
-    const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
-    const hasTech = scanSource().some(t => t.tech && t.tech.dsma);
-    const sel = smaState.periods.filter(Boolean);
-    const slot = i => { const cur = smaState.periods[i] || ""; return '<select data-smaslot="' + i + '"><option value="">— ריק</option>' + SMA_ALL.map(p => '<option value="' + p + '"' + (cur === p ? " selected" : "") + ">SMA" + p + "</option>").join("") + "</select>"; };
-    const controls = '<div class="panel filters"><h3>הגדרות דחיסה <span class="muted" style="font-size:12px">בחר עד 6 ממוצעים (5–200) · אפשר להשאיר ריק</span></h3><div class="frow">' +
-      '<div class="fgrp"><label>ממוצעים</label><div class="chips">' + [0, 1, 2, 3, 4, 5].map(slot).join("") + "</div></div>" +
-      '<div class="fgrp"><label>דחיסה מקס׳ (%)</label><input id="smaMax" type="number" step="0.5" min="0" placeholder="הכל" style="width:80px" value="' + smaState.maxSpread + '"></div>' +
-      '<div class="fgrp" style="align-self:flex-end"><button class="btn ghost" id="smaReset">איפוס</button></div>' +
-      "</div></div>";
-    if (!hasTech) return head0 + controls + '<div class="panel"><div class="note" style="margin:6px 0">⏳ נתוני הממוצעים ייטענו מהסורק. רגע ומתעדכן.</div></div>';
-    if (sel.length < 2) return head0 + controls + '<div class="panel"><div class="stub"><div class="big">📉</div><h2>בחר לפחות 2 ממוצעים</h2><p>בחר את הממוצעים שביניהם לבדוק דחיסה (למשל 20 · 50 · 100 · 200).</p></div></div>';
-    const rows = smaRows();
-    const CAP = 300, shown = rows.slice(0, CAP);
-    const body = shown.map(x => {
-      const t = x.t, k = t.tech.dsma || {};
-      return "<tr><td>" + star(t.sym) + "</td>" +
-        '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
-        '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td>" +
-        '<td class="sma-spread"><b>' + x.sp.toFixed(2) + "%</b></td>" +
-        sel.map(p => "<td>" + dPct(k[p]) + "</td>").join("") +
-        "<td>" + ftfcBadge(t) + "</td>" +
-        '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
-    }).join("");
-    const head = "<th></th><th style='text-align:start'>סימבול</th><th style='text-align:start'>סקטור</th><th>מחיר</th><th title='טווח הממוצעים כאחוז מהמחיר — קטן = צפוף'>דחיסה ▲</th>" + sel.map(p => "<th>SMA" + p + "</th>").join("") + "<th>FTFC</th><th></th>";
-    const nCols = 6 + sel.length;
-    const results = '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + " · מהצפוף לרחב</span></span>" + (rows.length ? '<button class="btn ghost" id="smaCopy" style="font-size:12px;font-weight:600">📋 העתק ' + Math.min(rows.length, CAP) + " טיקרים</button>" : "") + "</h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + (shown.length ? body : '<tr><td colspan="' + nCols + '" class="muted" style="text-align:center;padding:30px">אין תוצאות</td></tr>') + "</tbody></table></div></div>";
-    return head0 + (isLive ? liveBanner() : DEMO) + controls + results;
-  }
-  function wireSmaCompression() {
-    document.querySelectorAll("[data-smaslot]").forEach(s => s.onchange = () => { smaState.periods[+s.dataset.smaslot] = s.value; reRender(); });
-    const mx = $("#smaMax"); if (mx) mx.onchange = () => { smaState.maxSpread = mx.value; reRender(); };
-    const rst = $("#smaReset"); if (rst) rst.onclick = () => { smaState.periods = ["5", "10", "20", "50", "100", "200"]; smaState.maxSpread = ""; reRender(); };
-    wireCharts($("#page")); wireStars($("#page"));
-    const cp = $("#smaCopy");
-    if (cp) cp.onclick = () => { const syms = smaRows().slice(0, 300).map(x => x.t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
-  }
-
   // ========== BOLLINGER BANDS ==========
   const bollingerState = { mode: "sq", maxSq: "" };
   const BB_MODES = [
@@ -7735,60 +7677,6 @@
     wireCharts($("#page")); wireStars($("#page"));
     const cp = $("#bbCopy");
     if (cp) cp.onclick = () => { const syms = bbRows().slice(0, 300).map(t => t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
-  }
-
-  // ========== SWING HIGHS & LOWS ==========
-  const swingState = { mode: "nearHi", maxDist: "" };
-  const SW_MODES = [
-    { k: "nearHi", t: "קרוב לשיא סווינג" },
-    { k: "brokeHi", t: "פרצו שיא סווינג" },
-    { k: "nearLo", t: "קרוב לתחתית סווינג" },
-    { k: "brokeLo", t: "שברו תחתית סווינג" },
-  ];
-  function swRows() {
-    const m = swingState.mode;
-    const mx = parseFloat(swingState.maxDist);
-    const capNear = (v) => isNaN(mx) || mx <= 0 || Math.abs(v) <= mx;
-    let rows = scanSource().filter(t => t.tech && (t.tech.swhi_d != null || t.tech.swlo_d != null));
-    if (m === "nearHi") { rows = rows.filter(t => t.tech.swhi_d != null && capNear(t.tech.swhi_d)); rows.sort((a, b) => Math.abs(a.tech.swhi_d) - Math.abs(b.tech.swhi_d)); }
-    else if (m === "brokeHi") { rows = rows.filter(t => t.tech.swhi_d != null && t.tech.swhi_d > 0); rows.sort((a, b) => a.tech.swhi_d - b.tech.swhi_d); }
-    else if (m === "nearLo") { rows = rows.filter(t => t.tech.swlo_d != null && capNear(t.tech.swlo_d)); rows.sort((a, b) => Math.abs(a.tech.swlo_d) - Math.abs(b.tech.swlo_d)); }
-    else { rows = rows.filter(t => t.tech.swlo_d != null && t.tech.swlo_d < 0); rows.sort((a, b) => b.tech.swlo_d - a.tech.swlo_d); }
-    return rows;
-  }
-  function renderSwing() {
-    const head0 = '<div class="page-head"><h1>〽️ סווינג · Swing Highs & Lows</h1><div class="sub">רמות השיא והתחתית האחרונות (pivot של 5 נרות מכל צד) + מרחק המחיר מכל רמה · תמיכה/התנגדות ופריצות</div></div>';
-    const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
-    const hasTech = scanSource().some(t => t.tech && (t.tech.swhi_d != null || t.tech.swlo_d != null));
-    const isNear = swingState.mode === "nearHi" || swingState.mode === "nearLo";
-    const controls = '<div class="panel filters"><h3>מצב סינון</h3><div class="frow"><div class="fgrp"><label>מצב</label><select id="swMode">' +
-      SW_MODES.map(o => '<option value="' + o.k + '"' + (swingState.mode === o.k ? " selected" : "") + ">" + o.t + "</option>").join("") + "</select></div>" +
-      (isNear ? '<div class="fgrp"><label>מרחק מקס׳ (%)</label><input id="swMaxDist" type="number" step="0.5" min="0" placeholder="הכל" style="width:80px" value="' + swingState.maxDist + '"></div>' : "") + "</div>" +
-      '<div class="note" style="margin-top:6px">〽️ <b>שיא סווינג</b> = הפיבוט הגבוה האחרון (נר שגבוה מ-5 נרות מכל צד) — התנגדות מעל. <b>תחתית סווינג</b> = הפיבוט הנמוך האחרון — תמיכה מתחת. המרחק הוא באחוזים: חיובי = המחיר מעל הרמה, שלילי = מתחת.</div></div>';
-    if (!hasTech) return head0 + controls + '<div class="panel"><div class="note" style="margin:6px 0">⏳ נתוני הסווינג ייטענו מהסורק. רגע ומתעדכן.</div></div>';
-    const rows = swRows();
-    const CAP = 300, shown = rows.slice(0, CAP);
-    const body = shown.map(t => {
-      const k = t.tech;
-      return "<tr><td>" + star(t.sym) + "</td>" +
-        '<td class="sym"><span class="tsym clickable" data-chart="' + t.sym + '" data-tf="D">' + t.sym + "</span></td>" +
-        '<td class="tname" style="text-align:start">' + t.sector + "</td><td>" + money(t.price) + "</td>" +
-        "<td>" + (k.swhi != null ? money(k.swhi) : "—") + "</td><td>" + dPct(k.swhi_d) + "</td>" +
-        "<td>" + (k.swlo != null ? money(k.swlo) : "—") + "</td><td>" + dPct(k.swlo_d) + "</td>" +
-        "<td>" + ftfcBadge(t) + "</td>" +
-        '<td><a class="tvlink" href="https://www.tradingview.com/chart/?symbol=' + t.sym + '" target="_blank" rel="noopener">📈</a></td></tr>';
-    }).join("");
-    const head = "<th></th><th style='text-align:start'>סימבול</th><th style='text-align:start'>סקטור</th><th>מחיר</th><th>שיא סווינג</th><th title='מרחק המחיר מהשיא'>מרחק לשיא</th><th>תחתית סווינג</th><th title='מרחק המחיר מהתחתית'>מרחק לתחתית</th><th>FTFC</th><th></th>";
-    const results = '<div class="panel scan-results"><h3><span>תוצאות <span class="muted" style="font-size:12px">' + rows.length + "</span></span>" + (rows.length ? '<button class="btn ghost" id="swCopy" style="font-size:12px;font-weight:600">📋 העתק ' + Math.min(rows.length, CAP) + " טיקרים</button>" : "") + "</h3>" +
-      '<div class="tablewrap"><table class="scan-table"><thead><tr>' + head + "</tr></thead><tbody>" + (shown.length ? body : '<tr><td colspan="10" class="muted" style="text-align:center;padding:30px">אין תוצאות במצב הזה</td></tr>') + "</tbody></table></div></div>";
-    return head0 + (isLive ? liveBanner() : DEMO) + controls + results;
-  }
-  function wireSwing() {
-    const md = $("#swMode"); if (md) md.onchange = () => { swingState.mode = md.value; reRender(); };
-    const mdst = $("#swMaxDist"); if (mdst) mdst.onchange = () => { swingState.maxDist = mdst.value; reRender(); };
-    wireCharts($("#page")); wireStars($("#page"));
-    const cp = $("#swCopy");
-    if (cp) cp.onclick = () => { const syms = swRows().slice(0, 300).map(t => t.sym).join(", "); copyToClipboard(syms, () => { const o = cp.textContent; cp.textContent = "✓ הועתקו"; setTimeout(() => cp.textContent = o, 1500); }); };
   }
 
   // ========== WHAT TO CHECK NOW (daily briefing) ==========
@@ -8819,100 +8707,6 @@
       '<text x="48" y="' + ((lo + top) / 2) + '" fill="#8894b5" font-size="10">גובה התנועה</text>';
     return _svgWrap(s, "Measured Move — יעד לפי גודל התנועה");
   }
-  function renderLearn() {
-    const scanBadge = (t, cls) => '<span class="lrn-badge ' + cls + '">' + t + "</span>";
-    // card with a CUSTOM diagram + "open in scanner" button + a video slot (filled later, platform-agnostic)
-    const vslot = '<span style="font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px">🎬 סרטון — בקרוב</span>';
-    const card2 = (badge, bg, title, sub, diagram, body, btnId, btnLabel, exId) =>
-      '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter" style="min-width:52px;' + (bg || "") + '">' + badge + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
-      '<div class="lrn-body"><div class="lrn-svg" style="cursor:default">' + diagram + '</div><div class="lrn-txt">' + body +
-      '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-        (btnId ? '<button class="btn primary" style="font-size:13px;padding:6px 12px" id="' + btnId + '">🔍 ' + btnLabel + "</button>" : "") +
-        (exId ? '<span class="lrn-ex" id="' + exId + '" style="display:none"></span>' : "") +
-        vslot + "</div></div></div></div>";
-    const card = (letter, title, sub, type, body, badge) =>
-      '<div class="panel lrn-card"><div class="lrn-top"><span class="lrn-letter">' + letter + '</span><div><h3>' + title + '</h3><div class="muted" style="font-size:13px">' + sub + "</div></div></div>" +
-      '<div class="lrn-body"><div class="lrn-svg" data-cltype="' + type + '" title="לחץ למבט מבפנים 🔬">' + _candleDiagram(type) + "</div><div class=\"lrn-txt\">" + body +
-      '<div class="lrn-inscan">בסורק: ' + badge + "</div></div></div></div>";
-    const head =
-      '<div class="page-head"><h1>📚 לימוד — יסודות TheStrat</h1><div class="sub">כל החומר הלימודי במרוכז. מתחילים כאן: <b>סוגי הנרות</b> — האלף־בית של השיטה. אחריהם FTFC ו-IN FORCE.</div></div>';
-    const intro =
-      '<div class="panel lrn-intro"><div class="lrn-intro-in"><div style="font-size:34px">🕯️</div><div>' +
-      '<h2 style="margin:0 0 6px">שלושת סוגי הנרות — ורק הם</h2>' +
-      '<p class="muted" style="margin:0;max-width:64ch">בכל טיימפריים, מחיר יכול לעשות רק <b style="color:#eaf0ff">3 דברים</b>: להישאר בתוך הטווח של הנר הקודם (1), לפרוץ בכיוון אחד (2U/2D), או לפרוץ את שני הצדדים (3). ברגע שאתה מזהה אותם — אתה קורא כל גרף.</p>' +
-      "</div></div></div>";
-    const cards =
-      card("1", "נר 1 · פנימי (Inside)", "התכנסות מחיר — הנר כולו בתוך טווח הנר הקודם", "1",
-        '<p>הנר <b>לא</b> עשה גבוה חדש ולא נמוך חדש — הוא "נבלע" בתוך הנר הקודם. זו <b>התכנסות</b>: קפיץ דחוס. לא סוחרים בתוכה — <b>מחכים לפריצה</b>.</p>',
-        scanBadge("1", "b1")) +
-      card("2U", "נר 2U · כיווני מעלה", "פרץ את הגבוה של הנר הקודם", "2U",
-        '<p>הנר <b>פרץ מעל הגבוה</b> של הנר הקודם. אות כיוון מעלה — הקונים לקחו שליטה. זו נקודת פריצה שאפשר לסחור.</p>',
-        scanBadge("2U", "b2u")) +
-      card("2D", "נר 2D · כיווני מטה", "שבר את הנמוך של הנר הקודם", "2D",
-        '<p>הנר <b>שבר מתחת לנמוך</b> של הנר הקודם. אות כיוון מטה — המוכרים לקחו שליטה.</p>',
-        scanBadge("2D", "b2d")) +
-      card("3", "נר 3 · חיצוני (Outside)", "פרץ גם את הגבוה וגם את הנמוך — התרחבות/עוצמה", "3",
-        '<p>הנר <b>פרץ את שני הצדדים</b> של הנר הקודם — התרחבות ועוצמה. <b>חשוב:</b> נר 3 תמיד מגיע אחרי נר 2 (קודם פורצים צד אחד, ואז גם את השני).</p>',
-        scanBadge("3", "b3"));
-    const ftfcCard = card2("FTFC", "background:linear-gradient(160deg,#22c55e,#16a34a);box-shadow:0 3px 10px rgba(34,197,94,.3)",
-      "המשכיות טיימפריימים · FTFC", "כשכל הזמנים מצביעים לאותו כיוון",
-      _ftfcDia(),
-      '<p><b>FTFC (Full Timeframe Continuity)</b> = כל הטיימפריימים — יומי, שבועי, חודשי, רבעוני ושנתי — מצביעים לאותו כיוון. כשכולם ירוקים, כל שכבות הזמן דוחפות מעלה יחד: המוסדיים מיושרים. <b>ככל שיותר זמנים מיושרים — האות חזק יותר.</b> זה מה שמפריד רעש מהזדמנות אמיתית.</p>',
-      "lrnScanFtfc", "פתח בסורק — FTFC מלא", "lrnExFtfc");
-    const inforceCard = card2("⚡", "background:linear-gradient(160deg,#f2b64a,#e0902a);box-shadow:0 3px 10px rgba(242,182,74,.3)",
-      "IN FORCE · הטריגר", "מתי נר באמת מחזיק מעבר לקצה הקודם",
-      _inforceDia(),
-      '<p>יש הבדל בין נר ש<b>נגע</b> מעבר לגבוה הקודם (צל חולף שחזר אחורה) לבין נר ש<b>סגר והחזיק</b> שם. <b>IN FORCE</b> = הסגירה מעל הגבוה הקודם (לונג) או מתחת לנמוך הקודם (שורט) — השבירה אושרה ומחזיקה. זו <b>נקודת הכניסה האמיתית</b>.</p>',
-      "lrnScanInforce", "פתח בסורק — IN FORCE מעל", "lrnExInforce");
-    const ftfcHead = '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">🎯 השלב הבא — FTFC ו-IN FORCE</h2><p class="muted" style="margin:4px 0 0;font-size:13.5px">אחרי שאתה מזהה נרות — אלה שני הכלים שהופכים זיהוי להזדמנות.</p></div>';
-    const cmb = (badge, title, sub, dia, body, seqId, exId) =>
-      card2(badge, "background:linear-gradient(160deg,#6a5cf0,#4b3fc4)", title, sub, dia, body, seqId, "פתח בסורק", exId);
-    const comboCards =
-      cmb("2-1-2", "2-1-2 · היפוך", "נר כיווני → התכנסות → פריצה לכיוון ההפוך",
-        _seqDia([[40, 46, 120, 58, 112, _LC.dn, "2D"], [107, 74, 100, 80, 95, _LC.in, "1"], [174, 28, 94, 34, 82, _LC.up, "2U"]], "2-1-2 up"),
-        '<p>נר כיווני (2D), ואז נר פנימי (1) שאוגר לחץ, ואז פריצה לכיוון <b>ההפוך</b> (2U) — <b>היפוך קלאסי</b>. ההתכנסות באמצע היא הקפיץ; הפריצה ממנה היא הכניסה.</p>',
-        "lrnSeq212", "lrnExSeq212") +
-      cmb("1-2-2", "1-2-2 · הסטאפ שלך", "פנימי → שבירה → פריצה חזרה מעל (reclaim)",
-        _seqDia([[40, 62, 96, 68, 90, _LC.in, "1"], [107, 74, 122, 80, 116, _LC.dn, "2D"], [174, 32, 100, 38, 90, _LC.up, "2U"]], "1-2-2 up"),
-        '<p>נר פנימי (1), ואז שבירה למטה (2D), ואז <b>פריצה חזרה מעל ה-2D</b> (2U) — היפוך שורי. השבירה "לכדה" מוכרים, והפריצה חזרה מעליהם היא הטריגר שאתה ממתין לו.</p>',
-        "lrnSeq122", "lrnExSeq122") +
-      cmb("3-1-2", "3-1-2 · אחרי התרחבות", "נר חיצוני → התכנסות → פריצה כיוונית",
-        _seqDia([[40, 28, 126, 36, 118, _LC.out, "3"], [107, 76, 102, 82, 96, _LC.in, "1"], [174, 34, 94, 40, 84, _LC.up, "2U"]], "3-1-2 up"),
-        '<p>נר חיצוני (3) שפרץ את שני הצדדים = עוצמה ותנודתיות, ואז נר פנימי (1) שמרגיע, ואז פריצה כיוונית (2U). ההתכנסות אחרי הפיצוץ נותנת כניסה נקייה עם סטופ קצר.</p>',
-        "lrnSeq312", "lrnExSeq312");
-    const comboSection =
-      '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">🔗 הרצפים הנפוצים — הסטאפים שאתה סוחר</h2>' +
-      '<p class="muted" style="margin:4px 0 0;font-size:13.5px">שילוב של 3 נרות לפי הסדר (C2 → C1 → הנר הנוכחי). "פתח בסורק" טוען את בונה-התבנית מוכן.</p></div>' +
-      '<div class="lrn-cards">' + comboCards + "</div>";
-    const revCard = card2("🔄", "background:linear-gradient(160deg,#38bdf8,#0284c7);box-shadow:0 3px 10px rgba(56,189,248,.3)",
-      "היפוך מול המשכיות", "מתי המחיר מסתובב — ומתי ממשיך",
-      _revDia(),
-      '<p><b>המשכיות</b> = נר כיווני לאותו כיוון של המגמה (2U אחרי 2U) — רוכבים עליה. <b>היפוך</b> = נר שהולך <b>נגד</b> הקודם: 2D שנשבר ואז נרקלם חזרה מעלה, או 2U שנדחה מלמעלה. ההיפוך הוא נקודת הסיבוב — בדיוק שם נכנסים מוקדם עם סטופ קצר.</p>',
-      "lrnScanRev", "פתח בסורק — היפוכים שוריים", "lrnExRev");
-    const shapeCard = card2("🔨", "background:linear-gradient(160deg,#f472b6,#be185d);box-shadow:0 3px 10px rgba(244,114,182,.3)",
-      "פטיש / כוכב נופל", "נרות היפוך לפי צורת הגוף והצל",
-      _shapeDia(),
-      '<p><b>פטיש 🔨</b> = צל תחתון ארוך וגוף קטן למעלה — המוכרים ניסו להוריד ונדחו, לחץ קנייה. <b>כוכב נופל ⭐</b> = צל עליון ארוך וגוף קטן למטה — הקונים נדחו, לחץ מכירה. שתי הצורות חזקות כפליים כשהן קורות על רמה חשובה או בסוף תנועה.</p>',
-      "lrnScanHammer", "פתח בסורק — פטיש", "lrnExHammer");
-    const mmCard = card2("🎯", "background:linear-gradient(160deg,#34d399,#059669);box-shadow:0 3px 10px rgba(52,211,153,.3)",
-      "יעד מחיר · Measured Move", "איפה לקחת רווח — לפי גודל התנועה",
-      _mmDia(),
-      '<p>ב-Strat היעד נגזר מ<b>גודל התנועה עצמה</b>: מודדים את גובה הרגל שקדמה לפריצה ומטילים אותה קדימה מנקודת הכניסה (×1, ולעיתים ×2). זה נותן יעד <b>אובייקטיבי</b> לקחת בו רווח — במקום לנחש. הסטופ מנגד = קצה הנר שממנו נכנסת.</p>',
-      "", "");
-    const moreHead = '<div class="lrn-sechead" style="margin:24px 0 2px"><h2 style="margin:0;font-size:19px">📈 היפוך · צורה · יעד</h2><p class="muted" style="margin:4px 0 0;font-size:13.5px">הכלים שמשלימים כניסה: לזהות את הסיבוב, לקרוא את הנר, ולדעת איפה לצאת.</p></div>';
-    const next =
-      '<div class="panel lrn-next"><h3 style="margin:0 0 10px">🎬 סדרת הסרטונים — בקרוב</h3>' +
-      '<p class="muted" style="margin:0 0 12px;font-size:13.5px">סדרת הסברים חדשה בהקלטה. בינתיים — כל שיעור מקושר ישירות לסורק כדי לתרגל על מניות אמיתיות.</p>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="lrnToScanner">🔍 נסה בסורק — זהה 1/2/3</button><button class="btn ghost" id="lrnToToday">🎯 לאן הכסף הולך</button></div></div>';
-    const hint = '<div class="lrn-hint">💡 רחף על דיאגרמה כדי לראות איך הנר נוצר · <b>לחץ עליה</b> לזום פנימה ולראות את הנרות הקטנים שמרכיבים אותה 🔬</div>';
-    const badgeCtl = _newbieHidden() ? "" :
-      '<div class="lrn-badgectl"><button class="btn ghost" id="lrnRemoveBadge">🔕 הסר את הסימון "התחל כאן" מהתפריט</button></div>';
-    return head + badgeCtl + intro + hint + '<div class="lrn-cards">' + cards + "</div>" +
-      ftfcHead + '<div class="lrn-cards">' + ftfcCard + inforceCard + "</div>" +
-      comboSection +
-      moreHead + '<div class="lrn-cards">' + revCard + shapeCard + mmCard + "</div>" +
-      guidesPanel() + next;
-  }
   // "התחל כאן" nav badge — shown to everyone, but on the FIRST visit to Learn we ask if they want it gone.
   function _newbieHidden() { try { return localStorage.getItem("sn_newbie_hide") === "1"; } catch (e) { return false; } }
   function _hideNewbieBadge() { document.querySelectorAll(".nav-newbie").forEach(el => el.remove()); }
@@ -8931,27 +8725,6 @@
       localStorage.setItem("sn_newbie_asked", "1");
     } catch (e) { return; }
     _newbiePopup();
-  }
-  function wireLearn() {
-    const a = $("#lrnToScanner"); if (a) a.onclick = () => setPage("scanner");
-    const b = $("#lrnToToday"); if (b) b.onclick = () => setPage("today");
-    { const rb = $("#lrnRemoveBadge"); if (rb) rb.onclick = () => _newbiePopup(); }   // re-open the remove dialog on demand
-    // "open in scanner" from a lesson — reset filters, apply the lesson's filter, jump to the scanner
-    const _learnScan = cfg => { resetScan(); cfg(); setPage("scanner"); };
-    { const f = $("#lrnScanFtfc"); if (f) f.onclick = () => _learnScan(() => { scanState.ftfc = true; }); }
-    { const i = $("#lrnScanInforce"); if (i) i.onclick = () => _learnScan(() => { scanState.inforce = "up"; }); }
-    const _seqSet = (c2, c1, cc) => { scanState.seq = { c2: c2, c1: c1, cc: cc, c2col: "", c1col: "", cccol: "" }; };
-    { const s = $("#lrnSeq212"); if (s) s.onclick = () => _learnScan(() => _seqSet(["2D"], ["1"], ["2U"])); }
-    { const s = $("#lrnSeq122"); if (s) s.onclick = () => _learnScan(() => _seqSet(["1"], ["2D"], ["2U"])); }
-    { const s = $("#lrnSeq312"); if (s) s.onclick = () => _learnScan(() => _seqSet(["3"], ["1"], ["2U"])); }
-    { const r = $("#lrnScanRev"); if (r) r.onclick = () => _learnScan(() => { scanState.broad = "up"; }); }
-    { const h = $("#lrnScanHammer"); if (h) h.onclick = () => _learnScan(() => { scanState.shape = ["hammer"]; }); }
-    document.querySelectorAll("#page [data-cltype]").forEach(el => el.onclick = () => openCandleLesson(el.dataset.cltype));
-    // LIVE examples: fill each lesson with a real ticker matching it RIGHT NOW (click → its chart).
-    // Only when real scan data is loaded; if not, fetch it once then fill. Graceful no-op on no match.
-    if (SCAN && SCAN.rows && SCAN.rows.length) _fillLearnExamples();
-    else { try { const p = fetchScanner(); if (p && p.then) p.then(() => { if (state.page === "learn") _fillLearnExamples(); }); } catch (e) {} }
-    setTimeout(_maybeAskNewbie, 450);   // after the page settles, offer to remove the "start here" badge (once)
   }
   // find, per lesson, the most notable ticker (biggest market-cap) that matches its Strat concept on the
   // DAILY timeframe right now, and render a clickable "📍 עכשיו: SYM +x%" chip that opens its chart.
