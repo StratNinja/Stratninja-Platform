@@ -608,8 +608,8 @@ body[data-page] .pulse-tabs + .page-head { margin-top: 2px; }
 .sn-dock { flex: 0 0 auto; display: flex; align-items: center; gap: 7px; direction: ltr;
   padding: 5px 10px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
 /* overflow VISIBLE when expanded so the round buttons aren't clipped at top/bottom; only clip while collapsing */
-.sn-dock .snd-icons { display: flex; align-items: center; gap: 7px; overflow: visible; max-width: 220px; opacity: 1;
-  transition: max-width .25s ease, opacity .18s ease; }
+.sn-dock .snd-icons { display: flex; align-items: center; gap: 7px; overflow: visible; max-width: 340px; opacity: 1;
+  transition: max-width .25s ease, opacity .18s ease; }   /* Adi: 220px היה צר מדי → הפעמון גלש מחוץ לפאנל */
 .sn-dock.collapsed .snd-icons { max-width: 0; opacity: 0; overflow: hidden; pointer-events: none; }
 .snd-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg, transparent);
   color: var(--ink); font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;

@@ -6301,7 +6301,7 @@
         (presets.length ? '<button class="btn ghost" id="presetDel" title="מחק את הסריקה הנבחרת">🗑 מחק</button>' : "") +
         (presets.length ? '<button class="btn ghost" id="presetShare" title="שתף את הסריקה הנבחרת — קישור להעתקה">🔗 שתף</button>' : "") +
         '<button class="btn ghost" id="presetOrder" title="נהל, סדר, שתף וגבה את הסריקות לקובץ (או שחזר מגיבוי)">🗂️ נהל / גבה</button>' +
-        '<button class="btn ghost" id="alertBell" title="מרכז התראות — התראה כשמניה מהמועדפים נכנסת לסריקה">🔔<span class="al-badge" id="alBadge"></span></button>' +
+        /* פעמון ההתראות הוסר מכאן (Adi) — הוא כבר קיים בדוק העליון (snDockBell). */
       "</div></div>";
     return (
       '<div class="page-head"><h1>סורק עסקאות</h1><div class="sub">כאן מוצאים מניות למסחר: סוננו לפי תבניות Strat, טיימפריימים ופילטרים טכניים — וממוינים לפי <b>העולות/היורדות</b> של היום.</div></div>' +
