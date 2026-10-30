@@ -83,6 +83,103 @@ async function resolveVideo(at, raw) {
   return { video_id: id, live_chat_id: chat, title: (it.snippet && it.snippet.title) || "" };
 }
 
+// ---- YouTube live chat via the INTERNAL innertube endpoint ----
+// The official Data API `liveChatMessages.list` returns a bare HTTP 404 even for PUBLIC lives
+// (confirmed 2026-10-30), so we read the chat the way the web player does: load the live_chat page
+// once to grab the innertube key + an initial continuation, then poll youtubei get_live_chat.
+// No OAuth, no extra deps — proven to work from the server (stdlib fetch).
+const YT_CK = "CONSENT=YES+cb.20210328-17-p0.en+FX+000; SOCS=CAI";
+async function ytFetchText(url, opts) {
+  opts = opts || {};
+  const r = await fetch(url, {
+    method: opts.method || "GET",
+    headers: Object.assign({
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Cookie": YT_CK,
+    }, opts.headers || {}),
+    body: opts.body,
+  });
+  return { ok: r.ok, status: r.status, text: await r.text() };
+}
+function _extractJsonAt(s, anchor) {
+  let i = s.indexOf(anchor); if (i < 0) return null;
+  i = s.indexOf("{", i); if (i < 0) return null;
+  let depth = 0, instr = false, esc = false;
+  for (let j = i; j < s.length; j++) {
+    const c = s[j];
+    if (instr) { if (esc) esc = false; else if (c === "\\") esc = true; else if (c === '"') instr = false; }
+    else if (c === '"') instr = true; else if (c === "{") depth++; else if (c === "}") { depth--; if (depth === 0) return s.slice(i, j + 1); }
+  }
+  return null;
+}
+function _collectConts(o, out) {
+  if (Array.isArray(o)) { for (const v of o) _collectConts(v, out); return; }
+  if (o && typeof o === "object") {
+    for (const k of ["invalidationContinuationData", "timedContinuationData", "reloadContinuationData"]) {
+      const v = o[k]; if (v && v.continuation) out.push(v.continuation);
+    }
+    for (const k in o) _collectConts(o[k], out);
+  }
+}
+function _parseChatJson(j) {
+  const cc = ((j.continuationContents || {}).liveChatContinuation) || {};
+  const acts = cc.actions || [];
+  let next = null, nextType = null;
+  for (const c of (cc.continuations || [])) {
+    if (c.invalidationContinuationData && c.invalidationContinuationData.continuation) { next = c.invalidationContinuationData.continuation; nextType = "live"; break; }
+    if (c.timedContinuationData && c.timedContinuationData.continuation) { next = c.timedContinuationData.continuation; nextType = "live"; break; }
+    if (c.reloadContinuationData && c.reloadContinuationData.continuation) { next = c.reloadContinuationData.continuation; nextType = "reload"; }
+  }
+  const msgs = [];
+  for (const a of acts) {
+    const r = (((a.addChatItemAction || {}).item) || {}).liveChatTextMessageRenderer;
+    if (!r) continue;
+    const nm = (r.authorName || {}).simpleText || "";
+    const tx = ((r.message || {}).runs || []).map(x => x.text || "").join("");
+    msgs.push({ name: nm, text: tx, tsUsec: +(r.timestampUsec || 0), cid: r.authorExternalChannelId || "" });
+  }
+  return { msgs, next, nextType };
+}
+async function ytiPoll(key, ver, continuation) {
+  const body = JSON.stringify({ context: { client: { clientName: "WEB", clientVersion: ver } }, continuation });
+  const r = await ytFetchText("https://www.youtube.com/youtubei/v1/live_chat/get_live_chat?key=" + key, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+  if (!r.ok) return { error: "iti_" + r.status };
+  let j; try { j = JSON.parse(r.text); } catch (e) { return { error: "iti_parse" }; }
+  return _parseChatJson(j);
+}
+// load the live_chat page → innertube key/ver + pick the continuation that actually yields a live feed
+async function ytiSeed(videoId) {
+  const r = await ytFetchText("https://www.youtube.com/live_chat?is_popout=1&v=" + encodeURIComponent(videoId));
+  if (!r.ok) return { error: "seed_" + r.status };
+  const page = r.text;
+  const mk = page.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+  if (!mk) {
+    const mr = page.match(/"reason":\{"simpleText":"([^"]+)"/) || page.match(/"reason":\{"runs":\[\{"text":"([^"]+)"/);
+    return { error: mr ? "unavailable:" + mr[1].slice(0, 40) : "no_key" };
+  }
+  const mv = page.match(/"clientVersion":"([\d.]+)"/);
+  const key = mk[1], ver = mv ? mv[1] : "2.20240101.00.00";
+  const raw = _extractJsonAt(page, "ytInitialData");
+  if (!raw) return { error: "no_initdata" };
+  let data; try { data = JSON.parse(raw); } catch (e) { return { error: "initdata_parse" }; }
+  const cands = []; _collectConts(data, cands);
+  // Pick the continuation that leads to the LIVE message feed. Some candidates (reload/"top chat")
+  // return a valid next token but a dead chain that never yields messages; the live one yields
+  // messages now, or at least a timed/invalidation ("live") next. Prefer: has messages > live next.
+  const seen = {};
+  let fbLive = null, fbAny = null;
+  for (const c of cands) {
+    if (seen[c]) continue; seen[c] = 1;
+    const res = await ytiPoll(key, ver, c);
+    if (res.error || !res.next) continue;
+    if (res.msgs && res.msgs.length) return { key, ver, continuation: res.next, msgs: res.msgs };
+    if (res.nextType === "live" && !fbLive) fbLive = { key, ver, continuation: res.next, msgs: [] };
+    if (!fbAny) fbAny = { key, ver, continuation: res.next, msgs: [] };
+  }
+  return fbLive || fbAny || { error: "no_live_cont" };
+}
+
 async function verifyAdmin(req) {
   const auth = req.headers.authorization || req.headers.Authorization || "";
   if (!auth) return false;
@@ -102,9 +199,13 @@ export default async function handler(req, res) {
   const action = String((req.query && req.query.action) || "");
   if (!(await verifyAdmin(req))) { res.status(403).json({ error: "forbidden" }); return; }
 
-  let at;
-  try { at = await getAccessToken(); }
-  catch (e) { res.status(502).json({ error: "google_auth", detail: String(e.message || e) }); return; }
+  // Only find/resolve need the Google Data API (to detect the live video). Polling reads the chat via
+  // innertube and must NOT depend on OAuth, so a token hiccup never blocks an in-progress giveaway.
+  let at = null;
+  if (action === "find" || action === "resolve") {
+    try { at = await getAccessToken(); }
+    catch (e) { res.status(502).json({ error: "google_auth", detail: String(e.message || e) }); return; }
+  }
 
   try {
     if (action === "find") {
@@ -121,50 +222,42 @@ export default async function handler(req, res) {
       const row = await getRow();
       if (!row) { res.status(200).json({ error: "no_row" }); return; }
       if (row.status !== "open") { res.status(200).json({ skip: true, status: row.status }); return; }
-      let chatId = row.yt_live_chat_id;
-      if (!chatId) { res.status(200).json({ error: "no_chat" }); return; }
+      const videoId = row.yt_video_id;
+      if (!videoId) { res.status(200).json({ error: "no_video" }); return; }
 
-      function reasonOf(jj) { return (jj && jj.error && jj.error.errors && jj.error.errors[0] && jj.error.errors[0].reason) || ""; }
-      async function doPoll(cid, token) {
-        let url = "liveChatMessages?part=snippet,authorDetails&maxResults=2000&liveChatId=" + encodeURIComponent(cid);
-        if (token) url += "&pageToken=" + encodeURIComponent(token);
-        return yt(url, at);
-      }
-
-      let token = row.yt_page_token;
-      let r1 = await doPoll(chatId, token);
-      // stale/expired chat id (or bad page token) → re-resolve the CURRENT active chat from the video, retry fresh
-      if (!r1.ok) {
-        const reason = reasonOf(r1.j);
-        if ((r1.status === 404 || reason === "liveChatNotFound" || reason === "pageTokenInvalid" || reason === "liveChatEnded") && row.yt_video_id) {
-          const rv = await resolveVideo(at, row.yt_video_id);
-          if (rv && rv.live_chat_id && rv.live_chat_id !== chatId) {
-            chatId = rv.live_chat_id; token = null;
-            await patchRow({ yt_live_chat_id: chatId, yt_page_token: null });
-            r1 = await doPoll(chatId, null);
-          }
-        }
-        if (!r1.ok) {
-          const r2 = reasonOf(r1.j);
-          const msg = (r1.j.error && r1.j.error.message || "").slice(0, 220);
-          // stash the FULL raw error body in the row so it can be inspected without the admin UI
-          try { await patchRow({ winner: { debug: "chat_" + r1.status + " | " + JSON.stringify(r1.j).slice(0, 400), chat: chatId, at: new Date().toISOString() } }); } catch (e) {}
-          res.status(200).json({ error: "chat_" + r1.status, reason: r2, ended: r2 === "liveChatEnded", detail: msg });
+      // innertube state {k:key, v:clientVersion, c:continuation} is stashed in yt_page_token (JSON).
+      // Seed it (load the live_chat page) when missing or not-JSON (e.g. a legacy Data-API token).
+      let st = null;
+      try { st = row.yt_page_token ? JSON.parse(row.yt_page_token) : null; } catch (e) { st = null; }
+      let poll;
+      if (!st || !st.c || !st.k) {
+        const seed = await ytiSeed(videoId);
+        if (seed.error) {
+          try { await patchRow({ winner: { debug: "seed:" + seed.error, at: new Date().toISOString() } }); } catch (e) {}
+          res.status(200).json({ error: "chat_seed", reason: seed.error, ended: /unavailable|no_live_cont/.test(seed.error) });
           return;
         }
+        st = { k: seed.key, v: seed.ver, c: seed.continuation };
+        poll = { msgs: seed.msgs || [], next: seed.continuation };   // seed already advanced past these msgs
+      } else {
+        poll = await ytiPoll(st.k, st.v, st.c);
+        if (poll.error) {
+          const seed = await ytiSeed(videoId);                        // re-seed once (continuation rolled / chat reset)
+          if (seed.error) { res.status(200).json({ error: "chat_poll", reason: poll.error }); return; }
+          st = { k: seed.key, v: seed.ver, c: seed.continuation };
+          poll = { msgs: seed.msgs || [], next: seed.continuation };
+        }
       }
-      const j = r1.j;
 
       const kw = String(row.keyword || "NINJA").toUpperCase();
       const openedMs = row.opened_at ? new Date(row.opened_at).getTime() : 0;
       const seen = {}, rows = [];
-      (j.items || []).forEach(function (it) {
-        const msg = (it.snippet && (it.snippet.displayMessage || it.snippet.textMessageDetails && it.snippet.textMessageDetails.messageText)) || "";
-        const pubMs = it.snippet && it.snippet.publishedAt ? new Date(it.snippet.publishedAt).getTime() : Date.now();
-        if (openedMs && pubMs < openedMs - 60000) return;          // ignore chatter from well before the window opened (60s grace)
-        if (msg.toUpperCase().indexOf(kw) < 0) return;             // must contain the keyword
-        const nm = (it.authorDetails && it.authorDetails.displayName) || "צופה";
-        const norm = nm.trim().replace(/\s+/g, " ").toLowerCase();  // ONE entry per NAME (key = the name)
+      (poll.msgs || []).forEach(function (m) {
+        const pubMs = m.tsUsec ? Math.floor(m.tsUsec / 1000) : Date.now();
+        if (openedMs && pubMs < openedMs - 60000) return;             // ignore chatter from before the window opened (60s grace)
+        if ((m.text || "").toUpperCase().indexOf(kw) < 0) return;     // must contain the keyword
+        const nm = (m.name || "צופה");
+        const norm = nm.trim().replace(/\s+/g, " ").toLowerCase();     // ONE entry per NAME
         if (!norm || seen[norm]) return;
         seen[norm] = 1;
         rows.push({ round: row.round, source: "youtube", user_key: "name:" + norm, name: nm });
@@ -175,8 +268,8 @@ export default async function handler(req, res) {
         const ins = await sb("giveaway_entries", { method: "POST", headers: { Prefer: "resolution=ignore-duplicates,return=minimal" }, body: JSON.stringify(rows) });
         if (ins.ok) added = rows.length; else writeErr = (await ins.text().catch(function () { return ""; })).slice(0, 160);
       }
-      await patchRow({ yt_page_token: j.nextPageToken || token, updated_at: new Date().toISOString() });
-      res.status(200).json({ added: added, scanned: (j.items || []).length, matched: rows.length, writeErr: writeErr, chatId: chatId, pollingIntervalMillis: j.pollingIntervalMillis || 5000 });
+      await patchRow({ yt_page_token: JSON.stringify({ k: st.k, v: st.v, c: poll.next || st.c }), updated_at: new Date().toISOString() });
+      res.status(200).json({ added: added, scanned: (poll.msgs || []).length, matched: rows.length, writeErr: writeErr });
       return;
     }
     res.status(400).json({ error: "bad_action" });
