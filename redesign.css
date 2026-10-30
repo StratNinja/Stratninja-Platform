@@ -1585,13 +1585,19 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
    כך שהטקסט הפיזי עדיין ~4% גדול מ-100%. כל הדפים הראשיים נכנסים בלי גלילה (פרט ל-sp500 — טריימאפ מלא).
    ה-zoom על body (ולא על .scanner-app) שומר רוחב מלא בלי פס ריק בצד. */
 @media (min-width: 2200px) {
-  body { zoom: 0.83; }
+  body { zoom: 0.92; }                      /* Adi: 0.83 היה קטן מדי — 0.92 גדול/קריא יותר, התוכן עדיין נכנס בלי גלילה */
+  body[data-page="sp500"] { zoom: 0.83; }   /* מפת החום של S&P500 — קטנה ב-~10% (Adi אוהב כך; מותר קצת גלילה) */
 }
 /* פוטר קומפקטי (דסקטופ) — פחות גובה בתחתית כל דף */
 @media (min-width: 1000px) {
-  .site-footer { font-size: 12px !important; }
-  .site-footer .sf-top { padding-top: 8px !important; padding-bottom: 6px !important; }
-  .site-footer .sf-logo-img { width: 26px !important; height: 26px !important; }
-  .site-footer .sf-links { gap: 4px 14px !important; }
-  .site-footer .sf-bottom, .site-footer .sf-copy, .site-footer .sf-legal { padding-top: 5px !important; padding-bottom: 5px !important; font-size: 11px !important; }
+  .site-footer { font-size: 11px !important; }
+  .site-footer .sf-top { padding-top: 6px !important; padding-bottom: 4px !important; }
+  .site-footer .sf-logo-img { width: 22px !important; height: 22px !important; }
+  .site-footer .sf-links { gap: 3px 12px !important; }
+  .site-footer .sf-bottom, .site-footer .sf-copy, .site-footer .sf-legal { padding-top: 3px !important; padding-bottom: 3px !important; font-size: 10px !important; }
+  /* שם המשתמש + "התנתק" בתחתית התפריט — צ'יפ חשבון מסודר (Adi: נראה זרוק) */
+  .side-foot .user-area { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 7px 10px; border-radius: 12px; background: var(--panel2); border: 1px solid var(--line); }
+  .side-foot .user-area .avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--line); flex-shrink: 0; }
+  .side-foot .user-area .uname { font-weight: 700; font-size: 13px; color: var(--ink); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .side-foot .user-area #logoutBtn { font-size: 11px; padding: 5px 10px; flex-shrink: 0; }
 }
