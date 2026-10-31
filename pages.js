@@ -1913,9 +1913,11 @@
     // BREADTH is only meaningful with enough S&P members (10+, the SPDR-industry design target):
     // thin thematic/merged ETFs like GDX/TAN hold ~1 S&P constituent → a "1/1" is noise, not breadth.
     // Hide them HERE only — they stay on the money-flow / continuity tabs where the ETF's own move counts.
-    // Show the SAME sub-sector set as the money-flow (תזרים) tab — all 18 SPDR industries — so the two
-    // tabs line up 1:1. Thin ones (<10 S&P members) make breadth % meaningless, so they render "—" and
-    // sink to the bottom (see _breadthLadder / _breadthRow) while still appearing for consistency.
+    // Mirror the money-flow (תזרים) sub-sector set — EXCEPT sub-sectors with 0 S&P members, which have no
+    // breadth at all (crypto/space/nuclear/pharma/regional-bank ETFs whose names map to no S&P .ind here):
+    // those are hidden on THIS tab (filtered at the subsLadder call) but stay in תזרים where the ETF's own
+    // move counts. Thin ones (1–9 members) make breadth % noisy, so they render "—" and sink to the bottom
+    // (see _breadthLadder / _breadthRow) but still appear, since they DO have members.
     const _SUB_BREADTH_MIN = 10;
     const subArr = (LIVE && LIVE.subsectors && LIVE.subsectors.length)
       ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 })
@@ -1938,7 +1940,7 @@
       '<div class="bcell-list" data-spladder="sec">' + _breadthLadder(secs.filter(s => s.name !== "אחר" && s.name !== "מדדים"), false) + (macroCards ? _bcellDivider("מדדים ושונות") + macroCards : "") + "</div></div>";
     const subsLadder = '<div class="panel td-flow"><h3 class="tdf-head"><span>🏭 עוצמת תתי-סקטורים · רוחב</span></h3>' +
       '<div class="muted tdf-sub">מדורג לפי רוחב · לחץ ענף לכל המניות</div>' +
-      '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr, true) + "</div></div>";
+      '<div class="bcell-list" data-spladder="sub">' + _breadthLadder(subArr.filter(o => o.total > 0), true) + "</div></div>";
     return '<div class="page-head"><h1>רוחב סקטוריאלי · S&P 500</h1><div class="sub">🟢 ' + b.above + " מעל פתיחה · 🔴 " + b.below + ' מתחת · <b>כמה מהמניות בכל סקטור/תת-סקטור נמצאות מעל מחיר הפתיחה</b> (לא התנועה היומית) — מדורג מהחזק לחלש. לחץ על שורה לכל המניות.</div></div>' +
       '<div class="sp-view-row">' + sp500ViewSwitch() + secGridBtn + "</div>" +
       '<div class="sp-toprow"><div class="sp-topside">' + insightBox + liveBanner() + "</div>" + breadthTopBar + "</div>" +
