@@ -343,3 +343,7 @@ html[data-pal="pro"] .scanner-app .rk.d2 .pct{ color:var(--red); }
 /* market-state cockpit breadth bar: red base + green fill child */
 .scanner-app .cp-brbar{ background:#f80000 !important; }
 .scanner-app .cp-brbar > span{ background:#0aff00 !important; }
+/* soften the pure bar colors ~30% (Adi) — one filter dims the whole bar subtree */
+.scanner-app .rk .fill{ filter:brightness(.7); }
+.scanner-app .bigbreadth .bseg{ filter:brightness(.7); }
+.scanner-app .cp-brbar{ filter:brightness(.7); }
