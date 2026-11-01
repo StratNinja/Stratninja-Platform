@@ -1609,10 +1609,14 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
      סלקטור ספציפי + !important כדי לגבור על הגדרות density (compact/dense) של המשתמש. */
   body .brd-chart .brd-svg { height: 235px !important; }
   /* סקירת שוק — אריחי מפת חום סקטורים: קומפקטיים (בלי גלילה) אך עם כיתוב גדול יותר + גופן האתר (Heebo) */
-  .mkt-dash .mh-tile { min-height: 56px !important; padding: 7px 13px !important; gap: 1px !important; }
-  .mkt-dash .mh-tile .mh-etf { font-size: 15px; line-height: 1.15; font-family: 'Heebo', 'Rubik', sans-serif; }
-  .mkt-dash .mh-tile .mh-chg { font-size: 14px; line-height: 1.15; font-family: 'Heebo', 'Rubik', sans-serif; }
-  .mkt-dash .mh-tile .mh-he { font-size: 22px; line-height: 1.15; font-family: 'Heebo', 'Rubik', sans-serif; }   /* Hebrew name ×2 (Adi) */
+  /* Heebo's line metrics are taller than the Rubik/Inter the font-unification replaced, which pushed the
+     dense pages past the no-scroll fold. Cap the inherited line-height (app only — off-body share cards keep
+     theirs) to recover that height. Scoped to .scanner-app, not body, so share-card PNGs are untouched. */
+  .scanner-app { line-height: 1.25; }
+  .mkt-dash .mh-tile { min-height: 0 !important; padding: 4px 12px !important; gap: 0 !important; }
+  .mkt-dash .mh-tile .mh-etf { font-size: 13px; line-height: 1.1; }
+  .mkt-dash .mh-tile .mh-chg { font-size: 12px; line-height: 1.1; }
+  .mkt-dash .mh-tile .mh-he { font-size: 20px; line-height: 1.05; }   /* Hebrew name large (≈2×) but compact so the tile doesn't grow (Adi) */
 }
 /* אריחי מפת-החום בסקירת שוק ממלאים את כל הרוחב (auto-fit במקום auto-fill) — Adi */
 .mkt-dash .mh-grid { grid-template-columns: repeat(auto-fit, minmax(94px, 1fr)) !important; gap: 9px; }
