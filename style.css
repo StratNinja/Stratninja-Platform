@@ -302,3 +302,28 @@ html[data-pal="pro"] .scanner-app .idx-card .ic-px{
 /* subtle luminosity on live/status accents (dark only, kept off red/green data) */
 html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .mkt-live,
 html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .tf-ind-badge{ text-shadow:0 0 14px rgba(47,230,199,.28); }
+
+/* ===== VIVID green/red across the WHOLE live UI (Adi 2026-11-01). Many components hardcode their own
+   green/red shades (#3fe0a0 / #4fe39b / #22e39b / #ff6b7a …) or a separate --mfpos/--mfneg family, so the
+   --green/--red tokens alone didn't reach them. Re-point them all to the vivid tokens. ALL rules scoped to
+   .scanner-app, so the off-body share-card PNG render nodes are untouched. ===== */
+html[data-pal="pro"] .scanner-app :is(.pos, .up, .bull){ color:var(--green) !important; }
+html[data-pal="pro"] .scanner-app :is(.neg, .down, .dn, .bear){ color:var(--red) !important; }
+/* candle "above/below open" badges */
+html[data-pal="pro"] .scanner-app .tf.up{ color:var(--green); background:var(--greenbg); box-shadow:inset 0 0 0 1px var(--greenbd); }
+html[data-pal="pro"] .scanner-app .tf.down{ color:var(--red); background:var(--redbg); box-shadow:inset 0 0 0 1px var(--redbd); }
+/* sector heat-map tiles (מפת חום · סקטורים) — were a muted rgba; make them vivid by magnitude */
+html[data-pal="pro"] .scanner-app .mh-u1{ background:rgba(0,230,118,.15); }
+html[data-pal="pro"] .scanner-app .mh-u2{ background:rgba(0,230,118,.30); }
+html[data-pal="pro"] .scanner-app .mh-u3{ background:rgba(0,230,118,.46); }
+html[data-pal="pro"] .scanner-app .mh-d1{ background:rgba(255,45,67,.15); }
+html[data-pal="pro"] .scanner-app .mh-d2{ background:rgba(255,45,67,.30); }
+html[data-pal="pro"] .scanner-app .mh-d3{ background:rgba(255,45,67,.46); }
+/* money-flow battery + alert-center (live) use their own --mfpos/--mfneg — re-point in-scope */
+html[data-pal="pro"] .scanner-app .mf-card,
+html[data-pal="pro"] .scanner-app .ac2-card{ --mfpos:var(--green); --mfneg:var(--red); }
+/* money-flow ranking bars: keep the bright "strong" variant vivid too */
+html[data-pal="pro"] .scanner-app .rk.u2 .fill{ background:var(--green); }
+html[data-pal="pro"] .scanner-app .rk.u2 .pct{ color:var(--green); }
+html[data-pal="pro"] .scanner-app .rk.d2 .fill{ background:var(--red); }
+html[data-pal="pro"] .scanner-app .rk.d2 .pct{ color:var(--red); }
