@@ -327,3 +327,19 @@ html[data-pal="pro"] .scanner-app .rk.u2 .fill{ background:var(--green); }
 html[data-pal="pro"] .scanner-app .rk.u2 .pct{ color:var(--green); }
 html[data-pal="pro"] .scanner-app .rk.d2 .fill{ background:var(--red); }
 html[data-pal="pro"] .scanner-app .rk.d2 .pct{ color:var(--red); }
+
+/* ===== Unify ALL fonts to one family across the live app (Adi 2026-11-01). The UI mixed
+   Heebo / Rubik / Inter / JetBrains-Mono / Varela; force Heebo everywhere. Scoped to .scanner-app
+   so the off-body share-card PNG render nodes (pixel-tuned to Rubik/Inter) keep their fonts. ===== */
+.scanner-app, .scanner-app *{ font-family:'Heebo','Noto Sans Hebrew','Segoe UI',Arial,sans-serif !important; }
+
+/* ===== BARS — pure colors per Adi (bars only; number text + tiles keep the vivid tokens).
+   up = #0aff00, down = #f80000. Covers the magnitude bars (.rk .fill → leaders/laggards/sectors/
+   movers, all via mkLead) and the breadth split bar (.bigbreadth .bseg). ===== */
+.scanner-app .rk.u1 .fill, .scanner-app .rk.u2 .fill{ background:#0aff00 !important; }
+.scanner-app .rk.d1 .fill, .scanner-app .rk.d2 .fill{ background:#f80000 !important; }
+.scanner-app .bigbreadth .bseg.up{ background:#0aff00 !important; }
+.scanner-app .bigbreadth .bseg.down{ background:#f80000 !important; }
+/* market-state cockpit breadth bar: red base + green fill child */
+.scanner-app .cp-brbar{ background:#f80000 !important; }
+.scanner-app .cp-brbar > span{ background:#0aff00 !important; }
