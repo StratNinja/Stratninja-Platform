@@ -80,6 +80,8 @@ window.Giveaway = (function () {
     if ($("gvwCss")) return;
     var s = document.createElement("style"); s.id = "gvwCss";
     s.textContent = [
+      // Edo (by Vic Fieger — free font, fsType=8 editable-embedding OK) self-hosted for the ninja countdown digits
+      "@font-face{font-family:'Edo';src:url('fonts/EdoSZ.ttf') format('truetype');font-display:swap}",
       ".gvw-wrap{max-width:900px;margin:0 auto}",
       ".gvw-hero{text-align:center;padding:10px 0 4px}",
       ".gvw-hero h1{font-size:30px;margin:0 0 6px;display:flex;gap:10px;justify-content:center;align-items:center}",
@@ -149,10 +151,10 @@ window.Giveaway = (function () {
       ".gvw-tmr-inner{text-align:center;margin:auto}",
       ".gvw-tmr-cap{font-size:clamp(18px,4.5vw,28px);font-weight:800;color:var(--accent);margin-bottom:14px}",
       ".gvw-tmr-ring{position:relative;width:min(70vmin,340px);margin:0 auto}",
-      ".gvw-tmr-ring svg{width:100%;height:auto;transform:rotate(-90deg);display:block}",
+      ".gvw-tmr-ring svg{width:100%;height:auto;transform:rotate(-90deg);display:block;overflow:visible}",   /* overflow:visible + viewBox margin so the drop-shadow glow isn't clipped */
       ".gvw-tmr-ring .trk{fill:none;stroke:rgba(255,255,255,.08);stroke-width:14}",
       ".gvw-tmr-ring .bar{fill:none;stroke:var(--accent);stroke-width:14;stroke-linecap:butt;filter:drop-shadow(0 0 12px var(--accent));transition:stroke .3s}",
-      ".gvw-tmr-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Shojumaru','Heebo',sans-serif;font-size:clamp(48px,18vmin,112px);font-weight:400;color:#fff;letter-spacing:2px}",
+      ".gvw-tmr-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Edo','Shojumaru','Heebo',sans-serif;font-size:clamp(50px,19vmin,116px);font-weight:400;color:#fff;letter-spacing:3px}",
       ".gvw-tmr-num.ending{color:#f87171}",
       ".gvw-tmr-ring.ending .bar{stroke:#f87171;filter:drop-shadow(0 0 12px #f87171)}",
       ".gvw-tmr-ring.ending{animation:gvwTmrPulse .7s ease infinite}",
@@ -866,9 +868,9 @@ window.Giveaway = (function () {
       '<button class="gvw-ov-close" id="gvwTmrClose" title="סגור">✕</button>' +
       '<div class="gvw-tmr-inner">' +
         '<div class="gvw-tmr-cap" id="gvwTmrCap">⏳ ספירה לאחור</div>' +
-        '<div class="gvw-tmr-ring" id="gvwTmrRing"><svg viewBox="0 0 300 300">' +
-          '<circle class="trk" cx="150" cy="150" r="' + TMR_RING_R + '"/>' +
-          '<circle class="bar" id="gvwTmrArc" cx="150" cy="150" r="' + TMR_RING_R + '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="0"/>' +
+        '<div class="gvw-tmr-ring" id="gvwTmrRing"><svg viewBox="0 0 320 320">' +   // 320 box for a 130r ring centered at 160 → ~23px margin for the glow
+          '<circle class="trk" cx="160" cy="160" r="' + TMR_RING_R + '"/>' +
+          '<circle class="bar" id="gvwTmrArc" cx="160" cy="160" r="' + TMR_RING_R + '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="0"/>' +
         '</svg><div class="gvw-tmr-num" id="gvwTmrNum">' + _fmtClock(_tmrDur) + "</div></div>" +
         '<div class="gvw-tmr-btns">' +
           '<button class="btn ghost" id="gvwTmrMute">' + (_tmrMuted ? "🔇" : "🔊") + "</button>" +
