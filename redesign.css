@@ -1602,7 +1602,7 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
    כך שהטקסט הפיזי עדיין ~4% גדול מ-100%. כל הדפים הראשיים נכנסים בלי גלילה (פרט ל-sp500 — טריימאפ מלא).
    ה-zoom על body (ולא על .scanner-app) שומר רוחב מלא בלי פס ריק בצד. */
 @media (min-width: 2200px) {
-  body { zoom: 0.92; }                      /* Adi: 0.83 היה קטן מדי — 0.92 גדול/קריא יותר, התוכן עדיין נכנס בלי גלילה */
+  body { zoom: 0.90; }                      /* Adi: 0.83 היה קטן מדי, 0.92 נכון אבל הפוטר נגלל — 0.90 כמעט זהה ל-0.92 וקונה עוד ~21px כדי להיכנס בלי גלילה */
   /* ⚠️ אין zoom שונה לדף/טאב בודד — זה גרם ל"קפיצת" זום מורגשת במעבר בין טאבים (רוחב↔תזרים).
      הקטנת מפת החום נעשית ברמת הרכיב (.sp-heat למטה), לא בזום של כל הדף. */
   /* ניצול המקום האנכי הפנוי במסך הרחב: גרפי רוחב-מעל-ממוצעים גבוהים יותר.
@@ -1617,6 +1617,18 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
   .mkt-dash .mh-tile .mh-etf { font-size: 13px; line-height: 1.1; }
   .mkt-dash .mh-tile .mh-chg { font-size: 12px; line-height: 1.1; }
   .mkt-dash .mh-tile .mh-he { font-size: 20px; line-height: 1.05; }   /* Hebrew name large (≈2×) but compact so the tile doesn't grow (Adi) */
+  /* חיסכון אנכי נוסף בסקירת שוק כדי שהפוטר ייכנס בלי גלילה — הידוק מרווחים בלבד, בלי לכווץ נתונים.
+     ממוקד למסך הרחב (.scanner-app) כדי שלא ישפיע על דפים אחרים או על כרטיסי השיתוף. */
+  .scanner-app main.main { padding-top: 9px !important; padding-bottom: 9px !important; }
+  .scanner-app .pulse-tabs { padding-bottom: 2px !important; margin-bottom: 2px !important; }
+  .scanner-app .page-head { margin-top: 0 !important; margin-bottom: 5px !important; }
+  .scanner-app .uni-switch { margin-bottom: 0 !important; }
+  .scanner-app .community-cta { margin-bottom: 5px !important; }
+  .scanner-app .mkt-dash { gap: 6px !important; }
+  .scanner-app .mkt-rank-grid { gap: 7px !important; }
+  .scanner-app .gm-grid { row-gap: 6px !important; }
+  .scanner-app .site-footer-mount { padding-top: 4px !important; }
+  .scanner-app .site-footer { padding-top: 8px !important; padding-bottom: 6px !important; }
 }
 /* index cards moved INTO the cockpit, above the breadth bar (Adi 2026-11-01) — compact so they fit the
    free vertical space and the separate full-width idx-row is dropped. cp-brwrap keeps the breadth click. */
