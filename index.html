@@ -45,7 +45,7 @@
 <link rel="stylesheet" href="redesign.css?v=1007p"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
 <!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
 <script>
-(function(){try{var d=document.documentElement;if(localStorage.getItem('sn_theme')==='light')d.setAttribute('data-theme','light');var _p=localStorage.getItem('sn_pal');if(_p==='green'||_p==='pro')d.setAttribute('data-pal',_p);}catch(e){}})();
+(function(){var d=document.documentElement;d.setAttribute('data-pal','pro');try{if(localStorage.getItem('sn_theme')==='light')d.setAttribute('data-theme','light');}catch(e){}})();/* "pro" (futuristic) is now THE site look — forced for everyone; palette toggle removed 2026-11-01 */
 function snToggleTheme(){var d=document.documentElement,light=d.getAttribute('data-theme')==='light';
   if(light){d.removeAttribute('data-theme');try{localStorage.setItem('sn_theme','dark');}catch(e){}}
   else{d.setAttribute('data-theme','light');try{localStorage.setItem('sn_theme','light');}catch(e){}}
@@ -221,7 +221,6 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
           <button class="snd-btn snd-toggle" id="snDockToggle" title="הסתר/הצג כלים" aria-label="הסתר/הצג">›</button>
           <div class="snd-icons" id="sndIcons">
             <button class="snd-btn" id="snDockTheme" title="מצב בהיר / כהה" aria-label="מצב בהיר / כהה">🌙</button>
-            <button class="snd-btn" id="snDockPal" title="ערכת צבע — כחול / ירוק" aria-label="ערכת צבע">🔵</button>
             <button class="snd-btn snd-dens" id="snDockDensity" title="צפיפות תצוגה — רגיל / קומפקטי / צפוף" aria-label="צפיפות תצוגה">⇳</button>
             <button class="snd-btn" id="snDockCam" title="שתף מסך" aria-label="שתף מסך">📷</button>
             <button class="snd-btn" id="snDockDraw" title="שרטוט נרות" aria-label="שרטוט נרות" style="display:none">✏️</button>
@@ -276,7 +275,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <script src="live_alert.js?v=1009c"></script>
 <script src="live.js?v=1011b"></script>
 <script src="live_vods.js?v=1010e"></script>
-<script src="pages.js?v=1008u"></script>
+<script src="pages.js?v=1008v"></script>
 <script src="platform.js"></script>
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>
