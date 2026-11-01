@@ -22,6 +22,10 @@ window.Giveaway = (function () {
   var _raf = 0;                                        // active requestAnimationFrame id
   var WHEEL_COLORS = ["#16a34a", "#dc2626", "#22c55e", "#ef4444", "#15803d", "#b91c1c", "#4ade80", "#f87171", "#166534", "#991b1b"];   // trading red/green
 
+  // ---- admin countdown timer + cute elevator music (synthesized → zero copyright, no files) ----
+  var _tmrRaf = 0, _tmrEnd = 0, _tmrDur = 60000, _tmrMuted = false, _musicObj = null;
+  var TMR_RING_R = 130;
+
   // ---- tiny helpers (this file has its own scope — don't rely on pages.js closures) ----
   function supa() { try { return window.SNAuth && SNAuth.getClient && SNAuth.getClient(); } catch (e) { return null; } }
   function me() { try { return window.SNAuth && SNAuth.user && SNAuth.user(); } catch (e) { return null; } }
@@ -135,6 +139,26 @@ window.Giveaway = (function () {
       ".gvw-timer{display:block;width:100%;text-align:center;font-size:30px;font-weight:900;color:var(--accent);margin:4px 0 2px;letter-spacing:1px;min-height:38px;font-variant-numeric:tabular-nums}",
       ".gvw-reveal{animation:gvwReveal .5s ease}",
       ".gvw-wheelwrap.spinning svg{filter:drop-shadow(0 0 22px rgba(34,197,94,.6)) drop-shadow(0 0 34px rgba(220,38,38,.4))}",
+      /* ---- admin countdown timer control + fullscreen overlay + cute (synthesized, royalty-free) music ---- */
+      ".gvw-tmr-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}",
+      ".gvw-tmr-ctl .tlbl{font-weight:800;font-size:13px}",
+      ".gvw-tmr-ctl input[type=number]{width:72px;text-align:center}",
+      ".gvw-tmr-pre{display:flex;gap:5px;flex-wrap:wrap}",
+      ".gvw-tmr-pre button{font-size:12px;padding:3px 10px}",
+      ".gvw-tmr-ov{position:fixed;inset:0;z-index:100000;background:radial-gradient(circle at 50% 40%,rgba(10,20,14,.98),rgba(0,0,0,.99));display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto}",
+      ".gvw-tmr-inner{text-align:center;margin:auto}",
+      ".gvw-tmr-cap{font-size:clamp(18px,4.5vw,28px);font-weight:800;color:var(--accent);margin-bottom:14px}",
+      ".gvw-tmr-ring{position:relative;width:min(70vmin,340px);margin:0 auto}",
+      ".gvw-tmr-ring svg{width:100%;height:auto;transform:rotate(-90deg);display:block}",
+      ".gvw-tmr-ring .trk{fill:none;stroke:rgba(255,255,255,.08);stroke-width:14}",
+      ".gvw-tmr-ring .bar{fill:none;stroke:var(--accent);stroke-width:14;stroke-linecap:round;filter:drop-shadow(0 0 12px var(--accent));transition:stroke .3s}",
+      ".gvw-tmr-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(46px,17vmin,104px);font-weight:900;font-variant-numeric:tabular-nums;color:#fff;letter-spacing:1px}",
+      ".gvw-tmr-num.ending{color:#f87171}",
+      ".gvw-tmr-ring.ending .bar{stroke:#f87171;filter:drop-shadow(0 0 12px #f87171)}",
+      ".gvw-tmr-ring.ending{animation:gvwTmrPulse .7s ease infinite}",
+      "@keyframes gvwTmrPulse{50%{transform:scale(1.05)}}",
+      ".gvw-tmr-btns{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}",
+      ".gvw-tmr-done .gvw-tmr-cap{color:var(--green)}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -166,6 +190,17 @@ window.Giveaway = (function () {
       '<div class="gvw-btnrow" id="gvwAdmBtns"></div>' +
       '<div class="muted" style="font-size:11px;margin-top:8px" id="gvwAdmHint"></div>' +
       '<div class="muted" style="font-size:11px;margin-top:4px" id="gvwChatStat"></div>' +
+      // ⏱️ countdown timer — pick a duration (quick preset or custom seconds), hit ▶️ → fullscreen
+      // countdown on the screen you share in the live, with cute royalty-free elevator music.
+      '<div class="gvw-tmr-ctl">' +
+        '<span class="tlbl">⏱️ טיימר ספירה לאחור</span>' +
+        '<div class="gvw-tmr-pre" id="gvwTmrPre">' +
+          [15, 30, 60, 120, 180, 300].map(function (s) { return '<button class="btn ghost" data-tsec="' + s + '">' + _fmtClock(s * 1000) + "</button>"; }).join("") +
+        '</div>' +
+        '<input id="gvwTmrSec" type="number" min="1" max="3600" value="60"> <span class="muted" style="font-size:12px">שניות</span>' +
+        '<label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" id="gvwTmrMusicChk" checked> 🎵 מוזיקת מעלית</label>' +
+        '<button class="btn primary" id="gvwTmrStart">▶️ הפעל טיימר</button>' +
+      '</div>' +
       '<details class="gvw-settings"><summary>⚙️ הגדרות ופרסים (לחץ לעריכה)</summary>' +
         '<div class="fgrp" style="margin-top:10px"><label>כותרת</label><input id="gvwAdmTitle" type="text" placeholder="הגרלת StratNinja"></div>' +
         '<div class="fgrp"><label>מילת-קסם לצ׳אט הלייב</label><input id="gvwAdmKw" type="text" placeholder="NINJA"></div>' +
@@ -201,7 +236,7 @@ window.Giveaway = (function () {
     });
     if (_timer) clearInterval(_timer);
     _timer = setInterval(function () {
-      if (!$("gvwRoot")) { clearInterval(_timer); _timer = null; _stopChatPoll(); _closeOverlay(); return; }   // left the page → stop polling + close overlay
+      if (!$("gvwRoot")) { clearInterval(_timer); _timer = null; _stopChatPoll(); _closeOverlay(); _stopTimer(); return; }   // left the page → stop polling + close overlay + stop timer/music
       _fetch().then(_paint);
     }, POLL_MS);
   }
@@ -506,6 +541,12 @@ window.Giveaway = (function () {
     _przDraft = null;
     var add = $("gvwAddPrize");
     if (add) add.onclick = function () { _ensureDraft(); _przDraft.push({ id: "p" + now(), emoji: "🎁", label: "", qty: 1 }); _renderPrizes(); };
+    // ⏱️ countdown-timer controls (static — wired once)
+    var tStart = $("gvwTmrStart"); if (tStart) tStart.onclick = _startTimer;
+    var tPre = $("gvwTmrPre"); if (tPre) tPre.onclick = function (e) {
+      var b = e.target.closest ? e.target.closest("[data-tsec]") : null;
+      if (b) { var inp = $("gvwTmrSec"); if (inp) inp.value = b.dataset.tsec; }
+    };
     // initial fill once the first fetch returns
     _fetch().then(function () {
       var ti = $("gvwAdmTitle"); if (ti) ti.value = _row && _row.title || "";
@@ -707,6 +748,152 @@ window.Giveaway = (function () {
         }).catch(function () { toast("ההוספה נכשלה"); step(); });
     }
     step();
+  }
+
+  // ======================= countdown timer + cute elevator music =======================
+  // Royalty-free by construction: the music is synthesized live with the Web Audio API
+  // (a gentle lounge/elevator loop — soft pad + bass + bouncy pentatonic melody). No audio
+  // files, no external anything. Starts on the admin's click (a user gesture → autoplay OK).
+  function _makeMusic() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    var ctx = null, master = null, tone = null, delay = null, fb = null, sched = null, step = 0, nextT = 0, on = false;
+    var BPM = 100, EIGHTH = (60 / BPM) / 2;
+    function mtof(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+    // ii–V–I–vi in C major (Dm7 · G7 · Cmaj7 · Am7), one bar each. [bass, ...upper pad notes]
+    var CH = [[50, 69, 72, 77], [43, 71, 74, 79], [48, 67, 72, 76], [45, 69, 72, 76]];
+    var PENT = [72, 74, 76, 79, 81, 84, 81, 79];            // C-major pentatonic, cute & safe over all 4 chords
+    var MEL = [0, 2, 4, 2, 5, 4, 2, 1];                     // which pentatonic degree plays on each 8th (bouncy)
+    function voice(type, freq, t, dur, g, dest) {
+      try {
+        var o = ctx.createOscillator(), ga = ctx.createGain();
+        o.type = type; o.frequency.setValueAtTime(freq, t);
+        ga.gain.setValueAtTime(0.0001, t);
+        ga.gain.linearRampToValueAtTime(g, t + 0.02);
+        ga.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(ga); ga.connect(dest || tone);
+        o.start(t); o.stop(t + dur + 0.05);
+      } catch (e) {}
+    }
+    function playStep(s, t) {
+      var bar = Math.floor(s / 8) % 4, b = s % 8, ch = CH[bar];
+      if (b === 0) {                                         // soft pad across the bar + bass root
+        for (var i = 1; i < ch.length; i++) voice("triangle", mtof(ch[i]), t, EIGHTH * 7.2, 0.045);
+        voice("sine", mtof(ch[0]), t, EIGHTH * 3.4, 0.13);
+      }
+      if (b === 4) voice("sine", mtof(ch[0] + (bar % 2 ? 7 : 5)), t, EIGHTH * 3.4, 0.10);   // light walking bass
+      var mn = PENT[(MEL[b] + (bar % 2 ? 2 : 0)) % PENT.length];   // melody shifts a little each bar
+      var tt = t + (b % 2 ? EIGHTH * 0.12 : 0);              // gentle swing on offbeats
+      voice("triangle", mtof(mn), tt, EIGHTH * 0.9, 0.065);
+    }
+    function pump() { while (nextT < ctx.currentTime + 0.15) { playStep(step, nextT); nextT += EIGHTH; step++; } }
+    function start() {
+      if (on) return;
+      try { ctx = new AC(); } catch (e) { return; }
+      on = true;
+      if (ctx.state === "suspended") { try { ctx.resume(); } catch (e) {} }
+      master = ctx.createGain(); master.gain.setValueAtTime(0.0001, ctx.currentTime);
+      master.gain.exponentialRampToValueAtTime(0.5, ctx.currentTime + 0.4);
+      master.connect(ctx.destination);
+      tone = ctx.createGain(); tone.gain.value = 1; tone.connect(master);
+      delay = ctx.createDelay(); delay.delayTime.value = 0.23; fb = ctx.createGain(); fb.gain.value = 0.2;  // warmth
+      tone.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(master);
+      step = 0; nextT = ctx.currentTime + 0.06;
+      sched = setInterval(pump, 25);
+    }
+    function _hush(after) {
+      if (sched) { clearInterval(sched); sched = null; }
+      try {
+        var t = ctx.currentTime;
+        master.gain.cancelScheduledValues(t);
+        master.gain.setValueAtTime(Math.max(0.0001, master.gain.value), t);
+        master.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      } catch (e) {}
+      setTimeout(function () { try { ctx.close(); } catch (e) {} ctx = null; }, (after || 0) + 400);
+    }
+    function stop() { if (!on) return; on = false; _hush(0); }
+    function finish() {                                      // happy chime, then fade out
+      if (!on) { return; }
+      on = false;
+      if (sched) { clearInterval(sched); sched = null; }
+      try {
+        var t = ctx.currentTime + 0.02;
+        [72, 76, 79, 84].forEach(function (m, i) { voice("triangle", mtof(m), t + i * 0.13, 0.55, 0.22, master); });
+      } catch (e) {}
+      _hush(900);
+    }
+    return { start: start, stop: stop, finish: finish };
+  }
+  function _music() { if (!_musicObj) _musicObj = _makeMusic(); return _musicObj; }
+
+  function _fmtClock(ms) { ms = Math.max(0, ms); var s = Math.ceil(ms / 1000); var m = Math.floor(s / 60); s = s % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
+  function _cancelTmrRaf() { if (_tmrRaf) { cancelAnimationFrame(_tmrRaf); _tmrRaf = 0; } }
+
+  function _startTimer() {
+    _stopTimer();
+    var sec = parseInt((($("gvwTmrSec") || {}).value), 10) || 60;
+    sec = Math.max(1, Math.min(3600, sec));
+    var wantMusic = !$("gvwTmrMusicChk") || $("gvwTmrMusicChk").checked;
+    _tmrDur = sec * 1000; _tmrEnd = Date.now() + _tmrDur; _tmrMuted = !wantMusic;
+    _openTmrOv();
+    if (wantMusic) { try { _music().start(); } catch (e) {} }
+    _tickTimer();
+  }
+  function _stopTimer() {
+    _cancelTmrRaf();
+    try { if (_musicObj) _musicObj.stop(); } catch (e) {}
+    var ov = $("gvwTmrOv"); if (ov) ov.remove();
+  }
+  function _openTmrOv() {
+    var old = $("gvwTmrOv"); if (old) old.remove();
+    var circ = 2 * Math.PI * TMR_RING_R;
+    var ov = document.createElement("div"); ov.id = "gvwTmrOv"; ov.className = "gvw-tmr-ov";
+    ov.innerHTML =
+      '<button class="gvw-ov-close" id="gvwTmrClose" title="סגור">✕</button>' +
+      '<div class="gvw-tmr-inner">' +
+        '<div class="gvw-tmr-cap" id="gvwTmrCap">⏳ ספירה לאחור</div>' +
+        '<div class="gvw-tmr-ring" id="gvwTmrRing"><svg viewBox="0 0 300 300">' +
+          '<circle class="trk" cx="150" cy="150" r="' + TMR_RING_R + '"/>' +
+          '<circle class="bar" id="gvwTmrArc" cx="150" cy="150" r="' + TMR_RING_R + '" stroke-dasharray="' + circ.toFixed(1) + '" stroke-dashoffset="0"/>' +
+        '</svg><div class="gvw-tmr-num" id="gvwTmrNum">' + _fmtClock(_tmrDur) + "</div></div>" +
+        '<div class="gvw-tmr-btns">' +
+          '<button class="btn ghost" id="gvwTmrMute">' + (_tmrMuted ? "🔇" : "🔊") + "</button>" +
+          '<button class="btn ghost" id="gvwTmrStopBtn">⏹️ עצור</button>' +
+        "</div>" +
+      "</div>";
+    document.body.appendChild(ov);
+    $("gvwTmrClose").onclick = _stopTimer;
+    $("gvwTmrStopBtn").onclick = _stopTimer;
+    $("gvwTmrMute").onclick = function () {
+      _tmrMuted = !_tmrMuted; this.textContent = _tmrMuted ? "🔇" : "🔊";
+      try { if (_tmrMuted) { if (_musicObj) _musicObj.stop(); } else { _music().start(); } } catch (e) {}
+    };
+  }
+  function _tickTimer() {
+    _cancelTmrRaf();
+    var circ = 2 * Math.PI * TMR_RING_R;
+    function frame() {
+      if (!$("gvwRoot") || !$("gvwTmrOv")) { _stopTimer(); return; }
+      var rem = _tmrEnd - Date.now();
+      var arc = $("gvwTmrArc"), num = $("gvwTmrNum"), ring = $("gvwTmrRing");
+      var frac = Math.max(0, Math.min(1, rem / _tmrDur));
+      if (arc) arc.style.strokeDashoffset = (circ * (1 - frac)).toFixed(1);
+      if (rem <= 0) { _timerDone(); return; }
+      if (num) { num.textContent = _fmtClock(rem); num.classList.toggle("ending", rem <= 10000); }
+      if (ring) ring.classList.toggle("ending", rem <= 10000);
+      _tmrRaf = requestAnimationFrame(frame);
+    }
+    frame();
+  }
+  function _timerDone() {
+    _cancelTmrRaf();
+    var circ = 2 * Math.PI * TMR_RING_R;
+    var arc = $("gvwTmrArc"); if (arc) arc.style.strokeDashoffset = circ.toFixed(1);
+    var num = $("gvwTmrNum"); if (num) { num.textContent = "0:00"; num.classList.remove("ending"); num.classList.add("gvw-reveal"); }
+    var ring = $("gvwTmrRing"); if (ring) ring.classList.remove("ending");
+    var cap = $("gvwTmrCap"); if (cap) cap.textContent = "⏰ הזמן נגמר!";
+    var ov = $("gvwTmrOv"); if (ov) ov.classList.add("gvw-tmr-done");
+    try { if (!_tmrMuted && _musicObj) _musicObj.finish(); else if (_musicObj) _musicObj.stop(); } catch (e) {}
+    try { if (window.snConfetti) window.snConfetti(); } catch (e) {}
   }
 
   return { render: render, wire: wire };
