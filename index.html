@@ -37,22 +37,23 @@
 <link rel="dns-prefetch" href="https://s3.tradingview.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=Varela+Round&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Varela+Round&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=1001">
 <link rel="stylesheet" href="landing.css">
 <link rel="stylesheet" href="app.css?v=1005r">
 <link rel="stylesheet" href="share-fonts.css"><!-- embedded Heebo+Inter for share-card PNGs (html2canvas) -->
 <link rel="stylesheet" href="redesign.css?v=1007p"><!-- 2026-09 business/pro makeover: typography scale, grouped nav, spacious tables. ?v bumped each deploy to bust stale CSS cache -->
 <!-- theme: apply saved light/dark BEFORE paint (no flash) + global toggle -->
 <script>
-(function(){try{var d=document.documentElement;if(localStorage.getItem('sn_theme')==='light')d.setAttribute('data-theme','light');if(localStorage.getItem('sn_pal')==='green')d.setAttribute('data-pal','green');}catch(e){}})();
+(function(){try{var d=document.documentElement;if(localStorage.getItem('sn_theme')==='light')d.setAttribute('data-theme','light');var _p=localStorage.getItem('sn_pal');if(_p==='green'||_p==='pro')d.setAttribute('data-pal',_p);}catch(e){}})();
 function snToggleTheme(){var d=document.documentElement,light=d.getAttribute('data-theme')==='light';
   if(light){d.removeAttribute('data-theme');try{localStorage.setItem('sn_theme','dark');}catch(e){}}
   else{d.setAttribute('data-theme','light');try{localStorage.setItem('sn_theme','light');}catch(e){}}
   snUpdateThemeLabel();}
-function snTogglePal(){var d=document.documentElement,green=d.getAttribute('data-pal')==='green';
-  if(green){d.removeAttribute('data-pal');try{localStorage.setItem('sn_pal','blue');}catch(e){}}
-  else{d.setAttribute('data-pal','green');try{localStorage.setItem('sn_pal','green');}catch(e){}}}
+function snTogglePal(){var d=document.documentElement,cur=d.getAttribute('data-pal')||'blue',
+  next={blue:'green',green:'pro',pro:'blue'}[cur];
+  if(next==='blue'){d.removeAttribute('data-pal');}else{d.setAttribute('data-pal',next);}
+  try{localStorage.setItem('sn_pal',next);}catch(e){}}
 function snUpdateThemeLabel(){var b=document.getElementById('themeLbl');if(b)b.textContent=document.documentElement.getAttribute('data-theme')==='light'?'מצב כהה':'מצב בהיר';}
 document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 </script>
@@ -275,7 +276,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <script src="live_alert.js?v=1009c"></script>
 <script src="live.js?v=1011b"></script>
 <script src="live_vods.js?v=1010e"></script>
-<script src="pages.js?v=1008t"></script>
+<script src="pages.js?v=1008u"></script>
 <script src="platform.js"></script>
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>

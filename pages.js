@@ -9819,7 +9819,7 @@
     };
     setThemeIcon();
     { const t = document.getElementById("snDockTheme"); if (t) t.onclick = () => { try { if (window.snToggleTheme) snToggleTheme(); } catch (e) {} setThemeIcon(); }; }
-    { const p = document.getElementById("snDockPal"); if (p) { const setPalIcon = () => { const g = document.documentElement.getAttribute("data-pal") === "green"; p.textContent = g ? "🟢" : "🔵"; p.title = g ? "ערכת צבע: ירוק — לחץ לכחול" : "ערכת צבע: כחול — לחץ לירוק"; }; setPalIcon(); p.onclick = () => { try { if (window.snTogglePal) snTogglePal(); } catch (e) {} setPalIcon(); }; } }
+    { const p = document.getElementById("snDockPal"); if (p) { const setPalIcon = () => { const v = document.documentElement.getAttribute("data-pal") || "blue"; const M = { blue: ["🔵", "כחול"], green: ["🟢", "ירוק"], pro: ["✦", "פיוצ'ריסטי"] }; const NX = { blue: "ירוק", green: "פיוצ'ריסטי", pro: "כחול" }; const cur = M[v] || M.blue; p.textContent = cur[0]; p.title = "ערכת צבע: " + cur[1] + " — לחץ ל" + NX[v]; }; setPalIcon(); p.onclick = () => { try { if (window.snTogglePal) snTogglePal(); } catch (e) {} setPalIcon(); }; } }
     { const c = document.getElementById("snDockCam"); if (c) c.onclick = () => captureShare(); }
     { const d = document.getElementById("snDockDraw"); if (d) d.onclick = () => setPage("draw"); }
     { const bl = document.getElementById("snDockBell"); if (bl) bl.onclick = () => openAlertsFeed("feed"); }

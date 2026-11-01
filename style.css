@@ -34,6 +34,26 @@ html[data-pal="green"][data-theme="light"]{
   --bg:#eef4f0; --panel:#ffffff; --panel2:#f5faf6; --cell:#eef4f0; --line:#d6e5db;
   --ink:#122018; --muted:#50685b; --accent:#14ad7d; --accent-ink:#ffffff; --accentbg:rgba(20,173,125,.12);
 }
+/* ===== FUTURISTIC palette (data-pal="pro") — Strat-School-inspired glass + luminous teal, serious-trading look.
+   Tokens only here; the glass/glow polish (scoped to .scanner-app so it never touches the off-body share-card
+   render nodes) lives at the end of this file. ===== */
+html[data-pal="pro"]{
+  --bg:#080a11; --panel:#121726; --panel2:#1a2133; --cell:#1a2133; --line:#2b3348;
+  --green:#2fe3a0; --greenbg:rgba(47,227,160,.14); --greenbd:rgba(47,227,160,.5);
+  --red:#ff6b82; --redbg:rgba(255,107,130,.14); --redbd:rgba(255,107,130,.5);
+  --ink:#eef3fc; --muted:#93a0bd; --accent:#2fe6c7; --accent-ink:#04231d; --accentbg:rgba(47,230,199,.13);
+  --soft:rgba(255,255,255,.05); --soft2:rgba(255,255,255,.028);
+  --panelbd:rgba(47,230,199,.16);
+  --panelsh:0 22px 55px rgba(0,0,0,.55), 0 0 0 1px rgba(47,230,199,.05);
+}
+html[data-pal="pro"][data-theme="light"]{
+  --bg:#eef1f8; --panel:#ffffff; --panel2:#f4f7fc; --cell:#eef1f8; --line:#dde3ef;
+  --green:#0e9d63; --greenbg:rgba(14,157,99,.12); --greenbd:rgba(14,157,99,.45);
+  --red:#e24863; --redbg:rgba(226,72,99,.12); --redbd:rgba(226,72,99,.45);
+  --ink:#121a2b; --muted:#55617a; --accent:#0c9d86; --accent-ink:#ffffff; --accentbg:rgba(12,157,134,.12);
+  --panelbd:rgba(12,157,134,.22);
+  --panelsh:0 1px 3px rgba(16,24,40,.08),0 12px 30px rgba(16,24,40,.08);
+}
 html[data-theme="light"] body{ background:var(--bg); color:var(--ink); }
 html[data-theme="light"] .panel{ box-shadow:var(--panelsh); }
 *{box-sizing:border-box}
@@ -245,3 +265,40 @@ tr:last-child td{border-bottom:none}
   .nav button { width: 30px; height: 30px; font-size: 15px; }
   .badge { padding: 5px 9px; font-size: 12px; }
 }
+
+/* =========================================================================
+   FUTURISTIC palette polish (data-pal="pro") — ALL effects scoped to
+   .scanner-app, the on-screen app shell. Share-card PNGs render in detached
+   nodes appended to document.body (off-shell) and bake colors inline, so none
+   of this reaches html2canvas. Keep every rule under .scanner-app.
+   ========================================================================= */
+/* ambient glow backdrop (dark only) — shorthand with var(--bg) as the base layer,
+   because landing.css sets `body{background: <shorthand>}` after this file and would
+   otherwise leave the ground transparent. */
+html[data-pal="pro"]:not([data-theme="light"]) body{
+  background:
+    radial-gradient(1100px 620px at 85% -10%, rgba(47,230,199,.075), transparent 60%),
+    radial-gradient(820px 520px at 3% 2%, rgba(123,116,240,.055), transparent 55%),
+    var(--bg);
+  background-attachment:fixed;
+}
+/* glass panels + luminous hairline */
+html[data-pal="pro"] .scanner-app .panel{ border-radius:16px; border-top-color:var(--panelbd); }
+html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .panel{
+  background:rgba(18,23,38,.82);
+  -webkit-backdrop-filter:blur(10px) saturate(1.12); backdrop-filter:blur(10px) saturate(1.12);
+}
+/* nav active item glow */
+html[data-pal="pro"] .scanner-app .side-nav a.active{ box-shadow:inset -3px 0 0 var(--accent), 0 0 20px rgba(47,230,199,.18); }
+/* primary action glow on hover */
+html[data-pal="pro"] .scanner-app .btn.primary:hover{ box-shadow:0 0 22px rgba(47,230,199,.4); }
+/* terminal-style tabular figures on the hero tile numbers */
+html[data-pal="pro"] .scanner-app .bc-card .bcc-pct,
+html[data-pal="pro"] .scanner-app .bc-card .bcc-usd,
+html[data-pal="pro"] .scanner-app .idx-card .ic-chg,
+html[data-pal="pro"] .scanner-app .idx-card .ic-px{
+  font-family:'JetBrains Mono','Rubik',ui-monospace,monospace; font-variant-numeric:tabular-nums;
+}
+/* subtle luminosity on live/status accents (dark only, kept off red/green data) */
+html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .mkt-live,
+html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .tf-ind-badge{ text-shadow:0 0 14px rgba(47,230,199,.28); }
