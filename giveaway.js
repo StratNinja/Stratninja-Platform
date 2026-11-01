@@ -151,14 +151,17 @@ window.Giveaway = (function () {
       ".gvw-tmr-ring{position:relative;width:min(70vmin,340px);margin:0 auto}",
       ".gvw-tmr-ring svg{width:100%;height:auto;transform:rotate(-90deg);display:block}",
       ".gvw-tmr-ring .trk{fill:none;stroke:rgba(255,255,255,.08);stroke-width:14}",
-      ".gvw-tmr-ring .bar{fill:none;stroke:var(--accent);stroke-width:14;stroke-linecap:round;filter:drop-shadow(0 0 12px var(--accent));transition:stroke .3s}",
-      ".gvw-tmr-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:clamp(46px,17vmin,104px);font-weight:900;font-variant-numeric:tabular-nums;color:#fff;letter-spacing:1px}",
+      ".gvw-tmr-ring .bar{fill:none;stroke:var(--accent);stroke-width:14;stroke-linecap:butt;filter:drop-shadow(0 0 12px var(--accent));transition:stroke .3s}",
+      ".gvw-tmr-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Shojumaru','Heebo',sans-serif;font-size:clamp(48px,18vmin,112px);font-weight:400;color:#fff;letter-spacing:2px}",
       ".gvw-tmr-num.ending{color:#f87171}",
       ".gvw-tmr-ring.ending .bar{stroke:#f87171;filter:drop-shadow(0 0 12px #f87171)}",
       ".gvw-tmr-ring.ending{animation:gvwTmrPulse .7s ease infinite}",
       "@keyframes gvwTmrPulse{50%{transform:scale(1.05)}}",
       ".gvw-tmr-btns{margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap}",
       ".gvw-tmr-done .gvw-tmr-cap{color:var(--green)}",
+      ".gvw-tmr-names{margin-top:20px;width:min(92vw,620px)}",
+      ".gvw-tmr-nh{font-size:14px;font-weight:800;color:var(--muted);margin-bottom:8px}",
+      ".gvw-tmr-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;max-height:168px;overflow:auto;padding:2px}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -266,6 +269,7 @@ window.Giveaway = (function () {
     var cnt = $("gvwCount");
     if (cnt) cnt.innerHTML = (_row.status === "idle") ? "" : ('<b>' + _entries.length + "</b> משתתפים בהגרלה");
     _paintList();
+    if ($("gvwTmrList")) _paintTmrList();   // keep the countdown-screen entrant list live
     _paintStage();
     // the big draw happens in a FULLSCREEN overlay (prize wheel → name roller → winner)
     if ((_row.status === "drawing" || _row.status === "done") && _row.winner && _row.winner.last) _syncOverlay();
@@ -826,6 +830,17 @@ window.Giveaway = (function () {
   function _music() { if (!_musicObj) _musicObj = _makeMusic(); return _musicObj; }
 
   function _fmtClock(ms) { ms = Math.max(0, ms); var s = Math.ceil(ms / 1000); var m = Math.floor(s / 60); s = s % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
+  // live list of entrants on the countdown screen (refreshed by the 3s poll → _paint → here)
+  function _paintTmrList() {
+    var box = $("gvwTmrList"); if (!box) return;
+    var n = _entries.length;
+    var chips = _entries.map(function (e) {
+      var pfx = e.source === "youtube" ? "▶️ " : e.source === "manual" ? "✍️ " : "";
+      return '<span class="gvw-chip">' + pfx + esc(e.name) + "</span>";
+    }).join("");
+    box.innerHTML = '<div class="gvw-tmr-nh">🎟️ ' + n + " נרשמו להגרלה</div>" +
+      (n ? '<div class="gvw-tmr-chips">' + chips + "</div>" : '<div class="muted" style="font-size:13px">עדיין אין נרשמים…</div>');
+  }
   function _cancelTmrRaf() { if (_tmrRaf) { cancelAnimationFrame(_tmrRaf); _tmrRaf = 0; } }
 
   function _startTimer() {
@@ -859,8 +874,10 @@ window.Giveaway = (function () {
           '<button class="btn ghost" id="gvwTmrMute">' + (_tmrMuted ? "🔇" : "🔊") + "</button>" +
           '<button class="btn ghost" id="gvwTmrStopBtn">⏹️ עצור</button>' +
         "</div>" +
+        '<div class="gvw-tmr-names" id="gvwTmrList"></div>' +
       "</div>";
     document.body.appendChild(ov);
+    _paintTmrList();
     $("gvwTmrClose").onclick = _stopTimer;
     $("gvwTmrStopBtn").onclick = _stopTimer;
     $("gvwTmrMute").onclick = function () {
