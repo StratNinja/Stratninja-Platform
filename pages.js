@@ -9127,7 +9127,7 @@
     if (_pulseWire[tab]) _pulseWire[tab]();
   }
   const PAGES = {
-    home: { render: renderHome, wire: wireHome },
+    // home: { render: renderHome, wire: wireHome },   // "מרכז בקרה" retired 2026-11-01 — nav removed, default landing is now סקירת שוק (market). renderHome/wireHome kept for easy revival.
     market: { render: renderMarket, wire: wireMarket },
     pulse: { render: renderPulse, wire: wirePulse },
     analytics: { render: renderAnalytics, wire: wireAnalytics },
@@ -9843,7 +9843,7 @@
     { const gb = document.getElementById("guideBtn"); if (gb) gb.onclick = () => guideStart(); }
     if (window.Prefs) window.Prefs.onChange(() => { if (state.page === "favorites" || state.page === "alerts") reRender(); });
     let last = "market";
-    try { last = localStorage.getItem("sn_last_page") || "home"; } catch (e) {}
+    try { last = localStorage.getItem("sn_last_page") || "market"; } catch (e) {}   // default landing = סקירת שוק (was "home"/מרכז בקרה, retired 2026-11-01)
     // direct entry / refresh on /live (served via the vercel rewrite) or #live → open the live page
     var _wantLive = false;
     try { _wantLive = /^\/live\/?$/.test(location.pathname) || /(^|#)live$/.test(location.hash); } catch (e) {}

@@ -171,9 +171,8 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
     <aside class="sidebar">
       <div class="side-brand"><img src="ninja-icon.png" class="brand-ico" alt="StratNinja"><div><b>StratNinja</b><div class="tag">Scanner</div></div><button class="guide-btn" id="guideBtn" title="מדריך השימוש באתר" aria-label="מדריך השימוש">📖<span class="gb-q">?</span></button></div>
       <nav class="side-nav">
-        <a data-page="home" class="active" title="מרכז הבקרה">🏠 <span class="lbl">מרכז בקרה</span></a>
         <div class="nav-group-label">תמונת השוק</div>
-        <a data-page="pulse">📊 <span class="lbl">סקירת שוק</span></a><!-- merged channel: סקירת שוק (overview, first) · רוחב סקטוריאלי · תזרים · המשכיות · רוחב — as tabs -->
+        <a data-page="pulse" class="active">📊 <span class="lbl">סקירת שוק</span></a><!-- merged channel: סקירת שוק (overview, first) · רוחב סקטוריאלי · תזרים · המשכיות · רוחב — as tabs. (home/"מרכז בקרה" tab retired 2026-11-01 — renderHome kept but unreachable) -->
         <span data-page-nav="market sp500 today sectors breadth" style="display:none"></span>
         <a data-page="live" id="navLive" title="שידור חי של StratNinja">🔴 <span class="lbl">לייב</span></a>
         <a data-page="giveaway" id="navGiveaway" title="הגרלות ללייבים" style="display:none">🎁 <span class="lbl">הגרלות</span></a>
@@ -276,7 +275,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <script src="live_alert.js?v=1009c"></script>
 <script src="live.js?v=1011b"></script>
 <script src="live_vods.js?v=1010e"></script>
-<script src="pages.js?v=1008s"></script>
+<script src="pages.js?v=1008t"></script>
 <script src="platform.js"></script>
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>
