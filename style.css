@@ -288,6 +288,14 @@ html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .panel{
   background:rgba(18,23,38,.82);
   -webkit-backdrop-filter:blur(10px) saturate(1.12); backdrop-filter:blur(10px) saturate(1.12);
 }
+/* ⚠️ backdrop-filter makes the element a containing block for position:fixed/absolute children AND a
+   stacking context, which TRAPPED the filter-bar popover (.fpop-body, z-index:70) inside the filters
+   panel — so the later table panel painted over it (Adi saw the open filter behind the table during a
+   live). Keep the filters bar as a solid (opaque) panel with NO backdrop-filter so its popover escapes
+   and its z-index wins globally. Opaque bg so there's no blur-less see-through. */
+html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .panel.filters.fbar{
+  -webkit-backdrop-filter:none; backdrop-filter:none; background:#121726;
+}
 /* nav active item glow */
 html[data-pal="pro"] .scanner-app .side-nav a.active{ box-shadow:inset -3px 0 0 var(--accent), 0 0 20px rgba(47,230,199,.18); }
 /* primary action glow on hover */
