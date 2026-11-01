@@ -1152,7 +1152,7 @@
       const cls = v > 0.05 ? "mh-u" + lvl : v < -0.05 ? "mh-d" + lvl : "mh-flat";
       return '<div class="mh-tile ' + cls + ' tsym clickable" data-chart="' + etf + '" data-tf="D">' +
         '<span class="mh-etf">' + (etf || he) + "</span>" +
-        '<span class="mh-chg" style="color:' + (v >= 0 ? "var(--green)" : "var(--red)") + '">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>" +
+        '<span class="mh-chg">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>" +
         '<span class="mh-he">' + he + "</span></div>";
     }).join("");
     return '<div class="panel mh-panel"><div class="mh-head"><h3>🗺️ מפת חום · סקטורים</h3><span class="mh-full" data-goto-heat="1">מפה מלאה →</span></div>' +
