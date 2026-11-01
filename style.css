@@ -39,8 +39,8 @@ html[data-pal="green"][data-theme="light"]{
    render nodes) lives at the end of this file. ===== */
 html[data-pal="pro"]{
   --bg:#080a11; --panel:#121726; --panel2:#1a2133; --cell:#1a2133; --line:#2b3348;
-  --green:#00e676; --greenbg:rgba(0,230,118,.16); --greenbd:rgba(0,230,118,.5);   /* vivid (Adi 2026-11-01) */
-  --red:#ff2d43; --redbg:rgba(255,45,67,.16); --redbd:rgba(255,45,67,.5);          /* vivid */
+  --green:#26a69a; --greenbg:rgba(38,166,154,.16); --greenbd:rgba(38,166,154,.5);   /* TradingView pair (Adi 2026-11-01) */
+  --red:#ef5350; --redbg:rgba(239,83,80,.16); --redbd:rgba(239,83,80,.5);           /* TradingView pair */
   --ink:#eef3fc; --muted:#93a0bd; --accent:#2fe6c7; --accent-ink:#04231d; --accentbg:rgba(47,230,199,.13);
   --soft:rgba(255,255,255,.05); --soft2:rgba(255,255,255,.028);
   --panelbd:rgba(47,230,199,.16);
@@ -48,8 +48,8 @@ html[data-pal="pro"]{
 }
 html[data-pal="pro"][data-theme="light"]{
   --bg:#eef1f8; --panel:#ffffff; --panel2:#f4f7fc; --cell:#eef1f8; --line:#dde3ef;
-  --green:#00a860; --greenbg:rgba(0,168,96,.13); --greenbd:rgba(0,168,96,.5);   /* strong, readable on light */
-  --red:#f0152f; --redbg:rgba(240,21,47,.12); --redbd:rgba(240,21,47,.5);
+  --green:#1b8a7f; --greenbg:rgba(27,138,127,.13); --greenbd:rgba(27,138,127,.5);   /* TradingView, deepened for light */
+  --red:#e53935; --redbg:rgba(229,57,53,.12); --redbd:rgba(229,57,53,.5);
   --ink:#121a2b; --muted:#55617a; --accent:#0c9d86; --accent-ink:#ffffff; --accentbg:rgba(12,157,134,.12);
   --panelbd:rgba(12,157,134,.22);
   --panelsh:0 1px 3px rgba(16,24,40,.08),0 12px 30px rgba(16,24,40,.08);
@@ -313,12 +313,12 @@ html[data-pal="pro"] .scanner-app :is(.neg, .down, .dn, .bear){ color:var(--red)
 html[data-pal="pro"] .scanner-app .tf.up{ color:var(--green); background:var(--greenbg); box-shadow:inset 0 0 0 1px var(--greenbd); }
 html[data-pal="pro"] .scanner-app .tf.down{ color:var(--red); background:var(--redbg); box-shadow:inset 0 0 0 1px var(--redbd); }
 /* sector heat-map tiles (מפת חום · סקטורים) — were a muted rgba; make them vivid by magnitude */
-html[data-pal="pro"] .scanner-app .mh-u1{ background:rgba(0,230,118,.15); }
-html[data-pal="pro"] .scanner-app .mh-u2{ background:rgba(0,230,118,.30); }
-html[data-pal="pro"] .scanner-app .mh-u3{ background:rgba(0,230,118,.46); }
-html[data-pal="pro"] .scanner-app .mh-d1{ background:rgba(255,45,67,.15); }
-html[data-pal="pro"] .scanner-app .mh-d2{ background:rgba(255,45,67,.30); }
-html[data-pal="pro"] .scanner-app .mh-d3{ background:rgba(255,45,67,.46); }
+html[data-pal="pro"] .scanner-app .mh-u1{ background:rgba(38,166,154,.16); }
+html[data-pal="pro"] .scanner-app .mh-u2{ background:rgba(38,166,154,.32); }
+html[data-pal="pro"] .scanner-app .mh-u3{ background:rgba(38,166,154,.50); }
+html[data-pal="pro"] .scanner-app .mh-d1{ background:rgba(239,83,80,.16); }
+html[data-pal="pro"] .scanner-app .mh-d2{ background:rgba(239,83,80,.32); }
+html[data-pal="pro"] .scanner-app .mh-d3{ background:rgba(239,83,80,.50); }
 /* money-flow battery + alert-center (live) use their own --mfpos/--mfneg — re-point in-scope */
 html[data-pal="pro"] .scanner-app .mf-card,
 html[data-pal="pro"] .scanner-app .ac2-card{ --mfpos:var(--green); --mfneg:var(--red); }
@@ -333,17 +333,12 @@ html[data-pal="pro"] .scanner-app .rk.d2 .pct{ color:var(--red); }
    so the off-body share-card PNG render nodes (pixel-tuned to Rubik/Inter) keep their fonts. ===== */
 .scanner-app, .scanner-app *{ font-family:'Heebo','Noto Sans Hebrew','Segoe UI',Arial,sans-serif !important; }
 
-/* ===== BARS — pure colors per Adi (bars only; number text + tiles keep the vivid tokens).
-   up = #0aff00, down = #f80000. Covers the magnitude bars (.rk .fill → leaders/laggards/sectors/
-   movers, all via mkLead) and the breadth split bar (.bigbreadth .bseg). ===== */
-.scanner-app .rk.u1 .fill, .scanner-app .rk.u2 .fill{ background:#0aff00 !important; }
-.scanner-app .rk.d1 .fill, .scanner-app .rk.d2 .fill{ background:#f80000 !important; }
-.scanner-app .bigbreadth .bseg.up{ background:#0aff00 !important; }
-.scanner-app .bigbreadth .bseg.down{ background:#f80000 !important; }
-/* market-state cockpit breadth bar: red base + green fill child */
-.scanner-app .cp-brbar{ background:#f80000 !important; }
-.scanner-app .cp-brbar > span{ background:#0aff00 !important; }
-/* soften the pure bar colors ~30% (Adi) — one filter dims the whole bar subtree */
-.scanner-app .rk .fill{ filter:brightness(.7); }
-.scanner-app .bigbreadth .bseg{ filter:brightness(.7); }
-.scanner-app .cp-brbar{ filter:brightness(.7); }
+/* ===== BARS use the up/down tokens (TradingView pair) — same as tiles + numbers, one consistent
+   green/red across the whole app (Adi 2026-11-01). Covers the magnitude bars (.rk .fill), the breadth
+   split bar (.bigbreadth .bseg) and the cockpit breadth bar (.cp-brbar + its green fill child). ===== */
+.scanner-app .rk.u1 .fill, .scanner-app .rk.u2 .fill, .scanner-app .rk.u3 .fill{ background:var(--green) !important; }
+.scanner-app .rk.d1 .fill, .scanner-app .rk.d2 .fill, .scanner-app .rk.d3 .fill{ background:var(--red) !important; }
+.scanner-app .bigbreadth .bseg.up{ background:var(--green) !important; }
+.scanner-app .bigbreadth .bseg.down{ background:var(--red) !important; }
+.scanner-app .cp-brbar{ background:var(--red) !important; }
+.scanner-app .cp-brbar > span{ background:var(--green) !important; }
