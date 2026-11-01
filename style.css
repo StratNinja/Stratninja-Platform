@@ -39,8 +39,8 @@ html[data-pal="green"][data-theme="light"]{
    render nodes) lives at the end of this file. ===== */
 html[data-pal="pro"]{
   --bg:#080a11; --panel:#121726; --panel2:#1a2133; --cell:#1a2133; --line:#2b3348;
-  --green:#2fe3a0; --greenbg:rgba(47,227,160,.14); --greenbd:rgba(47,227,160,.5);
-  --red:#ff6b82; --redbg:rgba(255,107,130,.14); --redbd:rgba(255,107,130,.5);
+  --green:#00e676; --greenbg:rgba(0,230,118,.16); --greenbd:rgba(0,230,118,.5);   /* vivid (Adi 2026-11-01) */
+  --red:#ff2d43; --redbg:rgba(255,45,67,.16); --redbd:rgba(255,45,67,.5);          /* vivid */
   --ink:#eef3fc; --muted:#93a0bd; --accent:#2fe6c7; --accent-ink:#04231d; --accentbg:rgba(47,230,199,.13);
   --soft:rgba(255,255,255,.05); --soft2:rgba(255,255,255,.028);
   --panelbd:rgba(47,230,199,.16);
@@ -48,8 +48,8 @@ html[data-pal="pro"]{
 }
 html[data-pal="pro"][data-theme="light"]{
   --bg:#eef1f8; --panel:#ffffff; --panel2:#f4f7fc; --cell:#eef1f8; --line:#dde3ef;
-  --green:#0e9d63; --greenbg:rgba(14,157,99,.12); --greenbd:rgba(14,157,99,.45);
-  --red:#e24863; --redbg:rgba(226,72,99,.12); --redbd:rgba(226,72,99,.45);
+  --green:#00a860; --greenbg:rgba(0,168,96,.13); --greenbd:rgba(0,168,96,.5);   /* strong, readable on light */
+  --red:#f0152f; --redbg:rgba(240,21,47,.12); --redbd:rgba(240,21,47,.5);
   --ink:#121a2b; --muted:#55617a; --accent:#0c9d86; --accent-ink:#ffffff; --accentbg:rgba(12,157,134,.12);
   --panelbd:rgba(12,157,134,.22);
   --panelsh:0 1px 3px rgba(16,24,40,.08),0 12px 30px rgba(16,24,40,.08);
