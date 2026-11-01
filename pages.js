@@ -874,8 +874,8 @@
     // use the SAME row style as the leaders/laggards panels above (mkLead → .rank/.rk bars) for one unified language
     const row = arr => arr.length ? mkLead(arr.slice(0, 5).map(x => ({ s: x.s, c: x.gp })), "", false)
       : '<div class="muted" style="font-size:12px;padding:5px 2px">אין כרגע</div>';
-    const sub = note ? '<div class="muted" style="font-size:11px;margin:-2px 0 6px">' + note + "</div>" : "";
-    return '<div class="panel gappers-mini"><h3 class="gm-head"><span>' + head + "</span>" + seeAll + "</h3>" + sub +
+    // subtitle (note) moved to a hover tooltip on the heading to save vertical space (Adi)
+    return '<div class="panel gappers-mini"><h3 class="gm-head"><span' + (note ? ' title="' + escAttr(note) + '" style="cursor:help"' : "") + ">" + head + "</span>" + seeAll + "</h3>" +
       '<div class="gm-grid"><div><div class="td-h pos">' + upLbl + "</div>" + row(data.up) + '</div><div><div class="td-h neg">' + dnLbl + "</div>" + row(data.down) + "</div></div></div>";
   }
   // ---- market-page mini chart of an index (30-day, candles or line) ----
@@ -933,9 +933,12 @@
       '<div class="cp-state"><span class="cp-dot" style="background:' + cCol + '"></span>' +
         '<div><div class="k">מצב שוק</div><div class="v" style="color:' + cCol + '">' + (ms ? ms.emoji + " " + ms.mode : "—") + "</div></div></div>" +
       '<div class="cp-sep"></div>' +
-      '<div class="cp-breadth clickable" id="cockpitBreadth" title="לחץ לרוחב שוק לפי סקטור →">' +
-        '<div class="k"><span>רוחב שוק · Breadth</span><span><b class="pos">' + (b.above || 0) + " ▲</b> / <b class=\"neg\">" + (b.below || 0) + ' ▼</b></span></div>' +
-        '<div class="cp-brbar"><span style="width:' + ap.toFixed(1) + '%"></span></div></div>' +
+      '<div class="cp-breadth">' +
+        indexCards() +   // index cards moved up here, into the cockpit's free space above the breadth bar (Adi)
+        '<div class="cp-brwrap clickable" id="cockpitBreadth" title="לחץ לרוחב שוק לפי סקטור →">' +
+          '<div class="k"><span>רוחב שוק · Breadth</span><span><b class="pos">' + (b.above || 0) + " ▲</b> / <b class=\"neg\">" + (b.below || 0) + ' ▼</b></span></div>' +
+          '<div class="cp-brbar"><span style="width:' + ap.toFixed(1) + '%"></span></div>' +
+        '</div></div>' +
       '<div class="cp-sep"></div>' +
       '<div class="cp-metric"><div class="k">VIX</div><div class="v">' + (vix ? vix.level.toFixed(2) : "—") + "</div></div>" +
       '<div class="cp-sep"></div>' +
@@ -1172,8 +1175,7 @@
       '<div class="page-head compact"><h1>סקירת שוק <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1><div class="sub">תמונת השוק במבט אחד: מצב השוק, רוחב, VIX, המדדים, ומי חזק או חלש היום.</div></div>' +
       uniSwitch +
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
-        marketCockpit() +
-        indexCards() +
+        marketCockpit() +   // indexCards() now rendered inside the cockpit (above the breadth bar) — no separate row
         _marketSectorHeat() +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-rank-grid">' +

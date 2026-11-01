@@ -1618,6 +1618,17 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
   .mkt-dash .mh-tile .mh-chg { font-size: 12px; line-height: 1.1; }
   .mkt-dash .mh-tile .mh-he { font-size: 20px; line-height: 1.05; }   /* Hebrew name large (≈2×) but compact so the tile doesn't grow (Adi) */
 }
+/* index cards moved INTO the cockpit, above the breadth bar (Adi 2026-11-01) — compact so they fit the
+   free vertical space and the separate full-width idx-row is dropped. cp-brwrap keeps the breadth click. */
+.cockpit .cp-breadth { gap: 6px; }
+.cockpit .cp-breadth .idx-row { margin: 0; gap: 7px; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
+.cockpit .cp-breadth .idx-card { padding: 4px 11px; border-radius: 9px; }
+.cockpit .cp-breadth .idx-card .sym { font-size: 14px; }
+.cockpit .cp-breadth .idx-card .ic-px { font-size: 11px; }
+.cockpit .cp-breadth .idx-card .ic-chg { font-size: 12.5px; }
+.cockpit .cp-breadth .idx-card .ic-cndl { font-size: 11px; padding: 1px 6px; }
+.cp-brwrap { display: flex; flex-direction: column; gap: 5px; }
+.cp-brwrap.clickable { cursor: pointer; }
 /* אריחי מפת-החום בסקירת שוק ממלאים את כל הרוחב (auto-fit במקום auto-fill) — Adi */
 .mkt-dash .mh-grid { grid-template-columns: repeat(auto-fit, minmax(94px, 1fr)) !important; gap: 9px; }
 /* פוטר קומפקטי (דסקטופ) — פחות גובה בתחתית כל דף */
