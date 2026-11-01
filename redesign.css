@@ -541,11 +541,13 @@ body[data-page="sectors"] .cont-secgrid .ftt-ic { width: 11px; height: 11px; }
 /* the seq builder details, inside its popover, is already expanded — hide its redundant summary caret hint */
 .filters.fbar .fpop-body .seq-summary { list-style: none; }
 /* wide popovers that hold whole panels (MTF / technical / indicators) */
-.filters.fbar .fpop.fpop-panel .fpop-body { max-width: min(94vw, 660px); max-height: min(74vh, 600px); overflow: auto; }
+/* overflow-y only: a filter form should never scroll sideways. A child overflowing by a few px made
+   overflow:auto show a horizontal scrollbar at the bottom of the popover (Adi). Clip X, scroll Y. */
+.filters.fbar .fpop.fpop-panel .fpop-body { max-width: min(94vw, 660px); max-height: min(74vh, 600px); overflow-x: hidden; overflow-y: auto; }
 .filters.fbar .fpop-panel .fpop-body .frow.tech-row { display: flex; flex-wrap: wrap; gap: 14px; }
-.filters.fbar .fpop-panel .fpop-body .frow.tech-row > .fgrp { min-width: 150px; }
+.filters.fbar .fpop-panel .fpop-body .frow.tech-row > .fgrp { min-width: 150px; max-width: 100%; }
 .filters.fbar .fpop-panel .fpop-body .mtf-rows { display: flex; flex-direction: column; gap: 8px; }
-.filters.fbar .fpop-panel .fpop-body .note { margin-top: 10px; }
+.filters.fbar .fpop-panel .fpop-body .note { margin-top: 10px; overflow-wrap: anywhere; }
 @media (max-width: 700px) {
   .filters.fbar .fpop-body { position: fixed; inset-inline: 12px auto; left: 12px; right: 12px; min-width: 0; max-width: none; }
   .filters.fbar .fpop.fpop-panel .fpop-body { max-width: none; }
