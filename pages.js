@@ -9157,8 +9157,7 @@
     return { agg: agg, secs: order.filter(s => agg[s].n >= 4).sort((a, b) => agg[b].tot2 - agg[a].tot2) };
   }
   function renderMost2s() {
-    const head = '<div class="page-head compact"><h1>⚡ אנרגיה כיוונית · איפה ה-2\'ים <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1>' +
-      '<div class="sub">מפה סקטוריאלית של נרות כיווניים (Rob Smith · WHERE ARE THE MOST 2\'S): בכל סקטור וטיימפריים — כמה מניות בנר <b>2U</b> שורי 🔼 מול <b>2D</b> דובי 🔽. המספרים הגבוהים = שם האנרגיה הכיוונית.</div></div>';
+    const head = '<div class="page-head compact"><h1>⚡ אנרגיה כיוונית · איפה ה-2\'ים <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + "</span></h1></div>";
     if (!(SCAN && SCAN.rows && SCAN.rows.length))
       return head + '<div class="panel"><div class="muted" style="padding:16px">טוען נתוני סורק…</div></div>';
     const rows = m2Rows();
