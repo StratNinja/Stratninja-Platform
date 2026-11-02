@@ -1658,3 +1658,41 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
   .side-foot .user-area .uname { font-weight: 700; font-size: 13px; color: var(--ink); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .side-foot .user-area #logoutBtn { font-size: 11px; padding: 5px 10px; flex-shrink: 0; }
 }
+
+/* ===== "איפה ה-2'ים" — מפת ה-2'ים (סקטור × טיימפריים · נרות כיווניים 2U/2D) ===== */
+.m2-panel .m2-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.m2-panel .m2-head h3 { margin: 0; }
+.m2-uni { display: inline-flex; gap: 4px; }
+.m2-verdict { margin: 10px 0 4px; }
+.m2-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: center; }
+.m2-table th, .m2-table td { padding: 8px 6px; border-bottom: 1px solid var(--line); font-size: 13px; }
+.m2-table thead th { position: sticky; top: 0; background: var(--panel2, #121726); color: var(--muted); font-weight: 700; z-index: 2; }
+.m2-table .m2-sec-h, .m2-table .m2-sec { text-align: start; white-space: nowrap; }
+.m2-table .m2-tot-h, .m2-table .m2-tot { font-weight: 800; color: var(--ink); }
+.m2-table .m2-sec { display: flex; align-items: center; gap: 7px; }
+.m2-secnm { font-weight: 700; color: var(--ink); }
+.m2-etf { font-size: 10.5px; font-weight: 700; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 1px 5px; }
+.m2-cell { cursor: pointer; transition: filter .12s; border-radius: 6px; }
+.m2-cell:hover { filter: brightness(1.18); }
+.m2-cell .m2-u, .m2-cell .m2-d { display: inline-block; font-weight: 800; font-variant-numeric: tabular-nums; }
+.m2-cell .m2-u { color: var(--green, #26a69a); margin-inline-end: 7px; }
+.m2-cell .m2-d { color: var(--red, #ef5350); }
+.m2-cell .m2-z { color: var(--muted); opacity: .5; }
+.m2-foot td { font-weight: 800; color: var(--ink); background: var(--panel2, #121726); border-top: 2px solid var(--line); }
+.m2-foot .m2-sec { color: var(--muted); font-weight: 700; }
+.m2-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; margin-top: 10px; font-size: 12px; color: var(--ink); }
+.m2-legend .m2-u { color: var(--green, #26a69a); }
+.m2-legend .m2-d { color: var(--red, #ef5350); }
+/* drill modal */
+.m2-drill { display: flex; flex-wrap: wrap; gap: 16px; }
+.m2-dr-sec { flex: 1 1 240px; min-width: 0; }
+.m2-dr-h { font-weight: 800; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px; background: var(--panel2, #121726); }
+.m2-dr-h.pos { color: var(--green, #26a69a); }
+.m2-dr-h.neg { color: var(--red, #ef5350); }
+.m2-dr-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
+.m2-dr-row:hover { background: var(--panel2, #121726); }
+.m2-dr-sym { font-weight: 800; min-width: 54px; }
+.m2-dr-nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.m2-dr-chg { font-weight: 700; font-variant-numeric: tabular-nums; }
+.m2-dr-chg.pos { color: var(--green, #26a69a); }
+.m2-dr-chg.neg { color: var(--red, #ef5350); }

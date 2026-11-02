@@ -9128,6 +9128,100 @@
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     if (_pulseWire[tab]) _pulseWire[tab]();
   }
+  // ===== "איפה ה-2'ים" — sectoral map of directional (2U/2D) bars across timeframes =====
+  // Answers Rob Smith's "WHERE ARE THE MOST 2's": per GICS sector × timeframe, how many member
+  // stocks print a directional 2-bar right now, split 2U (bullish) vs 2D (bearish). The biggest
+  // cells = where the directional energy is. 100% client-side off SCAN.rows — each row already
+  // carries r[tf].t ("1"/"2U"/"2D"/"3") for D/W/M/Q/Y, so no server/feed change is needed.
+  let m2Uni = "sp";                         // "sp" = S&P 500 only · "all" = full scanner universe
+  const M2_TFS = ["D", "W", "M", "Q", "Y"];
+  const M2_RGB = { pos: "38,166,154", neg: "239,83,80", flat: "120,130,150" };   // TradingView green/red
+  function m2Rows() {
+    const all = (SCAN && SCAN.rows) || [];
+    if (m2Uni === "sp") { const sp = all.filter(r => r.sp); if (sp.length) return sp; }
+    return all;
+  }
+  function m2Aggregate(rows) {
+    const agg = {}, order = [];
+    rows.forEach(r => {
+      const s = r.sec; if (!s || s === "אחר" || s === "מדדים") return;
+      let o = agg[s];
+      if (!o) { o = agg[s] = { n: 0, tot2: 0, tf: {} }; M2_TFS.forEach(tf => o.tf[tf] = { u: 0, d: 0, n: 0 }); order.push(s); }
+      o.n++;
+      M2_TFS.forEach(tf => {
+        const t = (r[tf] || {}).t, c = o.tf[tf]; c.n++;
+        if (t === "2U") { c.u++; o.tot2++; } else if (t === "2D") { c.d++; o.tot2++; }
+      });
+    });
+    return { agg: agg, secs: order.filter(s => agg[s].n >= 4).sort((a, b) => agg[b].tot2 - agg[a].tot2) };
+  }
+  function renderMost2s() {
+    const head = '<div class="page-head compact"><h1>2️⃣ איפה ה-2\'ים <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1>' +
+      '<div class="sub">מפה סקטוריאלית של נרות כיווניים (Rob Smith · WHERE ARE THE MOST 2\'S): בכל סקטור וטיימפריים — כמה מניות בנר <b>2U</b> שורי 🔼 מול <b>2D</b> דובי 🔽. המספרים הגבוהים = שם האנרגיה הכיוונית.</div></div>';
+    if (!(SCAN && SCAN.rows && SCAN.rows.length))
+      return head + '<div class="panel"><div class="muted" style="padding:16px">טוען נתוני סורק…</div></div>';
+    const rows = m2Rows();
+    const r = m2Aggregate(rows), agg = r.agg, secs = r.secs;
+    if (!secs.length) return head + '<div class="panel"><div class="muted" style="padding:16px">אין מספיק נתונים כרגע.</div></div>';
+    // verdict: hottest cell (most 2s), most-directional TF, overall lean + per-TF totals
+    let hot = { n: -1 }, tfTot = {}, totU = 0, totD = 0;
+    M2_TFS.forEach(tf => tfTot[tf] = 0);
+    secs.forEach(s => M2_TFS.forEach(tf => {
+      const c = agg[s].tf[tf], tot = c.u + c.d;
+      tfTot[tf] += tot; totU += c.u; totD += c.d;
+      if (tot > hot.n) hot = { n: tot, sec: s, tf: tf };
+    }));
+    let bestTf = M2_TFS[0]; M2_TFS.forEach(tf => { if (tfTot[tf] > tfTot[bestTf]) bestTf = tf; });
+    const leanTxt = totU > totD * 1.1 ? "הטיה שורית 🟢" : totD > totU * 1.1 ? "הטיה דובית 🔴" : "מאוזן ⚖️";
+    const uni = '<div class="m2-uni">' +
+      '<button class="uni-btn' + (m2Uni === "sp" ? " on" : "") + '" data-m2uni="sp">S&P 500</button>' +
+      '<button class="uni-btn' + (m2Uni === "all" ? " on" : "") + '" data-m2uni="all">כל היקום</button></div>';
+    const verdict = '<div class="cm-verdict m2-verdict">' +
+      '<span class="cmv-item"><span class="cmv-k">הכי הרבה 2\'ים</span><span class="cmv-v pos">' + secHe(hot.sec) + " · " + (TF_HE[hot.tf] || hot.tf) + " (" + hot.n + ")</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">הזמן הכי כיווני</span><span class="cmv-v">' + (TF_HE[bestTf] || bestTf) + "</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">מאזן השוק</span><span class="cmv-v">▲' + totU + " / ▼" + totD + " · " + leanTxt + "</span></span></div>";
+    const cell = (c, tf, sec) => {
+      const tot = c.u + c.d, net = c.u - c.d;
+      const key = net > 0 ? "pos" : net < 0 ? "neg" : "flat";
+      const act = c.n ? tot / c.n : 0, sat = tot ? Math.min(0.5, 0.08 + act * 0.6) : 0;
+      const bg = tot ? "background:rgba(" + M2_RGB[key] + "," + sat.toFixed(3) + ")" : "";
+      return '<td class="m2-cell ' + (net > 0 ? "pos" : net < 0 ? "neg" : "") + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + " — לחץ לרשימת המניות") + '">' +
+        (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" : '<span class="m2-z">—</span>') + "</td>";
+    };
+    const thead = '<tr><th class="m2-sec-h">סקטור</th>' + M2_TFS.map(tf => "<th>" + (TF_HE[tf] || tf) + "</th>").join("") + '<th class="m2-tot-h">סה"כ 2\'ים</th></tr>';
+    const body = secs.map(s => {
+      const o = agg[s], etf = etfFor(s);
+      return '<tr><td class="m2-sec"><span class="m2-secnm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + "</td>" +
+        M2_TFS.map(tf => cell(o.tf[tf], tf, s)).join("") +
+        '<td class="m2-tot">' + o.tot2 + "</td></tr>";
+    }).join("");
+    const foot = '<tr class="m2-foot"><td class="m2-sec">סה"כ לפי זמן</td>' + M2_TFS.map(tf => "<td>" + tfTot[tf] + "</td>").join("") + '<td class="m2-tot">' + (totU + totD) + "</td></tr>";
+    const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span><span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
+    return head + '<div class="panel m2-panel"><div class="m2-head"><h3>🗺️ מפת ה-2\'ים · סקטור × טיימפריים</h3>' + uni + "</div>" +
+      verdict +
+      '<div class="tablewrap"><table class="cmap-table m2-table">' + thead + body + foot + "</table></div>" +
+      legend + "</div>";
+  }
+  function wireMost2s() {
+    document.querySelectorAll("[data-m2uni]").forEach(b => b.onclick = () => { const u = b.dataset.m2uni; if (u === m2Uni) return; m2Uni = u; reRender(); });
+    document.querySelectorAll(".m2-cell[data-m2sec]").forEach(td => td.onclick = () => _m2Drill(td.dataset.m2sec, td.dataset.m2tf));
+  }
+  function _m2Drill(sec, tf) {
+    const list = m2Rows().filter(r => r.sec === sec && ((r[tf] || {}).t === "2U" || (r[tf] || {}).t === "2D"));
+    if (!list.length) return;
+    const up = list.filter(r => (r[tf] || {}).t === "2U"), dn = list.filter(r => (r[tf] || {}).t === "2D");
+    const line = r => {
+      const chg = (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0)), cls = chg >= 0 ? "pos" : "neg";
+      return '<div class="m2-dr-row" data-chart="' + escAttr(r.s) + '" data-tf="' + tf + '"><span class="m2-dr-sym">' + escHtml(r.s) + '</span><span class="m2-dr-nm muted">' + escHtml(r.name || r.nm || "") + '</span><span class="m2-dr-chg ' + cls + '">' + (chg >= 0 ? "+" : "") + (+chg).toFixed(2) + "%</span></div>";
+    };
+    const sect = (arr, lbl, cls) => arr.length ? '<div class="m2-dr-sec"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length + "</div>" + arr.map(line).join("") + "</div>" : "";
+    const body = '<div class="drill-bar"><button class="btn ghost" id="m2Grid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></div>' +
+      '<div class="m2-drill">' + sect(up, "🔼 2U שורי", "pos") + sect(dn, "🔽 2D דובי", "neg") + "</div>";
+    modal("2️⃣ " + secHe(sec) + " · " + (TF_HE[tf] || tf) + " · " + list.length + " מניות בנר 2", body, "m2drill");
+    const gb = document.getElementById("m2Grid");
+    if (gb) gb.onclick = () => openChartGrid(list.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0) || 0, chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: secHe(sec) + " · " + (TF_HE[tf] || tf) + " · 2'ים" });
+  }
+
   const PAGES = {
     // home: { render: renderHome, wire: wireHome },   // "מרכז בקרה" retired 2026-11-01 — nav removed, default landing is now סקירת שוק (market). renderHome/wireHome kept for easy revival.
     market: { render: renderMarket, wire: wireMarket },
@@ -9137,6 +9231,7 @@
     today: { render: renderToday, wire: wireToday },
     sp500: { render: renderSp500, wire: wireSp500 },
     scanner: { render: renderScanner, wire: wireScanner },
+    most2s: { render: renderMost2s, wire: wireMost2s },
     sectors: { render: renderSectors, wire: wireSectors },
     breadth: { render: renderBreadth, wire: wireBreadth },
     gappers: { render: renderGappers, wire: wireGappers },
@@ -9208,7 +9303,7 @@
     const jc = $("#journalContainer"), pg = $("#page");
     if (name === "journal") { pg.classList.add("hidden"); jc.classList.remove("hidden"); state.page = "journal"; if (window.Journal && window.Journal.onEnter) window.Journal.onEnter(); }
     else { jc.classList.add("hidden"); pg.classList.remove("hidden"); state.page = PAGES[name] ? name : "market"; reRender(); try { window.scrollTo(0, 0); } catch (e) {} }   // navigating to a page starts at the top
-    if (state.page === "scanner" || state.page === "market" || state.page === "pulse") {
+    if (state.page === "scanner" || state.page === "market" || state.page === "pulse" || state.page === "most2s") {
       loadScanner();
       if (state.page === "pulse") { loadLive(); loadFlow(); loadBreadth(); }   // whichever tab is active may need these
     }
