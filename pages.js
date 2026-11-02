@@ -9173,6 +9173,30 @@
     }));
     let bestTf = M2_TFS[0]; M2_TFS.forEach(tf => { if (tfTot[tf] > tfTot[bestTf]) bestTf = tf; });
     const leanTxt = totU > totD * 1.1 ? "הטיה שורית 🟢" : totD > totU * 1.1 ? "הטיה דובית 🔴" : "מאוזן ⚖️";
+    // SMART-MONEY score per sector: net directional (2U−2D) proportion, WEIGHTED by timeframe —
+    // higher TFs count more because a sector aligned to 2U on Monthly/Quarterly/Yearly = institutional
+    // accumulation (see the Strat timeframe philosophy), not a one-day pop. Range ≈ −1..+1.
+    const M2_W = { D: 1, W: 1.5, M: 2.5, Q: 3.5, Y: 4 };
+    const score = {};
+    secs.forEach(s => { let sc = 0, w = 0; M2_TFS.forEach(tf => { const c = agg[s].tf[tf]; if (!c.n) return; sc += M2_W[tf] * ((c.u - c.d) / c.n); w += M2_W[tf]; }); score[s] = w ? sc / w : 0; });
+    const ranked = secs.slice().sort((a, b) => score[b] - score[a]);   // strongest inflow first
+    const alignHi = s => ["M", "Q", "Y"].filter(tf => agg[s].tf[tf].u > agg[s].tf[tf].d);   // higher TFs net-bullish
+    const isFresh = s => { const t = agg[s].tf; return ((t.D.u > t.D.d) || (t.W.u > t.W.d)) && alignHi(s).length >= 2; };   // short TFs entering NOW into an aligned higher-TF trend
+    const strongLab = sc => sc >= 0.4 ? "זרימה חזקה 🔥" : sc >= 0.2 ? "זרימה חיובית" : "זרימה מתונה";
+    const inflow = ranked.filter(s => score[s] >= 0.07).slice(0, 4);
+    const outflow = ranked.slice().reverse().filter(s => score[s] <= -0.07).slice(0, 3);
+    const smCard = s => {
+      const etf = etfFor(s), hi = alignHi(s).map(tf => TF_HE[tf] || tf);
+      return '<div class="m2-sm-card' + (isFresh(s) ? " fresh" : "") + '" data-m2sec="' + escAttr(s) + '" data-m2tf="' + (alignHi(s)[0] || "D") + '" title="לחץ לרשימת המניות">' +
+        '<div class="m2-sm-h"><span class="m2-sm-nm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + (isFresh(s) ? '<span class="m2-sm-fresh">🆕 כניסה טרייה</span>' : "") + "</div>" +
+        '<div class="m2-sm-sc">+' + Math.round(score[s] * 100) + ' <span class="m2-sm-lab">' + strongLab(score[s]) + "</span></div>" +
+        '<div class="m2-sm-tfs">' + (hi.length ? "יישור זמנים גבוהים: " + hi.join(" · ") : "מונע ע\"י זמנים קצרים") + "</div></div>";
+    };
+    const smBand = '<div class="m2-smart"><div class="m2-sm-ttl">💰 לאן הכסף החכם נכנס עכשיו</div>' +
+      '<div class="m2-sm-sub">דירוג סקטורים לפי זרימה כיוונית משוקללת-זמן — ככל שהזמנים הגבוהים (חודשי · רבעוני · שנתי) מיושרים ל-2U, כך הכניסה מוסדית יותר.</div>' +
+      (inflow.length ? '<div class="m2-sm-grid">' + inflow.map(smCard).join("") + "</div>" : '<div class="muted" style="padding:8px 2px">אין כרגע זרימה כיוונית חיובית בולטת.</div>') +
+      (outflow.length ? '<div class="m2-sm-out"><span>🔻 כסף יוצא מ:</span> ' + outflow.map(s => '<span class="m2-sm-ochip" data-m2sec="' + escAttr(s) + '" data-m2tf="' + (["M", "Q", "Y"].find(tf => agg[s].tf[tf].d > agg[s].tf[tf].u) || "D") + '">' + escHtml(secHe(s)) + " (" + Math.round(score[s] * 100) + ")</span>").join("") + "</div>" : "") +
+      "</div>";
     const uni = '<div class="m2-uni">' +
       '<button class="uni-btn' + (m2Uni === "sp" ? " on" : "") + '" data-m2uni="sp">S&P 500</button>' +
       '<button class="uni-btn' + (m2Uni === "all" ? " on" : "") + '" data-m2uni="all">כל היקום</button></div>';
@@ -9188,23 +9212,21 @@
       return '<td class="m2-cell ' + (net > 0 ? "pos" : net < 0 ? "neg" : "") + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + " — לחץ לרשימת המניות") + '">' +
         (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" : '<span class="m2-z">—</span>') + "</td>";
     };
-    const thead = '<tr><th class="m2-sec-h">סקטור</th>' + M2_TFS.map(tf => "<th>" + (TF_HE[tf] || tf) + "</th>").join("") + '<th class="m2-tot-h">סה"כ 2\'ים</th></tr>';
-    const body = secs.map(s => {
-      const o = agg[s], etf = etfFor(s);
-      return '<tr><td class="m2-sec"><span class="m2-secnm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + "</td>" +
-        M2_TFS.map(tf => cell(o.tf[tf], tf, s)).join("") +
-        '<td class="m2-tot">' + o.tot2 + "</td></tr>";
+    const thead = '<tr><th class="m2-sec-h">סקטור</th>' + M2_TFS.map(tf => "<th>" + (TF_HE[tf] || tf) + "</th>").join("") + "</tr>";
+    const body = ranked.map(s => {
+      const o = agg[s], etf = etfFor(s), rc = score[s] >= 0.07 ? " m2-in" : score[s] <= -0.07 ? " m2-out" : "";
+      return "<tr" + (rc ? ' class="' + rc.trim() + '"' : "") + '><td class="m2-sec"><span class="m2-secnm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + "</td>" +
+        M2_TFS.map(tf => cell(o.tf[tf], tf, s)).join("") + "</tr>";
     }).join("");
-    const foot = '<tr class="m2-foot"><td class="m2-sec">סה"כ לפי זמן</td>' + M2_TFS.map(tf => "<td>" + tfTot[tf] + "</td>").join("") + '<td class="m2-tot">' + (totU + totD) + "</td></tr>";
     const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span><span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
     return head + '<div class="panel m2-panel"><div class="m2-head"><h3>🗺️ מפת ה-2\'ים · סקטור × טיימפריים</h3>' + uni + "</div>" +
-      verdict +
-      '<div class="tablewrap"><table class="cmap-table m2-table">' + thead + body + foot + "</table></div>" +
+      smBand + verdict +
+      '<div class="tablewrap"><table class="cmap-table m2-table">' + thead + body + "</table></div>" +
       legend + "</div>";
   }
   function wireMost2s() {
     document.querySelectorAll("[data-m2uni]").forEach(b => b.onclick = () => { const u = b.dataset.m2uni; if (u === m2Uni) return; m2Uni = u; reRender(); });
-    document.querySelectorAll(".m2-cell[data-m2sec]").forEach(td => td.onclick = () => _m2Drill(td.dataset.m2sec, td.dataset.m2tf));
+    document.querySelectorAll(".m2-cell[data-m2sec], .m2-sm-card[data-m2sec], .m2-sm-ochip[data-m2sec]").forEach(el => el.onclick = () => _m2Drill(el.dataset.m2sec, el.dataset.m2tf));
   }
   function _m2Drill(sec, tf) {
     const list = m2Rows().filter(r => r.sec === sec && ((r[tf] || {}).t === "2U" || (r[tf] || {}).t === "2D"));
