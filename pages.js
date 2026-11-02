@@ -9114,9 +9114,9 @@
 
   // ===== "סקירת שוק" — one channel: market overview (first) + sector-breadth / sector-flow / continuity / breadth =====
   let pulseTab = "market";
-  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
-  const _pulseRender = { market: () => renderMarket(), sp500: () => renderSp500(), today: () => renderToday(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
-  const _pulseWire = { market: () => wireMarket(), sp500: () => wireSp500(), today: () => wireToday(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
+  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["most2s", "⚡ אנרגיה כיוונית"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
+  const _pulseRender = { market: () => renderMarket(), sp500: () => renderSp500(), today: () => renderToday(), most2s: () => renderMost2s(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
+  const _pulseWire = { market: () => wireMarket(), sp500: () => wireSp500(), today: () => wireToday(), most2s: () => wireMost2s(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
   function renderPulse() {
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     const bar = '<div class="pulse-tabs">' + PULSE_TABS.map(([k, l]) =>
@@ -9156,7 +9156,7 @@
     return { agg: agg, secs: order.filter(s => agg[s].n >= 4).sort((a, b) => agg[b].tot2 - agg[a].tot2) };
   }
   function renderMost2s() {
-    const head = '<div class="page-head compact"><h1>2️⃣ איפה ה-2\'ים <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1>' +
+    const head = '<div class="page-head compact"><h1>⚡ אנרגיה כיוונית · איפה ה-2\'ים <span class="mkt-live">' + (LIVE && LIVE.updated ? "🟢 חי" : "🧪 דמו") + '</span></h1>' +
       '<div class="sub">מפה סקטוריאלית של נרות כיווניים (Rob Smith · WHERE ARE THE MOST 2\'S): בכל סקטור וטיימפריים — כמה מניות בנר <b>2U</b> שורי 🔼 מול <b>2D</b> דובי 🔽. המספרים הגבוהים = שם האנרגיה הכיוונית.</div></div>';
     if (!(SCAN && SCAN.rows && SCAN.rows.length))
       return head + '<div class="panel"><div class="muted" style="padding:16px">טוען נתוני סורק…</div></div>';
@@ -9287,7 +9287,7 @@
 
   function setPage(name) {
     // market-overview + the sector-internals views all live inside one 'pulse' channel as tabs — route old names there
-    if (name === "market" || name === "sp500" || name === "today" || name === "sectors" || name === "breadth") { pulseTab = name; name = "pulse"; }
+    if (name === "market" || name === "sp500" || name === "today" || name === "most2s" || name === "sectors" || name === "breadth") { pulseTab = name; name = "pulse"; }
     // LEAVING the LIVE page → stop the Cloudflare player so there is no background video/audio. Must run
     // for EVERY destination (incl. the journal, which only hides #page, and the guest→login path below).
     if (state.page === "live" && name !== "live" && window.Live && window.Live.teardown) window.Live.teardown();

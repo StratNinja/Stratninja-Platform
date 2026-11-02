@@ -174,14 +174,14 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
       <nav class="side-nav">
         <div class="nav-group-label">תמונת השוק</div>
         <a data-page="pulse" class="active">📊 <span class="lbl">סקירת שוק</span></a><!-- merged channel: סקירת שוק (overview, first) · רוחב סקטוריאלי · תזרים · המשכיות · רוחב — as tabs. (home/"מרכז בקרה" tab retired 2026-11-01 — renderHome kept but unreachable) -->
-        <span data-page-nav="market sp500 today sectors breadth" style="display:none"></span>
+        <span data-page-nav="market sp500 today most2s sectors breadth" style="display:none"></span>
         <a data-page="live" id="navLive" title="שידור חי של StratNinja">🔴 <span class="lbl">לייב</span></a>
         <a data-page="giveaway" id="navGiveaway" title="הגרלות ללייבים" style="display:none">🎁 <span class="lbl">הגרלות</span></a>
         <a data-page="vods" id="navVods" title="שידורים קודמים (הקלטות)">📼 <span class="lbl">הקלטות</span></a>
         <div class="nav-group-label">איתור הזדמנויות</div>
         <a data-page="scanner">🔍 <span class="lbl">סורק עסקאות</span></a>
-        <a data-page="most2s" title="מפת ה-2'ים — איפה האנרגיה הכיוונית (2U/2D) לפי סקטור וטיימפריים">2️⃣ <span class="lbl">איפה ה-2'ים</span></a>
         <!-- gappers page removed 2026-09 — gap filtering now lives in the scanner (technical filters → גאפ: אפ/דאון/שניהם) -->
+        <!-- "אנרגיה כיוונית" (most2s · WHERE ARE THE MOST 2's) lives as a tab inside the "דופק השוק" pulse channel, between תזרים סקטוריאלי and המשכיות (Adi 2026-11-02) -->
         <!-- <a data-page="alerts">🔔 <span class="lbl">התראות</span></a> --> <!-- hidden per Adi 2026-07-05; re-enable on request -->
         <div class="nav-group-label">סביבת העבודה שלי</div>
         <a data-page="favorites">⭐ <span class="lbl">מועדפים</span></a>
@@ -276,7 +276,7 @@ document.addEventListener('DOMContentLoaded',snUpdateThemeLabel);
 <script src="live_alert.js?v=1009c"></script>
 <script src="live.js?v=1011b"></script>
 <script src="live_vods.js?v=1010e"></script>
-<script src="pages.js?v=1009x"></script>
+<script src="pages.js?v=1010x"></script>
 <script src="platform.js"></script>
 <script src="cloudsync.js"></script>
 <script src="legal.js"></script>
