@@ -1161,6 +1161,124 @@
     return '<div class="panel mh-panel"><div class="mh-head"><h3>🗺️ מפת חום · סקטורים</h3><span class="mh-full" data-goto-heat="1">מפה מלאה →</span></div>' +
       '<div class="mh-grid">' + tiles + "</div></div>";
   }
+  // ============ MONEY-FLOW RADAR — distilled "where is INSTITUTIONAL money going NOW" ============
+  // Adi 2026-11-02: ONE place that fuses the whole site into a clear read — which SECTOR (and which
+  // STOCKS inside it) money is entering vs leaving right now. Weighted toward institutional CONVICTION,
+  // not just today's %: broad participation (how MANY of the sector's stocks move together) + higher-
+  // timeframe 2U continuity (accumulation, per the Strat philosophy) + money-flow (ETF move) + breadth.
+  const _MF_TFW = { D: 1, W: 1.5, M: 2.5, Q: 3.5, Y: 4 };   // higher TF = heavier = institutional accumulation
+  const _MF_TFS = ["D", "W", "M", "Q", "Y"];
+  const _MF_HTF = ["M", "Q", "Y"];                          // the "institutional" horizons
+  function _mfAo(r) {                                       // above today's open (intraday participation)
+    if (r.ao != null) return !!r.ao;
+    if (r.D && r.D.o != null && r.p != null) return r.p >= r.D.o;
+    return (r.c || 0) >= 0;
+  }
+  function _mfFtfcDir(r) {                                  // +1 full continuity up · −1 down · 0 none
+    if (!r.ftfc) return 0;
+    const c = r.D && r.D.c;
+    if (c === "up") return 1; if (c === "down") return -1;
+    return (r.c || 0) >= 0 ? 1 : -1;
+  }
+  function _mfStkEnergy(r) {                                // TF-weighted net 2U for ONE stock → [−1,1]
+    let sc = 0, w = 0;
+    _MF_TFS.forEach(tf => { const o = r[tf]; if (!o || !o.t) return; w += _MF_TFW[tf];
+      if (o.t === "2U") sc += _MF_TFW[tf]; else if (o.t === "2D") sc -= _MF_TFW[tf]; });
+    return w ? sc / w : 0;
+  }
+  function _mfStkScore(r) {                                 // per-stock conviction for ranking the members
+    const e = _mfStkEnergy(r), f = _mfFtfcDir(r), a = _mfAo(r) ? 1 : -1;
+    const d = Math.max(-1, Math.min(1, (r.c || 0) / 5));
+    return 0.45 * e + 0.25 * f + 0.15 * a + 0.15 * d;
+  }
+  function _mfTfBadge(r, dir) {                             // "⚡N" = N timeframes aligned (2U for in, 2D for out)
+    let n = 0; _MF_TFS.forEach(tf => { const o = r[tf]; if (!o) return; if (dir === "in" ? o.t === "2U" : o.t === "2D") n++; });
+    return n;
+  }
+  function marketFlowRadar() {
+    try {
+      if (!(SCAN && SCAN.rows && SCAN.rows.length) || !LIVE) return "";
+      const sp = marketUniverse === "sp500";
+      const rows = SCAN.rows.filter(r => { if (!r || !r.sec) return false; if (sp && !r.sp) return false; const he = secHe(r.sec); return he !== "אחר" && he !== "מדדים"; });
+      if (rows.length < 20) return "";
+      const flow = {}; ((LIVE && LIVE.sectors) || []).forEach(s => { if (s && s.name != null) flow[secHe(s.name)] = s.chg; });
+      const G = {};
+      rows.forEach(r => { const he = secHe(r.sec); (G[he] || (G[he] = { he, raw: r.sec, members: [] })).members.push(r); });
+      const secs = Object.keys(G).map(he => {
+        const g = G[he], m = g.members, n = m.length;
+        let aboveN = 0, ftU = 0, ftD = 0;
+        const tfU = {}, tfD = {}, tfN = {}; _MF_TFS.forEach(tf => { tfU[tf] = tfD[tf] = tfN[tf] = 0; });
+        m.forEach(r => {
+          if (_mfAo(r)) aboveN++;
+          const fd = _mfFtfcDir(r); if (fd > 0) ftU++; else if (fd < 0) ftD++;
+          _MF_TFS.forEach(tf => { const o = r[tf]; if (!o || !o.t) return; tfN[tf]++; if (o.t === "2U") tfU[tf]++; else if (o.t === "2D") tfD[tf]++; });
+        });
+        const fFlow = flow[he] == null ? 0 : Math.max(-1, Math.min(1, flow[he] / 2));
+        const fBreadth = n ? (aboveN / n - 0.5) * 2 : 0;
+        const fCont = n ? (ftU - ftD) / n : 0;
+        let enW = 0, enS = 0; _MF_TFS.forEach(tf => { if (!tfN[tf]) return; enW += _MF_TFW[tf]; enS += _MF_TFW[tf] * ((tfU[tf] - tfD[tf]) / tfN[tf]); });
+        const fEnergy = enW ? enS / enW : 0;
+        let hUp = 0, hDn = 0, hW = 0; _MF_HTF.forEach(tf => { if (!tfN[tf]) return; hW++; const net = tfU[tf] - tfD[tf]; if (net > 0) hUp++; else if (net < 0) hDn++; });
+        const comp = 0.35 * fFlow + 0.30 * fEnergy + 0.20 * fBreadth + 0.15 * fCont;
+        return { he, raw: g.raw, n, aboveN, ftU, ftD, flowPct: flow[he], fFlow, fBreadth, fCont, fEnergy, htfUp: hW ? hUp / hW : 0, htfDn: hW ? hDn / hW : 0, comp, members: m };
+      }).filter(s => s.n >= 4);
+      if (secs.length < 2) return "";
+      secs.sort((a, b) => b.comp - a.comp);
+      const win = secs[0], lose = secs[secs.length - 1];
+      const verdict = '<div class="mf-verdict">הכסף זורם אל <b class="pos">' + escHtml(win.he) + '</b> ובורח מ-<b class="neg">' + escHtml(lose.he) + "</b></div>";
+      return '<div class="panel mf-radar">' +
+        '<div class="mf-top"><h3>🎯 זיקוק · לאן הכסף המוסדי זורם עכשיו</h3>' +
+        '<span class="muted mf-sub">משוקלל מכל האתר · תזרים · רוחב · המשכיות רב-טיימפריימית · 2\'ים</span></div>' +
+        verdict +
+        '<div class="mf-cols">' + _mfCard(win, "in") + _mfCard(lose, "out") + "</div></div>";
+    } catch (e) { return ""; }
+  }
+  function _mfStrength(s, dir) {                            // how STRONG & INSTITUTIONAL is the signal
+    const mag = dir === "in" ? s.comp : -s.comp;
+    const part = dir === "in" ? s.aboveN / s.n : (s.n - s.aboveN) / s.n;   // broad participation
+    const htf = dir === "in" ? s.htfUp : s.htfDn;                          // higher-TF alignment = institutional
+    if (mag >= 0.4 && part >= 0.6 && htf >= 0.5) return { lbl: "אות חזק", ic: "🔥", cls: "s3" };
+    if (mag >= 0.2 && part >= 0.45) return { lbl: "אות בינוני", ic: "⚡", cls: "s2" };
+    return { lbl: "אות מתהווה", ic: "•", cls: "s1" };
+  }
+  function _mfCard(s, dir) {
+    const inflow = dir === "in";
+    const etf = etfFor(s.raw) || etfFor(s.he) || "";
+    const scored = s.members.map(r => ({ r, sc: _mfStkScore(r) }));
+    const aligned = scored.filter(o => inflow ? o.sc > 0.05 : o.sc < -0.05).sort((a, b) => inflow ? b.sc - a.sc : a.sc - b.sc);
+    const top = aligned.slice(0, 6);
+    const alignedN = aligned.length;
+    const partPct = s.n ? Math.round(alignedN / s.n * 100) : 0;
+    const broad = alignedN >= Math.max(5, Math.ceil(s.n * 0.5));
+    const str = _mfStrength(s, dir);
+    const sign = inflow ? "pos" : "neg";
+    const arrow = inflow ? "▲" : "▼";
+    const flowTxt = s.flowPct == null ? "—" : (s.flowPct >= 0 ? "+" : "") + s.flowPct.toFixed(2) + "%";
+    // 4-factor breakdown mini-chips
+    const fac = (lbl, v) => { const pos = inflow ? v > 0 : v < 0; const mag = Math.min(100, Math.abs(v) * 100);
+      return '<span class="mf-fac ' + (pos ? "on" : "off") + '"><span class="mf-fac-l">' + lbl + '</span><span class="mf-fac-bar"><i style="width:' + mag.toFixed(0) + '%"></i></span></span>'; };
+    const facs = '<div class="mf-facs">' + fac("💰 תזרים", s.fFlow) + fac("⚡ 2\'ים", s.fEnergy) + fac("📊 רוחב", s.fBreadth) + fac("🔗 המשכיות", s.fCont) + "</div>";
+    const stkChip = o => {
+      const r = o.r, tfn = _mfTfBadge(r, dir), ft = _mfFtfcDir(r);
+      const ftOn = inflow ? ft > 0 : ft < 0;
+      const cs = (r.c >= 0 ? "+" : "") + (r.c == null ? 0 : r.c).toFixed(1) + "%";
+      return '<span class="mf-stk tsym clickable" data-chart="' + escAttr(r.s) + '" data-tf="D" title="' + escAttr((r.name || r.nm || r.s)) + '">' +
+        '<span class="mf-stk-sym">' + escHtml(r.s) + "</span>" +
+        (tfn ? '<span class="mf-stk-tf">⚡' + tfn + "</span>" : "") +
+        (ftOn ? '<span class="mf-stk-ft">🔗</span>' : "") +
+        '<span class="mf-stk-chg ' + (r.c >= 0 ? "pos" : "neg") + '">' + cs + "</span></span>";
+    };
+    const stocks = top.length ? top.map(stkChip).join("") : '<span class="muted" style="font-size:12px">—</span>';
+    return '<div class="mf-card mf-' + dir + '" data-mfsec="' + escAttr(s.raw) + '">' +
+      '<div class="mf-card-head"><span class="mf-dir ' + sign + '">' + (inflow ? "💰 כסף נכנס" : "🩸 כסף יוצא") + "</span>" +
+      '<span class="mf-str ' + str.cls + '">' + str.ic + " " + str.lbl + "</span></div>" +
+      '<div class="mf-sec-row"><span class="mf-sec-name">' + escHtml(s.he) + "</span>" +
+      (etf ? '<span class="mf-sec-etf ' + sign + '">' + etf + " " + arrow + " " + flowTxt + "</span>" : "") + "</div>" +
+      '<div class="mf-part"><span class="mf-part-n ' + sign + '">' + alignedN + "/" + s.n + ' מניות ' + (inflow ? "בכיוון" : "בירידה") + "</span>" +
+      '<span class="mf-part-tag ' + (broad ? "broad" : "narrow") + '">' + (broad ? "רחב · מוסדי" : "ממוקד · מעט שמות") + " · " + partPct + "%</span></div>" +
+      facs +
+      '<div class="mf-stocks">' + stocks + "</div></div>";
+  }
   function renderMarket() {
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
@@ -1176,6 +1294,7 @@
       uniSwitch +
       '<div class="mkt-dash mkt-dash-tight' + (_mktFlip ? " uni-flip" : "") + '">' +
         marketCockpit() +   // indexCards() now rendered inside the cockpit (above the breadth bar) — no separate row
+        marketFlowRadar() +  // 🎯 distilled institutional money-flow (sector + stocks, in/out) — the "one place, no guessing" read
         _marketSectorHeat() +
         '<div class="mkt-sec-title">מובילים ומפגרים היום</div>' +
         '<div class="mkt-rank-grid">' +
@@ -1196,6 +1315,8 @@
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => { techState.gapDir = "any"; if (!(parseFloat(techState.gapPct) > 0)) techState.gapPct = 3; setPage("scanner"); }; }   // gappers page retired → open the scanner with the gap filter on
     document.querySelectorAll("[data-idxmode]").forEach(b => b.onclick = () => { _idxChartMode = b.dataset.idxmode; reRender(); });
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
+    // 🎯 money-flow radar: clicking a card's empty area (not a stock chip) opens that sector's full stock table
+    document.querySelectorAll(".mf-card[data-mfsec]").forEach(el => el.onclick = (ev) => { if (ev.target.closest(".mf-stk")) return; const he = secHe(el.dataset.mfsec); const sec = ((LIVE && LIVE.sectors) || []).find(x => secHe(x.name) === he); if (sec && typeof renderSp500Drill === "function") renderSp500Drill(sec.name, false); });
     // (universe buttons are wired globally via click delegation in boot — no per-render wiring needed)
     _mktFlip = false;   // one-shot: the flip animation only plays on the switch render
     // rotating "did you know" Candle Map insight

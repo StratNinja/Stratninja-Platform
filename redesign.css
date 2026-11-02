@@ -1736,3 +1736,48 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .m2-table td.m2-cell.m2-col-dim { opacity: .4; }
 /* per-timeframe leader — glowing box right in the grid (replaces the old text leader line) */
 .m2-table td.m2-cell.m2-lead { outline: 2px solid var(--accent, #2fe6c7); outline-offset: -2px; box-shadow: 0 0 11px 1px rgba(47,230,199,.6), inset 0 0 9px rgba(47,230,199,.28); position: relative; z-index: 1; border-radius: 4px; }
+
+/* ===== 🎯 MONEY-FLOW RADAR — distilled institutional in/out on the market overview ===== */
+.mf-radar { margin: 10px 0; padding: 14px 16px; border: 1px solid var(--line, #263042); border-radius: 14px;
+  background: linear-gradient(180deg, rgba(47,230,199,.05), rgba(18,23,38,.25)); }
+.mf-top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+.mf-top h3 { margin: 0; font-size: 16px; font-weight: 800; }
+.mf-sub { font-size: 12px; }
+.mf-verdict { font-size: 14px; margin: 2px 0 12px; opacity: .95; }
+.mf-verdict b { font-weight: 800; }
+.mf-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .mf-cols { grid-template-columns: 1fr; } }
+.mf-card { border: 1px solid var(--line, #263042); border-radius: 12px; padding: 12px; cursor: pointer; transition: border-color .15s, transform .1s; background: var(--panel2, #121726); }
+.mf-card:hover { transform: translateY(-1px); }
+.mf-in  { border-inline-start: 4px solid var(--green, #26a69a); }
+.mf-out { border-inline-start: 4px solid var(--red, #ef5350); }
+.mf-in:hover  { border-color: var(--green, #26a69a); }
+.mf-out:hover { border-color: var(--red, #ef5350); }
+.mf-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.mf-dir { font-size: 14px; font-weight: 800; }
+.mf-dir.pos { color: var(--green, #26a69a); } .mf-dir.neg { color: var(--red, #ef5350); }
+.mf-str { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line, #263042); white-space: nowrap; }
+.mf-str.s3 { color: var(--accent, #2fe6c7); border-color: var(--accent, #2fe6c7); box-shadow: 0 0 8px rgba(47,230,199,.35); }
+.mf-str.s2 { color: var(--ink, #e6edf3); opacity: .9; } .mf-str.s1 { color: var(--muted, #8b98a9); }
+.mf-sec-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.mf-sec-name { font-size: 20px; font-weight: 800; }
+.mf-sec-etf { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 7px; background: rgba(255,255,255,.04); border: 1px solid var(--line, #263042); }
+.mf-sec-etf.pos { color: var(--green, #26a69a); } .mf-sec-etf.neg { color: var(--red, #ef5350); }
+.mf-part { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 12px; }
+.mf-part-n { font-weight: 700; } .mf-part-n.pos { color: var(--green, #26a69a); } .mf-part-n.neg { color: var(--red, #ef5350); }
+.mf-part-tag { font-size: 11px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line, #263042); color: var(--muted, #8b98a9); }
+.mf-part-tag.broad { color: var(--accent, #2fe6c7); border-color: var(--accent, #2fe6c7); }
+.mf-facs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; margin-bottom: 10px; }
+.mf-fac { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.mf-fac-l { white-space: nowrap; min-width: 62px; color: var(--muted, #8b98a9); }
+.mf-fac-bar { flex: 1; height: 5px; border-radius: 3px; background: rgba(255,255,255,.06); overflow: hidden; }
+.mf-fac-bar i { display: block; height: 100%; border-radius: 3px; }
+.mf-fac.on .mf-fac-bar i { background: var(--accent, #2fe6c7); }
+.mf-fac.off .mf-fac-bar i { background: var(--muted, #8b98a9); opacity: .5; }
+.mf-stocks { display: flex; flex-wrap: wrap; gap: 6px; }
+.mf-stk { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line, #263042); background: rgba(255,255,255,.03); font-size: 12px; cursor: pointer; }
+.mf-stk:hover { border-color: var(--accent, #2fe6c7); }
+.mf-stk-sym { font-weight: 800; }
+.mf-stk-tf { font-size: 10px; color: var(--accent, #2fe6c7); font-weight: 700; }
+.mf-stk-ft { font-size: 10px; }
+.mf-stk-chg { font-size: 11px; font-weight: 700; } .mf-stk-chg.pos { color: var(--green, #26a69a); } .mf-stk-chg.neg { color: var(--red, #ef5350); }
