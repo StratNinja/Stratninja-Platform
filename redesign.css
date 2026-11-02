@@ -1686,9 +1686,11 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 /* drill modal */
 .m2-drill { display: flex; flex-wrap: wrap; gap: 16px; }
 .m2-dr-sec { flex: 1 1 240px; min-width: 0; }
-.m2-dr-h { font-weight: 800; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px; background: var(--panel2, #121726); }
+.m2-dr-h { font-weight: 800; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px; background: var(--panel2, #121726); display: flex; align-items: center; gap: 8px; }
 .m2-dr-h.pos { color: var(--green, #26a69a); }
 .m2-dr-h.neg { color: var(--red, #ef5350); }
+.m2-cpy { margin-inline-start: auto; background: transparent; border: 1px solid var(--line, #263042); color: inherit; border-radius: 7px; padding: 2px 8px; font-size: 13px; cursor: pointer; line-height: 1.4; }
+.m2-cpy:hover { border-color: var(--accent, #2fe6c7); }
 .m2-dr-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-bottom: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
 .m2-dr-row:hover { background: var(--panel2, #121726); }
 .m2-dr-sym { font-weight: 800; min-width: 54px; }

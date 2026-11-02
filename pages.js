@@ -9263,12 +9263,20 @@
       const chg = (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0)), cls = chg >= 0 ? "pos" : "neg";
       return '<div class="m2-dr-row" data-chart="' + escAttr(r.s) + '" data-tf="' + tf + '"><span class="m2-dr-sym">' + escHtml(r.s) + '</span><span class="m2-dr-nm muted">' + escHtml(r.name || r.nm || "") + '</span><span class="m2-dr-chg ' + cls + '">' + (chg >= 0 ? "+" : "") + (+chg).toFixed(2) + "%</span></div>";
     };
-    const sect = (arr, lbl, cls) => arr.length ? '<div class="m2-dr-sec"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length + "</div>" + arr.map(line).join("") + "</div>" : "";
-    const body = '<div class="drill-bar"><button class="btn ghost" id="m2Grid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button></div>' +
+    const syms = arr => arr.map(r => r.s).join(", ");
+    const sect = (arr, lbl, cls) => arr.length ? '<div class="m2-dr-sec"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length +
+      '<button class="m2-cpy" data-cpy="' + escAttr(syms(arr)) + '" title="העתק את הטיקרים">📋</button></div>' + arr.map(line).join("") + "</div>" : "";
+    const body = '<div class="drill-bar"><button class="btn ghost" id="m2Grid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
+      '<button class="btn ghost" data-cpy="' + escAttr(syms(list)) + '" style="font-size:12px;font-weight:600">📋 העתק טיקרים (' + list.length + ')</button></div>' +
       '<div class="m2-drill">' + sect(up, "🔼 2U שורי", "pos") + sect(dn, "🔽 2D דובי", "neg") + "</div>";
     modal("2️⃣ " + secHe(sec) + " · " + (TF_HE[tf] || tf) + " · " + list.length + " מניות בנר 2", body, "m2drill");
     const gb = document.getElementById("m2Grid");
     if (gb) gb.onclick = () => openChartGrid(list.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0) || 0, chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: secHe(sec) + " · " + (TF_HE[tf] || tf) + " · 2'ים" });
+    (document.getElementById("pgModal") || document).querySelectorAll("[data-cpy]").forEach(b => b.onclick = (ev) => {
+      ev.stopPropagation();
+      const txt = b.getAttribute("data-cpy") || "", n = txt ? txt.split(",").length : 0;
+      copyToClipboard(txt, () => { snToast("📋 הועתקו " + n + " טיקרים"); const o = b.innerHTML; b.innerHTML = "✓ הועתק"; setTimeout(() => { b.innerHTML = o; }, 1500); });
+    });
   }
 
   const PAGES = {
