@@ -1715,3 +1715,20 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .m2-sm-ochip:hover { background: rgba(239,83,80,.18); }
 .m2-table tr.m2-in td.m2-sec { box-shadow: inset 3px 0 0 var(--green, #26a69a); }
 .m2-table tr.m2-out td.m2-sec { box-shadow: inset 3px 0 0 var(--red, #ef5350); }
+.m2-sm-d2 { color: var(--red, #ef5350); font-size: 16px; }
+/* timeframe filter chips */
+.m2-tfbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 2px 0 12px; }
+.m2-tfbar-lbl { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-inline-end: 2px; }
+.m2-tfchip { font-size: 13px; font-weight: 700; padding: 5px 13px; border-radius: 999px; cursor: pointer; color: var(--ink); background: var(--panel2, #121726); border: 1px solid var(--line); transition: all .12s; }
+.m2-tfchip:hover { border-color: var(--accent, #2fe6c7); }
+.m2-tfchip.on { background: var(--accent, #2fe6c7); color: #061015; border-color: var(--accent, #2fe6c7); }
+/* per-timeframe leaders line (all view) */
+.m2-tflead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 11px; padding-top: 10px; border-top: 1px solid var(--line); }
+.m2-tflead-lbl { font-size: 12.5px; font-weight: 800; color: var(--ink); }
+.m2-tflead-item { font-size: 12.5px; color: var(--ink); background: var(--panel2, #121726); border: 1px solid var(--line); border-radius: 8px; padding: 3px 9px; cursor: pointer; }
+.m2-tflead-item:hover { border-color: var(--accent, #2fe6c7); }
+.m2-tflead-item b { color: var(--accent, #2fe6c7); }
+/* selected-column emphasis in the grid */
+.m2-table th.m2-col-on { color: var(--accent, #2fe6c7); font-size: 14px; }
+.m2-table td.m2-cell.m2-col-on { outline: 2px solid var(--accent, #2fe6c7); outline-offset: -2px; }
+.m2-table td.m2-cell.m2-col-dim { opacity: .4; }

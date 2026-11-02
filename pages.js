@@ -9134,6 +9134,7 @@
   // cells = where the directional energy is. 100% client-side off SCAN.rows — each row already
   // carries r[tf].t ("1"/"2U"/"2D"/"3") for D/W/M/Q/Y, so no server/feed change is needed.
   let m2Uni = "sp";                         // "sp" = S&P 500 only · "all" = full scanner universe
+  let m2Tf = "all";                         // TF filter: "all" (weighted smart-money) or one of D/W/M/Q/Y
   const M2_TFS = ["D", "W", "M", "Q", "Y"];
   const M2_RGB = { pos: "38,166,154", neg: "239,83,80", flat: "120,130,150" };   // TradingView green/red
   function m2Rows() {
@@ -9179,29 +9180,58 @@
     const M2_W = { D: 1, W: 1.5, M: 2.5, Q: 3.5, Y: 4 };
     const score = {};
     secs.forEach(s => { let sc = 0, w = 0; M2_TFS.forEach(tf => { const c = agg[s].tf[tf]; if (!c.n) return; sc += M2_W[tf] * ((c.u - c.d) / c.n); w += M2_W[tf]; }); score[s] = w ? sc / w : 0; });
-    const ranked = secs.slice().sort((a, b) => score[b] - score[a]);   // strongest inflow first
+    // TF FILTER: "all" ranks by the weighted smart-money score; a specific TF ranks by THAT timeframe's
+    // net-2U proportion, so the top card = the sector with the most 2s on the chosen TF (Adi: "ביומי
+    // אנרגיה, בשבועי טכנולוגיה, בחודשי פיננסים").
+    const tfOn = M2_TFS.indexOf(m2Tf) >= 0 ? m2Tf : null;   // null = "all" (weighted)
+    const sTf = (s, tf) => { const c = agg[s].tf[tf]; return c.n ? (c.u - c.d) / c.n : 0; };
+    const rankScore = s => tfOn ? sTf(s, tfOn) : score[s];
+    const ranked = secs.slice().sort((a, b) => rankScore(b) - rankScore(a));   // strongest inflow first
     const alignHi = s => ["M", "Q", "Y"].filter(tf => agg[s].tf[tf].u > agg[s].tf[tf].d);   // higher TFs net-bullish
     const isFresh = s => { const t = agg[s].tf; return ((t.D.u > t.D.d) || (t.W.u > t.W.d)) && alignHi(s).length >= 2; };   // short TFs entering NOW into an aligned higher-TF trend
     const strongLab = sc => sc >= 0.4 ? "זרימה חזקה 🔥" : sc >= 0.2 ? "זרימה חיובית" : "זרימה מתונה";
-    const inflow = ranked.filter(s => score[s] >= 0.07).slice(0, 4);
-    const outflow = ranked.slice().reverse().filter(s => score[s] <= -0.07).slice(0, 3);
+    const inThr = tfOn ? 0.1 : 0.07;
+    const inflow = ranked.filter(s => rankScore(s) >= inThr).slice(0, 4);
+    const outflow = ranked.slice().reverse().filter(s => rankScore(s) <= -inThr).slice(0, 3);
     const smCard = s => {
-      const etf = etfFor(s), hi = alignHi(s).map(tf => TF_HE[tf] || tf);
-      return '<div class="m2-sm-card' + (isFresh(s) ? " fresh" : "") + '" data-m2sec="' + escAttr(s) + '" data-m2tf="' + (alignHi(s)[0] || "D") + '" title="לחץ לרשימת המניות">' +
-        '<div class="m2-sm-h"><span class="m2-sm-nm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + (isFresh(s) ? '<span class="m2-sm-fresh">🆕 כניסה טרייה</span>' : "") + "</div>" +
+      const etf = etfFor(s);
+      const hHtml = '<div class="m2-sm-h"><span class="m2-sm-nm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + (!tfOn && isFresh(s) ? '<span class="m2-sm-fresh">🆕 כניסה טרייה</span>' : "") + "</div>";
+      if (tfOn) {
+        const c = agg[s].tf[tfOn], pct = c.n ? Math.round(100 * c.u / c.n) : 0;
+        return '<div class="m2-sm-card" data-m2sec="' + escAttr(s) + '" data-m2tf="' + tfOn + '" title="לחץ לרשימת המניות">' + hHtml +
+          '<div class="m2-sm-sc">▲' + c.u + ' <span class="m2-sm-d2">▼' + c.d + '</span></div>' +
+          '<div class="m2-sm-tfs">' + pct + "% מהסקטור בנר 2U · " + strongLab(sTf(s, tfOn)) + "</div></div>";
+      }
+      const hi = alignHi(s).map(tf => TF_HE[tf] || tf);
+      return '<div class="m2-sm-card' + (isFresh(s) ? " fresh" : "") + '" data-m2sec="' + escAttr(s) + '" data-m2tf="' + (alignHi(s)[0] || "D") + '" title="לחץ לרשימת המניות">' + hHtml +
         '<div class="m2-sm-sc">+' + Math.round(score[s] * 100) + ' <span class="m2-sm-lab">' + strongLab(score[s]) + "</span></div>" +
         '<div class="m2-sm-tfs">' + (hi.length ? "יישור זמנים גבוהים: " + hi.join(" · ") : "מונע ע\"י זמנים קצרים") + "</div></div>";
     };
-    const smBand = '<div class="m2-smart"><div class="m2-sm-ttl">💰 לאן הכסף החכם נכנס עכשיו</div>' +
-      '<div class="m2-sm-sub">דירוג סקטורים לפי זרימה כיוונית משוקללת-זמן — ככל שהזמנים הגבוהים (חודשי · רבעוני · שנתי) מיושרים ל-2U, כך הכניסה מוסדית יותר.</div>' +
+    const smTtl = tfOn ? ("💰 לאן הכסף החכם נכנס · " + (TF_HE[tfOn] || tfOn)) : "💰 לאן הכסף החכם נכנס עכשיו";
+    const smSub = tfOn ? ("הסקטורים עם הכי הרבה 2U בטיימפריים ה" + (TF_HE[tfOn] || tfOn) + " — לחץ \"הכל\" לדירוג משוקלל-זמן.") : "דירוג סקטורים לפי זרימה כיוונית משוקללת-זמן — ככל שהזמנים הגבוהים (חודשי · רבעוני · שנתי) מיושרים ל-2U, כך הכניסה מוסדית יותר.";
+    // "מוביל לפי זמן" — one-glance leader per TF (weighted "all" view only; the TF filter drills one)
+    let leadersLine = "";
+    if (!tfOn) {
+      const tfLead = M2_TFS.map(tf => { let best = null, bv = -Infinity; secs.forEach(s => { const c = agg[s].tf[tf]; if (!c.n) return; const v = (c.u - c.d) / c.n; if (v > bv) { bv = v; best = s; } }); return { tf: tf, sec: best }; });
+      leadersLine = '<div class="m2-tflead"><span class="m2-tflead-lbl">📊 מוביל לפי זמן:</span>' +
+        tfLead.filter(L => L.sec).map(L => '<span class="m2-tflead-item" data-m2sec="' + escAttr(L.sec) + '" data-m2tf="' + L.tf + '" title="לחץ לרשימת המניות"><b>' + (TF_HE[L.tf] || L.tf) + "</b> · " + escHtml(secHe(L.sec)) + "</span>").join("") + "</div>";
+    }
+    const smBand = '<div class="m2-smart"><div class="m2-sm-ttl">' + smTtl + "</div>" +
+      '<div class="m2-sm-sub">' + smSub + "</div>" +
       (inflow.length ? '<div class="m2-sm-grid">' + inflow.map(smCard).join("") + "</div>" : '<div class="muted" style="padding:8px 2px">אין כרגע זרימה כיוונית חיובית בולטת.</div>') +
-      (outflow.length ? '<div class="m2-sm-out"><span>🔻 כסף יוצא מ:</span> ' + outflow.map(s => '<span class="m2-sm-ochip" data-m2sec="' + escAttr(s) + '" data-m2tf="' + (["M", "Q", "Y"].find(tf => agg[s].tf[tf].d > agg[s].tf[tf].u) || "D") + '">' + escHtml(secHe(s)) + " (" + Math.round(score[s] * 100) + ")</span>").join("") + "</div>" : "") +
+      leadersLine +
+      (outflow.length ? '<div class="m2-sm-out"><span>🔻 כסף יוצא מ:</span> ' + outflow.map(s => '<span class="m2-sm-ochip" data-m2sec="' + escAttr(s) + '" data-m2tf="' + (tfOn || ["M", "Q", "Y"].find(tf => agg[s].tf[tf].d > agg[s].tf[tf].u) || "D") + '">' + escHtml(secHe(s)) + " (" + Math.round((tfOn ? sTf(s, tfOn) : score[s]) * 100) + ")</span>").join("") + "</div>" : "") +
       "</div>";
     const uni = '<div class="m2-uni">' +
       '<button class="uni-btn' + (m2Uni === "sp" ? " on" : "") + '" data-m2uni="sp">S&P 500</button>' +
       '<button class="uni-btn' + (m2Uni === "all" ? " on" : "") + '" data-m2uni="all">כל היקום</button></div>';
+    const tfbar = '<div class="m2-tfbar"><span class="m2-tfbar-lbl">סינון זמן:</span>' +
+      [["all", "הכל"]].concat(M2_TFS.map(tf => [tf, TF_HE[tf] || tf])).map(p => '<button class="m2-tfchip' + (m2Tf === p[0] ? " on" : "") + '" data-m2tfpick="' + p[0] + '">' + p[1] + "</button>").join("") + "</div>";
+    let v1k, v1v;
+    if (tfOn) { const L = ranked[0], c = L ? agg[L].tf[tfOn] : null; v1k = "המוביל ב" + (TF_HE[tfOn] || tfOn); v1v = L ? secHe(L) + " (▲" + c.u + ")" : "—"; }
+    else { v1k = "הכי הרבה 2'ים"; v1v = secHe(hot.sec) + " · " + (TF_HE[hot.tf] || hot.tf) + " (" + hot.n + ")"; }
     const verdict = '<div class="cm-verdict m2-verdict">' +
-      '<span class="cmv-item"><span class="cmv-k">הכי הרבה 2\'ים</span><span class="cmv-v pos">' + secHe(hot.sec) + " · " + (TF_HE[hot.tf] || hot.tf) + " (" + hot.n + ")</span></span>" +
+      '<span class="cmv-item"><span class="cmv-k">' + v1k + '</span><span class="cmv-v pos">' + v1v + "</span></span>" +
       '<span class="cmv-item"><span class="cmv-k">הזמן הכי כיווני</span><span class="cmv-v">' + (TF_HE[bestTf] || bestTf) + "</span></span>" +
       '<span class="cmv-item"><span class="cmv-k">מאזן השוק</span><span class="cmv-v">▲' + totU + " / ▼" + totD + " · " + leanTxt + "</span></span></div>";
     const cell = (c, tf, sec) => {
@@ -9209,10 +9239,11 @@
       const key = net > 0 ? "pos" : net < 0 ? "neg" : "flat";
       const act = c.n ? tot / c.n : 0, sat = tot ? Math.min(0.5, 0.08 + act * 0.6) : 0;
       const bg = tot ? "background:rgba(" + M2_RGB[key] + "," + sat.toFixed(3) + ")" : "";
-      return '<td class="m2-cell ' + (net > 0 ? "pos" : net < 0 ? "neg" : "") + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + " — לחץ לרשימת המניות") + '">' +
+      const colCls = tfOn ? (tf === tfOn ? " m2-col-on" : " m2-col-dim") : "";
+      return '<td class="m2-cell' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + colCls + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + " — לחץ לרשימת המניות") + '">' +
         (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" : '<span class="m2-z">—</span>') + "</td>";
     };
-    const thead = '<tr><th class="m2-sec-h">סקטור</th>' + M2_TFS.map(tf => "<th>" + (TF_HE[tf] || tf) + "</th>").join("") + "</tr>";
+    const thead = '<tr><th class="m2-sec-h">סקטור</th>' + M2_TFS.map(tf => '<th' + (tfOn && tf === tfOn ? ' class="m2-col-on"' : "") + ">" + (TF_HE[tf] || tf) + "</th>").join("") + "</tr>";
     const body = ranked.map(s => {
       const o = agg[s], etf = etfFor(s), rc = score[s] >= 0.07 ? " m2-in" : score[s] <= -0.07 ? " m2-out" : "";
       return "<tr" + (rc ? ' class="' + rc.trim() + '"' : "") + '><td class="m2-sec"><span class="m2-secnm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + "</td>" +
@@ -9220,13 +9251,14 @@
     }).join("");
     const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span><span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
     return head + '<div class="panel m2-panel"><div class="m2-head"><h3>🗺️ מפת ה-2\'ים · סקטור × טיימפריים</h3>' + uni + "</div>" +
-      smBand + verdict +
+      tfbar + smBand + verdict +
       '<div class="tablewrap"><table class="cmap-table m2-table">' + thead + body + "</table></div>" +
       legend + "</div>";
   }
   function wireMost2s() {
     document.querySelectorAll("[data-m2uni]").forEach(b => b.onclick = () => { const u = b.dataset.m2uni; if (u === m2Uni) return; m2Uni = u; reRender(); });
-    document.querySelectorAll(".m2-cell[data-m2sec], .m2-sm-card[data-m2sec], .m2-sm-ochip[data-m2sec]").forEach(el => el.onclick = () => _m2Drill(el.dataset.m2sec, el.dataset.m2tf));
+    document.querySelectorAll("[data-m2tfpick]").forEach(b => b.onclick = () => { const t = b.dataset.m2tfpick; if (t === m2Tf) return; m2Tf = t; reRender(); });
+    document.querySelectorAll(".m2-cell[data-m2sec], .m2-sm-card[data-m2sec], .m2-sm-ochip[data-m2sec], .m2-tflead-item[data-m2sec]").forEach(el => el.onclick = () => _m2Drill(el.dataset.m2sec, el.dataset.m2tf));
   }
   function _m2Drill(sec, tf) {
     const list = m2Rows().filter(r => r.sec === sec && ((r[tf] || {}).t === "2U" || (r[tf] || {}).t === "2D"));
