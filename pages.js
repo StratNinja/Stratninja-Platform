@@ -9208,18 +9208,13 @@
     };
     const smTtl = tfOn ? ("💰 לאן הכסף החכם נכנס · " + (TF_HE[tfOn] || tfOn)) : "💰 לאן הכסף החכם נכנס עכשיו";
     const smSub = tfOn ? ("הסקטורים עם הכי הרבה 2U בטיימפריים ה" + (TF_HE[tfOn] || tfOn) + " — לחץ \"הכל\" לדירוג משוקלל-זמן.") : "דירוג סקטורים לפי זרימה כיוונית משוקללת-זמן — ככל שהזמנים הגבוהים (חודשי · רבעוני · שנתי) מיושרים ל-2U, כך הכניסה מוסדית יותר.";
-    // "מוביל לפי זמן" — one-glance leader per TF (weighted "all" view only; the TF filter drills one)
-    let leadersLine = "";
-    if (!tfOn) {
-      const tfLead = M2_TFS.map(tf => { let best = null, bv = -Infinity; secs.forEach(s => { const c = agg[s].tf[tf]; if (!c.n) return; const v = (c.u - c.d) / c.n; if (v > bv) { bv = v; best = s; } }); return { tf: tf, sec: best }; });
-      leadersLine = '<div class="m2-tflead"><span class="m2-tflead-lbl">📊 מוביל לפי זמן:</span>' +
-        tfLead.filter(L => L.sec).map(L => '<span class="m2-tflead-item" data-m2sec="' + escAttr(L.sec) + '" data-m2tf="' + L.tf + '" title="לחץ לרשימת המניות"><b>' + (TF_HE[L.tf] || L.tf) + "</b> · " + escHtml(secHe(L.sec)) + "</span>").join("") + "</div>";
-    }
+    // Per-TF leader → marked with a GLOWING box in the grid (Adi: replaces the old "מוביל לפי זמן" /
+    // "כסף יוצא מ" text rows — same signal, zero extra height). Only when that leader is net-bullish.
+    const tfLeadSec = {};
+    M2_TFS.forEach(tf => { let best = null, bv = 0; secs.forEach(s => { const c = agg[s].tf[tf]; if (!c.n) return; const net = c.u - c.d; if (net > 0 && net / c.n > bv) { bv = net / c.n; best = s; } }); if (best) tfLeadSec[tf] = best; });
     const smBand = '<div class="m2-smart"><div class="m2-sm-ttl">' + smTtl + "</div>" +
       '<div class="m2-sm-sub">' + smSub + "</div>" +
       (inflow.length ? '<div class="m2-sm-grid">' + inflow.map(smCard).join("") + "</div>" : '<div class="muted" style="padding:8px 2px">אין כרגע זרימה כיוונית חיובית בולטת.</div>') +
-      leadersLine +
-      (outflow.length ? '<div class="m2-sm-out"><span>🔻 כסף יוצא מ:</span> ' + outflow.map(s => '<span class="m2-sm-ochip" data-m2sec="' + escAttr(s) + '" data-m2tf="' + (tfOn || ["M", "Q", "Y"].find(tf => agg[s].tf[tf].d > agg[s].tf[tf].u) || "D") + '">' + escHtml(secHe(s)) + " (" + Math.round((tfOn ? sTf(s, tfOn) : score[s]) * 100) + ")</span>").join("") + "</div>" : "") +
       "</div>";
     const uni = '<div class="m2-uni">' +
       '<button class="uni-btn' + (m2Uni === "sp" ? " on" : "") + '" data-m2uni="sp">S&P 500</button>' +
@@ -9239,7 +9234,8 @@
       const act = c.n ? tot / c.n : 0, sat = tot ? Math.min(0.5, 0.08 + act * 0.6) : 0;
       const bg = tot ? "background:rgba(" + M2_RGB[key] + "," + sat.toFixed(3) + ")" : "";
       const colCls = tfOn ? (tf === tfOn ? " m2-col-on" : " m2-col-dim") : "";
-      return '<td class="m2-cell' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + colCls + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + " — לחץ לרשימת המניות") + '">' +
+      const leadCls = tfLeadSec[tf] === sec ? " m2-lead" : "";
+      return '<td class="m2-cell' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + colCls + leadCls + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + (tfLeadSec[tf] === sec ? " — ✨ המוביל בטיימפריים זה" : "") + " — לחץ לרשימת המניות") + '">' +
         (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" : '<span class="m2-z">—</span>') + "</td>";
     };
     const thead = '<tr><th class="m2-sec-h">סקטור</th>' + M2_TFS.map(tf => '<th' + (tfOn && tf === tfOn ? ' class="m2-col-on"' : "") + ">" + (TF_HE[tf] || tf) + "</th>").join("") + "</tr>";
@@ -9248,7 +9244,7 @@
       return "<tr" + (rc ? ' class="' + rc.trim() + '"' : "") + '><td class="m2-sec"><span class="m2-secnm">' + escHtml(secHe(s)) + "</span>" + (etf ? '<span class="m2-etf">' + etf + "</span>" : "") + "</td>" +
         M2_TFS.map(tf => cell(o.tf[tf], tf, s)).join("") + "</tr>";
     }).join("");
-    const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span><span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
+    const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span><span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span>✨ מסגרת זוהרת = הסקטור המוביל בטיימפריים</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
     return head + '<div class="panel m2-panel"><div class="m2-head"><h3>🗺️ מפת ה-2\'ים · סקטור × טיימפריים</h3>' + uni + "</div>" +
       tfbar + smBand + verdict +
       '<div class="tablewrap"><table class="cmap-table m2-table">' + thead + body + "</table></div>" +

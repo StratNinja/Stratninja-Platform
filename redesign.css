@@ -1732,3 +1732,5 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .m2-table th.m2-col-on { color: var(--accent, #2fe6c7); font-size: 14px; }
 .m2-table td.m2-cell.m2-col-on { outline: 2px solid var(--accent, #2fe6c7); outline-offset: -2px; }
 .m2-table td.m2-cell.m2-col-dim { opacity: .4; }
+/* per-timeframe leader — glowing box right in the grid (replaces the old text leader line) */
+.m2-table td.m2-cell.m2-lead { outline: 2px solid var(--accent, #2fe6c7); outline-offset: -2px; box-shadow: 0 0 11px 1px rgba(47,230,199,.6), inset 0 0 9px rgba(47,230,199,.28); position: relative; z-index: 1; border-radius: 4px; }
