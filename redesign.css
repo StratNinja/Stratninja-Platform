@@ -1791,3 +1791,14 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
   letter-spacing: .04em; color: var(--muted, #8b98a9); text-transform: none; }
 .mf-pop-vs::before, .mf-pop-vs::after { content: ""; flex: 1; height: 1px; background: var(--line, #263042); }
 .mf-pop-runner { opacity: .96; }
+
+/* ===== preset share modal (short link + name) ===== */
+.ps-share { display: flex; flex-direction: column; gap: 11px; min-width: min(420px, 78vw); }
+.ps-share-lead { font-size: 13px; color: var(--muted, #8b98a9); line-height: 1.5; }
+.ps-share-name { font-size: 15px; font-weight: 800; color: var(--ink, #e6edf3); }
+.ps-share-link { width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 9px; direction: ltr; text-align: left;
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--accent, #2fe6c7);
+  border: 1px solid var(--line, #263042); background: var(--panel2, #121726); }
+.ps-share-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ps-share-badge { font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--green, #26a69a); border: 1px solid var(--green, #26a69a); }
+.ps-share-badge.warn { color: var(--muted, #8b98a9); border-color: var(--line, #263042); }

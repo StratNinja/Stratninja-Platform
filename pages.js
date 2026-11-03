@@ -2332,17 +2332,87 @@
     if (o === "" || o === "all" || o === "off" || o === false || o == null) return undefined;
     return o;
   }
+  // long, self-contained fallback link (whole preset packed into the URL) — used when the short-link service is unavailable
   function presetShareLink(p) { try { return location.origin + "/?p=" + _b64e(JSON.stringify({ n: p.name, c: _minObj(p.cfg) || {} })); } catch (e) { return ""; } }
-  function sharePreset(p) { if (!p) return; const link = presetShareLink(p); if (!link) { snToast("שגיאה ביצירת הקישור"); return; } copyToClipboard(link, () => snToast("🔗 קישור הפריסט הועתק — שלח אותו לסוחר אחר")); }
-  function checkSharedPresetInUrl() {
+  // short code: lowercase + digits, no look-alikes (0/o/1/l/i removed)
+  function _randCode(n) { const a = "abcdefghijkmnpqrstuvwxyz23456789"; let s = ""; for (let i = 0; i < n; i++) s += a[Math.floor(Math.random() * a.length)]; return s; }
+  // store the preset in Supabase under a short code → returns stratninja.win/?s=<code> (or "" so the caller falls back to the long link)
+  async function _shortenPreset(p) {
+    const cfg = window.SN_CONFIG || {};
+    if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return "";
+    const name = String(p.name || "פריסט").slice(0, 120);
+    const body = { name, cfg: _minObj(p.cfg) || {} };   // no email stored — the table is publicly readable
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = _randCode(6);
+      try {
+        const res = await fetch(cfg.SUPABASE_URL + "/rest/v1/shared_presets", {
+          method: "POST",
+          headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY, "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify(Object.assign({ code }, body)),
+        });
+        if (res.ok) return location.origin + "/?s=" + code;
+        if (res.status === 409) continue;   // rare code collision → try another
+        return "";                          // other error (e.g. table missing) → fall back to long link
+      } catch (e) { return ""; }
+    }
+    return "";
+  }
+  async function _fetchSharedPreset(code) {
+    const cfg = window.SN_CONFIG || {};
+    if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY) return null;
     try {
-      const m = location.search.match(/[?&]p=([^&]+)/); if (!m) return;
-      const obj = JSON.parse(_b64d(decodeURIComponent(m[1])));
-      history.replaceState(null, "", location.pathname);   // clean URL so a refresh won't re-prompt
-      if (!obj || !obj.c) return;
-      const name = String(obj.n || "פריסט משותף").slice(0, 60);
+      const res = await fetch(cfg.SUPABASE_URL + "/rest/v1/shared_presets?code=eq." + encodeURIComponent(code) + "&select=name,cfg&limit=1",
+        { headers: { apikey: cfg.SUPABASE_ANON_KEY, Authorization: "Bearer " + cfg.SUPABASE_ANON_KEY } });
+      if (!res.ok) return null;
+      const arr = await res.json();
+      return (arr && arr[0]) || null;
+    } catch (e) { return null; }
+  }
+  // the pasted text carries the NAME above the link, so the community sees what the preset is before opening it
+  function _presetShareText(name, link) { return "📊 " + (name || "פריסט") + "\n" + link; }
+  function _showPresetShareModal(name, link, isShort) {
+    const shareTxt = _presetShareText(name, link);
+    modal("🔗 שיתוף פריסט", '' +
+      '<div class="ps-share">' +
+        '<div class="ps-share-lead">העתק ושלח לקהילה — הנמען יראה את השם ויוכל להוסיף את הפריסט בלחיצה אחת:</div>' +
+        '<div class="ps-share-name">📊 <b>' + escHtml(name || "פריסט") + '</b></div>' +
+        '<input id="psShareLink" class="ps-share-link" readonly value="' + escAttr(link) + '">' +
+        '<div class="ps-share-actions">' +
+          '<button class="btn" id="psCopy">📋 העתק קישור + שם</button>' +
+          (isShort ? '<span class="ps-share-badge">קישור קצר ✓</span>' : '<span class="ps-share-badge warn" title="שירות הקיצור לא זמין כרגע — זה קישור מלא שעובד בכל מקרה">קישור מלא</span>') +
+        '</div>' +
+      '</div>');
+    const cp = document.getElementById("psCopy");
+    if (cp) cp.onclick = () => { copyToClipboard(shareTxt, () => { cp.textContent = "✓ הועתק"; snToast("🔗 הקישור + שם הפריסט הועתקו — הדבק בדיסקורד/לקהילה"); setTimeout(() => { cp.textContent = "📋 העתק קישור + שם"; }, 1600); }); };
+    const inp = document.getElementById("psShareLink"); if (inp) inp.onclick = () => inp.select();
+  }
+  async function sharePreset(p) {
+    if (!p) return;
+    snToast("⏳ יוצר קישור…");
+    let link = ""; try { link = await _shortenPreset(p); } catch (e) {}
+    const isShort = !!link;
+    if (!link) link = presetShareLink(p);             // fall back to the long self-contained link
+    if (!link) { snToast("שגיאה ביצירת הקישור"); return; }
+    _showPresetShareModal(p.name, link, isShort);
+  }
+  async function checkSharedPresetInUrl() {
+    try {
+      const ms = location.search.match(/[?&]s=([A-Za-z0-9]+)/);
+      const mp = location.search.match(/[?&]p=([^&]+)/);
+      let name = "", cfgObj = null;
+      if (ms) {
+        const rec = await _fetchSharedPreset(ms[1]);
+        history.replaceState(null, "", location.pathname);   // clean URL so a refresh won't re-prompt
+        if (!rec || !rec.cfg) { snToast("הקישור לא נמצא או שפג תוקפו"); return; }
+        name = String(rec.name || "פריסט משותף").slice(0, 60); cfgObj = rec.cfg;
+      } else if (mp) {
+        const obj = JSON.parse(_b64d(decodeURIComponent(mp[1])));
+        history.replaceState(null, "", location.pathname);
+        if (!obj || !obj.c) return;
+        name = String(obj.n || "פריסט משותף").slice(0, 60); cfgObj = obj.c;
+      } else return;
       if (confirm('קיבלת פריסט משותף:\n"' + name + '"\n\nלהוסיף אותו לסריקות השמורות שלך?')) {
-        const rec = window.Prefs.importScanPreset(name, obj.c);
+        const rec = window.Prefs.importScanPreset(name, cfgObj);
         if (rec) { _selPreset = rec.id; setPage("scanner"); snToast('הפריסט "' + rec.name + '" נוסף ✓'); }
       }
     } catch (e) {}
@@ -10161,7 +10231,7 @@
     try { _wantLive = /^\/live\/?$/.test(location.pathname) || /(^|#)live$/.test(location.hash); } catch (e) {}
     if (_wantLive) setPage("live");
     else setPage((PAGES[last] || last === "journal" || _pulseRender[last]) ? last : "market");   // _pulseRender[last] → a pulse sub-tab (sectors/today/…)
-    if (/[?&]p=/.test(location.search)) setTimeout(checkSharedPresetInUrl, 1500);   // shared preset (?p=) — wait for cloud prefs to settle first
+    if (/[?&](s|p)=/.test(location.search)) setTimeout(checkSharedPresetInUrl, 1500);   // shared preset (?s=<code> short link, or ?p= long) — wait for cloud prefs to settle first
     loadLive();
     setInterval(loadLive, 60000);
     loadScanner();                                   // ensure scan data (for alerts) even off the scanner page
