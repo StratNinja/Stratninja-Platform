@@ -1225,8 +1225,14 @@
       if (secs.length < 2) return "";
       secs.sort((a, b) => b.comp - a.comp);
       const win = secs[0], lose = secs[secs.length - 1];
-      // COMPACT: one line per side (sector · ETF% · strength · participation); FULL detail (stocks) on hover.
-      return '<div class="mf-bar">' + _mfPill(win, "in") + _mfPill(lose, "out") + "</div>";
+      // HEAD-TO-HEAD: when the race is tight, surface the runner-up sector too (Adi: "XLF/XLY ראש בראש למי נכנס הכסף; XLE/XLK ראש בראש למי יוצא").
+      const _VS_GAP = 0.10;                                                           // close enough in composite to call it a tie
+      const inUp = secs[1];                                                           // 2nd-highest comp (inflow runner)
+      const inRunner = (inUp && inUp.comp > 0.03 && (win.comp - inUp.comp) <= _VS_GAP) ? inUp : null;
+      const outUp = secs[secs.length - 2];                                            // 2nd-lowest comp (outflow runner)
+      const outRunner = (outUp && outUp.comp < -0.03 && (outUp.comp - lose.comp) <= _VS_GAP) ? outUp : null;
+      // COMPACT: one line per side (sector · ETF% · strength · participation); FULL detail (+ runner-up) on hover.
+      return '<div class="mf-bar">' + _mfPill(win, "in", inRunner) + _mfPill(lose, "out", outRunner) + "</div>";
     } catch (e) { return ""; }
   }
   function _mfStrength(s, dir) {                            // how STRONG & INSTITUTIONAL is the signal
@@ -1246,30 +1252,47 @@
       (ftOn ? '<span class="mf-stk-ft">🔗</span>' : "") +
       '<span class="mf-stk-chg ' + (r.c >= 0 ? "pos" : "neg") + '">' + cs + "</span></span>";
   }
-  function _mfPill(s, dir) {
+  function _mfPopSection(s, dir, isRunner) {               // ONE sector's detail block (leader or runner-up) inside the popover
     const inflow = dir === "in";
+    const sign = inflow ? "pos" : "neg";
     const etf = etfFor(s.raw) || etfFor(s.he) || "";
     const scored = s.members.map(r => ({ r, sc: _mfStkScore(r) }));
     const aligned = scored.filter(o => inflow ? o.sc > 0.05 : o.sc < -0.05).sort((a, b) => inflow ? b.sc - a.sc : a.sc - b.sc);
-    const top = aligned.slice(0, 8);
+    const top = aligned.slice(0, isRunner ? 6 : 8);
+    const alignedN = aligned.length;
+    const flowTxt = s.flowPct == null ? "" : " " + (s.flowPct >= 0 ? "+" : "") + s.flowPct.toFixed(2) + "%";
+    const fac = (lbl, v) => { const pos = inflow ? v > 0 : v < 0; const mag = Math.min(100, Math.abs(v) * 100);
+      return '<span class="mf-fac ' + (pos ? "on" : "off") + '"><span class="mf-fac-l">' + lbl + '</span><span class="mf-fac-bar"><i style="width:' + mag.toFixed(0) + '%"></i></span></span>'; };
+    const facs = '<div class="mf-facs">' + fac("💰 תזרים", s.fFlow) + fac("⚡ 2\'ים", s.fEnergy) + fac("📊 רוחב", s.fBreadth) + fac("🔗 המשכיות", s.fCont) + "</div>";
+    const stocks = top.length ? top.map(r => _mfStkChip(r.r, dir)).join("") : '<span class="muted" style="font-size:12px">—</span>';
+    const head = isRunner
+      ? '🥈 ' + escHtml(s.he) + (etf ? ' · ' + etf + flowTxt : '') + ' · ' + alignedN + "/" + s.n + ' מניות'
+      : (inflow ? "💰 נכנס אל " : "🩸 יוצא מ-") + escHtml(s.he) + ' · ' + alignedN + "/" + s.n + ' מניות ' + (inflow ? "בכיוון" : "בירידה");
+    return '<div class="mf-pop-sec' + (isRunner ? ' mf-pop-runner' : '') + '">' +
+      '<div class="mf-pop-h ' + sign + '">' + head + '</div>' +
+      facs + '<div class="mf-stocks">' + stocks + "</div>" +
+      '<div class="mf-pop-all" data-mfdrill="' + escAttr(s.raw) + '">כל המניות של ' + escHtml(s.he) + " →</div></div>";
+  }
+  function _mfPill(s, dir, runner) {
+    const inflow = dir === "in";
+    const etf = etfFor(s.raw) || etfFor(s.he) || "";
+    const scored = s.members.map(r => ({ r, sc: _mfStkScore(r) }));
+    const aligned = scored.filter(o => inflow ? o.sc > 0.05 : o.sc < -0.05);
     const alignedN = aligned.length;
     const broad = alignedN >= Math.max(5, Math.ceil(s.n * 0.5));
     const str = _mfStrength(s, dir);
     const sign = inflow ? "pos" : "neg";
     const arrow = inflow ? "▲" : "▼";
     const flowTxt = s.flowPct == null ? "" : " " + (s.flowPct >= 0 ? "+" : "") + s.flowPct.toFixed(2) + "%";
-    const fac = (lbl, v) => { const pos = inflow ? v > 0 : v < 0; const mag = Math.min(100, Math.abs(v) * 100);
-      return '<span class="mf-fac ' + (pos ? "on" : "off") + '"><span class="mf-fac-l">' + lbl + '</span><span class="mf-fac-bar"><i style="width:' + mag.toFixed(0) + '%"></i></span></span>'; };
-    const facs = '<div class="mf-facs">' + fac("💰 תזרים", s.fFlow) + fac("⚡ 2\'ים", s.fEnergy) + fac("📊 רוחב", s.fBreadth) + fac("🔗 המשכיות", s.fCont) + "</div>";
-    const stocks = top.length ? top.map(r => _mfStkChip(r.r, dir)).join("") : '<span class="muted" style="font-size:12px">—</span>';
-    const pop = '<div class="mf-pop">' +
-      '<div class="mf-pop-h ' + sign + '">' + (inflow ? "💰 נכנס אל " : "🩸 יוצא מ-") + escHtml(s.he) + ' · ' + alignedN + "/" + s.n + ' מניות ' + (inflow ? "בכיוון" : "בירידה") + '</div>' +
-      facs + '<div class="mf-stocks">' + stocks + "</div>" +
-      '<div class="mf-pop-all" data-mfdrill="' + escAttr(s.raw) + '">כל המניות של ' + escHtml(s.he) + " →</div></div>";
+    const rEtf = runner ? (etfFor(runner.raw) || etfFor(runner.he) || "") : "";
+    const vs = runner ? '<span class="mf-pill-vs" title="ראש בראש — ' + escAttr(runner.he) + '">⚖️ ' + escHtml(rEtf || runner.he) + '</span>' : "";
+    const pop = '<div class="mf-pop">' + _mfPopSection(s, dir, false) +
+      (runner ? '<div class="mf-pop-vs">⚖️ ראש בראש</div>' + _mfPopSection(runner, dir, true) : "") + "</div>";
     return '<div class="mf-pill mf-' + dir + '" data-mfsec="' + escAttr(s.raw) + '" tabindex="0">' +
       '<span class="mf-pill-dir ' + sign + '">' + (inflow ? "💰 כסף נכנס" : "🩸 כסף יוצא") + "</span>" +
       '<span class="mf-pill-sec">' + escHtml(s.he) + "</span>" +
       (etf ? '<span class="mf-pill-etf ' + sign + '">' + etf + " " + arrow + flowTxt + "</span>" : "") +
+      vs +
       '<span class="mf-pill-str ' + str.cls + '">' + str.ic + " " + str.short + "</span>" +
       '<span class="mf-pill-part ' + (broad ? "broad" : "narrow") + '">' + alignedN + "/" + s.n + " · " + (broad ? "רחב·מוסדי" : "ממוקד") + "</span>" +
       '<span class="mf-pop-hint">⌄</span>' + pop + "</div>";
@@ -1312,12 +1335,18 @@
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
     // 🎯 money-flow radar (compact): hover shows the popover via CSS; tap toggles it (touch); "כל המניות" → sector table
     document.querySelectorAll(".mf-pill[data-mfsec]").forEach(el => el.onclick = (ev) => {
-      if (ev.target.closest(".mf-stk")) return;                               // stock chip → chart (wireCharts)
+      if (ev.target.closest(".mf-stk")) return;                               // stock chip → chart grid (wireCharts stops propagation; popover closed by its own listener below)
       const drill = ev.target.closest("[data-mfdrill]");
       if (drill) { ev.stopPropagation(); const he = secHe(drill.dataset.mfdrill); const sec = ((LIVE && LIVE.sectors) || []).find(x => secHe(x.name) === he); if (sec && typeof renderSp500Drill === "function") renderSp500Drill(sec.name, false); return; }
       document.querySelectorAll(".mf-pill.open").forEach(p => { if (p !== el) p.classList.remove("open"); });
       el.classList.toggle("open");
     });
+    // clicking a stock chip opens the chart grid → close OUR popover so it doesn't float over the modal.
+    // (wireCharts' own onclick calls stopPropagation, so this must be a separate listener ON the chip, not on the pill.)
+    document.querySelectorAll(".mf-pill .mf-stk").forEach(chip => chip.addEventListener("click", () => {
+      document.querySelectorAll(".mf-pill.open").forEach(p => p.classList.remove("open"));
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // drop :focus-within (pill is tabindex=0)
+    }));
     // (universe buttons are wired globally via click delegation in boot — no per-render wiring needed)
     _mktFlip = false;   // one-shot: the flip animation only plays on the switch render
     // rotating "did you know" Candle Map insight

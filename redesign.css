@@ -1782,3 +1782,10 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .mf-stk-chg { font-size: 11px; font-weight: 700; } .mf-stk-chg.pos { color: var(--green, #26a69a); } .mf-stk-chg.neg { color: var(--red, #ef5350); }
 .mf-pop-all { margin-top: 9px; font-size: 12px; font-weight: 700; color: var(--accent, #2fe6c7); cursor: pointer; }
 .mf-pop-all:hover { text-decoration: underline; }
+/* head-to-head: a close runner-up sector (XLF/XLY, XLE/XLK …) */
+.mf-pill-vs { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 6px; white-space: nowrap;
+  color: var(--muted, #8b98a9); border: 1px dashed var(--line, #263042); background: rgba(255,255,255,.03); }
+.mf-pop-vs { display: flex; align-items: center; gap: 8px; margin: 11px 0 9px; font-size: 11px; font-weight: 800;
+  letter-spacing: .04em; color: var(--muted, #8b98a9); text-transform: none; }
+.mf-pop-vs::before, .mf-pop-vs::after { content: ""; flex: 1; height: 1px; background: var(--line, #263042); }
+.mf-pop-runner { opacity: .96; }
