@@ -1153,8 +1153,10 @@
       const he = secHe(s.name) || s.name;
       const lvl = Math.min(3, Math.max(1, Math.ceil(Math.abs(v) / 1.0)));
       const cls = v > 0.05 ? "mh-u" + lvl : v < -0.05 ? "mh-d" + lvl : "mh-flat";
-      return '<div class="mh-tile ' + cls + ' tsym clickable" data-chart="' + etf + '" data-tf="D">' +
-        '<span class="mh-etf">' + (etf || he) + "</span>" +
+      // whole tile → sector drill table; the ETF ticker itself → ETF chart (wireCharts stops propagation so it won't also open the drill)
+      return '<div class="mh-tile ' + cls + ' clickable" data-mhsec="' + escAttr(s.name) + '" title="לחץ לטבלת הסקטור">' +
+        (etf ? '<span class="mh-etf tsym clickable" data-chart="' + etf + '" data-tf="D" title="' + etf + ' · גרף תעודת הסל">' + etf + "</span>"
+             : '<span class="mh-etf">' + he + "</span>") +
         '<span class="mh-chg">' + (v >= 0 ? "+" : "") + v.toFixed(2) + "%</span>" +
         '<span class="mh-he">' + he + "</span></div>";
     }).join("");
@@ -1333,6 +1335,11 @@
     { const ga = $("#gapAll"); if (ga) ga.onclick = () => { techState.gapDir = "any"; if (!(parseFloat(techState.gapPct) > 0)) techState.gapPct = 3; setPage("scanner"); }; }   // gappers page retired → open the scanner with the gap filter on
     document.querySelectorAll("[data-idxmode]").forEach(b => b.onclick = () => { _idxChartMode = b.dataset.idxmode; reRender(); });
     document.querySelectorAll("[data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));
+    // sector heat tile → that sector's drill table (the ETF ticker inside opens the ETF chart via wireCharts, which stops propagation)
+    document.querySelectorAll(".mh-tile[data-mhsec]").forEach(el => el.onclick = (ev) => {
+      if (ev.target.closest("[data-chart]")) return;                          // clicked the ETF chip → chart, not the drill
+      if (typeof renderSp500Drill === "function") renderSp500Drill(el.dataset.mhsec, false);
+    });
     // 🎯 money-flow radar (compact): hover shows the popover via CSS; tap toggles it (touch); "כל המניות" → sector table
     document.querySelectorAll(".mf-pill[data-mfsec]").forEach(el => el.onclick = (ev) => {
       if (ev.target.closest(".mf-stk")) return;                               // stock chip → chart grid (wireCharts stops propagation; popover closed by its own listener below)
