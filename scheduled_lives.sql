@@ -26,6 +26,7 @@ create table if not exists public.scheduled_lives (
   thumbnail_url       text,
   scheduled_start     timestamptz not null,                     -- when the live is planned to begin
   status              text        not null default 'scheduled', -- scheduled | live | ended | canceled
+  visibility          text        not null default 'public',    -- public | community  (private = gated vault)
   youtube_broadcast_id text,                                    -- YouTube liveBroadcast id (Stage 2), nullable
   youtube_watch_url    text,                                    -- https://youtu.be/... convenience link (Stage 2)
   pre_push_sent       boolean     not null default false,       -- the "30 min before" push fired once
@@ -34,6 +35,7 @@ create table if not exists public.scheduled_lives (
 );
 
 -- If the table pre-existed from an earlier revision, make sure every column is present.
+alter table public.scheduled_lives add column if not exists visibility           text not null default 'public';
 alter table public.scheduled_lives add column if not exists youtube_broadcast_id text;
 alter table public.scheduled_lives add column if not exists youtube_watch_url    text;
 alter table public.scheduled_lives add column if not exists pre_push_sent        boolean not null default false;

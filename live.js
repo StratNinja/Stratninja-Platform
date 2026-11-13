@@ -418,9 +418,10 @@ window.Live = (function () {
     var list = rows.length ? rows.map(function (s) {
       var yt = s.youtube_watch_url ? ' · <span class="sl-yt">YouTube ✓</span>' : "";
       var liveBadge = s.status === "live" ? ' · 🔴 חי' : "";
+      var privBadge = (s.visibility === "community") ? ' · 🔒 קהילה' : "";
       return '<div class="law-sl-row"><div class="sl-info">' +
         '<div class="sl-t">' + esc(s.title || "ללא כותרת") + "</div>" +
-        '<div class="sl-w">⏰ ' + esc(_schedFmtWhen(s.scheduled_start)) + yt + liveBadge + "</div>" +
+        '<div class="sl-w">⏰ ' + esc(_schedFmtWhen(s.scheduled_start)) + privBadge + yt + liveBadge + "</div>" +
         '</div><div class="sl-btns">' +
           '<button class="btn ghost" data-sl-edit="' + esc(s.id) + '">עריכה</button>' +
           '<button class="btn ghost" data-sl-cancel="' + esc(s.id) + '" style="color:#ff9b9b">ביטול</button>' +
@@ -435,10 +436,14 @@ window.Live = (function () {
     var schVal = "";
     if (edit && edit.scheduled_start) { var d = new Date(edit.scheduled_start); if (!isNaN(d)) { var off = d.getTime() - d.getTimezoneOffset() * 60000; schVal = new Date(off).toISOString().slice(0, 16); } }
     var th = (edit && edit.thumbnail_url) || "";
+    var vis = (edit && edit.visibility === "community") ? "community" : "public";
+    function vopt(v, l) { return '<option value="' + v + '"' + (vis === v ? " selected" : "") + ">" + l + "</option>"; }
     return '<div style="margin-top:10px;border-top:1px solid var(--line);padding-top:10px">' +
       '<label>כותרת</label><input id="slTitle" maxlength="200" value="' + esc(edit && edit.title) + '">' +
       '<label>תיאור</label><textarea id="slDesc" maxlength="1000">' + esc(edit && edit.description) + "</textarea>" +
       '<label>זמן התחלה</label><input type="datetime-local" id="slSched" value="' + schVal + '">' +
+      '<label>👁️ סוג השידור</label><select id="slVis">' + vopt("public", "🌐 פומבי — פתוח לכולם") + vopt("community", "🔒 פרטי — לחברי הקהילה בלבד") + "</select>" +
+      '<div class="la-stat">🔒 פרטי = השידור ננעל לחברי הקהילה כשהוא עולה (כספת + קישור חתום), וביוטיוב הוא נוצר כ-Unlisted. ⚠️ ודא ש-OBS משדר ל-Stream Key ה<b>סגור</b>.</div>' +
       '<label>תמונה (Thumbnail)</label>' +
       '<div class="la-thumb">' + (th ? '<img src="' + esc(th) + '" class="la-thumb-prev" alt="">' : "") + '<input type="file" id="slThumb" accept="image/*"></div>' +
       '<div class="live-row" style="margin-top:8px">' +
@@ -489,7 +494,8 @@ window.Live = (function () {
       var sched = ($("slSched") && $("slSched").value) || "";
       if (!title.trim()) { toast("צריך כותרת"); return; }
       if (!sched) { toast("צריך זמן התחלה"); return; }
-      var body = { action: "save", title: title, description: desc, scheduled_start: new Date(sched).toISOString() };
+      var vis = ($("slVis") && $("slVis").value === "community") ? "community" : "public";
+      var body = { action: "save", title: title, description: desc, scheduled_start: new Date(sched).toISOString(), visibility: vis };
       if (_schedThumbUrl) body.thumbnail_url = _schedThumbUrl;
       if (_schedEditId) body.id = _schedEditId;
       save.disabled = true; save.textContent = "שומר…";
@@ -813,7 +819,8 @@ window.Live = (function () {
     try { at = when.toLocaleString("he-IL", { weekday: "short", hour: "2-digit", minute: "2-digit", day: "numeric", month: "numeric" }); } catch (e) { at = s.scheduled_start; }
     var thumbOk = /^https:\/\/[^\s'"()]+$/i.test(String(s.thumbnail_url || ""));
     var thumb = thumbOk ? '<div class="ls-thumb" style="background-image:url(\'' + s.thumbnail_url + '\')"></div>' : '<div class="ls-thumb"></div>';
-    var tag = isLive ? '<span class="ls-tag"><span class="dot"></span>משדר עכשיו</span>' : '<span class="ls-tag"><span class="dot"></span>🔴 לייב קרוב</span>';
+    var priv = (s.visibility === "community") ? ' <span class="ls-tag" style="background:#6a5cf0">🔒 קהילה</span>' : "";
+    var tag = (isLive ? '<span class="ls-tag"><span class="dot"></span>משדר עכשיו</span>' : '<span class="ls-tag"><span class="dot"></span>🔴 לייב קרוב</span>') + priv;
     var whenLine = isLive
       ? '<div class="ls-when">🔴 השידור התחיל — הצטרפו עכשיו</div>'
       : '<div class="ls-when">⏰ עוד <span class="ls-cd" id="lsCd">—</span> · ' + esc(at) + "</div>";

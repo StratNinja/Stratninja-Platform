@@ -63,6 +63,7 @@ function publicView(row) {
     thumbnail_url: row.thumbnail_url || "",
     scheduled_start: row.scheduled_start || null,
     status: row.status || "scheduled",
+    visibility: row.visibility === "community" ? "community" : "public",
     youtube_watch_url: row.youtube_watch_url || "",
   };
 }
@@ -120,13 +121,14 @@ async function ytSetThumbnail(tok, broadcastId, thumbUrl) {
 }
 // Create a scheduled YouTube broadcast and bind it to the reusable stream.
 // → { broadcast_id, watch_url } on success, or { error } (never throws to the caller).
-async function ytCreateBroadcast(title, description, scheduledStartISO, thumbUrl) {
+async function ytCreateBroadcast(title, description, scheduledStartISO, thumbUrl, privacy) {
   try {
     const tok = await ytAccessToken();
     if (!tok) return { error: "yt_auth" };
+    const priv = (["public", "unlisted", "private"].indexOf(privacy) >= 0) ? privacy : YT_PRIVACY;
     const insBody = {
       snippet: { title: (title || "StratNinja Live").slice(0, 100), description: (description || "").slice(0, 5000), scheduledStartTime: scheduledStartISO },
-      status: { privacyStatus: YT_PRIVACY, selfDeclaredMadeForKids: false },
+      status: { privacyStatus: priv, selfDeclaredMadeForKids: false },
       contentDetails: { enableAutoStart: true, enableAutoStop: true, enableDvr: true },
     };
     const r = await ytApi(tok, "liveBroadcasts?part=snippet,status,contentDetails", { method: "POST", body: JSON.stringify(insBody) });
@@ -168,7 +170,7 @@ export default async function handler(req, res) {
   if (req.method === "GET") {
     // keep recently-started (last 3h) so a live-in-progress banner survives; drop ended/canceled.
     const since = new Date(Date.now() - 3 * 3600000).toISOString();
-    const r = await sb("scheduled_lives?select=id,title,description,thumbnail_url,scheduled_start,status,youtube_watch_url" +
+    const r = await sb("scheduled_lives?select=id,title,description,thumbnail_url,scheduled_start,status,visibility,youtube_watch_url" +
       "&status=in.(scheduled,live)&scheduled_start=gte." + encodeURIComponent(since) +
       "&order=scheduled_start.asc&limit=20");
     const rows = await r.json().catch(() => []);
@@ -212,10 +214,11 @@ export default async function handler(req, res) {
   if (!title) { res.status(400).json({ error: "missing_title" }); return; }
   if (!when || isNaN(when.getTime())) { res.status(400).json({ error: "bad_time" }); return; }
   const status = STATUSES.indexOf(body.status) >= 0 ? body.status : "scheduled";
+  const visibility = body.visibility === "community" ? "community" : "public";   // private = community (gated vault)
 
   // UPDATE path (existing row) — never touches pre_push_sent / youtube_* on an edit of core fields.
   if (RE_UUID.test(id)) {
-    const patch = { title, description, thumbnail_url, scheduled_start: when.toISOString(), status, updated_at: new Date().toISOString() };
+    const patch = { title, description, thumbnail_url, scheduled_start: when.toISOString(), status, visibility, updated_at: new Date().toISOString() };
     const r = await sb("scheduled_lives?id=eq." + id, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) });
     const a = await r.json().catch(() => []);
     if (!r.ok || !Array.isArray(a) || !a[0]) { res.status(502).json({ ok: false, error: "update_failed" }); return; }
@@ -227,7 +230,7 @@ export default async function handler(req, res) {
   // then create the matching YouTube broadcast and patch its id in.
   const ins = await sb("scheduled_lives", {
     method: "POST", headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ title, description, thumbnail_url, scheduled_start: when.toISOString(), status: "scheduled" }),
+    body: JSON.stringify({ title, description, thumbnail_url, scheduled_start: when.toISOString(), status: "scheduled", visibility }),
   });
   const created = await ins.json().catch(() => []);
   if (!ins.ok || !Array.isArray(created) || !created[0]) { res.status(502).json({ ok: false, error: "create_failed" }); return; }
@@ -235,7 +238,8 @@ export default async function handler(req, res) {
 
   let ytWarn = "";
   if (YT_READY) {
-    const yt = await ytCreateBroadcast(title, description, when.toISOString(), thumbnail_url);
+    // community (private) lives → unlisted on YouTube (match the community simulcast approach); public → public.
+    const yt = await ytCreateBroadcast(title, description, when.toISOString(), thumbnail_url, visibility === "community" ? "unlisted" : "public");
     if (yt.broadcast_id) {
       const pr = await sb("scheduled_lives?id=eq." + row.id, {
         method: "PATCH", headers: { Prefer: "return=representation" },
