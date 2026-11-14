@@ -15,9 +15,9 @@
 //   YT_CLIENT_ID                OAuth 2.0 client id       (Google Cloud → Credentials)
 //   YT_CLIENT_SECRET            OAuth 2.0 client secret
 //   YT_REFRESH_TOKEN            long-lived refresh token for Adi's channel (koriatmanagement@gmail.com)
-//   YT_STREAM_ID                OPTIONAL — the reusable YouTube liveStream id to bind each broadcast to
-//                               (so OBS→Cloudflare→YouTube lands in the scheduled broadcast). If unset,
-//                               the first reusable stream on the channel is used.
+//   YT_STREAM_ID                OPTIONAL advanced override — pin EVERY broadcast to one fixed liveStream id.
+//                               Leave UNSET (recommended): each scheduled live then gets its OWN dedicated
+//                               stream key, so multiple scheduled broadcasts never collide ("key in use").
 //   YT_PRIVACY                  OPTIONAL — 'public' (default) | 'unlisted' | 'private'
 
 const SUPA_URL = process.env.SUPABASE_URL || "https://iujeekdtimlmgwzzlauj.supabase.co";
@@ -94,16 +94,52 @@ function ytApi(tok, path, opts) {
     headers: Object.assign({ Authorization: "Bearer " + tok, "Content-Type": "application/json" }, opts.headers || {}),
   }));
 }
-// find the reusable liveStream to bind broadcasts to (the persistent OBS/Cloudflare RTMP key).
-async function ytReusableStreamId(tok) {
-  if (YT_STREAM_ID) return YT_STREAM_ID;
+// Create a FRESH dedicated liveStream for one broadcast. Each scheduled live gets its OWN
+// stream key, so multiple scheduled broadcasts never collide on one shared key ("key in use").
+// → { stream_id, stream_key, ingest_url } on success, or null. The key is a SECRET — it is
+// never persisted to Supabase (public-read); only the non-secret stream_id is stored, and the
+// key is re-fetched live for the verified admin via ytStreamKeys().
+async function ytCreateStream(tok, title) {
   try {
-    const r = await ytApi(tok, "liveStreams?part=id,cdn&mine=true&maxResults=20");
+    const body = {
+      snippet: { title: ("SN · " + (title || "Live")).slice(0, 128) },
+      cdn: { frameRate: "variable", resolution: "variable", ingestionType: "rtmp" },
+    };
+    const r = await ytApi(tok, "liveStreams?part=snippet,cdn,contentDetails", { method: "POST", body: JSON.stringify(body) });
     const j = await r.json().catch(() => null);
-    if (!r.ok || !j || !Array.isArray(j.items)) return null;
-    const reusable = j.items.find(s => s && s.cdn && s.cdn.ingestionType) || j.items[0];
-    return reusable ? reusable.id : null;
-  } catch (e) { console.warn("[sched-lives] YT liveStreams.list failed"); return null; }
+    if (!r.ok || !j || !j.id) {
+      console.warn("[sched-lives] YT liveStreams.insert failed " + JSON.stringify({ http: r.status, err: j && j.error && j.error.message }));
+      return null;
+    }
+    const info = (j.cdn && j.cdn.ingestionInfo) || {};
+    return { stream_id: j.id, stream_key: info.streamName || "", ingest_url: info.ingestionAddress || "" };
+  } catch (e) { console.warn("[sched-lives] YT liveStreams.insert threw"); return null; }
+}
+// best-effort delete of a dedicated stream (on cancel/delete) so streams don't pile up.
+async function ytDeleteStream(tok, streamId) {
+  try { if (streamId) await ytApi(tok, "liveStreams?id=" + encodeURIComponent(streamId), { method: "DELETE" }); }
+  catch (e) { /* best-effort */ }
+}
+// Batch-fetch the current RTMP key + ingest url for a set of dedicated stream ids (admin only).
+// Returns { [streamId]: { stream_key, ingest_url } }. Never throws.
+async function ytStreamKeys(tok, ids) {
+  const out = {};
+  const uniq = Array.from(new Set((ids || []).filter(Boolean)));
+  if (!uniq.length) return out;
+  try {
+    // liveStreams.list accepts a comma-joined id list; chunk to stay well under URL limits.
+    for (let i = 0; i < uniq.length; i += 25) {
+      const chunk = uniq.slice(i, i + 25);
+      const r = await ytApi(tok, "liveStreams?part=cdn&id=" + chunk.map(encodeURIComponent).join(","));
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || !Array.isArray(j.items)) continue;
+      j.items.forEach(s => {
+        const info = (s && s.cdn && s.cdn.ingestionInfo) || {};
+        out[s.id] = { stream_key: info.streamName || "", ingest_url: info.ingestionAddress || "" };
+      });
+    }
+  } catch (e) { console.warn("[sched-lives] YT streamKeys failed"); }
+  return out;
 }
 // set the broadcast's thumbnail from a URL (best-effort). broadcastId doubles as the videoId.
 async function ytSetThumbnail(tok, broadcastId, thumbUrl) {
@@ -138,16 +174,26 @@ async function ytCreateBroadcast(title, description, scheduledStartISO, thumbUrl
       return { error: "yt_insert" };
     }
     const broadcastId = j.id;
-    // bind to the persistent/reusable stream so OBS→Cloudflare→YouTube flows into THIS broadcast.
-    const streamId = await ytReusableStreamId(tok);
-    if (streamId) {
-      const b = await ytApi(tok, "liveBroadcasts/bind?part=id&id=" + encodeURIComponent(broadcastId) + "&streamId=" + encodeURIComponent(streamId), { method: "POST" });
+    // Give THIS broadcast its own dedicated stream key (no sharing → no "key in use" conflicts),
+    // then bind it so OBS/Cloudflare→YouTube on that key flows into THIS broadcast and auto-starts it.
+    let stream = null;
+    if (YT_STREAM_ID) {
+      // explicit override still honoured (advanced): bind to a fixed stream id.
+      stream = { stream_id: YT_STREAM_ID, stream_key: "", ingest_url: "" };
+    } else {
+      stream = await ytCreateStream(tok, title);
+    }
+    if (stream && stream.stream_id) {
+      const b = await ytApi(tok, "liveBroadcasts/bind?part=id&id=" + encodeURIComponent(broadcastId) + "&streamId=" + encodeURIComponent(stream.stream_id), { method: "POST" });
       if (!b.ok) console.warn("[sched-lives] YT bind failed " + JSON.stringify({ http: b.status }));
     } else {
-      console.warn("[sched-lives] YT no reusable stream to bind (set YT_STREAM_ID or create a persistent stream key)");
+      console.warn("[sched-lives] YT could not create a dedicated stream to bind");
     }
     if (thumbUrl) await ytSetThumbnail(tok, broadcastId, thumbUrl);
-    return { broadcast_id: broadcastId, watch_url: "https://youtu.be/" + broadcastId };
+    return {
+      broadcast_id: broadcastId, watch_url: "https://youtu.be/" + broadcastId,
+      stream_id: stream ? stream.stream_id : "", stream_key: stream ? stream.stream_key : "", ingest_url: stream ? stream.ingest_url : "",
+    };
   } catch (e) {
     console.warn("[sched-lives] YT create threw");
     return { error: "yt_threw" };
@@ -187,12 +233,42 @@ export default async function handler(req, res) {
   const action = String(body.action || "save").trim();
   const id = String(body.id || "").trim();
 
+  // ---- admin list: upcoming + live rows, enriched with the LIVE YouTube stream key ---------
+  // (the key is a secret fetched fresh from YouTube per request — never stored in Supabase).
+  if (action === "list") {
+    const since = new Date(Date.now() - 3 * 3600000).toISOString();
+    const r = await sb("scheduled_lives?select=id,title,description,thumbnail_url,scheduled_start,status,visibility,youtube_broadcast_id,youtube_watch_url,youtube_stream_id" +
+      "&status=in.(scheduled,live)&scheduled_start=gte." + encodeURIComponent(since) +
+      "&order=scheduled_start.asc&limit=50");
+    const rows = await r.json().catch(() => []);
+    const list = Array.isArray(rows) ? rows : [];
+    let keys = {};
+    if (YT_READY) {
+      const tok = await ytAccessToken();
+      if (tok) keys = await ytStreamKeys(tok, list.map(x => x.youtube_stream_id));
+    }
+    const out = list.map(row => Object.assign(publicView(row), {
+      youtube_broadcast_id: row.youtube_broadcast_id || "",
+      stream_key: (keys[row.youtube_stream_id] && keys[row.youtube_stream_id].stream_key) || "",
+      ingest_url: (keys[row.youtube_stream_id] && keys[row.youtube_stream_id].ingest_url) || "",
+    }));
+    res.status(200).json({ ok: true, lives: out, ts: Date.now() });
+    return;
+  }
+
   // ---- cancel: mark canceled + best-effort delete the YouTube broadcast ----
   if (action === "cancel" || action === "delete") {
     if (!RE_UUID.test(id)) { res.status(400).json({ error: "bad_id" }); return; }
-    const cur = await sb("scheduled_lives?id=eq." + id + "&select=youtube_broadcast_id").then(r => r.json()).catch(() => []);
+    const cur = await sb("scheduled_lives?id=eq." + id + "&select=youtube_broadcast_id,youtube_stream_id").then(r => r.json()).catch(() => []);
     const ybid = Array.isArray(cur) && cur[0] ? cur[0].youtube_broadcast_id : null;
-    if (ybid && YT_READY) await ytDeleteBroadcast(ybid);
+    const ysid = Array.isArray(cur) && cur[0] ? cur[0].youtube_stream_id : null;
+    if ((ybid || ysid) && YT_READY) {
+      const tok = await ytAccessToken();
+      if (tok) {
+        if (ybid) await ytDeleteBroadcast(ybid);
+        if (ysid && !YT_STREAM_ID) await ytDeleteStream(tok, ysid);   // never delete an explicit shared override
+      }
+    }
     if (action === "delete") {
       const r = await sb("scheduled_lives?id=eq." + id, { method: "DELETE" });
       res.status(r.ok ? 200 : 502).json(r.ok ? { ok: true } : { ok: false, error: "delete_failed" });
@@ -237,13 +313,15 @@ export default async function handler(req, res) {
   let row = created[0];
 
   let ytWarn = "";
+  let streamKey = "", ingestUrl = "";
   if (YT_READY) {
     // community (private) lives → unlisted on YouTube (match the community simulcast approach); public → public.
     const yt = await ytCreateBroadcast(title, description, when.toISOString(), thumbnail_url, visibility === "community" ? "unlisted" : "public");
     if (yt.broadcast_id) {
+      streamKey = yt.stream_key || ""; ingestUrl = yt.ingest_url || "";   // returned to the admin now; NOT stored (secret)
       const pr = await sb("scheduled_lives?id=eq." + row.id, {
         method: "PATCH", headers: { Prefer: "return=representation" },
-        body: JSON.stringify({ youtube_broadcast_id: yt.broadcast_id, youtube_watch_url: yt.watch_url, updated_at: new Date().toISOString() }),
+        body: JSON.stringify({ youtube_broadcast_id: yt.broadcast_id, youtube_watch_url: yt.watch_url, youtube_stream_id: yt.stream_id || null, updated_at: new Date().toISOString() }),
       });
       const pa = await pr.json().catch(() => []);
       if (Array.isArray(pa) && pa[0]) row = pa[0];
@@ -254,5 +332,5 @@ export default async function handler(req, res) {
     ytWarn = "yt_not_configured";
   }
 
-  res.status(200).json({ ok: true, live: publicView(row), youtube: !!row.youtube_broadcast_id, yt_warn: ytWarn });
+  res.status(200).json({ ok: true, live: publicView(row), youtube: !!row.youtube_broadcast_id, yt_warn: ytWarn, stream_key: streamKey, ingest_url: ingestUrl });
 }

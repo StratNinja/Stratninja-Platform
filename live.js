@@ -229,6 +229,14 @@ window.Live = (function () {
       ".law-sl-row .sl-btns{display:flex;gap:5px;flex:0 0 auto}",
       ".law-sl-row .sl-btns button{font-size:11.5px;padding:3px 9px}",
       ".law-sl-new{margin-top:10px}",
+      // ---- dedicated YouTube stream key box (what to paste into Cloudflare) ----
+      ".sl-key{margin-top:7px;background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:7px 9px}",
+      ".sl-key-h{font-size:11.5px;font-weight:800;color:#f87171;margin-bottom:5px}",
+      ".sl-key-row{display:flex;align-items:center;gap:6px;margin:3px 0}",
+      ".sl-key-lbl{flex:0 0 76px;font-size:11px;color:var(--muted)}",
+      ".sl-key-val{flex:1 1 auto;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;background:var(--panel,#0b1220);border:1px solid var(--line);border-radius:6px;padding:3px 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:left}",
+      ".sl-key .sl-copy{flex:0 0 auto;font-size:11px;padding:3px 9px}",
+      ".sl-key-tip{font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.4}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -413,6 +421,22 @@ window.Live = (function () {
     try { return new Date(iso).toLocaleString("he-IL", { weekday: "short", day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }); }
     catch (e) { return iso; }
   }
+  // The dedicated YouTube stream key + ingest URL for ONE scheduled live — exactly what to paste into
+  // the Cloudflare Stream "Output". Shown to the admin only (the key arrives via the verified list call).
+  function _schedKeyBoxHtml(s) {
+    if (!s || !s.stream_key) return "";
+    var url = s.ingest_url || "rtmp://a.rtmp.youtube.com/live2";
+    return '<div class="sl-key">' +
+      '<div class="sl-key-h">🔑 מפתח ל-Cloudflare (Output חדש → YouTube)</div>' +
+      '<div class="sl-key-row"><span class="sl-key-lbl">כתובת (URL)</span>' +
+        '<code class="sl-key-val">' + esc(url) + '</code>' +
+        '<button class="btn ghost sl-copy" data-copy="' + esc(url) + '">העתק</button></div>' +
+      '<div class="sl-key-row"><span class="sl-key-lbl">מפתח (Key)</span>' +
+        '<code class="sl-key-val">' + esc(s.stream_key) + '</code>' +
+        '<button class="btn ghost sl-copy" data-copy="' + esc(s.stream_key) + '">העתק</button></div>' +
+      '<div class="sl-key-tip">הדבק ב-Cloudflare → Live Input → Outputs → Add Output. מפתח ייעודי ללייב הזה — אין יותר התנגשות "בשימוש".</div>' +
+      "</div>";
+  }
   function _schedAdminListHtml() {
     var rows = (_sched || []).filter(function (s) { return s.status === "scheduled" || s.status === "live"; });
     var list = rows.length ? rows.map(function (s) {
@@ -422,6 +446,7 @@ window.Live = (function () {
       return '<div class="law-sl-row"><div class="sl-info">' +
         '<div class="sl-t">' + esc(s.title || "ללא כותרת") + "</div>" +
         '<div class="sl-w">⏰ ' + esc(_schedFmtWhen(s.scheduled_start)) + privBadge + yt + liveBadge + "</div>" +
+        _schedKeyBoxHtml(s) +
         '</div><div class="sl-btns">' +
           '<button class="btn ghost" data-sl-edit="' + esc(s.id) + '">עריכה</button>' +
           '<button class="btn ghost" data-sl-cancel="' + esc(s.id) + '" style="color:#ff9b9b">ביטול</button>' +
@@ -455,11 +480,17 @@ window.Live = (function () {
   }
   function _loadSchedAdmin() {
     var box = $("lawSchedBody"); if (!box) return;
-    _schedGet().then(function (r) {
+    // admin list (POST, verified) — enriched with the LIVE YouTube stream key per row so the
+    // panel can show exactly which key/URL to paste into Cloudflare. Falls back to the public GET.
+    _schedPost({ action: "list" }).then(function (r) {
       if (!box.parentNode) return;
-      if (r && r.ok) _sched = r.lives || [];
-      box.innerHTML = _schedAdminListHtml();
-      _wireSchedAdmin();
+      if (r && r.ok) { _sched = r.lives || []; box.innerHTML = _schedAdminListHtml(); _wireSchedAdmin(); return; }
+      _schedGet().then(function (g) {
+        if (!box.parentNode) return;
+        if (g && g.ok) _sched = g.lives || [];
+        box.innerHTML = _schedAdminListHtml();
+        _wireSchedAdmin();
+      });
     });
   }
   function _wireSchedAdmin() {
@@ -470,6 +501,15 @@ window.Live = (function () {
       var id = this.getAttribute("data-sl-edit");
       var row = (_sched || []).filter(function (s) { return s.id === id; })[0];
       if (row) { _schedEditId = id; _schedThumbUrl = row.thumbnail_url || ""; _openSchedForm(row); }
+    };
+    var cps = box.querySelectorAll(".sl-copy");
+    for (var k = 0; k < cps.length; k++) cps[k].onclick = function () {
+      var v = this.getAttribute("data-copy") || ""; var btn = this;
+      function done() { var o = btn.textContent; btn.textContent = "הועתק ✓"; setTimeout(function () { btn.textContent = o; }, 1400); }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(v).then(done, function () { done(); }); return; }
+      } catch (e) {}
+      try { var ta = document.createElement("textarea"); ta.value = v; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); done(); } catch (e2) { toast("ההעתקה נכשלה — העתק ידנית"); }
     };
     var cns = box.querySelectorAll("[data-sl-cancel]");
     for (var j = 0; j < cns.length; j++) cns[j].onclick = function () {
