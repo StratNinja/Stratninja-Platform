@@ -116,3 +116,30 @@
 - **הלייב לא נכנס לשידור המתוזמן ב-OBS** → ודא שאתה משדר לאותו מפתח שידור קבוע; אם יש כמה — הגדר
   `YT_STREAM_ID` למפתח הנכון.
 - **לא הגיעה התראת "30 דק'"** → ודא שהרצת את ה-SQL, ושהשרת (scheduler) רץ. בדוק לוג: `docker compose logs scheduler | grep prepush`.
+
+## אוטומציה מלאה של Cloudflare → YouTube (2026-11-14)
+מעכשיו **אין צורך להדביק מפתח ל-Cloudflare ידנית**. הזרימה:
+1. יוצרים לייב מתוזמן בטופס → האתר יוצר ב-YouTube שידור מתוזמן עם **מפתח שידור ייעודי משלו**
+   (ולכן אין יותר התנגשות "מפתח בשימוש" כשיש כמה לייבים מתוזמנים).
+2. כשמתחילים לשדר (OBS → Cloudflare), Cloudflare שולח `live_input.connected` ל-`api/live-webhook.js`,
+   שמוצא את הלייב המתוזמן שמתאים ל-input (פומבי/סגור) **ויוצר אוטומטית Output ב-Cloudflare** שמפנה
+   למפתח היוטיוב של אותו לייב. `enableAutoStart` של יוטיוב מתחיל את השידור לבד.
+3. כשמפסיקים לשדר (`disconnected`/`errored`) — האתר **מוחק את ה-Output** שהוא יצר (לא נוגע ב-Twitch
+   או בפלטים אחרים שלך).
+
+### מה צריך פעם אחת
+- **SQL**: `alter table public.scheduled_lives add column if not exists cf_output_id text;`
+  (וגם `youtube_stream_id text` אם עוד לא הורץ).
+- **אין טוקן חדש**: משתמשים ב-`CF_ACCOUNT_ID` + `CF_STREAM_API_TOKEN` הקיימים (צריך הרשאת **Stream:Edit** —
+  כבר יש, כי אותו טוקן יוצר/מוחק וידאו בקורסים). וגם ב-`CF_PUBLIC_INPUT_ID` / `CF_CLOSED_INPUT_ID` הקיימים.
+- **הסר Output ידני של YouTube ב-Cloudflare** אם הגדרת כזה בעבר (למשל מפתח "now") — אחרת יהיו שניים.
+  פלט ה-Twitch וכו' נשארים; האתר מוחק רק את ה-Output שהוא עצמו יצר.
+
+### קהילה (פרטי)
+אוטומציה לקהילה (ה-input הסגור) עובדת רק אם ההתראה (Notification) של Cloudflare מוגדרת לשלוח גם
+אירועים של ה-input הסגור. אם לא — הלייב הקהילתי עדיין נוצר ביוטיוב, ותוכל להדביק את המפתח ידנית
+מתיבת "גיבוי ידני" שבפאנל.
+
+### תקלות
+- **התחלתי לשדר אבל יוטיוב לא עלה** → בדוק ב-`api/live-webhook.js` logs אם יש `[sched-cf]`. ודא
+  ש-`CF_STREAM_API_TOKEN` כולל Stream:Edit, ושאין Output ידני מתנגש ב-Cloudflare.

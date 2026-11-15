@@ -236,7 +236,8 @@ window.Live = (function () {
       ".sl-key-lbl{flex:0 0 76px;font-size:11px;color:var(--muted)}",
       ".sl-key-val{flex:1 1 auto;min-width:0;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;background:var(--panel,#0b1220);border:1px solid var(--line);border-radius:6px;padding:3px 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:left}",
       ".sl-key .sl-copy{flex:0 0 auto;font-size:11px;padding:3px 9px}",
-      ".sl-key-tip{font-size:10.5px;color:var(--muted);margin-top:5px;line-height:1.4}",
+      ".sl-key-auto{font-size:11px;color:var(--text,#e5e7eb);margin-bottom:6px;line-height:1.45}",
+      ".sl-key-fb{font-size:10.5px;color:var(--muted);margin:4px 0 3px}",
     ].join("");
     document.head.appendChild(s);
   }
@@ -427,14 +428,15 @@ window.Live = (function () {
     if (!s || !s.stream_key) return "";
     var url = s.ingest_url || "rtmp://a.rtmp.youtube.com/live2";
     return '<div class="sl-key">' +
-      '<div class="sl-key-h">🔑 מפתח ל-Cloudflare (Output חדש → YouTube)</div>' +
+      '<div class="sl-key-h">✅ אוטומטי · YouTube ↔ Cloudflare</div>' +
+      '<div class="sl-key-auto">כשתתחיל לשדר, האתר יחבר את השידור ל-YouTube לבד — <b>לא צריך לגעת ב-Cloudflare</b>.</div>' +
+      '<div class="sl-key-fb">גיבוי ידני (אם צריך):</div>' +
       '<div class="sl-key-row"><span class="sl-key-lbl">כתובת (URL)</span>' +
         '<code class="sl-key-val">' + esc(url) + '</code>' +
         '<button class="btn ghost sl-copy" data-copy="' + esc(url) + '">העתק</button></div>' +
       '<div class="sl-key-row"><span class="sl-key-lbl">מפתח (Key)</span>' +
         '<code class="sl-key-val">' + esc(s.stream_key) + '</code>' +
         '<button class="btn ghost sl-copy" data-copy="' + esc(s.stream_key) + '">העתק</button></div>' +
-      '<div class="sl-key-tip">הדבק ב-Cloudflare → Live Input → Outputs → Add Output. מפתח ייעודי ללייב הזה — אין יותר התנגשות "בשימוש".</div>' +
       "</div>";
   }
   function _schedAdminListHtml() {

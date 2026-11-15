@@ -34,6 +34,20 @@ const YT_PRIVACY = (["public", "unlisted", "private"].indexOf((process.env.YT_PR
   ? (process.env.YT_PRIVACY || "").trim() : "public";
 const YT_READY = !!(YT_CLIENT_ID && YT_CLIENT_SECRET && YT_REFRESH_TOKEN);
 
+// Cloudflare Stream — used to tear down the auto-created Output when a scheduled live is canceled/deleted.
+const CF_ACCOUNT = (process.env.CF_ACCOUNT_ID || "").trim();
+const CF_TOKEN = (process.env.CF_STREAM_API_TOKEN || "").trim();
+const CF_PUBLIC_INPUT = (process.env.CF_PUBLIC_INPUT_ID || "").trim();
+const CF_CLOSED_INPUT = (process.env.CF_CLOSED_INPUT_ID || "").trim();
+function cfInputForVisibility(vis) { return vis === "community" ? CF_CLOSED_INPUT : CF_PUBLIC_INPUT; }
+async function cfDeleteOutput(inputId, outputId) {
+  if (!(CF_ACCOUNT && CF_TOKEN && inputId && outputId)) return;
+  try {
+    await fetch("https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + inputId + "/outputs/" + outputId,
+      { method: "DELETE", headers: { Authorization: "Bearer " + CF_TOKEN } });
+  } catch (e) { /* best-effort */ }
+}
+
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUSES = ["scheduled", "live", "ended", "canceled"];
 
@@ -259,9 +273,12 @@ export default async function handler(req, res) {
   // ---- cancel: mark canceled + best-effort delete the YouTube broadcast ----
   if (action === "cancel" || action === "delete") {
     if (!RE_UUID.test(id)) { res.status(400).json({ error: "bad_id" }); return; }
-    const cur = await sb("scheduled_lives?id=eq." + id + "&select=youtube_broadcast_id,youtube_stream_id").then(r => r.json()).catch(() => []);
+    const cur = await sb("scheduled_lives?id=eq." + id + "&select=youtube_broadcast_id,youtube_stream_id,cf_output_id,visibility").then(r => r.json()).catch(() => []);
     const ybid = Array.isArray(cur) && cur[0] ? cur[0].youtube_broadcast_id : null;
     const ysid = Array.isArray(cur) && cur[0] ? cur[0].youtube_stream_id : null;
+    const cfid = Array.isArray(cur) && cur[0] ? cur[0].cf_output_id : null;
+    const cvis = Array.isArray(cur) && cur[0] ? cur[0].visibility : "public";
+    if (cfid) await cfDeleteOutput(cfInputForVisibility(cvis), cfid);   // remove the auto-created Cloudflare Output
     if ((ybid || ysid) && YT_READY) {
       const tok = await ytAccessToken();
       if (tok) {

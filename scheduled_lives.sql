@@ -30,6 +30,7 @@ create table if not exists public.scheduled_lives (
   youtube_broadcast_id text,                                    -- YouTube liveBroadcast id (Stage 2), nullable
   youtube_watch_url    text,                                    -- https://youtu.be/... convenience link (Stage 2)
   youtube_stream_id    text,                                    -- dedicated YouTube liveStream id (NON-secret; key fetched live for admin)
+  cf_output_id         text,                                    -- Cloudflare Stream Output uid auto-created on connect (for cleanup)
   pre_push_sent       boolean     not null default false,       -- the "30 min before" push fired once
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now()
@@ -40,6 +41,7 @@ alter table public.scheduled_lives add column if not exists visibility          
 alter table public.scheduled_lives add column if not exists youtube_broadcast_id text;
 alter table public.scheduled_lives add column if not exists youtube_watch_url    text;
 alter table public.scheduled_lives add column if not exists youtube_stream_id    text;
+alter table public.scheduled_lives add column if not exists cf_output_id         text;
 alter table public.scheduled_lives add column if not exists pre_push_sent        boolean not null default false;
 alter table public.scheduled_lives add column if not exists updated_at           timestamptz not null default now();
 
