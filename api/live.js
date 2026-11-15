@@ -64,6 +64,100 @@ async function patchRow(fields) {
     .then(r => r.json()).then(a => (Array.isArray(a) ? a[0] : null)).catch(() => null);
 }
 
+// ============================================================================
+// Scheduled-live AUTO-SIMULCAST (CF Output → dedicated YouTube key).
+// Driven from the reconcile below (the PROVEN live/offline signal — the CF webhook
+// is not relied upon). When the input goes live we create the Cloudflare Output that
+// forwards to the scheduled live's dedicated YouTube key, so the planned broadcast goes
+// live by itself with NO manual key-paste. Torn down when the input goes offline.
+// Reuses CF_ACCOUNT_ID + CF_STREAM_API_TOKEN (Stream:Edit) + the YT_* secrets — no new creds.
+// ============================================================================
+const YT_CLIENT_ID = (process.env.YT_CLIENT_ID || "").trim();
+const YT_CLIENT_SECRET = (process.env.YT_CLIENT_SECRET || "").trim();
+const YT_REFRESH_TOKEN = (process.env.YT_REFRESH_TOKEN || "").trim();
+const CF_AUTO = !!(CF_ACCOUNT && CF_TOKEN && YT_CLIENT_ID && YT_CLIENT_SECRET && YT_REFRESH_TOKEN);
+
+function inputVisibility(inputId) {
+  if (inputId && inputId === CF_INPUT) return "public";
+  if (inputId && CF_CLOSED && inputId === CF_CLOSED) return "community";
+  return null;
+}
+async function ytAccessToken() {
+  try {
+    const body = new URLSearchParams({ client_id: YT_CLIENT_ID, client_secret: YT_CLIENT_SECRET, refresh_token: YT_REFRESH_TOKEN, grant_type: "refresh_token" });
+    const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.access_token) { console.warn("[sched-cf] YT token refresh failed " + JSON.stringify({ http: r.status })); return null; }
+    return j.access_token;
+  } catch (e) { console.warn("[sched-cf] YT token threw"); return null; }
+}
+async function ytStreamInfo(tok, streamId) {
+  try {
+    const r = await fetch("https://www.googleapis.com/youtube/v3/liveStreams?part=cdn&id=" + encodeURIComponent(streamId), { headers: { Authorization: "Bearer " + tok } });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !Array.isArray(j.items) || !j.items[0]) return null;
+    const info = (j.items[0].cdn && j.items[0].cdn.ingestionInfo) || {};
+    return { stream_key: info.streamName || "", ingest_url: info.ingestionAddress || "" };
+  } catch (e) { return null; }
+}
+async function cfCreateOutput(inputId, url, streamKey) {
+  if (!(CF_ACCOUNT && CF_TOKEN && inputId && url && streamKey)) return null;
+  try {
+    const r = await fetch("https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + inputId + "/outputs",
+      { method: "POST", headers: { Authorization: "Bearer " + CF_TOKEN, "Content-Type": "application/json" }, body: JSON.stringify({ url: url, streamKey: streamKey, enabled: true }) });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.success || !j.result || !j.result.uid) {
+      console.warn("[sched-cf] CF output.create failed " + JSON.stringify({ http: r.status, code: j && j.errors && j.errors[0] && j.errors[0].code }));
+      return null;
+    }
+    return j.result.uid;
+  } catch (e) { console.warn("[sched-cf] CF output.create threw"); return null; }
+}
+async function cfDeleteOutput(inputId, outputId) {
+  if (!(CF_ACCOUNT && CF_TOKEN && inputId && outputId)) return;
+  try {
+    await fetch("https://api.cloudflare.com/client/v4/accounts/" + CF_ACCOUNT + "/stream/live_inputs/" + inputId + "/outputs/" + outputId,
+      { method: "DELETE", headers: { Authorization: "Bearer " + CF_TOKEN } });
+  } catch (e) { /* best-effort */ }
+}
+// Wire the scheduled live on this input to its YouTube Output. ATOMIC claim (cf_output_id: null → "pending")
+// so concurrent viewer polls can't each create a duplicate Output. Released back to null if creation fails.
+async function activateScheduledOutput(inputId) {
+  if (!CF_AUTO) return;
+  const vis = inputVisibility(inputId); if (!vis) return;
+  const lo = new Date(Date.now() - 6 * 3600000).toISOString();
+  const hi = new Date(Date.now() + 2 * 3600000).toISOString();
+  const q = "scheduled_lives?select=id,youtube_stream_id,scheduled_start" +
+    "&visibility=eq." + vis + "&status=in.(scheduled,live)&youtube_stream_id=not.is.null&cf_output_id=is.null" +
+    "&scheduled_start=gte." + encodeURIComponent(lo) + "&scheduled_start=lte." + encodeURIComponent(hi) +
+    "&order=scheduled_start.desc&limit=10";
+  const rows = await sb(q).then(r => r.json()).catch(() => []);
+  if (!Array.isArray(rows) || !rows.length) return;                // no scheduled live now → ad-hoc stream, leave it
+  const now = Date.now();
+  rows.sort((a, b) => Math.abs(new Date(a.scheduled_start).getTime() - now) - Math.abs(new Date(b.scheduled_start).getTime() - now));
+  const row = rows[0];
+  // atomic claim — only the first request flips cf_output_id from null to a placeholder
+  const claim = await sb("scheduled_lives?id=eq." + row.id + "&cf_output_id=is.null",
+    { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ cf_output_id: "pending" }) })
+    .then(r => r.json()).catch(() => []);
+  if (!Array.isArray(claim) || !claim.length) return;              // someone else already claimed it
+  const tok = await ytAccessToken();
+  const info = tok ? await ytStreamInfo(tok, row.youtube_stream_id) : null;
+  const uid = (info && info.stream_key) ? await cfCreateOutput(inputId, info.ingest_url || "rtmp://a.rtmp.youtube.com/live2", info.stream_key) : null;
+  await sb("scheduled_lives?id=eq." + row.id, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ cf_output_id: uid || null, updated_at: new Date().toISOString() }) });
+  if (uid) console.warn("[sched-cf] activated output for scheduled live " + row.id + " on " + vis);
+}
+async function cleanupScheduledOutputs(inputId) {
+  if (!CF_AUTO) return;
+  const vis = inputVisibility(inputId); if (!vis) return;
+  const rows = await sb("scheduled_lives?select=id,cf_output_id&visibility=eq." + vis + "&cf_output_id=not.is.null&limit=20").then(r => r.json()).catch(() => []);
+  if (!Array.isArray(rows)) return;
+  for (const row of rows) {
+    if (row.cf_output_id && row.cf_output_id !== "pending") await cfDeleteOutput(inputId, row.cf_output_id);
+    await sb("scheduled_lives?id=eq." + row.id, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ cf_output_id: null, updated_at: new Date().toISOString() }) });
+  }
+}
+
 async function verifyAdmin(req) {
   const auth = req.headers.authorization || req.headers.Authorization || "";
   if (!auth) return false;
@@ -293,6 +387,12 @@ export default async function handler(req, res) {
         } else if (row.live_video_uid) {
           const u2 = await patchRow({ live_video_uid: null }); if (u2) row = u2;
         }
+        // scheduled-live auto-simulcast: input live → wire the YouTube Output; offline → tear it down.
+        // Best-effort; never blocks or breaks the is_live reconcile above.
+        try {
+          if (cf.live) await activateScheduledOutput(reconcileInput);
+          else await cleanupScheduledOutputs(reconcileInput);
+        } catch (e) { /* best-effort */ }
       } else {
         // unrecognized state OR a CF error — don't change is_live (keep last known), record why & back off
         await patchRow({ verified_at: new Date().toISOString(), cf_status: cf.ok ? ("unknown:" + (cf.status || "")) : cfErrStr(cf) });
