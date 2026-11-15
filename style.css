@@ -38,13 +38,15 @@ html[data-pal="green"][data-theme="light"]{
    Tokens only here; the glass/glow polish (scoped to .scanner-app so it never touches the off-body share-card
    render nodes) lives at the end of this file. ===== */
 html[data-pal="pro"]{
-  --bg:#080a11; --panel:#121726; --panel2:#1a2133; --cell:#1a2133; --line:#2b3348;
+  /* 2026-11 refined-glass reskin ("Blink"): deeper ink base, refined mint accent, hairline borders,
+     white glossy panel edge + soft deep shadow. Up/down green/red keep the TradingView pair (Adi's choice). */
+  --bg:#090c12; --panel:#121726; --panel2:#1a2133; --cell:#1a2133; --line:rgba(255,255,255,.085);
   --green:#26a69a; --greenbg:rgba(38,166,154,.16); --greenbd:rgba(38,166,154,.5);   /* TradingView pair (Adi 2026-11-01) */
   --red:#ef5350; --redbg:rgba(239,83,80,.16); --redbd:rgba(239,83,80,.5);           /* TradingView pair */
-  --ink:#eef3fc; --muted:#93a0bd; --accent:#2fe6c7; --accent-ink:#04231d; --accentbg:rgba(47,230,199,.13);
+  --ink:#e9eef6; --muted:#8b96a9; --accent:#3ad6a0; --accent-ink:#04231d; --accentbg:rgba(58,214,160,.13);
   --soft:rgba(255,255,255,.05); --soft2:rgba(255,255,255,.028);
-  --panelbd:rgba(47,230,199,.16);
-  --panelsh:0 22px 55px rgba(0,0,0,.55), 0 0 0 1px rgba(47,230,199,.05);
+  --panelbd:rgba(255,255,255,.22);
+  --panelsh:0 30px 60px -30px rgba(0,0,0,.9);
 }
 html[data-pal="pro"][data-theme="light"]{
   --bg:#eef1f8; --panel:#ffffff; --panel2:#f4f7fc; --cell:#eef1f8; --line:#dde3ef;
@@ -277,16 +279,19 @@ tr:last-child td{border-bottom:none}
    otherwise leave the ground transparent. */
 html[data-pal="pro"]:not([data-theme="light"]) body{
   background:
-    radial-gradient(1100px 620px at 85% -10%, rgba(47,230,199,.075), transparent 60%),
-    radial-gradient(820px 520px at 3% 2%, rgba(123,116,240,.055), transparent 55%),
+    radial-gradient(1000px 560px at 85% -8%, rgba(58,214,160,.10), transparent 60%),
+    radial-gradient(820px 520px at 3% 2%, rgba(70,120,255,.075), transparent 55%),
+    radial-gradient(1100px 760px at 50% 122%, rgba(58,214,160,.045), transparent 60%),
     var(--bg);
   background-attachment:fixed;
 }
-/* glass panels + luminous hairline */
-html[data-pal="pro"] .scanner-app .panel{ border-radius:16px; border-top-color:var(--panelbd); }
+/* glossy glass panels — refined-glass reskin: translucent fill + white gloss gradient, bright top edge,
+   specular top-inset highlight + soft deep shadow. (filters bar stays opaque below — popover escape.) */
+html[data-pal="pro"] .scanner-app .panel{ border-radius:16px; border-top-color:var(--panelbd); box-shadow:var(--panelsh); }
 html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .panel{
-  background:rgba(18,23,38,.82);
-  -webkit-backdrop-filter:blur(10px) saturate(1.12); backdrop-filter:blur(10px) saturate(1.12);
+  background:linear-gradient(168deg,rgba(255,255,255,.075),rgba(255,255,255,.02) 46%,rgba(255,255,255,.01)), rgba(16,21,34,.72);
+  -webkit-backdrop-filter:blur(26px) saturate(1.5); backdrop-filter:blur(26px) saturate(1.5);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22), inset 0 -24px 50px rgba(0,0,0,.18), var(--panelsh);
 }
 /* ⚠️ backdrop-filter makes the element a containing block for position:fixed/absolute children AND a
    stacking context, which TRAPPED the filter-bar popover (.fpop-body, z-index:70) inside the filters
@@ -296,10 +301,10 @@ html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .panel{
 html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .panel.filters.fbar{
   -webkit-backdrop-filter:none; backdrop-filter:none; background:#121726;
 }
-/* nav active item glow */
-html[data-pal="pro"] .scanner-app .side-nav a.active{ box-shadow:inset -3px 0 0 var(--accent), 0 0 20px rgba(47,230,199,.18); }
-/* primary action glow on hover */
-html[data-pal="pro"] .scanner-app .btn.primary:hover{ box-shadow:0 0 22px rgba(47,230,199,.4); }
+/* nav active item glow (refined mint, softened) */
+html[data-pal="pro"] .scanner-app .side-nav a.active{ box-shadow:inset -3px 0 0 var(--accent), 0 0 18px rgba(58,214,160,.16); }
+/* primary action glow on hover (softened) */
+html[data-pal="pro"] .scanner-app .btn.primary:hover{ box-shadow:0 0 20px rgba(58,214,160,.3); }
 /* terminal-style tabular figures on the hero tile numbers */
 html[data-pal="pro"] .scanner-app .bc-card .bcc-pct,
 html[data-pal="pro"] .scanner-app .bc-card .bcc-usd,
@@ -309,7 +314,7 @@ html[data-pal="pro"] .scanner-app .idx-card .ic-px{
 }
 /* subtle luminosity on live/status accents (dark only, kept off red/green data) */
 html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .mkt-live,
-html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .tf-ind-badge{ text-shadow:0 0 14px rgba(47,230,199,.28); }
+html[data-pal="pro"]:not([data-theme="light"]) .scanner-app .tf-ind-badge{ text-shadow:0 0 12px rgba(58,214,160,.22); }
 
 /* ===== VIVID green/red across the WHOLE live UI (Adi 2026-11-01). Many components hardcode their own
    green/red shades (#3fe0a0 / #4fe39b / #22e39b / #ff6b7a …) or a separate --mfpos/--mfneg family, so the
