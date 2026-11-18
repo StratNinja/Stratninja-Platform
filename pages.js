@@ -9363,7 +9363,6 @@
   // carries r[tf].t ("1"/"2U"/"2D"/"3") for D/W/M/Q/Y, so no server/feed change is needed.
   let m2Uni = "sp";                         // "sp" = S&P 500 only · "all" = full scanner universe
   let m2Tf = "all";                         // TF filter: "all" (weighted smart-money) or one of D/W/M/Q/Y
-  let m2Conf = false;                        // ⚔️ conflict overlay: mark 2s that closed AGAINST their break (2U red / 2D green = rejection/reclaim). Default OFF so the clean view is unchanged.
   let m2DrillSortDir = -1;                    // drill-list sort by change%: -1 = gainers first (desc), +1 = losers first (asc)
   const M2_TFS = ["D", "W", "M", "Q", "Y"];
   const M2_RGB = { pos: "38,166,154", neg: "239,83,80", flat: "120,130,150" };   // TradingView green/red
@@ -9381,8 +9380,7 @@
       o.n++;
       M2_TFS.forEach(tf => {
         const o2 = (r[tf] || {}), t = o2.t, c = o.tf[tf]; c.n++;
-        // u/d count ALL directional 2s by STRUCTURE (unchanged). cu/cd = the subset that closed AGAINST
-        // the break (2U closed red / 2D closed green) — "conflict" bars, a possible-reversal signal.
+        // cu/cd = the 2s that closed AGAINST their break (2U red / 2D green) — used for the always-on ⚔️ cell flag.
         if (t === "2U") { c.u++; o.tot2++; if (o2.c === "down") c.cu++; }
         else if (t === "2D") { c.d++; o.tot2++; if (o2.c === "up") c.cd++; }
       });
@@ -9451,8 +9449,7 @@
       "</div>";
     const uni = '<div class="m2-uni">' +
       '<button class="uni-btn' + (m2Uni === "sp" ? " on" : "") + '" data-m2uni="sp">S&P 500</button>' +
-      '<button class="uni-btn' + (m2Uni === "all" ? " on" : "") + '" data-m2uni="all">כל היקום</button>' +
-      '<button class="uni-btn m2-conf-btn' + (m2Conf ? " on" : "") + '" data-m2conf="1" title="הצג כמה מה-2\'ים סגרו נגד הכיוון (2U סגר אדום · 2D סגר ירוק) — אות היפוך אפשרי. המספרים הירוק/אדום לא משתנים.">⚔️ קונפליקט</button></div>';
+      '<button class="uni-btn' + (m2Uni === "all" ? " on" : "") + '" data-m2uni="all">כל היקום</button></div>';
     const tfbar = '<div class="m2-tfbar"><span class="m2-tfbar-lbl">סינון זמן:</span>' +
       [["all", "הכל"]].concat(M2_TFS.map(tf => [tf, TF_HE[tf] || tf])).map(p => '<button class="m2-tfchip' + (m2Tf === p[0] ? " on" : "") + '" data-m2tfpick="' + p[0] + '">' + p[1] + "</button>").join("") + "</div>";
     let v1k, v1v;
@@ -9469,7 +9466,7 @@
       const bg = tot ? "background:rgba(" + M2_RGB[key] + "," + sat.toFixed(3) + ")" : "";
       const colCls = tfOn ? (tf === tfOn ? " m2-col-on" : " m2-col-dim") : "";
       const leadCls = tfLeadSec[tf] === sec ? " m2-lead" : "";
-      const confMark = (m2Conf && conf) ? '<span class="m2-cf" title="' + escAttr("יש כאן מניות בקונפליקט — 2 שסגרו נגד הכיוון (" + c.cu + " × 2U אדום · " + c.cd + " × 2D ירוק). לחץ לפירוט.") + '">⚔️</span>' : "";
+      const confMark = conf ? '<span class="m2-cf" title="' + escAttr("יש כאן מניות בקונפליקט — 2 שסגרו נגד הכיוון (" + c.cu + " × 2U אדום · " + c.cd + " × 2D ירוק). לחץ לפירוט.") + '">⚔️</span>' : "";
       return '<td class="m2-cell' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + colCls + leadCls + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + (tfLeadSec[tf] === sec ? " — ✨ המוביל בטיימפריים זה" : "") + " — לחץ לרשימת המניות") + '">' +
         (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" + confMark : '<span class="m2-z">—</span>') + "</td>";
     };
@@ -9480,7 +9477,7 @@
         M2_TFS.map(tf => cell(o.tf[tf], tf, s)).join("") + "</tr>";
     }).join("");
     const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span>' +
-      (m2Conf ? '<span><b class="m2-cf-lg">⚔️</b> יש בתא מניות בקונפליקט (2 שסגרו נגד הכיוון) — לחץ לפירוט</span>' : "") +
+      '<span><b class="m2-cf-lg">⚔️</b> בתא יש מניות בקונפליקט (2 שסגרו נגד הכיוון) — לחץ לפירוט</span>' +
       '<span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span>✨ מסגרת זוהרת = הסקטור המוביל בטיימפריים</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
     return head + '<div class="panel m2-panel"><div class="m2-head"><h3>🗺️ מפת ה-2\'ים · סקטור × טיימפריים</h3>' + uni + "</div>" +
       tfbar + smBand + verdict +
@@ -9490,7 +9487,6 @@
   function wireMost2s() {
     document.querySelectorAll("[data-m2uni]").forEach(b => b.onclick = () => { const u = b.dataset.m2uni; if (u === m2Uni) return; m2Uni = u; reRender(); });
     document.querySelectorAll("[data-m2tfpick]").forEach(b => b.onclick = () => { const t = b.dataset.m2tfpick; if (t === m2Tf) return; m2Tf = t; reRender(); });
-    document.querySelectorAll("[data-m2conf]").forEach(b => b.onclick = () => { m2Conf = !m2Conf; reRender(); });
     document.querySelectorAll(".m2-cell[data-m2sec], .m2-sm-card[data-m2sec], .m2-sm-ochip[data-m2sec], .m2-tflead-item[data-m2sec]").forEach(el => el.onclick = () => _m2Drill(el.dataset.m2sec, el.dataset.m2tf));
   }
   function _m2Drill(sec, tf) {
@@ -9511,9 +9507,10 @@
       return '<div class="m2-dr-row' + (cf ? " m2-dr-conf" : "") + '" data-chart="' + escAttr(r.s) + '" data-tf="' + tf + '"><span class="m2-dr-sym">' + escHtml(r.s) + mark + '</span><span class="m2-dr-nm muted">' + escHtml(r.name || r.nm || "") + '</span><span class="m2-dr-chg ' + cls + '">' + (chg >= 0 ? "+" : "") + (+chg).toFixed(2) + "%</span></div>";
     };
     const syms = arr => arr.map(r => r.s).join(", ");
-    const sect = (arr, lbl, cls) => { const nc = arr.filter(isConf).length; return arr.length ? '<div class="m2-dr-sec"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length +
+    const sect = (arr, lbl, cls) => { const nc = arr.filter(isConf).length; return arr.length ? '<div class="m2-dr-sec' + (arr.length > 14 ? " m2-dr-sec--big" : "") + '"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length +
       (nc ? ' <span class="m2-dr-hc">⚔️' + nc + "</span>" : "") +
-      '<button class="m2-cpy" data-cpy="' + escAttr(syms(arr)) + '" title="העתק את הטיקרים">📋</button></div>' + arr.map(line).join("") + "</div>" : ""; };
+      '<button class="m2-cpy" data-cpy="' + escAttr(syms(arr)) + '" title="העתק את הטיקרים">📋</button></div>' +
+      '<div class="m2-dr-rows' + (arr.length > 14 ? " multi" : "") + '">' + arr.map(line).join("") + "</div></div>" : ""; };
     const body = '<div class="drill-bar"><button class="btn ghost" id="m2Grid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
       '<button class="btn ghost" id="m2Sort" style="font-size:12px;font-weight:600" title="מיין את הרשימות לפי אחוז השינוי היומי">↕ ' + (m2DrillSortDir < 0 ? "עולות קודם" : "יורדות קודם") + '</button>' +
       '<button class="btn ghost" data-cpy="' + escAttr(syms(list)) + '" style="font-size:12px;font-weight:600">📋 העתק טיקרים (' + list.length + ')</button></div>' +
