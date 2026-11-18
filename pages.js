@@ -9364,6 +9364,7 @@
   let m2Uni = "sp";                         // "sp" = S&P 500 only · "all" = full scanner universe
   let m2Tf = "all";                         // TF filter: "all" (weighted smart-money) or one of D/W/M/Q/Y
   let m2Conf = false;                        // ⚔️ conflict overlay: mark 2s that closed AGAINST their break (2U red / 2D green = rejection/reclaim). Default OFF so the clean view is unchanged.
+  let m2DrillSortDir = -1;                    // drill-list sort by change%: -1 = gainers first (desc), +1 = losers first (asc)
   const M2_TFS = ["D", "W", "M", "Q", "Y"];
   const M2_RGB = { pos: "38,166,154", neg: "239,83,80", flat: "120,130,150" };   // TradingView green/red
   function m2Rows() {
@@ -9499,6 +9500,8 @@
     // a "conflict" 2 closed AGAINST its break (2U closed red / 2D closed green) — same definition as the grid overlay.
     const isConf = r => { const o = r[tf] || {}; return (o.t === "2U" && o.c === "down") || (o.t === "2D" && o.c === "up"); };
     const conf = list.filter(isConf);
+    const chgOf = r => (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0));
+    const sortArr = arr => arr.slice().sort((a, b) => m2DrillSortDir * (chgOf(a) - chgOf(b)));   // -1 = gainers first
     const line = r => {
       const chg = (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0)), cls = chg >= 0 ? "pos" : "neg";
       const cf = (m2Conf && isConf(r)) ? '<span class="m2-dr-cf" title="נר בקונפליקט — שבר את הכיוון אך סגר נגדו">⚔️</span>' : "";
@@ -9508,11 +9511,14 @@
     const sect = (arr, lbl, cls) => arr.length ? '<div class="m2-dr-sec"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length +
       '<button class="m2-cpy" data-cpy="' + escAttr(syms(arr)) + '" title="העתק את הטיקרים">📋</button></div>' + arr.map(line).join("") + "</div>" : "";
     const body = '<div class="drill-bar"><button class="btn ghost" id="m2Grid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
+      '<button class="btn ghost" id="m2Sort" style="font-size:12px;font-weight:600" title="מיין את הרשימות לפי אחוז השינוי היומי">↕ ' + (m2DrillSortDir < 0 ? "עולות קודם" : "יורדות קודם") + '</button>' +
       '<button class="btn ghost" data-cpy="' + escAttr(syms(list)) + '" style="font-size:12px;font-weight:600">📋 העתק טיקרים (' + list.length + ')</button></div>' +
-      '<div class="m2-drill">' + (m2Conf && conf.length ? sect(conf, "⚔️ בקונפליקט (סגרו נגד הכיוון)", "warn") : "") + sect(up, "🔼 2U שורי", "pos") + sect(dn, "🔽 2D דובי", "neg") + "</div>";
+      '<div class="m2-drill">' + (m2Conf && conf.length ? sect(sortArr(conf), "⚔️ בקונפליקט (סגרו נגד הכיוון)", "warn") : "") + sect(sortArr(up), "🔼 2U שורי", "pos") + sect(sortArr(dn), "🔽 2D דובי", "neg") + "</div>";
     modal("2️⃣ " + secHe(sec) + " · " + (TF_HE[tf] || tf) + " · " + list.length + " מניות בנר 2", body, "m2drill");
     const gb = document.getElementById("m2Grid");
     if (gb) gb.onclick = () => openChartGrid(list.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0) || 0, chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: secHe(sec) + " · " + (TF_HE[tf] || tf) + " · 2'ים" });
+    const sb = document.getElementById("m2Sort");
+    if (sb) sb.onclick = () => { m2DrillSortDir *= -1; _m2Drill(sec, tf); };   // flip gainers-first / losers-first and reopen
     (document.getElementById("pgModal") || document).querySelectorAll("[data-cpy]").forEach(b => b.onclick = (ev) => {
       ev.stopPropagation();
       const txt = b.getAttribute("data-cpy") || "", n = txt ? txt.split(",").length : 0;
