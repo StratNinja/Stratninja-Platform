@@ -1738,6 +1738,12 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .m2-table td.m2-cell.m2-col-dim { opacity: .4; }
 /* per-timeframe leader — glowing box right in the grid (replaces the old text leader line) */
 .m2-table td.m2-cell.m2-lead { outline: 2px solid var(--accent, #2fe6c7); outline-offset: -2px; box-shadow: 0 0 11px 1px rgba(47,230,199,.6), inset 0 0 9px rgba(47,230,199,.28); position: relative; z-index: 1; border-radius: 4px; }
+/* ⚔️ conflict overlay (toggle) — dim amber marks how many 2s closed AGAINST the break; default OFF so the clean view is unchanged */
+.m2-conf-btn.on { border-color: #d9a441; color: #e6b55a; background: rgba(217,164,65,.14); }
+.m2-cell .m2-cf { display: inline-block; margin-inline-start: 6px; font-weight: 800; font-size: 11px; color: #d9a441; opacity: .82; font-variant-numeric: tabular-nums; }
+.m2-legend .m2-cf-lg { color: #d9a441; }
+.m2-dr-h.warn { color: #e6b55a; background: rgba(217,164,65,.12); }
+.m2-dr-cf { margin-inline-start: 5px; font-size: 12px; opacity: .85; }
 
 /* ===== 🎯 MONEY-FLOW RADAR — compact one-line in/out; full detail (stocks) on hover ===== */
 .mf-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 10px; }
