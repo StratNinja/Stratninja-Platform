@@ -9469,7 +9469,7 @@
       const bg = tot ? "background:rgba(" + M2_RGB[key] + "," + sat.toFixed(3) + ")" : "";
       const colCls = tfOn ? (tf === tfOn ? " m2-col-on" : " m2-col-dim") : "";
       const leadCls = tfLeadSec[tf] === sec ? " m2-lead" : "";
-      const confMark = (m2Conf && conf) ? '<span class="m2-cf" title="' + escAttr(conf + " מתוך ה-2'ים כאן בקונפליקט — סגרו נגד הכיוון (" + c.cu + " × 2U אדום · " + c.cd + " × 2D ירוק)") + '">⚔️' + conf + "</span>" : "";
+      const confMark = (m2Conf && conf) ? '<span class="m2-cf" title="' + escAttr("יש כאן מניות בקונפליקט — 2 שסגרו נגד הכיוון (" + c.cu + " × 2U אדום · " + c.cd + " × 2D ירוק). לחץ לפירוט.") + '">⚔️</span>' : "";
       return '<td class="m2-cell' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + colCls + leadCls + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + (tfLeadSec[tf] === sec ? " — ✨ המוביל בטיימפריים זה" : "") + " — לחץ לרשימת המניות") + '">' +
         (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" + confMark : '<span class="m2-z">—</span>') + "</td>";
     };
@@ -9480,7 +9480,7 @@
         M2_TFS.map(tf => cell(o.tf[tf], tf, s)).join("") + "</tr>";
     }).join("");
     const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span>' +
-      (m2Conf ? '<span><b class="m2-cf-lg">⚔️</b> כמה מה-2\'ים סגרו נגד הכיוון (2U אדום / 2D ירוק) — היפוך אפשרי</span>' : "") +
+      (m2Conf ? '<span><b class="m2-cf-lg">⚔️</b> יש בתא מניות בקונפליקט (2 שסגרו נגד הכיוון) — לחץ לפירוט</span>' : "") +
       '<span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span>✨ מסגרת זוהרת = הסקטור המוביל בטיימפריים</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
     return head + '<div class="panel m2-panel"><div class="m2-head"><h3>🗺️ מפת ה-2\'ים · סקטור × טיימפריים</h3>' + uni + "</div>" +
       tfbar + smBand + verdict +
@@ -9499,21 +9499,25 @@
     const up = list.filter(r => (r[tf] || {}).t === "2U"), dn = list.filter(r => (r[tf] || {}).t === "2D");
     // a "conflict" 2 closed AGAINST its break (2U closed red / 2D closed green) — same definition as the grid overlay.
     const isConf = r => { const o = r[tf] || {}; return (o.t === "2U" && o.c === "down") || (o.t === "2D" && o.c === "up"); };
-    const conf = list.filter(isConf);
     const chgOf = r => (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0));
     const sortArr = arr => arr.slice().sort((a, b) => m2DrillSortDir * (chgOf(a) - chgOf(b)));   // -1 = gainers first
+    // Conflicts are NOT a separate section (Adi): in the 2U/bull column they're pinned to the TOP, in the
+    // 2D/bear column to the BOTTOM, and tinted gently — so the eye catches "how many 2s are dirty" at once.
+    const orderUp = arr => sortArr(arr.filter(isConf)).concat(sortArr(arr.filter(r => !isConf(r))));
+    const orderDn = arr => sortArr(arr.filter(r => !isConf(r))).concat(sortArr(arr.filter(isConf)));
     const line = r => {
-      const chg = (r.c != null ? r.c : (r.tech && r.tech.chg != null ? r.tech.chg : 0)), cls = chg >= 0 ? "pos" : "neg";
-      const cf = (m2Conf && isConf(r)) ? '<span class="m2-dr-cf" title="נר בקונפליקט — שבר את הכיוון אך סגר נגדו">⚔️</span>' : "";
-      return '<div class="m2-dr-row" data-chart="' + escAttr(r.s) + '" data-tf="' + tf + '"><span class="m2-dr-sym">' + escHtml(r.s) + cf + '</span><span class="m2-dr-nm muted">' + escHtml(r.name || r.nm || "") + '</span><span class="m2-dr-chg ' + cls + '">' + (chg >= 0 ? "+" : "") + (+chg).toFixed(2) + "%</span></div>";
+      const chg = chgOf(r), cls = chg >= 0 ? "pos" : "neg", cf = isConf(r);
+      const mark = cf ? '<span class="m2-dr-cf" title="נר בקונפליקט — שבר את הכיוון אך סגר נגדו">⚔️</span>' : "";
+      return '<div class="m2-dr-row' + (cf ? " m2-dr-conf" : "") + '" data-chart="' + escAttr(r.s) + '" data-tf="' + tf + '"><span class="m2-dr-sym">' + escHtml(r.s) + mark + '</span><span class="m2-dr-nm muted">' + escHtml(r.name || r.nm || "") + '</span><span class="m2-dr-chg ' + cls + '">' + (chg >= 0 ? "+" : "") + (+chg).toFixed(2) + "%</span></div>";
     };
     const syms = arr => arr.map(r => r.s).join(", ");
-    const sect = (arr, lbl, cls) => arr.length ? '<div class="m2-dr-sec"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length +
-      '<button class="m2-cpy" data-cpy="' + escAttr(syms(arr)) + '" title="העתק את הטיקרים">📋</button></div>' + arr.map(line).join("") + "</div>" : "";
+    const sect = (arr, lbl, cls) => { const nc = arr.filter(isConf).length; return arr.length ? '<div class="m2-dr-sec"><div class="m2-dr-h ' + cls + '">' + lbl + " · " + arr.length +
+      (nc ? ' <span class="m2-dr-hc">⚔️' + nc + "</span>" : "") +
+      '<button class="m2-cpy" data-cpy="' + escAttr(syms(arr)) + '" title="העתק את הטיקרים">📋</button></div>' + arr.map(line).join("") + "</div>" : ""; };
     const body = '<div class="drill-bar"><button class="btn ghost" id="m2Grid" style="font-size:12px;font-weight:600">📊 תצוגת גרפים</button>' +
       '<button class="btn ghost" id="m2Sort" style="font-size:12px;font-weight:600" title="מיין את הרשימות לפי אחוז השינוי היומי">↕ ' + (m2DrillSortDir < 0 ? "עולות קודם" : "יורדות קודם") + '</button>' +
       '<button class="btn ghost" data-cpy="' + escAttr(syms(list)) + '" style="font-size:12px;font-weight:600">📋 העתק טיקרים (' + list.length + ')</button></div>' +
-      '<div class="m2-drill">' + (m2Conf && conf.length ? sect(sortArr(conf), "⚔️ בקונפליקט (סגרו נגד הכיוון)", "warn") : "") + sect(sortArr(up), "🔼 2U שורי", "pos") + sect(sortArr(dn), "🔽 2D דובי", "neg") + "</div>";
+      '<div class="m2-drill">' + sect(orderUp(up), "🔼 2U שורי", "pos") + sect(orderDn(dn), "🔽 2D דובי", "neg") + "</div>";
     modal("2️⃣ " + secHe(sec) + " · " + (TF_HE[tf] || tf) + " · " + list.length + " מניות בנר 2", body, "m2drill");
     const gb = document.getElementById("m2Grid");
     if (gb) gb.onclick = () => openChartGrid(list.map(r => ({ sym: r.s, sector: r.sec, ind: r.ind, price: r.p || (r.tech ? r.tech.px : 0) || 0, chg: r.c || (r.tech && r.tech.chg != null ? r.tech.chg : 0) })), { title: secHe(sec) + " · " + (TF_HE[tf] || tf) + " · 2'ים" });
