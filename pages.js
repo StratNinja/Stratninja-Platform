@@ -9466,9 +9466,21 @@
       const bg = tot ? "background:rgba(" + M2_RGB[key] + "," + sat.toFixed(3) + ")" : "";
       const colCls = tfOn ? (tf === tfOn ? " m2-col-on" : " m2-col-dim") : "";
       const leadCls = tfLeadSec[tf] === sec ? " m2-lead" : "";
-      const confMark = conf ? '<span class="m2-cf" title="' + escAttr("יש כאן מניות בקונפליקט — 2 שסגרו נגד הכיוון (" + c.cu + " × 2U אדום · " + c.cd + " × 2D ירוק). לחץ לפירוט.") + '">⚔️</span>' : "";
-      return '<td class="m2-cell' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + colCls + leadCls + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + (tfLeadSec[tf] === sec ? " — ✨ המוביל בטיימפריים זה" : "") + " — לחץ לרשימת המניות") + '">' +
-        (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" + confMark : '<span class="m2-z">—</span>') + "</td>";
+      // HIDDEN REVERSAL: the structural lean is contradicted by the CLOSE-based (internal) lean. bearIn = 2s
+      // that closed red (rejected 2U + clean 2D), bullIn = closed green (reclaimed 2D + clean 2U). Fires when
+      // ≥60% of the directional 2s closed AGAINST the structural direction (≥75% = strong). Ring = TRUE dir.
+      const bearIn = (c.cu || 0) + (c.d - (c.cd || 0)), bullIn = (c.u - (c.cu || 0)) + (c.cd || 0);
+      let rev = "", revStrong = false, revPct = 0;
+      if (tot >= 4) {
+        if (net > 0 && bearIn / tot >= 0.60) { rev = "down"; revPct = Math.round(100 * bearIn / tot); revStrong = bearIn / tot >= 0.75; }
+        else if (net < 0 && bullIn / tot >= 0.60) { rev = "up"; revPct = Math.round(100 * bullIn / tot); revStrong = bullIn / tot >= 0.75; }
+      }
+      const revCls = rev ? " m2-rev m2-rev-" + rev + (revStrong ? " m2-rev-strong" : "") : "";
+      const mark = rev
+        ? '<span class="m2-rev-badge' + (revStrong ? " strong" : "") + '" title="' + escAttr("נראה " + (net > 0 ? "שורי (" + c.u + "×2U)" : "דובי (" + c.d + "×2D)") + " אך " + revPct + "% מה-2'ים סגרו " + (rev === "down" ? "אדום → לחץ דובי נסתר 🔴" : "ירוק → לחץ שורי נסתר 🟢")) + '">🔄</span>'
+        : (conf ? '<span class="m2-cf" title="' + escAttr("יש כאן מניות בקונפליקט — 2 שסגרו נגד הכיוון (" + c.cu + " × 2U אדום · " + c.cd + " × 2D ירוק). לחץ לפירוט.") + '">⚔️</span>' : "");
+      return '<td class="m2-cell' + (net > 0 ? " pos" : net < 0 ? " neg" : "") + colCls + leadCls + revCls + '" data-m2sec="' + escAttr(sec) + '" data-m2tf="' + tf + '" style="' + bg + '" title="' + escAttr(secHe(sec) + " · " + (TF_HE[tf] || tf) + (tfLeadSec[tf] === sec ? " — ✨ המוביל בטיימפריים זה" : "") + (rev ? " — 🔄 היפוך " + (rev === "down" ? "דובי" : "שורי") + " נסתר (" + revPct + "% סגרו הפוך)" : "") + " — לחץ לרשימת המניות") + '">' +
+        (tot ? '<span class="m2-u">▲' + c.u + '</span><span class="m2-d">▼' + c.d + "</span>" + mark : '<span class="m2-z">—</span>') + "</td>";
     };
     const thead = '<tr><th class="m2-sec-h">סקטור</th>' + M2_TFS.map(tf => '<th' + (tfOn && tf === tfOn ? ' class="m2-col-on"' : "") + ">" + (TF_HE[tf] || tf) + "</th>").join("") + "</tr>";
     const body = ranked.map(s => {
@@ -9478,6 +9490,7 @@
     }).join("");
     const legend = '<div class="m2-legend"><span><b class="m2-u">▲</b> 2U שורי</span><span><b class="m2-d">▼</b> 2D דובי</span>' +
       '<span><b class="m2-cf-lg">⚔️</b> בתא יש מניות בקונפליקט (2 שסגרו נגד הכיוון) — לחץ לפירוט</span>' +
+      '<span><b>🔄</b> היפוך נסתר — נראה כיוון אחד אך ≥60% סגרו הפוך (המסגרת = הכיוון האמיתי)</span>' +
       '<span>עוצמת צבע התא = איזה חלק מהסקטור בנר כיווני</span><span>✨ מסגרת זוהרת = הסקטור המוביל בטיימפריים</span><span class="muted">' + rows.length + " מניות · לחץ על תא לרשימה</span></div>";
     return head + '<div class="panel m2-panel"><div class="m2-head"><h3>🗺️ מפת ה-2\'ים · סקטור × טיימפריים</h3>' + uni + "</div>" +
       tfbar + smBand + verdict +

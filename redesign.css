@@ -1745,6 +1745,13 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 /* conflict rows inside a drill column — pinned (2U top / 2D bottom) and gently amber-tinted so the eye catches them */
 .m2-dr-row.m2-dr-conf { background: rgba(217,164,65,.09); border-inline-start: 2px solid rgba(217,164,65,.55); }
 .m2-dr-h .m2-dr-hc { margin-inline-start: 6px; font-size: 12px; font-weight: 700; color: #d9a441; opacity: .9; }
+/* 🔄 hidden reversal — structural lean contradicted by the close-based (internal) lean; inset ring = the TRUE direction, badge pops */
+.m2-cell.m2-rev-down { box-shadow: inset 0 0 0 2px rgba(239,83,80,.92); }
+.m2-cell.m2-rev-up { box-shadow: inset 0 0 0 2px rgba(38,166,154,.92); }
+.m2-cell.m2-rev-strong.m2-rev-down { box-shadow: inset 0 0 0 2px rgba(239,83,80,1), 0 0 11px 1px rgba(239,83,80,.55); }
+.m2-cell.m2-rev-strong.m2-rev-up { box-shadow: inset 0 0 0 2px rgba(38,166,154,1), 0 0 11px 1px rgba(38,166,154,.55); }
+.m2-rev-badge { margin-inline-start: 6px; font-size: 13px; vertical-align: middle; }
+.m2-rev-badge.strong { font-size: 15px; filter: drop-shadow(0 0 3px rgba(0,0,0,.5)); }
 /* wider drill window + long lists (>14) spill into extra columns instead of one tall scroll (Adi 2026-11-18) */
 .modal.wide.m2drill { width: min(96vw, 1200px); max-width: min(96vw, 1200px); }
 .m2-dr-rows.multi { columns: 210px; column-gap: 14px; }
