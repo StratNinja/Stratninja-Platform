@@ -5217,6 +5217,67 @@
       '<div class="b2-insight">' + insight + "</div>";
     document.body.appendChild(el); return el;
   }
+  // ---- FLAT breadth share card — self-contained HTML (inline styles, NO baked template PNG),
+  //      matching the .mkt2/.sec2 flat family. Robust to font timing & data length. ----
+  function buildBreadthCardFlatEl() {
+    if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
+    const MAS = ["200", "150", "100", "50", "20"];               // left→right
+    const _r = uni => _brdReadings(uni) || {};
+    const sp = _r("sp"), ndx = _r("ndx");
+    const spSt = _brdState(sp), ndxSt = _brdState(ndx);
+    const spScore = spSt ? spSt.score : null, ndxScore = ndxSt ? ndxSt.score : null;
+    const lean = (spScore != null && ndxScore != null) ? (spScore + ndxScore) / 2 : (spScore != null ? spScore : ndxScore);
+    const toneTxt = lean == null ? "נתוני רוחב נטענים" : lean >= 60 ? "רוחב השוק תומך בעליות" : lean <= 40 ? "רוחב השוק חלש" : "רוחב שוק מעורב ומאוזן";
+    const sub = lean == null ? "" : lean >= 60 ? "השתתפות רחבה — רוב המניות מעל הממוצעים" : lean <= 40 ? "השתתפות חלשה — רוב המניות מתחת לממוצעים" : "השתתפות מעורבת סביב הממוצעים";
+    const riskTxt = lean == null ? "" : lean >= 55 ? "Risk-On" : lean <= 45 ? "Risk-Off" : "מעורב";
+    const riskCol = lean == null ? "#8a93a6" : lean >= 55 ? "#2dd4bf" : lean <= 45 ? "#ff6b7a" : "#e8c468";
+    const col = v => v == null ? "#8a93a6" : v >= 60 ? "#2dd4bf" : v >= 50 ? "#9ad6c8" : v >= 40 ? "#e8c468" : "#ff6b7a";
+    const bd = v => v == null ? "#26324a" : v >= 60 ? "rgba(45,212,191,.45)" : v <= 40 ? "rgba(255,107,122,.45)" : "#2c3a56";
+    const maCard = (v, label) =>
+      '<div style="flex:1;min-width:0;background:#111a2e;border:1px solid ' + bd(v) + ';border-radius:16px;padding:18px 6px;text-align:center">' +
+        '<div style="font:800 46px/1 Heebo,Arial;color:' + col(v) + '">' + (v == null ? "—" : Math.round(v)) + '<span style="font-size:20px;opacity:.7">%</span></div>' +
+        '<div style="margin-top:9px;font:600 21px Heebo,Arial;color:#9aa6bd">' + label + '</div></div>';
+    const row = uni => MAS.map(n => maCard(_r(uni)[n], "מעל " + n)).join("");
+    const section = (title, uni) =>
+      '<div style="margin-bottom:22px">' +
+        '<div style="font:800 32px Heebo,Arial;color:#fff;text-align:right;margin-bottom:14px;border-right:5px solid #2dd4bf;padding-right:14px">' + title + '</div>' +
+        '<div style="display:flex;gap:13px;direction:ltr">' + row(uni) + '</div></div>';
+    let insight;
+    if (spSt && ndxSt) {
+      const weaker = spScore <= ndxScore ? "S&P 500" : "Nasdaq 100";
+      const tone2 = lean <= 40 ? "עם נטייה לחולשה" : lean >= 60 ? "עם נטייה לחוזק" : "מעורב ומאוזן";
+      insight = "רוחב השוק " + tone2 + ". מדד " + weaker + " חלש יותר" + (lean <= 40 ? " ומתקרב לרמות מכירת-יתר (אזור קנייה)" : "") + ".";
+    } else insight = "נתוני רוחב השוק נטענים…";
+    const photo = _heroSquare
+      ? '<img src="' + _heroSquare + '" style="width:92px;height:92px;border-radius:20px;object-fit:cover;border:2px solid rgba(45,212,191,.5)">'
+      : '<img src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'" style="width:92px;height:92px;border-radius:20px;object-fit:cover;border:2px solid rgba(45,212,191,.5)">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div");
+    el.className = "breadth-card-flat";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;width:1080px;box-sizing:border-box;background:#0B1020;padding:44px;font-family:Heebo,Arial,sans-serif;direction:rtl;";
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:18px;margin-bottom:26px">' +
+        '<div style="flex:1;text-align:right"><div style="font:900 44px Heebo,Arial;color:#fff">StratNinja <span style="color:#2dd4bf">Scanner</span></div>' +
+        '<div style="font:600 24px Heebo,Arial;color:#8a93a6;margin-top:3px">The Strat · רוחב השוק' + (upd ? ' · עודכן ' + upd : "") + '</div></div>' + photo + '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:24px;background:linear-gradient(135deg,rgba(45,212,191,.09),rgba(13,20,36,.3));border:1px solid #223049;border-radius:22px;padding:28px 32px;margin-bottom:26px">' +
+        '<div style="text-align:right;min-width:0">' +
+          '<div style="margin-bottom:11px">' + (riskTxt ? '<span style="font:800 22px Heebo,Arial;color:' + riskCol + ';background:rgba(255,255,255,.06);padding:5px 16px;border-radius:999px">' + riskTxt + '</span>' : "") + '</div>' +
+          '<div style="font:900 50px/1.12 Heebo,Arial;color:#fff">' + toneTxt + '</div>' +
+          '<div style="font:600 27px Heebo,Arial;color:#9aa6bd;margin-top:8px">' + sub + '</div></div>' +
+        '<div style="text-align:center;flex-shrink:0">' +
+          '<div style="font:900 94px/1 Heebo,Arial;color:' + col(spScore) + '">' + (spScore == null ? "—" : Math.round(spScore)) + '</div>' +
+          '<div style="font:600 23px Heebo,Arial;color:#8a93a6;margin-top:4px">מדד רוחב S&P 500</div></div></div>' +
+      section("S&P 500", "sp") +
+      section("Nasdaq 100", "ndx") +
+      '<div style="display:flex;align-items:center;gap:14px;background:rgba(124,138,255,.08);border:1px solid rgba(124,138,255,.25);border-radius:18px;padding:20px 24px;margin-top:6px">' +
+        '<span style="flex-shrink:0;width:38px;height:38px;border-radius:50%;background:#7c8aff;color:#0B1020;font:900 23px Heebo,Arial;display:flex;align-items:center;justify-content:center">i</span>' +
+        '<div style="font:600 25px/1.4 Heebo,Arial;color:#dfe6f2;text-align:right"><b style="color:#fff">Ninja Insight:</b> ' + insight + '</div></div>' +
+      '<div style="display:flex;justify-content:space-between;margin-top:24px;font:600 21px Heebo,Arial;color:#6b7686">' +
+        '<span>Adi Koriat · @KoriatTrade · ' + new Date().toLocaleDateString("he-IL") + '</span>' +
+        '<span><b style="color:#cfd8e8">stratninja.win</b> · נתוני שוק מעודכנים</span></div>';
+    document.body.appendChild(el);
+    return el;
+  }
   function buildBreadthCardElOLD() {
     if (!BREADTH_DATA) { try { loadBreadth(); } catch (e) {} }
     const MAS_LR = ["200", "150", "100", "50", "20"];     // left→right, matching the baked template
@@ -5314,7 +5375,7 @@
     const pg = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (pg === "sp500") { _captureRedesignCard((sp500View === "heat" || sp500View === "risk") ? buildHeatmapShareCardEl : buildSpMapCardEl); return; }   // heat/risk → treemap card; breadth view → breadth-map card
-    if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
+    if (pg === "breadth") { _captureRedesignCard(buildBreadthCardFlatEl); return; }   // flat self-contained HTML card (no baked template PNG — robust to font/data)
     if (pg === "sectors") {   // combined FTFC review card (bull/bear chooser retired per Adi 2026-10-03)
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
       _captureRedesignCard(buildSectorsCardEl); return;   // flat self-contained HTML card (no baked template PNG — robust to font/data)
