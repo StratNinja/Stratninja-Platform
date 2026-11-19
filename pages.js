@@ -3916,15 +3916,81 @@
         '<div class="mf-hero"><div class="mf-tags">' + rtag + '<span class="mf-tag range">טווח נבדק: <b>' + _mfRangeLbl(tf) + "</b></span></div>" +
           '<h1 class="mf-h1"><span class="mf-l1">הכסף נכנס ל<span class="up">' + escHtml(upName) + '</span></span><span class="mf-l2">ויוצא מ<span class="dn">' + escHtml(dnName) + "</span></span></h1></div>" +
         '<div class="mf-cols">' +
-          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · סקטורים</div>' + colRows(secUp, "pos", false, maxSecN) + "</div>" +
-          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · סקטורים</div>' + colRows(secDn, "neg", false, maxSecN) + "</div></div>" +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span><span>כניסת כסף</span><span style="opacity:.5;font-weight:400">·</span><span>סקטורים</span></div>' + colRows(secUp, "pos", false, maxSecN) + "</div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span><span>יציאת כסף</span><span style="opacity:.5;font-weight:400">·</span><span>סקטורים</span></div>' + colRows(secDn, "neg", false, maxSecN) + "</div></div>" +
         '<div class="mf-cols">' +
-          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span> כניסת כסף · תתי-סקטורים</div>' + colRows(subUp, "pos", true, maxSubN) + "</div>" +
-          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span> יציאת כסף · תתי-סקטורים</div>' + colRows(subDn, "neg", true, maxSubN) + "</div></div>" +
+          '<div class="mf-col pos"><div class="mf-ch"><span class="mf-ic"></span><span>כניסת כסף</span><span style="opacity:.5;font-weight:400">·</span><span>תתי-סקטורים</span></div>' + colRows(subUp, "pos", true, maxSubN) + "</div>" +
+          '<div class="mf-col neg"><div class="mf-ch"><span class="mf-ic"></span><span>יציאת כסף</span><span style="opacity:.5;font-weight:400">·</span><span>תתי-סקטורים</span></div>' + colRows(subDn, "neg", true, maxSubN) + "</div></div>" +
         '<div class="mf-insight"><span class="mf-bulb">i</span><div><span class="mf-lbl">Ninja Insight:</span> ' + insTxt + "</div></div>" +
       "</div>" +
       '<div class="mf-ft"><span><b>stratninja.win</b> · נתוני שוק מעודכנים</span>' +
         '<span>Adi Koriat · @KoriatTrade · <span class="mf-num">' + new Date().toLocaleDateString("he-IL") + "</span></span></div>";
+    document.body.appendChild(el);
+    return el;
+  }
+  // ===== ⚡ אנרגיה כיוונית share card — FLAT self-contained HTML (smart-money directional flow). =====
+  function buildMost2sCardEl() {
+    const rows = m2Rows();
+    const r = m2Aggregate(rows), agg = r.agg, secs = r.secs;
+    let hot = { n: -1, sec: null, tf: "D" }, tfTot = {}, totU = 0, totD = 0;
+    M2_TFS.forEach(tf => tfTot[tf] = 0);
+    secs.forEach(s => M2_TFS.forEach(tf => { const c = agg[s].tf[tf], tot = c.u + c.d; tfTot[tf] += tot; totU += c.u; totD += c.d; if (tot > hot.n) hot = { n: tot, sec: s, tf: tf }; }));
+    let bestTf = M2_TFS[0]; M2_TFS.forEach(tf => { if (tfTot[tf] > tfTot[bestTf]) bestTf = tf; });
+    const leanTxt = totU > totD * 1.1 ? "הטיה שורית" : totD > totU * 1.1 ? "הטיה דובית" : "מאוזן";
+    const leanEmoji = totU > totD * 1.1 ? "🟢" : totD > totU * 1.1 ? "🔴" : "⚖️";
+    const leanCol = totU > totD * 1.1 ? "#2dd4bf" : totD > totU * 1.1 ? "#ff6b7a" : "#e8c468";
+    const M2_W = { D: 1, W: 1.5, M: 2.5, Q: 3.5, Y: 4 };
+    const score = {}; secs.forEach(s => { let sc = 0, w = 0; M2_TFS.forEach(tf => { const c = agg[s].tf[tf]; if (!c.n) return; sc += M2_W[tf] * ((c.u - c.d) / c.n); w += M2_W[tf]; }); score[s] = w ? sc / w : 0; });
+    const ranked = secs.slice().sort((a, b) => score[b] - score[a]);
+    const alignHi = s => ["M", "Q", "Y"].filter(tf => agg[s].tf[tf].u > agg[s].tf[tf].d);
+    const isFresh = s => { const t = agg[s].tf; return ((t.D.u > t.D.d) || (t.W.u > t.W.d)) && alignHi(s).length >= 2; };
+    const strongLab = sc => sc >= 0.4 ? "זרימה חזקה 🔥" : sc >= 0.2 ? "זרימה חיובית" : "זרימה מתונה";
+    const inflow = ranked.filter(s => score[s] >= 0.07).slice(0, 4);
+    const tfLeadSec = {}; M2_TFS.forEach(tf => { let best = null, bv = 0; secs.forEach(s => { const c = agg[s].tf[tf]; if (!c.n) return; const net = c.u - c.d; if (net > 0 && net / c.n > bv) { bv = net / c.n; best = s; } }); if (best) tfLeadSec[tf] = best; });
+    const topSec = inflow[0] ? secHe(inflow[0]) : "—";
+    const topScore = inflow[0] ? Math.round(score[inflow[0]] * 100) : 0;
+    const chip = (lbl, val, vcol) => '<div style="flex:1;min-width:0;background:#111a2e;border:1px solid #223049;border-radius:16px;padding:16px 18px;text-align:right">' +
+      '<div style="font:700 19px Heebo,Arial;color:#8a93a6">' + lbl + '</div><div style="font:800 25px Heebo,Arial;color:' + (vcol || "#eaf2ff") + ';margin-top:5px">' + val + '</div></div>';
+    const smCard = s => { const etf = etfFor(s), hi = alignHi(s).map(tf => TF_HE[tf] || tf), fresh = isFresh(s);
+      return '<div style="flex:1;min-width:0;background:' + (fresh ? "rgba(45,212,191,.09)" : "#111a2e") + ';border:1px solid ' + (fresh ? "rgba(45,212,191,.4)" : "#223049") + ';border-radius:16px;padding:18px 16px;text-align:right">' +
+        '<div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;flex-wrap:wrap"><span style="font:800 25px Heebo,Arial;color:#fff">' + escHtml(secHe(s)) + '</span>' + (etf ? '<span style="font:700 16px Inter,Arial;color:#8a93a6;background:rgba(255,255,255,.06);padding:2px 8px;border-radius:6px">' + escHtml(etf) + '</span>' : '') + '</div>' +
+        '<div style="font:900 32px Heebo,Arial;color:#2dd4bf;margin-top:8px">+' + Math.round(score[s] * 100) + ' <span style="font:600 18px Heebo,Arial;color:#9aa6bd">' + strongLab(score[s]) + '</span></div>' +
+        '<div style="font:600 18px Heebo,Arial;color:#9aa6bd;margin-top:6px">' + (fresh ? "🆕 כניסה טרייה · " : "") + (hi.length ? "יישור: " + hi.join(" · ") : "מונע ע\"י זמנים קצרים") + '</div></div>'; };
+    const inNames = inflow.slice(0, 2).map(secHe);
+    const insight = (inNames.length ? "הכסף החכם זורם ל" + inNames.join(" ו") + " " : "") + "· הטיית שוק " + leanTxt + " · הזמן הדומיננטי " + (TF_HE[bestTf] || bestTf) + ".";
+    const photo = _heroSquare
+      ? '<img src="' + _heroSquare + '" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(124,138,255,.5)">'
+      : '<img src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(124,138,255,.5)">';
+    const upd = _mfIlTime();
+    const el = document.createElement("div"); el.className = "m2-card-flat";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;width:1080px;box-sizing:border-box;background:#0B1020;padding:44px;font-family:Heebo,Arial,sans-serif;direction:rtl;";
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:18px;margin-bottom:22px">' +
+        '<div style="flex:1;text-align:right"><div style="font:900 44px Heebo,Arial;color:#fff">StratNinja <span style="color:#7c8aff">Scanner</span></div>' +
+        '<div style="font:600 23px Heebo,Arial;color:#8a93a6;margin-top:3px">The Strat · אנרגיה כיוונית · איפה ה-2\'ים' + (upd ? ' · עודכן ' + upd : "") + '</div></div>' + photo + '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:24px;background:linear-gradient(135deg,rgba(124,138,255,.1),rgba(13,20,36,.3));border:1px solid #223049;border-radius:22px;padding:28px 32px;margin-bottom:22px">' +
+        '<div style="text-align:right;min-width:0">' +
+          '<div style="display:flex;gap:10px;justify-content:flex-end;margin-bottom:11px">' +
+            '<span style="font:800 22px Heebo,Arial;color:' + leanCol + ';background:rgba(255,255,255,.06);padding:5px 16px;border-radius:999px">' + leanTxt + ' ' + leanEmoji + '</span>' +
+            '<span style="font:700 22px Heebo,Arial;color:#8a93a6;background:rgba(255,255,255,.06);padding:5px 16px;border-radius:999px">' + (m2Uni === "sp" ? "S&P 500" : "כל היקום") + '</span></div>' +
+          '<div style="font:900 48px/1.12 Heebo,Arial;color:#fff">הכסף החכם נכנס ל<span style="color:#2dd4bf">' + escHtml(topSec) + '</span></div>' +
+          '<div style="font:600 27px Heebo,Arial;color:#9aa6bd;margin-top:8px">' + (inflow[0] ? strongLab(score[inflow[0]]) : "אין זרימה כיוונית בולטת כרגע") + '</div></div>' +
+        '<div style="text-align:center;flex-shrink:0">' +
+          '<div style="font:900 88px/1 Heebo,Arial;color:#2dd4bf">+' + topScore + '</div>' +
+          '<div style="font:600 23px Heebo,Arial;color:#8a93a6;margin-top:4px">ציון זרימה</div></div></div>' +
+      '<div style="display:flex;gap:14px;margin-bottom:22px">' +
+        chip("הכי הרבה 2\'ים", (hot.sec ? secHe(hot.sec) : "—") + " · " + (TF_HE[hot.tf] || hot.tf) + " (" + Math.max(0, hot.n) + ")", "#2dd4bf") +
+        chip("הזמן הכי כיווני", TF_HE[bestTf] || bestTf) +
+        chip("מאזן השוק", "▲" + totU + " / ▼" + totD, leanCol) + '</div>' +
+      '<div style="font:800 32px Heebo,Arial;color:#fff;text-align:right;margin-bottom:14px;border-right:5px solid #7c8aff;padding-right:14px">💰 לאן הכסף החכם נכנס עכשיו</div>' +
+      (inflow.length ? '<div style="display:flex;gap:14px;margin-bottom:22px">' + inflow.map(smCard).join("") + '</div>' : '<div style="font:600 24px Heebo,Arial;color:#9aa6bd;margin-bottom:22px">אין כרגע זרימה כיוונית חיובית בולטת.</div>') +
+      '<div style="display:flex;gap:10px;direction:ltr;margin-bottom:22px">' + M2_TFS.map(tf => { const s = tfLeadSec[tf]; return '<div style="flex:1;min-width:0;background:#0e1626;border:1px solid #1e293f;border-radius:12px;padding:12px 6px;text-align:center"><div style="font:700 20px Heebo,Arial;color:#7c8aff">' + (TF_HE[tf] || tf) + '</div><div style="font:700 18px Heebo,Arial;color:#cfd8e8;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (s ? escHtml(secHe(s)) : "—") + '</div></div>'; }).join("") + '</div>' +
+      '<div style="display:flex;align-items:center;gap:14px;background:rgba(124,138,255,.08);border:1px solid rgba(124,138,255,.25);border-radius:18px;padding:20px 24px;margin-bottom:20px">' +
+        '<span style="flex-shrink:0;width:38px;height:38px;border-radius:50%;background:#7c8aff;color:#0B1020;font:900 23px Heebo,Arial;display:flex;align-items:center;justify-content:center">i</span>' +
+        '<div style="font:600 25px/1.4 Heebo,Arial;color:#dfe6f2;text-align:right"><b style="color:#fff">Ninja Insight:</b> ' + escHtml(insight) + '</div></div>' +
+      '<div style="display:flex;justify-content:space-between;font:600 21px Heebo,Arial;color:#6b7686">' +
+        '<span>Adi Koriat · @KoriatTrade · ' + new Date().toLocaleDateString("he-IL") + '</span>' +
+        '<span><b style="color:#cfd8e8">stratninja.win</b> · נתוני שוק מעודכנים</span></div>';
     document.body.appendChild(el);
     return el;
   }
@@ -5437,6 +5503,10 @@
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (pg === "sp500") { _captureRedesignCard((sp500View === "heat" || sp500View === "risk") ? buildHeatmapShareCardFlatEl : buildSpMapCardEl); return; }   // heat/risk → treemap card; breadth view → breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardFlatEl); return; }   // flat self-contained HTML card (no baked template PNG — robust to font/data)
+    if (pg === "most2s") {   // ⚡ אנרגיה כיוונית — flat smart-money directional-flow card
+      if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסורק עדיין נטענים — נסה שוב בעוד רגע"); return; }
+      _captureRedesignCard(buildMost2sCardEl); return;
+    }
     if (pg === "sectors") {   // combined FTFC review card (bull/bear chooser retired per Adi 2026-10-03)
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
       _captureRedesignCard(buildSectorsCardEl); return;   // flat self-contained HTML card (no baked template PNG — robust to font/data)
