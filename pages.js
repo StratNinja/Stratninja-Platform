@@ -4038,6 +4038,67 @@
     });
     document.body.appendChild(el); return el;
   }
+  // ===== 🔥 HEAT MAP share card — FLAT self-contained HTML (no baked template PNG). Reuses the live
+  //       treemap (spHeatmap) + 3 stat boxes, re-framed in a flat flow layout. =====
+  function buildHeatmapShareCardFlatEl() {
+    const secs = (LIVE && LIVE.sectors) ? LIVE.sectors.filter(s => s.name !== "מדדים" && s.name !== "אחר" && etfFor(s.name) && s.chg != null) : [];
+    const subs = (LIVE && LIVE.subsectors) ? LIVE.subsectors.filter(s => s.chg != null) : [];
+    let strong = null, weak = null; secs.forEach(s => { if (!strong || s.chg > strong.chg) strong = s; if (!weak || s.chg < weak.chg) weak = s; });
+    let standout = null; subs.forEach(s => { if (!standout || Math.abs(s.chg) > Math.abs(standout.chg)) standout = s; });
+    const b = (LIVE && LIVE.breadth) || null;
+    const pct = (b && b.total) ? Math.round(b.above / b.total * 100) : null;
+    const strongHe = strong ? secHe(strong.name) : "—", weakHe = weak ? secHe(weak.name) : "—";
+    const subNm = standout ? String(standout.ind || standout.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").replace(/\s+[A-Z]{2,6}\d?$/, "").trim() : "—";
+    const _sgn = c => c == null ? "" : (c >= 0 ? "+" : "") + Number(c).toFixed(2) + "%";
+    const _now = new Date();
+    const dateStr = _now.toLocaleDateString("he-IL") + " · " + _now.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
+    const insight = (pct != null)
+      ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : ""))
+      : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : "")) : "תמונת מצב סקטוריאלית");
+    const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
+    spHeatSector = null; spHeatAtr = 0; _hmShareClean = true; _hmShareGrid = true;
+    if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
+    else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "3"; spHeatDown = "3"; }
+    const upThr = spHeatUp, dnThr = spHeatDown;
+    const mapHtml = spHeatmap();
+    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false;
+    const noteText = spHeatAvg
+      ? "הצבע = תנועת תעודת-הסל של כל סקטור"
+      : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
+    const box = (lbl, nm, chg) => { const col = chg == null ? "#eaf2ff" : (chg >= 0 ? "#22e39b" : "#ff6b7a");
+      return '<div style="flex:1 1 0;min-width:0;box-sizing:border-box;border-radius:14px;padding:16px 18px;background:#111a2e;border:1px solid #223049">' +
+        '<div style="font:900 24px Heebo,Arial;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:17px;font-weight:700;color:#9fb3c7">' + lbl + '</span> ' + escHtml(nm) + '</div>' +
+        '<div style="font:900 36px Heebo,Arial;direction:ltr;color:' + col + ';margin-top:4px">' + _sgn(chg) + '</div></div>'; };
+    const photo = _heroSquare
+      ? '<img src="' + _heroSquare + '" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(34,227,155,.5)">'
+      : '<img src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(34,227,155,.5)">';
+    const el = document.createElement("div"); el.className = "hmsh-card-flat";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;width:1080px;box-sizing:border-box;background:#0B1020;padding:44px;font-family:Heebo,Arial,sans-serif;direction:rtl;";
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:18px;margin-bottom:22px">' +
+        '<div style="flex:1;text-align:right"><div style="font:900 44px Heebo,Arial;color:#fff">StratNinja <span style="color:#22e39b">Scanner</span></div>' +
+        '<div style="font:600 24px Heebo,Arial;color:#8a93a6;margin-top:3px">The Strat · מפת חום S&P 500</div></div>' + photo + '</div>' +
+      '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px">' +
+        '<span style="font:800 22px Heebo,Arial;color:#07130d;direction:ltr;background:linear-gradient(90deg,#22e39b,#12c07f);padding:6px 18px;border-radius:999px">S&amp;P 500 · ' + dateStr + '</span>' +
+        '<span style="font:700 24px Heebo,Arial;color:#cfe8df">' + escHtml(insight) + '</span></div>' +
+      '<div style="font:700 19px Heebo,Arial;color:#bcd0e0;margin-bottom:18px">' + noteText + '</div>' +
+      '<div class="hmsh-map" style="position:relative;width:100%;height:560px;border-radius:14px;overflow:hidden;margin-bottom:18px">' + mapHtml + '</div>' +
+      '<div style="display:flex;gap:14px;align-items:stretch;margin-bottom:22px">' +
+        box("תת-סקטור בולט", subNm, standout ? standout.chg : null) +
+        box("הסקטור החלש", weakHe, weak ? weak.chg : null) +
+        box("הסקטור החזק", strongHe, strong ? strong.chg : null) + '</div>' +
+      '<div style="display:flex;justify-content:space-between;font:600 21px Heebo,Arial;color:#6b7686">' +
+        '<span>Adi Koriat · @KoriatTrade · ' + _now.toLocaleDateString("he-IL") + '</span>' +
+        '<span><b style="color:#cfd8e8">stratninja.win</b> · נתוני שוק מעודכנים</span></div>';
+    // bake the neon look inline (html2canvas doesn't resolve var() reliably)
+    el.querySelectorAll(".hm-tile").forEach(t => {
+      const st = t.getAttribute("style") || "";
+      const bg = /--bg:\s*([^;]+)/.exec(st), gi = /--gi:\s*([^;]+)/.exec(st), gc = /--gc:\s*([^;]+)/.exec(st);
+      if (bg) t.style.background = "linear-gradient(170deg, rgba(255,255,255,.13), rgba(0,0,0,.24)), " + bg[1].trim();
+      if (t.classList.contains("hm-glow") && gi && gc) t.style.boxShadow = "0 0 " + (3 + parseFloat(gi[1]) * 11).toFixed(1) + "px " + gc[1].trim();
+    });
+    document.body.appendChild(el); return el;
+  }
   // ===== Sectors overview share card (leaders / weakest / breadth) =====
   function buildSectorsCardEl() {
     const src = (typeof scanSource === "function") ? scanSource() : [];
@@ -5374,7 +5435,7 @@
     // on the merged "דופק השוק" page state.page is "pulse"; the visible sub-tab is in pulseTab → resolve it
     const pg = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
-    if (pg === "sp500") { _captureRedesignCard((sp500View === "heat" || sp500View === "risk") ? buildHeatmapShareCardEl : buildSpMapCardEl); return; }   // heat/risk → treemap card; breadth view → breadth-map card
+    if (pg === "sp500") { _captureRedesignCard((sp500View === "heat" || sp500View === "risk") ? buildHeatmapShareCardFlatEl : buildSpMapCardEl); return; }   // heat/risk → treemap card; breadth view → breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardFlatEl); return; }   // flat self-contained HTML card (no baked template PNG — robust to font/data)
     if (pg === "sectors") {   // combined FTFC review card (bull/bear chooser retired per Adi 2026-10-03)
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
@@ -5829,12 +5890,68 @@
     document.body.appendChild(el);
     return el;
   }
+  // ---- FLAT alert share card — self-contained HTML (no baked ShareAlert_Template.png). ----
+  function buildAlertCardFlatEl(t, names) {
+    let rawNames = (Array.isArray(names) ? names : [names]).filter(Boolean).slice(0, 3);
+    names = rawNames.map(_acStrip).filter(Boolean);
+    if (!names.length) { names = ["התראה"]; rawNames = ["התראה"]; }
+    const sym = String(t.sym || "");
+    const chg = t.chg == null ? 0 : Number(t.chg);
+    const chgTxt = (chg >= 0 ? "+" : "−") + Math.abs(chg).toFixed(2) + "%";
+    const chgArrow = chg >= 0 ? "▲" : "▼";
+    const chgCol = chg >= 0 ? "#22e39b" : "#ff6b7a";
+    const _ftfc = _acFtfc(t);
+    const ftfcTxt = _ftfc.full ? ((_ftfc.down ? "🔴" : "🟢") + " FTFC מלא") : "FTFC חלקי";
+    const ftfcCol = _ftfc.full ? (_ftfc.down ? "#ff6b7a" : "#22e39b") : "#e8c468";
+    let secHeTxt = "", etf = "";
+    if (t.sector && t.sector !== "אחר") { secHeTxt = secHe(t.sector); etf = etfFor(t.sector) || ""; }
+    const meta = _acMeta(sym);
+    const _now = new Date(), _p2 = x => String(x).padStart(2, "0");
+    const dm = _p2(_now.getDate()) + "." + _p2(_now.getMonth() + 1);
+    const tm = (meta && meta.tm) ? meta.tm : (_p2(_now.getHours()) + ":" + _p2(_now.getMinutes()));
+    const _TFHE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+    const tfTiles = ["D", "W", "M", "Q", "Y"].map(k => { const c = t[k] || {}, v = c.t || "1";
+      const col = c.c === "up" ? "#22e39b" : c.c === "down" ? "#ff6b7a" : "#8a93a6";
+      const bgc = c.c === "up" ? "rgba(34,227,155,.1)" : c.c === "down" ? "rgba(255,107,122,.1)" : "rgba(255,255,255,.04)";
+      const bd = c.c === "up" ? "rgba(34,227,155,.4)" : c.c === "down" ? "rgba(255,107,122,.4)" : "#2c3a56";
+      return '<div style="flex:1;min-width:0;background:' + bgc + ';border:1px solid ' + bd + ';border-radius:14px;padding:16px 6px;text-align:center">' +
+        '<div style="font:700 22px Heebo,Arial;color:#9aa6bd">' + _TFHE[k] + '</div>' +
+        '<div style="font:900 40px/1 Heebo,Arial;color:' + col + ';margin-top:7px">' + v + '</div></div>'; }).join("");
+    const presetChips = names.map((nm, i) => { const icon = _acIcon(rawNames[i] || nm);
+      return '<span style="display:inline-flex;align-items:center;gap:8px;background:rgba(124,138,255,.1);border:1px solid rgba(124,138,255,.3);border-radius:999px;padding:9px 20px;font:700 25px Heebo,Arial;color:#dfe6f2">' + icon + ' ' + escHtml(nm) + '</span>'; }).join("");
+    const photo = _heroSquare
+      ? '<img src="' + _heroSquare + '" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(45,212,191,.5)">'
+      : '<img src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(45,212,191,.5)">';
+    const el = document.createElement("div"); el.className = "alert-card-flat";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;width:1080px;box-sizing:border-box;background:#0B1020;padding:46px;font-family:Heebo,Arial,sans-serif;direction:rtl;";
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:18px;margin-bottom:20px">' +
+        '<div style="flex:1;text-align:right"><div style="font:900 42px Heebo,Arial;color:#fff">StratNinja <span style="color:#2dd4bf">Scanner</span></div>' +
+        '<div style="font:600 23px Heebo,Arial;color:#8a93a6;margin-top:3px">The Strat · התראת סריקה</div></div>' + photo + '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">' +
+        '<span style="font:800 26px Heebo,Arial;color:#ff6b7a;background:rgba(255,107,122,.12);border:1px solid rgba(255,107,122,.35);padding:8px 22px;border-radius:999px">🔔 התראה חדשה</span>' +
+        '<span style="font:600 24px Heebo,Arial;color:#8a93a6">' + dm + ' • ' + tm + '</span></div>' +
+      '<div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;background:linear-gradient(135deg,rgba(45,212,191,.08),rgba(13,20,36,.3));border:1px solid #223049;border-radius:22px;padding:26px 34px;margin-bottom:20px">' +
+        '<div style="direction:ltr"><div style="font:900 ' + (sym.length <= 4 ? 112 : sym.length === 5 ? 92 : 78) + 'px/.9 Rubik,Heebo,Arial;color:#fff;letter-spacing:-1px">' + escHtml(sym) + '</div></div>' +
+        '<div style="text-align:left;direction:ltr"><div style="font:900 60px/1 Heebo,Arial;color:#fff">' + money(t.price) + '</div>' +
+          '<div style="font:900 46px Heebo,Arial;color:' + chgCol + ';margin-top:6px">' + chgArrow + ' ' + chgTxt + '</div></div></div>' +
+      '<div style="display:flex;gap:14px;margin-bottom:20px">' +
+        '<div style="flex:1;text-align:center;background:#111a2e;border:1px solid #2c3a56;border-radius:16px;padding:18px;font:800 34px Heebo,Arial;color:' + ftfcCol + '">' + ftfcTxt + '</div>' +
+        (secHeTxt ? '<div style="flex:1;text-align:center;background:#111a2e;border:1px solid #2c3a56;border-radius:16px;padding:18px;font:800 32px Heebo,Arial;color:#eaf2ff">' + escHtml(secHeTxt) + (etf ? ' <span style="color:#8a93a6;font-size:26px">' + escHtml(etf) + '</span>' : '') + '</div>' : '') + '</div>' +
+      '<div style="display:flex;gap:12px;direction:ltr;margin-bottom:20px">' + tfTiles + '</div>' +
+      (presetChips ? '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:20px">' + presetChips + '</div>' : '') +
+      '<div style="text-align:center;background:linear-gradient(90deg,rgba(124,138,255,.14),rgba(45,212,191,.12));border:1px solid rgba(124,138,255,.3);border-radius:18px;padding:20px;font:800 30px Heebo,Arial;color:#fff;margin-bottom:18px">לעוד הזדמנויות — הצטרפו לקהילת StratNinja 🥷</div>' +
+      '<div style="display:flex;justify-content:space-between;font:600 21px Heebo,Arial;color:#6b7686">' +
+        '<span>Adi Koriat · @KoriatTrade · ' + _now.toLocaleDateString("he-IL") + '</span>' +
+        '<span><b style="color:#cfd8e8">stratninja.win</b></span></div>';
+    document.body.appendChild(el); return el;
+  }
   function shareAlertCard(sym, names) {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     snToast("מכין כרטיס…");
     _prepHeroSquare(() => {
       const _acRow = _alertRowFor(sym);
-      const el = buildAlertCardEl(_acRow, names);
+      const el = buildAlertCardFlatEl(_acRow, names);   // flat self-contained HTML card (no baked template PNG)
       // sharp alert-style caption (less duplication, tuned for an automated feed on X/Discord):
       // 🔔 $SYM נכנסה לסריקות StratNinja  / • scan bullets + FTFC  / $SYM | ETF  / hashtags  / site
       const _acNames = (Array.isArray(names) ? names : [names]).map(_acStrip).filter(Boolean).slice(0, 3);
