@@ -5338,6 +5338,26 @@
     });
   }
   // shared capture for the redesigned 1080×1080 cards (embedded fonts, dark bg)
+  // Force the embedded share-card fonts (Heebo/Inter) to ACTUALLY load before html2canvas
+  // snapshots the card. document.fonts.ready alone isn't enough: the @font-face faces load
+  // lazily on first use, and the off-screen card IS that first use — so ready can resolve
+  // before Heebo is parsed, html2canvas then clones with a wider/taller fallback font, and
+  // every multi-line block overflows its hand-tuned template slot (the "broken card" bug).
+  // Explicitly load() each weight first so the snapshot always uses Heebo.
+  function _awaitCardFonts(run) {
+    try {
+      if (document.fonts && document.fonts.load) {
+        var want = ["400 20px Heebo", "500 20px Heebo", "600 20px Heebo", "700 20px Heebo", "800 20px Heebo", "900 20px Heebo",
+                    "400 20px Inter", "600 20px Inter", "700 20px Inter", "800 20px Inter"];
+        Promise.all(want.map(function (f) { return document.fonts.load(f).catch(function () {}); }))
+          .then(function () { return document.fonts.ready; })
+          .then(function () { setTimeout(run, 90); })
+          .catch(function () { setTimeout(run, 180); });
+        return;
+      }
+    } catch (e) {}
+    setTimeout(run, 260);
+  }
   function _captureRedesignCard(builder) {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     snToast("מכין כרטיס…");
@@ -5347,7 +5367,7 @@
         .then(cv => { el.remove(); showShareModal(cv); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
       // wait for the embedded Heebo/Inter to be ready so the PNG isn't rendered with a fallback font
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 80)); else setTimeout(run, 250);
+      _awaitCardFonts(run);
     });
   }
   function _captureMoneyFlowCard() { _captureRedesignCard(buildMoneyFlowCardEl); }
@@ -5765,7 +5785,7 @@
       const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
         .then(cv => { el.remove(); showShareModal(cv, acCap); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(run, 80)); else setTimeout(run, 250);
+      _awaitCardFonts(run);
     });
   }
   // >3 matched presets → let the trader pick up to 3 for the card
