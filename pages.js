@@ -5306,7 +5306,7 @@
   function captureSummaryCard() {
     // market page (now the first tab of the 'pulse' channel) → one comprehensive MEGA card (no 4-part chooser)
     const _pg = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;
-    if (_pg === "market") { _captureRedesignCard(buildMarketCardEl); return; }
+    if (_pg === "market") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // flat self-contained HTML card (no baked template PNG — robust to font/data)
     _doCaptureSummaryCard();
   }
   function _doCaptureSummaryCard() {
@@ -5317,7 +5317,7 @@
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardEl); return; }   // breadth "מעל הממוצעים" card
     if (pg === "sectors") {   // combined FTFC review card (bull/bear chooser retired per Adi 2026-10-03)
       if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסקטורים עדיין נטענים (~7MB) — נסה שוב בעוד רגע"); return; }
-      _captureRedesignCard(buildFtfcCardEl); return;
+      _captureRedesignCard(buildSectorsCardEl); return;   // flat self-contained HTML card (no baked template PNG — robust to font/data)
     }
     if (pg === "market" && _mktShareSection === "state") { _captureRedesignCard(buildMarketOverviewCardEl); return; }   // redesigned market-overview super-card
     if (pg === "market" && _mktShareSection === "candlemap") { _captureRedesignCard(buildCandleMapCardEl); return; }   // redesigned Candle Map card
