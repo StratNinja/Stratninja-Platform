@@ -1348,7 +1348,7 @@
     else if (_mins >= 11 * 60 && _mins < 16 * 60 + 30) { amHead = "🌅 Pre-Market · תנועות לפני הפתיחה"; amData = UA.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] }; }
     else { amHead = "🌙 After-Hours · תנועות אחרי הסגירה"; amData = UA.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] }; }
     const amRow = x => '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span></span><span class="v num ' + _col(x.gp) + '">' + _pc(x.gp) + '</span></div>';
-    const amCol = arr => (arr && arr.length) ? arr.slice(0, 4).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
+    const amCol = arr => (arr && arr.length) ? arr.slice(0, 3).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
     const mvCard = (title, rowsHtml) => '<div class="em-card"><h3>' + title + '</h3>' + rowsHtml + '</div>';
     return '<div class="em-dash em-tight">' +
       '<div class="em-top"><span class="em-time">' + timeStr + '</span>' +
