@@ -1369,17 +1369,19 @@
         '<div class="em-stcard"><div class="k">מצב השוק</div><div class="big" style="color:' + riskCol + '">' + riskTxt + '</div><div style="color:#8a93a6;font-size:12.5px;margin-top:8px">' + (ms && ms.mode ? escHtml(ms.mode) : "—") + '</div></div>' +
         '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _vcol(vixChg) + '" style="font-size:12.5px;margin-top:8px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
       '</div>' +
-      '<div class="em-eyes"><div class="em-secttl">מנועי השוק · הובלה</div><div class="em-secttl">לחצי השוק · פיגור</div></div>' +
-      '<div class="em-movers">' +
-        mvCard("מניות מובילות", stkLead.length ? stkLead.map(stkRow).join("") : _ph) +
-        mvCard("סקטורים מובילים", secLead.length ? secLead.map(secRow).join("") : _ph) +
-        mvCard("מניות בפיגור", stkLag.length ? stkLag.map(stkRow).join("") : _ph) +
-        mvCard("סקטורים בפיגור", secLag.length ? secLag.map(secRow).join("") : _ph) +
+      '<div class="em-bottom"><div class="em-main">' +
+        '<div class="em-eyes"><div class="em-secttl">מנועי השוק · הובלה</div><div class="em-secttl">לחצי השוק · פיגור</div></div>' +
+        '<div class="em-movers">' +
+          mvCard("מניות מובילות", stkLead.length ? stkLead.map(stkRow).join("") : _ph) +
+          mvCard("סקטורים מובילים", secLead.length ? secLead.map(secRow).join("") : _ph) +
+          mvCard("מניות בפיגור", stkLag.length ? stkLag.map(stkRow).join("") : _ph) +
+          mvCard("סקטורים בפיגור", secLag.length ? secLag.map(secRow).join("") : _ph) +
+        '</div></div>' +
+        '<div class="em-after"><div class="em-after-h">' + amHead + '</div><div class="em-after-grid">' +
+          '<div><div class="em-col-h em-pos">🟢 עולות</div>' + amCol(amData.up) + '</div>' +
+          '<div><div class="em-col-h em-neg">🔴 יורדות</div>' + amCol(amData.down) + '</div>' +
+        '</div></div>' +
       '</div>' +
-      '<div class="em-after"><div class="em-after-h">' + amHead + '</div><div class="em-after-grid">' +
-        '<div><div class="em-col-h em-pos">🟢 עולות</div>' + amCol(amData.up) + '</div>' +
-        '<div><div class="em-col-h em-neg">🔴 יורדות</div>' + amCol(amData.down) + '</div>' +
-      '</div></div>' +
     '</div>';
   }
   function renderMarket() {
@@ -9897,9 +9899,13 @@
   let bvTf = "W";
   const BV_GROUPS = [
     { he: "מדדים", note: 'S&P · נאסד"ק · דאו · ראסל', syms: ["SPY", "QQQ", "DIA", "IWM"] },
-    { he: "טכנולוגיה", note: "סקטור · שבבים", syms: ["XLK", "SMH", "SOXX"] },
-    { he: "אנרגיה", note: "קידוח · נפט", syms: ["XLE", "XOP", "OIH", "USO"] },
-    { he: "11 סקטורי SPDR", note: "מפת המשכיות רוחבית", syms: ["XLK", "XLF", "XLV", "XLY", "XLP", "XLI", "XLB", "XLRE", "XLU", "XLC", "XLE"] },
+    { he: "טכנולוגיה", note: "סקטור · שבבים · תוכנה · NVDA", syms: ["XLK", "SMH", "IGV", "NVDA"] },
+    { he: "אנרגיה", note: "סקטור · קידוח · ציוד · סולארי", syms: ["XLE", "XOP", "OIH", "TAN"] },
+    { he: "פיננסים", note: "סקטור · בנקים אזוריים · JPM", syms: ["XLF", "KRE", "KBE", "JPM"] },
+    { he: "בריאות", note: "סקטור · ביוטק · LLY · UNH", syms: ["XLV", "XBI", "LLY", "UNH"] },
+    { he: "צריכה מחזורית", note: "סקטור · קמעונאות · בנייה · AMZN", syms: ["XLY", "XRT", "XHB", "AMZN"] },
+    { he: "תעשייה וחומרים", note: "תעשייה · ביטחוני · מתכות · זהב", syms: ["XLI", "ITA", "XME", "GDX"] },
+    { he: "דפנסיבי ותקשורת", note: 'צריכה · תשתיות · נדל"ן · תקשורת', syms: ["XLP", "XLU", "XLRE", "XLC"] },
   ];
   const BV_TFS = ["D", "W", "M", "Q", "Y"];
   const BV_TFHE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
@@ -10006,7 +10012,6 @@
     return '<div class="bv-trow" data-bvdrill="' + sym + '">' +
       '<div class="bv-tid"><span class="bv-sym">' + sym + '</span><span class="bv-px" data-flick="bvpx-' + sym + '">' + (r.p != null ? r.p : "—") + '</span><span class="bv-chg ' + chgCls + '" data-flick="bvchg-' + sym + '">' + chgTxt + "</span></div>" +
       '<div class="bv-cndl" title="' + escAttr(title) + '">' + bvCandle(sel, r.p) + "</div>" +
-      '<div class="bv-seq">רצף <b>' + seq + "</b></div>" +
       '<div class="bv-mtx">' + mtx + "</div>" +
       '<div class="' + ff + '">' + ffTxt + "</div></div>";
   }
@@ -10033,7 +10038,8 @@
       '.bv-smeta{font-size:13px;color:var(--ink)}.bv-smeta b{color:var(--red)}' +
       '.bv-sbar{flex:1;min-width:170px;height:10px;border-radius:6px;overflow:hidden;display:flex;background:var(--line)}' +
       '.bv-sbar i{height:100%}' +
-      '.bv-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;margin-bottom:13px;box-shadow:var(--panelsh);overflow:hidden}' +
+      '.bv-board{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:12px;align-items:start}' +
+      '.bv-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;box-shadow:var(--panelsh);overflow:hidden}' +
       '.bv-chead{display:flex;align-items:center;gap:10px;padding:11px 14px 9px}' +
       '.bv-cname{font-size:15px;font-weight:800;color:var(--ink)}' +
       '.bv-cnote{font-size:11.5px;color:var(--muted)}.bv-sp{flex:1}' +
@@ -10041,18 +10047,18 @@
       '.bv-gchip.dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
       '.bv-gchip.up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
       '.bv-gchip.mix{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
-      '.bv-trow{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--line);flex-wrap:wrap;cursor:pointer}' +
+      '.bv-trow{display:flex;align-items:center;gap:9px;padding:8px 12px;border-top:1px solid var(--line);flex-wrap:wrap;cursor:pointer}' +
       '.bv-trow:hover{background:var(--soft2)}' +
       '.bv-tid{display:flex;flex-direction:column;gap:1px;min-width:66px}' +
       '.bv-sym{font-family:var(--mono);font-size:14px;font-weight:800;color:var(--ink)}' +
       '.bv-px{font-family:var(--mono);font-size:12px;color:var(--ink)}' +
       '.bv-chg{font-family:var(--mono);font-size:11.5px;font-weight:700}' +
       '.bv-chg.dn{color:var(--red)}.bv-chg.up{color:var(--green)}' +
-      '.bv-cndl{width:88px;height:58px;flex:0 0 auto;background:var(--soft2);border:1px solid var(--line);border-radius:8px}' +
+      '.bv-cndl{width:62px;height:52px;flex:0 0 auto;background:var(--soft2);border:1px solid var(--line);border-radius:8px}' +
       '.bv-cndl svg{width:100%;height:100%;display:block}' +
       '.bv-seq{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:96px}.bv-seq b{color:var(--ink)}' +
       '.bv-mtx{display:flex;gap:5px;flex-wrap:wrap}' +
-      '.bv-cell{width:38px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent}' +
+      '.bv-cell{width:34px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent}' +
       '.bv-tf{font-family:var(--mono);font-size:9px;color:var(--muted)}' +
       '.bv-g{font-family:var(--mono);font-size:12.5px;font-weight:800}' +
       '.bv-cell.up{background:var(--greenbg)}.bv-cell.up .bv-g{color:var(--green)}' +
