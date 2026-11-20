@@ -9808,6 +9808,162 @@
     });
   }
 
+  // ===== מהירות פריצה (Break Velocity) — live FTFC continuity board, 100% client-side off SCAN.rows =====
+  let bvTf = "W";
+  const BV_GROUPS = [
+    { he: "מדדים", note: 'S&P · נאסד"ק · דאו · ראסל', syms: ["SPY", "QQQ", "DIA", "IWM"] },
+    { he: "טכנולוגיה", note: "סקטור · שבבים", syms: ["XLK", "SMH", "SOXX"] },
+    { he: "אנרגיה", note: "קידוח · נפט", syms: ["XLE", "XOP", "OIH", "USO"] },
+    { he: "11 סקטורי SPDR", note: "מפת המשכיות רוחבית", syms: ["XLK", "XLF", "XLV", "XLY", "XLP", "XLI", "XLB", "XLRE", "XLU", "XLC", "XLE"] },
+  ];
+  const BV_TFS = ["D", "W", "M", "Q", "Y"];
+  const BV_TFHE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+  function bvHi(c) { return c.h != null ? c.h : c.hi; }
+  function bvLo(c) { return c.l != null ? c.l : c.lo; }
+  function bvGlyph(t) { return t === "2U" ? "2▲" : t === "2D" ? "2▼" : t === "1" ? "1" : t === "3" ? "3" : "·"; }
+  function bvCellClass(c) { if (!c || !c.t) return "ins"; if (c.t === "1") return "ins"; var b = c.c === "up" ? "up" : c.c === "down" ? "dn" : "ins"; if (c.t === "3") b += " out"; return b; }
+  function bvParseSeq(s) { return (s && s.indexOf("-") >= 0) ? s.split("-") : null; }
+  function bvBody(ph, pl, tok) { var size = (ph - pl) || 1, mid = (ph + pl) / 2;
+    if (tok === "2U") return { o: pl + size * 0.2, c: ph - size * 0.08 };
+    if (tok === "2D") return { o: ph - size * 0.2, c: pl + size * 0.08 };
+    if (tok === "1") return { o: mid + size * 0.1, c: mid - size * 0.08 };
+    if (tok === "3") return { o: ph - size * 0.1, c: pl + size * 0.12 };
+    return { o: ph - size * 0.2, c: pl + size * 0.1 }; }
+  function bvSchem(ph, pl, tok) { var size = (ph - pl) || 1, mid = (ph + pl) / 2;
+    if (tok === "1") return { h: ph - size * 0.25, l: pl + size * 0.25, o: mid + size * 0.06, c: mid - size * 0.05 };
+    if (tok === "2U") return { h: ph + size * 0.28, l: pl + size * 0.12, o: mid, c: ph + size * 0.2 };
+    if (tok === "2D") return { h: ph - size * 0.12, l: pl - size * 0.28, o: mid, c: pl - size * 0.18 };
+    if (tok === "3") return { h: ph + size * 0.25, l: pl - size * 0.3, o: ph, c: pl - size * 0.1 };
+    return { h: ph - size * 0.05, l: pl - size * 0.05, o: mid + size * 0.08, c: mid - size * 0.06 }; }
+  function bvBuild3(cell, price) {
+    var toks = bvParseSeq(cell.seq3d) || [cell.t, cell.t, cell.t];
+    while (toks.length < 3) toks.unshift(toks[0]);
+    toks = toks.slice(-3);
+    var hi = bvHi(cell), lo = bvLo(cell), o = cell.o, c = price;
+    var bar2 = { h: hi, l: lo, o: o, c: c }, prH, prL;
+    if (cell.ph != null && cell.pl != null) { prH = cell.ph; prL = cell.pl; }
+    else { var sz = (hi - lo) || Math.abs(hi) * 0.04 || 1; prH = hi + sz * 0.08; prL = lo + sz * 0.25; }
+    var b1 = bvBody(prH, prL, toks[1]), bar1 = { h: prH, l: prL, o: b1.o, c: b1.c };
+    var bar0 = bvSchem(prH, prL, toks[0]);
+    return { bars: [bar0, bar1, bar2], prH: prH, prL: prL };
+  }
+  function bvCandle(cell, price) {
+    if (!cell || cell.o == null || price == null) return "";
+    var d = bvBuild3(cell, price), bars = d.bars, W = 88, H = 58, pad = 7;
+    var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
+    var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
+    function y(v) { return pad + (mx - v) / rg * (H - 2 * pad); }
+    var slot = W / 3, cw = Math.min(slot * 0.4, 11);
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+    s += '<line x1="2" y1="' + y(d.prH).toFixed(1) + '" x2="' + (W - 2) + '" y2="' + y(d.prH).toFixed(1) + '" stroke="var(--redbd)" stroke-width=".7" stroke-dasharray="2 2.5"/>';
+    s += '<line x1="2" y1="' + y(d.prL).toFixed(1) + '" x2="' + (W - 2) + '" y2="' + y(d.prL).toFixed(1) + '" stroke="var(--greenbd)" stroke-width=".7" stroke-dasharray="2 2.5"/>';
+    bars.forEach(function (b, i) {
+      var cx = slot * (i + 0.5), up = b.c >= b.o, col = up ? "var(--green)" : "var(--red)";
+      var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 1.6);
+      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="1.5"/>';
+      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="' + col + '"/>';
+    });
+    return s + "</svg>";
+  }
+  function bvRow(sym, idx, tf) {
+    var r = idx[sym]; if (!r) return "";
+    var sel = r[tf] || {};
+    var chg = (r.c != null ? r.c : 0), chgCls = chg >= 0 ? "up" : "dn", chgTxt = (chg >= 0 ? "+" : "") + Number(chg).toFixed(2) + "%";
+    var title = sym + " " + BV_TFHE[tf] + " — פתיחה " + sel.o + " · גבוה " + bvHi(sel) + " · נמוך " + bvLo(sel) + (sel.ph != null ? " · טריגר " + sel.pl + "/" + sel.ph : "");
+    var mtx = BV_TFS.map(function (tfx) { var c = r[tfx] || {}; return '<div class="bv-cell ' + bvCellClass(c) + (tfx === tf ? " sel" : "") + '" title="' + tfx + " " + (c.t || "") + " " + (c.c || "") + '"><span class="bv-tf">' + tfx + '</span><span class="bv-g">' + bvGlyph(c.t) + "</span></div>"; }).join("");
+    var ff = r.ftfc ? ("bv-ftfc " + (sel.c === "up" ? "on-up" : "on-dn")) : "bv-ftfc off";
+    var ffTxt = r.ftfc ? ("FTFC " + (sel.c === "up" ? "▲" : "▼")) : "—";
+    var seq = sel.seq3d ? sel.seq3d : "—";
+    return '<div class="bv-trow">' +
+      '<div class="bv-tid"><span class="bv-sym">' + sym + '</span><span class="bv-px" data-flick="bvpx-' + sym + '">' + (r.p != null ? r.p : "—") + '</span><span class="bv-chg ' + chgCls + '" data-flick="bvchg-' + sym + '">' + chgTxt + "</span></div>" +
+      '<div class="bv-cndl" title="' + escAttr(title) + '">' + bvCandle(sel, r.p) + "</div>" +
+      '<div class="bv-seq">רצף <b>' + seq + "</b></div>" +
+      '<div class="bv-mtx">' + mtx + "</div>" +
+      '<div class="' + ff + '">' + ffTxt + "</div></div>";
+  }
+  function bvGroup(g, idx, tf) {
+    var present = g.syms.filter(function (s) { return idx[s]; });
+    var downs = present.filter(function (s) { var c = idx[s][tf]; return c && c.c === "down"; }).length;
+    var ups = present.filter(function (s) { var c = idx[s][tf]; return c && c.c === "up"; }).length;
+    var chipCls = downs > ups ? "dn" : ups > downs ? "up" : "mix";
+    var chipTxt = (downs >= ups ? downs + "/" + present.length + " ▼" : ups + "/" + present.length + " ▲");
+    return '<div class="bv-card"><div class="bv-chead"><span class="bv-cname">' + g.he + '</span><span class="bv-cnote">' + g.note + '</span><span class="bv-sp"></span><span class="bv-gchip ' + chipCls + '">' + chipTxt + " · " + BV_TFHE[tf] + "</span></div>" +
+      g.syms.map(function (s) { return bvRow(s, idx, tf); }).join("") + "</div>";
+  }
+  function bvCss() {
+    return '<style>' +
+      '.bv-tfbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 14px}' +
+      '.bv-tfseg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}' +
+      '.bv-tfseg button{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:none;border:0;padding:7px 13px;border-radius:8px;cursor:pointer;min-width:42px}' +
+      '.bv-tfseg button:hover{color:var(--ink)}' +
+      '.bv-tfseg button.on{background:var(--accent);color:var(--accent-ink);font-weight:700}' +
+      '.bv-hint{font-size:12px;color:var(--muted)}' +
+      '.bv-summary{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 16px;margin-bottom:14px;box-shadow:var(--panelsh)}' +
+      '.bv-sbig{font-family:var(--mono);font-size:25px;font-weight:800;line-height:1}' +
+      '.bv-sbig.dn{color:var(--red)}.bv-sbig.up{color:var(--green)}' +
+      '.bv-smeta{font-size:13px;color:var(--ink)}.bv-smeta b{color:var(--red)}' +
+      '.bv-sbar{flex:1;min-width:170px;height:10px;border-radius:6px;overflow:hidden;display:flex;background:var(--line)}' +
+      '.bv-sbar i{height:100%}' +
+      '.bv-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;margin-bottom:13px;box-shadow:var(--panelsh);overflow:hidden}' +
+      '.bv-chead{display:flex;align-items:center;gap:10px;padding:11px 14px 9px}' +
+      '.bv-cname{font-size:15px;font-weight:800;color:var(--ink)}' +
+      '.bv-cnote{font-size:11.5px;color:var(--muted)}.bv-sp{flex:1}' +
+      '.bv-gchip{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:999px;white-space:nowrap}' +
+      '.bv-gchip.dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
+      '.bv-gchip.up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
+      '.bv-gchip.mix{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
+      '.bv-trow{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--line);flex-wrap:wrap}' +
+      '.bv-trow:hover{background:var(--soft2)}' +
+      '.bv-tid{display:flex;flex-direction:column;gap:1px;min-width:66px}' +
+      '.bv-sym{font-family:var(--mono);font-size:14px;font-weight:800;color:var(--ink)}' +
+      '.bv-px{font-family:var(--mono);font-size:12px;color:var(--ink)}' +
+      '.bv-chg{font-family:var(--mono);font-size:11.5px;font-weight:700}' +
+      '.bv-chg.dn{color:var(--red)}.bv-chg.up{color:var(--green)}' +
+      '.bv-cndl{width:88px;height:58px;flex:0 0 auto;background:var(--soft2);border:1px solid var(--line);border-radius:8px}' +
+      '.bv-cndl svg{width:100%;height:100%;display:block}' +
+      '.bv-seq{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:96px}.bv-seq b{color:var(--ink)}' +
+      '.bv-mtx{display:flex;gap:5px;flex-wrap:wrap}' +
+      '.bv-cell{width:38px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent}' +
+      '.bv-tf{font-family:var(--mono);font-size:9px;color:var(--muted)}' +
+      '.bv-g{font-family:var(--mono);font-size:12.5px;font-weight:800}' +
+      '.bv-cell.up{background:var(--greenbg)}.bv-cell.up .bv-g{color:var(--green)}' +
+      '.bv-cell.dn{background:var(--redbg)}.bv-cell.dn .bv-g{color:var(--red)}' +
+      '.bv-cell.ins{background:var(--soft)}.bv-cell.ins .bv-g{color:var(--muted)}' +
+      '.bv-cell.out{box-shadow:inset 0 0 0 1.5px var(--accent)}' +
+      '.bv-cell.sel{border-color:var(--accent)}' +
+      '.bv-ftfc{font-family:var(--mono);font-size:11px;padding:5px 9px;border-radius:8px;white-space:nowrap;margin-inline-start:auto}' +
+      '.bv-ftfc.on-dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
+      '.bv-ftfc.on-up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
+      '.bv-ftfc.off{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
+      '.bv-note{border:1px solid var(--line);border-radius:13px;padding:14px 16px;background:var(--panel);margin-top:6px}' +
+      '.bv-note h4{margin:0 0 7px;font-size:14px;color:var(--accent)}' +
+      '.bv-note p{margin:0;font-size:13px;color:var(--muted);line-height:1.7}' +
+      '@media(max-width:640px){.bv-cndl{display:none}.bv-seq{min-width:0}}' +
+      '</style>';
+  }
+  function renderBreakVel() {
+    var rows = (SCAN && SCAN.rows) ? SCAN.rows : null;
+    var tf = bvTf;
+    var head = '<div class="page-head"><h1>🚀 מהירות פריצה</h1><div class="sub">לוח המשכיות TheStrat — קבוצות ETF לפי סוג-נר ורצף · נתונים חיים</div></div>';
+    var tfbar = '<div class="bv-tfbar"><div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div><span class="bv-hint">בחר טיימפריים — הנר, הרצף והמטריצה מתעדכנים בזמן אמת</span></div>';
+    if (!rows) { return bvCss() + head + tfbar + '<div class="bv-card" style="padding:26px;text-align:center;color:var(--muted)">⏳ טוען נתונים חיים…</div>'; }
+    var idx = {}; rows.forEach(function (r) { if (r && r.s) idx[r.s] = r; });
+    var uniq = {}; BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { uniq[s] = 1; }); });
+    var all = Object.keys(uniq).filter(function (s) { return idx[s]; });
+    var down = all.filter(function (s) { var c = idx[s][tf]; return c && c.c === "down"; }).length;
+    var up = all.filter(function (s) { var c = idx[s][tf]; return c && c.c === "up"; }).length;
+    var mid = all.length - down - up;
+    var summary = '<div class="bv-summary"><div class="bv-sbig ' + (down >= up ? "dn" : "up") + '">' + down + "/" + all.length + '</div><div class="bv-smeta"><b>' + down + ' ETF בירידה</b> (' + BV_TFHE[tf] + ") · " + up + " בעלייה · " + mid + ' פנימי/ניטרלי.</div><div class="bv-sbar"><i style="flex:' + down + ';background:var(--red)"></i><i style="flex:' + mid + ';background:var(--muted)"></i><i style="flex:' + up + ';background:var(--green)"></i></div></div>';
+    var board = BV_GROUPS.map(function (g) { return bvGroup(g, idx, tf); }).join("");
+    var note = '<div class="bv-note"><h4>איך קוראים את הלוח</h4><p>כל שורה היא טיקר עם <b>3 נרות</b>: הנר הנוכחי חי (OHLC), הקודם לפי הגבוה/נמוך האמיתיים (קווי הטריגר המקווקווים), והשלישי לפי סוג-הנר שברצף <b>seq3d</b>. מימין מטריצת סוג-הנר לכל טיימפריים (יומי→שנתי): <span style="color:var(--red)">2▼</span> שובר נמוך · <span style="color:var(--green)">2▲</span> שובר גבוה · <span style="color:var(--muted)">1</span> פנימי · <span style="color:var(--accent)">3</span> חיצוני. תג <b>FTFC</b> = יישור יומי+שבועי+חודשי לאותו כיוון.</p></div>';
+    return bvCss() + head + tfbar + summary + '<div class="bv-board">' + board + "</div>" + note;
+  }
+  function wireBreakVel() {
+    document.querySelectorAll('#page [data-bvtf]').forEach(function (b) {
+      b.onclick = function () { bvTf = b.getAttribute("data-bvtf"); reRender(); };
+    });
+  }
+
   const PAGES = {
     // home: { render: renderHome, wire: wireHome },   // "מרכז בקרה" retired 2026-11-01 — nav removed, default landing is now סקירת שוק (market). renderHome/wireHome kept for easy revival.
     market: { render: renderMarket, wire: wireMarket },
@@ -9817,6 +9973,7 @@
     today: { render: renderToday, wire: wireToday },
     sp500: { render: renderSp500, wire: wireSp500 },
     scanner: { render: renderScanner, wire: wireScanner },
+    breakvel: { render: renderBreakVel, wire: wireBreakVel },
     most2s: { render: renderMost2s, wire: wireMost2s },
     sectors: { render: renderSectors, wire: wireSectors },
     breadth: { render: renderBreadth, wire: wireBreadth },
