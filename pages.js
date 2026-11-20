@@ -1340,7 +1340,17 @@
     const _ph = '<div class="muted" style="padding:8px 2px;font-size:14px">ממתין לנתוני מסחר…</div>';
     const insTxt = "רוחב השוק " + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + ((vix && vix.level != null && vix.level < 18) ? " וה-VIX רגוע" : "") +
       ", ההובלה מרוכזת ב<b>" + escHtml(topSecHe) + "</b>" + (secLag[0] ? ", לצד חולשה ב<b>" + escHtml(secHe(secLag[0].name)) + "</b>" : "") + ".";
-    return '<div class="em-dash">' +
+    // bottom strip: after-hours / pre-market / gappers (same source + time logic as the classic panel)
+    const _mins = (typeof _ilMinutes === "function") ? _ilMinutes() : 0;
+    const UA = (LIVE && LIVE.universes && LIVE.universes.all) || {};
+    let amHead, amData;
+    if (_mins >= 16 * 60 + 30 && _mins < 23 * 60) { amHead = "⚡ גאפרים · פתיחת יום"; amData = UA.gappers || (LIVE && LIVE.gappers) || { up: [], down: [] }; }
+    else if (_mins >= 11 * 60 && _mins < 16 * 60 + 30) { amHead = "🌅 Pre-Market · תנועות לפני הפתיחה"; amData = UA.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] }; }
+    else { amHead = "🌙 After-Hours · תנועות אחרי הסגירה"; amData = UA.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] }; }
+    const amRow = x => '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span></span><span class="v num ' + _col(x.gp) + '">' + _pc(x.gp) + '</span></div>';
+    const amCol = arr => (arr && arr.length) ? arr.slice(0, 4).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
+    const mvCard = (title, rowsHtml) => '<div class="em-card"><h3>' + title + '</h3>' + rowsHtml + '</div>';
+    return '<div class="em-dash em-tight">' +
       '<div class="em-top"><span class="em-time">' + timeStr + '</span>' +
         '<span class="em-pill ' + riskCls + '">' + riskTxt + '</span>' +
         _uniSwitchHtml("em-uni") +
@@ -1349,27 +1359,27 @@
       '<div class="em-hero"><div class="em-htx">' +
           '<div class="em-eye">סקירת שוק · The Strat</div>' +
           '<h1>רוחב השוק ' + headTone + ', בהובלת <b>' + escHtml(topSecHe) + '</b></h1>' +
-          '<div class="em-sub">' + subT + '</div></div>' +
+          '<div class="em-sub">' + subT + ' · <b style="color:#2dd4bf">Ninja Insight:</b> ' + insTxt + '</div></div>' +
         '<div class="em-big"><div class="n num">' + up + '<small>/' + total + '</small></div><div class="cap">מניות מעל הפתיחה</div></div></div>' +
       idxRow +
       '<div class="em-state">' +
         '<div class="em-stcard clickable" id="emBreadth" title="לחץ לרוחב שוק לפי סקטור →"><div class="k">רוחב השוק</div><div class="big num">' + pct + '%</div>' +
           '<div class="em-sbar"><i style="width:' + pct + '%;background:#2dd47c"></i><i style="width:' + (100 - pct) + '%;background:#ff6b7a"></i></div>' +
-          '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:#9aa6bd" class="num"><span class="em-pos">▲ ' + up + ' עולות</span><span class="em-neg">' + down + ' יורדות ▼</span></div></div>' +
-        '<div class="em-stcard"><div class="k">מצב השוק</div><div class="big" style="color:' + riskCol + '">' + riskTxt + '</div><div style="color:#8a93a6;font-size:13px;margin-top:10px">' + (ms && ms.mode ? escHtml(ms.mode) : "—") + '</div></div>' +
-        '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _vcol(vixChg) + '" style="font-size:13px;margin-top:10px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:8px;font-size:12.5px;color:#9aa6bd" class="num"><span class="em-pos">▲ ' + up + ' עולות</span><span class="em-neg">' + down + ' יורדות ▼</span></div></div>' +
+        '<div class="em-stcard"><div class="k">מצב השוק</div><div class="big" style="color:' + riskCol + '">' + riskTxt + '</div><div style="color:#8a93a6;font-size:12.5px;margin-top:8px">' + (ms && ms.mode ? escHtml(ms.mode) : "—") + '</div></div>' +
+        '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _vcol(vixChg) + '" style="font-size:12.5px;margin-top:8px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
       '</div>' +
-      '<div class="em-secttl">מנועי השוק · הובלה</div>' +
-      '<div class="em-cols">' +
-        '<div class="em-card"><h3>מניות מובילות</h3>' + (stkLead.length ? stkLead.map(stkRow).join("") : _ph) + '</div>' +
-        '<div class="em-card"><h3>סקטורים מובילים</h3>' + (secLead.length ? secLead.map(secRow).join("") : _ph) + '</div>' +
+      '<div class="em-eyes"><div class="em-secttl">מנועי השוק · הובלה</div><div class="em-secttl">לחצי השוק · פיגור</div></div>' +
+      '<div class="em-movers">' +
+        mvCard("מניות מובילות", stkLead.length ? stkLead.map(stkRow).join("") : _ph) +
+        mvCard("סקטורים מובילים", secLead.length ? secLead.map(secRow).join("") : _ph) +
+        mvCard("מניות בפיגור", stkLag.length ? stkLag.map(stkRow).join("") : _ph) +
+        mvCard("סקטורים בפיגור", secLag.length ? secLag.map(secRow).join("") : _ph) +
       '</div>' +
-      '<div class="em-secttl">לחצי השוק · פיגור</div>' +
-      '<div class="em-cols">' +
-        '<div class="em-card"><h3>מניות בפיגור</h3>' + (stkLag.length ? stkLag.map(stkRow).join("") : _ph) + '</div>' +
-        '<div class="em-card"><h3>סקטורים בפיגור</h3>' + (secLag.length ? secLag.map(secRow).join("") : _ph) + '</div>' +
-      '</div>' +
-      '<div class="em-ins"><span class="i">i</span><p><b>Ninja Insight:</b> ' + insTxt + '</p></div>' +
+      '<div class="em-after"><div class="em-after-h">' + amHead + '</div><div class="em-after-grid">' +
+        '<div><div class="em-col-h em-pos">🟢 עולות</div>' + amCol(amData.up) + '</div>' +
+        '<div><div class="em-col-h em-neg">🔴 יורדות</div>' + amCol(amData.down) + '</div>' +
+      '</div></div>' +
     '</div>';
   }
   function renderMarket() {

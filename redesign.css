@@ -1942,3 +1942,29 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
   .em-state{ grid-template-columns:1fr; } .em-cols{ grid-template-columns:1fr; }
   .em-idx{ grid-template-columns:repeat(3,1fr); } .em-hero{ gap:18px; }
 }
+/* --- compact ONE-SCREEN layout: movers in one 4-card row (הובלה ימין · פיגור שמאל), after/pre strip --- */
+.em-tight .em-hero{ margin-bottom:18px; }
+.em-tight .em-hero h1{ font-size:clamp(21px,2.5vw,30px); }
+.em-tight .em-sub{ font-size:14.5px; margin-top:8px; line-height:1.5; }
+.em-tight .em-big .n{ font-size:clamp(40px,5vw,58px); }
+.em-tight .em-idx{ margin-bottom:16px; }
+.em-tight .em-it{ padding:12px 10px; }
+.em-tight .em-it .p{ font-size:19px; margin:4px 0 2px; }
+.em-tight .em-state{ margin-bottom:18px; gap:14px; }
+.em-tight .em-stcard{ padding:14px 18px; }
+.em-tight .em-stcard .big{ font-size:clamp(24px,2.3vw,30px); }
+.em-tight .em-sbar{ margin-top:11px; }
+.em-eyes{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:10px; }
+.em-eyes .em-secttl{ margin:0; }
+.em-movers{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:16px; }
+.em-movers .em-card{ padding:16px 18px; }
+.em-movers .em-card h3{ margin:0 0 9px; font-size:14px; }
+.em-movers .em-mv{ padding:7px 0; font-size:14.5px; gap:12px; justify-content:flex-start; }
+.em-movers .em-mv .v{ flex:none; }
+.em-after{ background:#121a2c; border:1px solid rgba(255,255,255,.05); border-radius:18px; padding:15px 20px; }
+.em-after-h{ font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:#7e8aa2; font-weight:700; margin-bottom:10px; }
+.em-after-grid{ display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+.em-col-h{ font-size:13.5px; font-weight:700; margin-bottom:4px; }
+.em-after .em-mv{ padding:6px 0; font-size:15px; justify-content:flex-start; gap:12px; }
+@media (max-width:1000px){ .em-movers{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:620px){ .em-movers,.em-eyes,.em-after-grid{ grid-template-columns:1fr; } }
