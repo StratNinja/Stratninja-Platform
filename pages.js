@@ -1316,12 +1316,13 @@
     const vix = (LIVE && LIVE.vix) || null;
     const vixLvl = vix && vix.level != null ? Number(vix.level).toFixed(2) : (byS.VIX && byS.VIX.price != null ? Number(byS.VIX.price).toFixed(2) : "—");
     const vixChg = vix && vix.chg != null ? vix.chg : (byS.VIX ? byS.VIX.chg : null);
-    const secLead = (U.sectorLeaders || []).slice(0, 5);
-    const stkLead = (U.leaders || []).slice(0, 5);
-    const secLag = (U.sectorLaggards || []).slice(0, 5);
-    const stkLag = (U.laggards || []).slice(0, 5);
+    const secLead = (U.sectorLeaders || []).slice(0, 6);
+    const stkLead = (U.leaders || []).slice(0, 6);
+    const secLag = (U.sectorLaggards || []).slice(0, 6);
+    const stkLag = (U.laggards || []).slice(0, 6);
     const live = !!(LIVE && LIVE.updated);
     const topSecHe = secLead[0] ? secHe(secLead[0].name) : "השוק";
+    const weakSecHe = secLag[0] ? secHe(secLag[0].name) : "";
     const headTone = pct >= 55 ? "תומך בעליות" : pct <= 45 ? "חלש" : "מעורב";
     const subT = ms && ms.cls === "pos" ? "סנטימנט חיובי ויציב" : ms && ms.cls === "neg" ? "סנטימנט שלילי — זהירות" : "סנטימנט מעורב";
     const now = new Date(), p2 = x => String(x).padStart(2, "0");
@@ -1329,10 +1330,10 @@
     const _col = v => v == null ? "" : v > 0.05 ? "em-pos" : v < -0.05 ? "em-neg" : "";
     const _vcol = v => v == null ? "" : v > 0.05 ? "em-neg" : v < -0.05 ? "em-pos" : "";   // VIX: rising = risk-off (red), falling = calm (green)
     const _pc = v => v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(Number(v)).toFixed(2) + "%";
-    const idxTile = (sym, r) => { const px = r && r.price != null ? Number(r.price).toFixed(2) : "—"; const c = r ? r.chg : null;
+    const idxTile = (sym, r) => { const px = r && r.price != null ? (sym === "BTC" ? "$" + Math.round(r.price).toLocaleString("en-US") : Number(r.price).toFixed(2)) : "—"; const c = r ? r.chg : null;
       return '<div class="em-it"><div class="s">' + sym + '</div><div class="p num">' + px + '</div><div class="c num ' + _col(c) + '">' + _pc(c) + '</div></div>'; };
     const idxRow = '<div class="em-idx">' + idxTile("SPY", byS.SPY) + idxTile("QQQ", byS.QQQ) + idxTile("IWM", byS.IWM) + idxTile("DIA", byS.DIA) +
-      '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _vcol(vixChg) + '">' + _pc(vixChg) + '</div></div></div>';
+      '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _vcol(vixChg) + '">' + _pc(vixChg) + '</div></div>' + idxTile("BTC", byS.BTC) + '</div>';
     const stkRow = x => { const sec = secHe((((SCAN && SCAN.rows) || []).find(r => r.s === x.s) || {}).sec || "");
       return '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span>' + (sec && sec !== "אחר" ? '<span class="sec">' + escHtml(sec) + '</span>' : '') + '</span><span class="v num ' + _col(x.c) + '">' + _pc(x.c) + '</span></div>'; };
     const secRow = x => { const etf = etfFor(x.name);
@@ -1348,7 +1349,7 @@
     else if (_mins >= 11 * 60 && _mins < 16 * 60 + 30) { amHead = "🌅 Pre-Market · תנועות לפני הפתיחה"; amData = UA.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] }; }
     else { amHead = "🌙 After-Hours · תנועות אחרי הסגירה"; amData = UA.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] }; }
     const amRow = x => '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span></span><span class="v num ' + _col(x.gp) + '">' + _pc(x.gp) + '</span></div>';
-    const amCol = arr => (arr && arr.length) ? arr.slice(0, 3).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
+    const amCol = arr => (arr && arr.length) ? arr.slice(0, 4).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
     const mvCard = (title, rowsHtml) => '<div class="em-card"><h3>' + title + '</h3>' + rowsHtml + '</div>';
     return '<div class="em-dash em-tight">' +
       '<div class="em-top"><span class="em-time">' + timeStr + '</span>' +
@@ -1358,7 +1359,7 @@
         '<span class="em-logo">Strat<b>Ninja</b>' + (live ? '' : ' <span style="font-size:12px;color:#7e8aa2;font-weight:600">🧪 דמו</span>') + '</span></div>' +
       '<div class="em-hero"><div class="em-htx">' +
           '<div class="em-eye">סקירת שוק · The Strat</div>' +
-          '<h1>רוחב השוק ' + headTone + ', בהובלת <b>' + escHtml(topSecHe) + '</b></h1>' +
+          '<h1>רוחב השוק ' + headTone + ', בהובלת <b>' + escHtml(topSecHe) + '</b>' + (weakSecHe ? ' <span class="em-h1sep">·</span> בפיגור <b style="color:#ff6b7a">' + escHtml(weakSecHe) + '</b>' : '') + '</h1>' +
           '<div class="em-sub">' + subT + ' · <b style="color:#2dd4bf">Ninja Insight:</b> ' + insTxt + '</div></div>' +
         '<div class="em-big"><div class="n num">' + up + '<small>/' + total + '</small></div><div class="cap">מניות מעל הפתיחה</div></div></div>' +
       idxRow +
