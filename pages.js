@@ -1299,7 +1299,80 @@
       '<span class="mf-pill-part ' + (broad ? "broad" : "narrow") + '">' + alignedN + "/" + s.n + " · " + (broad ? "רחב·מוסדי" : "ממוקד") + "</span>" +
       '<span class="mf-pop-hint">⌄</span>' + pop + "</div>";
   }
+  // EDITORIAL market overview ("עריכה · רגוע") — reversible: set false to restore the classic dash.
+  const _MKT_EDITORIAL = true;
+  function renderMarketEditorial() {
+    const U = mktU();
+    const b = U.breadth || {};
+    const total = b.total || ((b.above || 0) + (b.below || 0)) || 0;
+    const up = b.above || 0, down = b.below || 0;
+    const pct = total ? Math.round(up / total * 100) : 0;
+    const ms = todayMarketState();
+    const riskTxt = ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—";
+    const riskCls = ms ? ms.cls : "zero";
+    const riskCol = riskCls === "pos" ? "#2dd4bf" : riskCls === "neg" ? "#ff6b7a" : "#e8c46a";
+    const idxArr = (LIVE && LIVE.indices && LIVE.indices.length) ? LIVE.indices : [];
+    const byS = {}; idxArr.forEach(r => byS[r.sym] = r);
+    const vix = (LIVE && LIVE.vix) || null;
+    const vixLvl = vix && vix.level != null ? Number(vix.level).toFixed(2) : (byS.VIX && byS.VIX.price != null ? Number(byS.VIX.price).toFixed(2) : "—");
+    const vixChg = vix && vix.chg != null ? vix.chg : (byS.VIX ? byS.VIX.chg : null);
+    const secLead = (U.sectorLeaders || []).slice(0, 5);
+    const stkLead = (U.leaders || []).slice(0, 5);
+    const secLag = (U.sectorLaggards || []).slice(0, 5);
+    const stkLag = (U.laggards || []).slice(0, 5);
+    const live = !!(LIVE && LIVE.updated);
+    const topSecHe = secLead[0] ? secHe(secLead[0].name) : "השוק";
+    const headTone = pct >= 55 ? "תומך בעליות" : pct <= 45 ? "חלש" : "מעורב";
+    const subT = ms && ms.cls === "pos" ? "סנטימנט חיובי ויציב" : ms && ms.cls === "neg" ? "סנטימנט שלילי — זהירות" : "סנטימנט מעורב";
+    const now = new Date(), p2 = x => String(x).padStart(2, "0");
+    const timeStr = p2(now.getHours()) + ":" + p2(now.getMinutes()) + " · " + now.getDate() + "." + (now.getMonth() + 1);
+    const _col = v => v == null ? "" : v > 0.05 ? "em-pos" : v < -0.05 ? "em-neg" : "";
+    const _pc = v => v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(Number(v)).toFixed(2) + "%";
+    const idxTile = (sym, r) => { const px = r && r.price != null ? Number(r.price).toFixed(2) : "—"; const c = r ? r.chg : null;
+      return '<div class="em-it"><div class="s">' + sym + '</div><div class="p num">' + px + '</div><div class="c num ' + _col(c) + '">' + _pc(c) + '</div></div>'; };
+    const idxRow = '<div class="em-idx">' + idxTile("SPY", byS.SPY) + idxTile("QQQ", byS.QQQ) + idxTile("IWM", byS.IWM) + idxTile("DIA", byS.DIA) +
+      '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _col(vixChg) + '">' + _pc(vixChg) + '</div></div></div>';
+    const stkRow = x => { const sec = secHe((((SCAN && SCAN.rows) || []).find(r => r.s === x.s) || {}).sec || "");
+      return '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span>' + (sec && sec !== "אחר" ? '<span class="sec">' + escHtml(sec) + '</span>' : '') + '</span><span class="v num ' + _col(x.c) + '">' + _pc(x.c) + '</span></div>'; };
+    const secRow = x => { const etf = etfFor(x.name);
+      return '<div class="em-mv"><span class="nm">' + (etf ? '<span class="sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span> · ' : '') + escHtml(secHe(x.name)) + '</span><span class="v num ' + _col(x.chg) + '">' + _pc(x.chg) + '</span></div>'; };
+    const _ph = '<div class="muted" style="padding:8px 2px;font-size:14px">ממתין לנתוני מסחר…</div>';
+    const insTxt = "רוחב השוק " + (pct >= 55 ? "חיובי" : pct <= 45 ? "שלילי" : "מעורב") + ((vix && vix.level != null && vix.level < 18) ? " וה-VIX רגוע" : "") +
+      ", ההובלה מרוכזת ב<b>" + escHtml(topSecHe) + "</b>" + (secLag[0] ? ", לצד חולשה ב<b>" + escHtml(secHe(secLag[0].name)) + "</b>" : "") + ".";
+    return '<div class="em-dash">' +
+      '<div class="em-top"><span class="em-time">' + timeStr + '</span>' +
+        '<span class="em-pill ' + riskCls + '">' + riskTxt + '</span>' +
+        _uniSwitchHtml("em-uni") +
+        '<span class="em-sep"></span>' +
+        '<span class="em-logo">Strat<b>Ninja</b>' + (live ? '' : ' <span style="font-size:12px;color:#7e8aa2;font-weight:600">🧪 דמו</span>') + '</span></div>' +
+      '<div class="em-hero"><div class="em-htx">' +
+          '<div class="em-eye">סקירת שוק · The Strat</div>' +
+          '<h1>רוחב השוק ' + headTone + ', בהובלת <b>' + escHtml(topSecHe) + '</b></h1>' +
+          '<div class="em-sub">' + subT + '</div></div>' +
+        '<div class="em-big"><div class="n num">' + up + '<small>/' + total + '</small></div><div class="cap">מניות מעל הפתיחה</div></div></div>' +
+      idxRow +
+      '<div class="em-state">' +
+        '<div class="em-stcard clickable" id="emBreadth" title="לחץ לרוחב שוק לפי סקטור →"><div class="k">רוחב השוק</div><div class="big num">' + pct + '%</div>' +
+          '<div class="em-sbar"><i style="width:' + pct + '%;background:#2dd47c"></i><i style="width:' + (100 - pct) + '%;background:#ff6b7a"></i></div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:#9aa6bd" class="num"><span class="em-pos">▲ ' + up + ' עולות</span><span class="em-neg">' + down + ' יורדות ▼</span></div></div>' +
+        '<div class="em-stcard"><div class="k">מצב השוק</div><div class="big" style="color:' + riskCol + '">' + riskTxt + '</div><div style="color:#8a93a6;font-size:13px;margin-top:10px">' + (ms && ms.mode ? escHtml(ms.mode) : "—") + '</div></div>' +
+        '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _col(vixChg) + '" style="font-size:13px;margin-top:10px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
+      '</div>' +
+      '<div class="em-secttl">מנועי השוק · הובלה</div>' +
+      '<div class="em-cols">' +
+        '<div class="em-card"><h3>מניות מובילות</h3>' + (stkLead.length ? stkLead.map(stkRow).join("") : _ph) + '</div>' +
+        '<div class="em-card"><h3>סקטורים מובילים</h3>' + (secLead.length ? secLead.map(secRow).join("") : _ph) + '</div>' +
+      '</div>' +
+      '<div class="em-secttl">לחצי השוק · פיגור</div>' +
+      '<div class="em-cols">' +
+        '<div class="em-card"><h3>מניות בפיגור</h3>' + (stkLag.length ? stkLag.map(stkRow).join("") : _ph) + '</div>' +
+        '<div class="em-card"><h3>סקטורים בפיגור</h3>' + (secLag.length ? secLag.map(secRow).join("") : _ph) + '</div>' +
+      '</div>' +
+      '<div class="em-ins"><span class="i">i</span><p><b>Ninja Insight:</b> ' + insTxt + '</p></div>' +
+    '</div>';
+  }
   function renderMarket() {
+    if (_MKT_EDITORIAL) return renderMarketEditorial();
     const uniSwitch = '<div class="uni-switch" title="החלף בין עולם המניות של StratNinja ל-S&P 500">' +
       '<span class="uni-lbl">עולם המניות:</span>' +
       '<button class="uni-btn' + (marketUniverse === "sp500" ? " on" : "") + '" data-uni="sp500">S&P 500</button>' +
@@ -1329,6 +1402,7 @@
   }
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
+    { const eb = $("#emBreadth"); if (eb) eb.onclick = () => setPage("sp500"); }   // editorial breadth card → רוחב לפי סקטור
     document.querySelectorAll("#page [data-goto-heat]").forEach(el => el.onclick = () => setPage("sp500"));
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
