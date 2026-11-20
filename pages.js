@@ -9918,6 +9918,40 @@
     if (t === "1") return { prH: hi + r * 0.22, prL: lo - r * 0.22 };   // prior engulfs current → inside
     return { prH: hi + r * 0.1, prL: lo - r * 0.1 };
   }
+  function bvPrevOf(h, l, t1) {   // the candle BEFORE bar1, placed so bar1 reads as type t1 relative to it
+    var r = (h - l) || 1;
+    if (t1 === "1") return { h: h + r * 0.34, l: l - r * 0.34 };   // bar1 INSIDE → prior engulfs it
+    if (t1 === "2U") return { h: h - r * 0.26, l: l - r * 0.18 };  // bar1 broke prior HIGH → prior sits lower
+    if (t1 === "2D") return { h: h + r * 0.18, l: l + r * 0.26 };  // bar1 broke prior LOW → prior sits higher
+    if (t1 === "3") return { h: h - r * 0.26, l: l + r * 0.26 };   // bar1 OUTSIDE → prior inside bar1
+    return { h: h + r * 0.1, l: l - r * 0.1 };
+  }
+  function bvCandleBig(cell, price) {
+    if (!cell || cell.o == null) return '<div class="bv-dk" style="text-align:center;padding:30px">אין נתוני נר לטיימפריים זה</div>';
+    var d = bvBuild3(cell, price), bars = d.bars;
+    var W = 330, H = 178, padT = 14, padB = 22, padL = 12, padR = 58;
+    var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
+    var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
+    mx += rg * 0.08; mn -= rg * 0.08; rg = mx - mn;
+    function y(v) { return padT + (mx - v) / rg * (H - padT - padB); }
+    function fmt(v) { return Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(2); }
+    var innerW = W - padL - padR, slot = innerW / 3, cw = Math.min(slot * 0.46, 30);
+    var yph = y(d.prH), ypl = y(d.prL);
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="bv-bigsvg" preserveAspectRatio="xMidYMid meet">';
+    s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--redbd)" stroke-width="1" stroke-dasharray="3 3"/>';
+    s += '<text x="' + (W - padR + 6) + '" y="' + (yph + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--red)">' + fmt(d.prH) + '</text>';
+    s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--greenbd)" stroke-width="1" stroke-dasharray="3 3"/>';
+    s += '<text x="' + (W - padR + 6) + '" y="' + (ypl + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--green)">' + fmt(d.prL) + '</text>';
+    var labels = ["קודם", "קודם", "עכשיו"];
+    bars.forEach(function (b, i) {
+      var cx = padL + slot * (i + 0.5), up = b.c >= b.o, col = up ? "var(--green)" : "var(--red)";
+      var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 2);
+      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="2"/>';
+      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="2" fill="' + col + '"/>';
+      s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 7) + '" class="bv-axl" fill="var(--muted)" text-anchor="middle">' + labels[i] + '</text>';
+    });
+    return s + "</svg>";
+  }
   function bvBuild3(cell, price) {
     var toks = bvParseSeq(cell.seq3d) || [cell.t, cell.t, cell.t];
     while (toks.length < 3) toks.unshift(toks[0]);
@@ -9928,7 +9962,8 @@
     if (cell.ph != null && cell.pl != null) { prH = cell.ph; prL = cell.pl; }
     else { var sp = bvSynthPrior(hiC, loC, cell.t); prH = sp.prH; prL = sp.prL; }
     var b1 = bvBody(prH, prL, toks[1]), bar1 = { h: prH, l: prL, o: b1.o, c: b1.c };
-    var bar0 = bvSchem(prH, prL, toks[0]);
+    var p0 = bvPrevOf(prH, prL, toks[1]);   // place bar0 so bar1 reads as its real type (e.g. a "1" sits INSIDE bar0)
+    var body0 = bvBody(p0.h, p0.l, toks[0]), bar0 = { h: p0.h, l: p0.l, o: body0.o, c: body0.c };
     return { bars: [bar0, bar1, bar2], prH: prH, prL: prL };
   }
   function bvCandle(cell, price) {
@@ -10013,8 +10048,8 @@
       '.bv-cell.up{background:var(--greenbg)}.bv-cell.up .bv-g{color:var(--green)}' +
       '.bv-cell.dn{background:var(--redbg)}.bv-cell.dn .bv-g{color:var(--red)}' +
       '.bv-cell.ins{background:var(--soft)}.bv-cell.ins .bv-g{color:var(--muted)}' +
-      '.bv-cell.out{box-shadow:inset 0 0 0 1.5px var(--accent)}' +
-      '.bv-cell.sel{border-color:var(--accent)}' +
+      '.bv-cell.out{background:rgba(234,179,8,.14);box-shadow:inset 0 0 0 1.6px #eab308,0 0 8px rgba(234,179,8,.55)}.bv-cell.out .bv-g{color:#eab308}' +
+      '.bv-cell.sel{outline:2px solid var(--accent);outline-offset:2px}' +
       '.bv-ftfc{font-family:var(--mono);font-size:11px;padding:5px 9px;border-radius:8px;white-space:nowrap;margin-inline-start:auto}' +
       '.bv-ftfc.on-dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
       '.bv-ftfc.on-up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
@@ -10061,7 +10096,7 @@
     var secName = (typeof secHe === "function") ? secHe(r.sec) : r.sec;
     var cells = peers.map(function (x) {
       var c = x[tf] || {}, ch = (x.c != null ? x.c : 0);
-      return '<div class="bv-peer" data-bvpeer="' + x.s + '"><span class="bv-psym">' + x.s + '</span><span class="bv-pcell ' + bvCellClass(c) + '">' + bvGlyph(c.t) + '</span><span class="bv-ppx">' + (x.p != null ? x.p : "—") + '</span><span class="bv-pchg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + "%</span></div>";
+      return '<div class="bv-peer" data-bvpeer="' + x.s + '"><span class="bv-psym">' + x.s + '</span><span class="bv-pcell ' + bvCellClass(c) + '">' + bvGlyph(c.t) + '</span><span class="bv-psp"></span><span class="bv-ppx">' + (x.p != null ? x.p : "—") + '</span><span class="bv-pchg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + "%</span></div>";
     }).join("");
     return '<div class="bv-peers"><div class="bv-ph">🧩 מניות באותו סקטור — ' + secName + " (" + BV_TFHE[tf] + ")</div><div class=\"bv-pgrid\">" + cells + "</div></div>";
   }
@@ -10077,14 +10112,18 @@
       '.bv-dfull{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}' +
       '.bv-peers{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}' +
       '.bv-ph{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:10px}' +
-      '.bv-pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:7px}' +
-      '.bv-peer{display:flex;align-items:center;gap:8px;background:var(--soft2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;cursor:pointer}' +
+      '.bv-pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:7px}' +
+      '.bv-peer{display:flex;align-items:center;gap:7px;background:var(--soft2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;cursor:pointer;overflow:hidden}' +
       '.bv-peer:hover{border-color:var(--accent)}' +
-      '.bv-psym{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink);min-width:46px}' +
-      '.bv-pcell{font-family:var(--mono);font-size:12px;font-weight:800;padding:1px 6px;border-radius:5px}' +
-      '.bv-pcell.up{color:var(--green);background:var(--greenbg)}.bv-pcell.dn{color:var(--red);background:var(--redbg)}.bv-pcell.ins{color:var(--muted);background:var(--soft)}.bv-pcell.out{box-shadow:inset 0 0 0 1.5px var(--accent)}' +
-      '.bv-ppx{font-family:var(--mono);font-size:12px;color:var(--muted);margin-inline-start:auto}' +
-      '.bv-pchg{font-family:var(--mono);font-size:11.5px;font-weight:700}.bv-pchg.up{color:var(--green)}.bv-pchg.dn{color:var(--red)}' +
+      '.bv-psym{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink);flex:0 0 auto}' +
+      '.bv-pcell{font-family:var(--mono);font-size:12px;font-weight:800;padding:1px 6px;border-radius:5px;flex:0 0 auto}' +
+      '.bv-pcell.up{color:var(--green);background:var(--greenbg)}.bv-pcell.dn{color:var(--red);background:var(--redbg)}.bv-pcell.ins{color:var(--muted);background:var(--soft)}.bv-pcell.out{color:#eab308;background:rgba(234,179,8,.14);box-shadow:inset 0 0 0 1.5px #eab308,0 0 6px rgba(234,179,8,.45)}' +
+      '.bv-psp{flex:1 1 auto;min-width:4px}' +
+      '.bv-ppx{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:0 0 auto}' +
+      '.bv-pchg{font-family:var(--mono);font-size:11px;font-weight:700;flex:0 0 auto;white-space:nowrap}.bv-pchg.up{color:var(--green)}.bv-pchg.dn{color:var(--red)}' +
+      '.bv-bigwrap{background:var(--soft2);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:4px}' +
+      '.bv-bigsvg{width:100%;height:auto;display:block}' +
+      '.bv-axl{font-family:var(--mono);font-size:8px}' +
       '</style>';
   }
   function bvOpenDrill(sym) {
@@ -10098,15 +10137,15 @@
     var trig = (sel.ph != null) ? ('<div class="bv-dk">טריגר (נר קודם): נמוך <b style="color:var(--green)">' + sel.pl + '</b> · גבוה <b style="color:var(--red)">' + sel.ph + "</b></div>") : "";
     var ff = r.ftfc ? (sel.c === "up" ? "▲ שורי" : "▼ דובי") : "— אין";
     var info = '<div class="bv-dinfo">' + ohl + trig + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b> · המשכיות (FTFC): <b>" + ff + "</b></div></div>";
-    var base = "https://www.tradingview.com/widgetembed/?frameElementId=bvtv&symbol=" + encodeURIComponent(sym) + "&interval=" + bvTfIv(tf) + "&range=" + bvTfRange(tf) + "&theme=dark&style=1&hidesidetoolbar=1&saveimage=1&timezone=America%2FNew_York";
-    var chart = '<iframe src="' + base + '" style="width:100%;height:430px;border:0;border-radius:10px;background:#131722" allowfullscreen loading="lazy"></iframe>' +
-      '<div class="bv-dhint">↕️ גלגלת על הגרף = זום פנימה/החוצה (עוד נרות) · פותח על טווח קצר של ' + BV_TFHE[tf] + "</div>";
+    var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' +
+      '<div class="bv-dhint">3 הנרות האחרונים (' + BV_TFHE[tf] + ') · קו מקווקו = גבוה/נמוך הנר הקודם (רמות טריגר) · לגרף מלא עם גלגלת ← הכפתור למטה</div>';
     var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
-    var full = '<div class="bv-dfull"><button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
+    var full = '<div class="bv-dfull"><button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
     modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + head + info + chart + full + bvPeers(r, tf), "bv-drill");
     var scope = document.querySelector(".modal.bv-drill") || document;
     scope.querySelectorAll("[data-bvpeer]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvpeer")); }; });
     var mtf = scope.querySelector("#bvMtf"); if (mtf) mtf.onclick = function () { if (typeof openMultiChart === "function") openMultiChart(sym); };
+    var fb = scope.querySelector("#bvFull"); if (fb) fb.onclick = function () { if (typeof openChart === "function") openChart(sym, tf); };
   }
 
   const PAGES = {
