@@ -1913,8 +1913,14 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .em-big .cap{ color:#7e8aa2; font-size:14px; margin-top:8px; font-weight:600; }
 .em-idx{ display:grid; grid-template-columns:repeat(6,1fr); gap:1px; background:rgba(255,255,255,.07); border-radius:16px; overflow:hidden; margin-bottom:28px; }
 .em-h1sep{ color:#55607a; margin:0 4px; font-weight:400; }
-.em-flowwrap{ margin:0 0 16px; }
-.em-flowwrap .mf-radar{ margin:0; }
+.em-flow{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:0 0 16px; }
+.em-flow-side{ background:#121a2c; border:1px solid rgba(255,255,255,.05); border-radius:14px; padding:12px 18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.em-flow-side.in{ border-inline-start:3px solid #2dd47c; }
+.em-flow-side.out{ border-inline-start:3px solid #ff6b7a; }
+.em-flow-lbl{ font-size:15px; font-weight:800; white-space:nowrap; }
+.em-fchips{ display:flex; gap:10px; flex-wrap:wrap; }
+.em-fchip{ display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:5px 12px; font-size:15px; font-weight:600; }
+@media (max-width:860px){ .em-flow{ grid-template-columns:1fr; } }
 .em-it{ background:#0c1120; padding:18px 14px; text-align:center; }
 .em-it .s{ font-size:12px; letter-spacing:.1em; color:#7e8aa2; font-weight:700; }
 .em-it .p{ font-size:22px; font-weight:600; margin:6px 0 3px; }

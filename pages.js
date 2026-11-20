@@ -1351,6 +1351,17 @@
     const amRow = x => '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span></span><span class="v num ' + _col(x.gp) + '">' + _pc(x.gp) + '</span></div>';
     const amCol = arr => (arr && arr.length) ? arr.slice(0, 4).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
     const mvCard = (title, rowsHtml) => '<div class="em-card"><h3>' + title + '</h3>' + rowsHtml + '</div>';
+    // money-flow band: which sector money is entering / leaving + the stocks driving it
+    const _flowStocks = (secObj, dir) => { if (!secObj) return []; const he = secHe(secObj.name);
+      const rows = ((SCAN && SCAN.rows) || []).filter(r => secHe(r.sec) === he && r.c != null);
+      rows.sort((a, b) => dir > 0 ? ((b.c || 0) - (a.c || 0)) : ((a.c || 0) - (b.c || 0))); return rows.slice(0, 3); };
+    const flowIn = _flowStocks(secLead[0], 1), flowOut = _flowStocks(secLag[0], -1);
+    const _flowChip = x => '<span class="em-fchip"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span> <span class="num ' + _col(x.c) + '">' + _pc(x.c) + '</span></span>';
+    const flowBand = (secLead[0] || secLag[0]) ?
+      '<div class="em-flow">' +
+        '<div class="em-flow-side in"><span class="em-flow-lbl em-pos">💰 הכסף נכנס ל־' + escHtml(topSecHe) + '</span><span class="em-fchips">' + (flowIn.length ? flowIn.map(_flowChip).join("") : '<span class="muted">—</span>') + '</span></div>' +
+        '<div class="em-flow-side out"><span class="em-flow-lbl em-neg">הכסף יוצא מ־' + escHtml(weakSecHe || "—") + '</span><span class="em-fchips">' + (flowOut.length ? flowOut.map(_flowChip).join("") : '<span class="muted">—</span>') + '</span></div>' +
+      '</div>' : '';
     return '<div class="em-dash em-tight">' +
       '<div class="em-top"><span class="em-time">' + timeStr + '</span>' +
         '<span class="em-pill ' + riskCls + '">' + riskTxt + '</span>' +
@@ -1370,7 +1381,7 @@
         '<div class="em-stcard"><div class="k">מצב השוק</div><div class="big" style="color:' + riskCol + '">' + riskTxt + '</div><div style="color:#8a93a6;font-size:12.5px;margin-top:8px">' + (ms && ms.mode ? escHtml(ms.mode) : "—") + '</div></div>' +
         '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _vcol(vixChg) + '" style="font-size:12.5px;margin-top:8px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
       '</div>' +
-      '<div class="em-flowwrap">' + marketFlowRadar() + '</div>' +
+      flowBand +
       '<div class="em-bottom"><div class="em-main">' +
         '<div class="em-eyes"><div class="em-secttl">מנועי השוק · הובלה</div><div class="em-secttl">לחצי השוק · פיגור</div></div>' +
         '<div class="em-movers">' +
@@ -9909,6 +9920,10 @@
     { he: "צריכה מחזורית", note: "סקטור · קמעונאות · בנייה · AMZN", syms: ["XLY", "XRT", "XHB", "AMZN"] },
     { he: "תעשייה וחומרים", note: "תעשייה · ביטחוני · מתכות · זהב", syms: ["XLI", "ITA", "XME", "GDX"] },
     { he: "דפנסיבי ותקשורת", note: 'צריכה · תשתיות · נדל"ן · תקשורת', syms: ["XLP", "XLU", "XLRE", "XLC"] },
+    { he: "מגה-קאפ טק", note: "אפל · מיקרוסופט · גוגל · מטא", syms: ["AAPL", "MSFT", "GOOGL", "META"] },
+    { he: "קריפטו", note: "ביטקוין · את'ריום · קוינבייס · MSTR", syms: ["IBIT", "ETHA", "COIN", "MSTR"] },
+    { he: "תשלומים ובנקאות", note: "ויזה · מאסטרקארד · GS · אמקס", syms: ["V", "MA", "GS", "AXP"] },
+    { he: "מתכות וסחורות", note: "זהב · כסף · אורניום · נפט", syms: ["GLD", "SLV", "URNM", "USO"] },
   ];
   const BV_TFS = ["D", "W", "M", "Q", "Y"];
   const BV_TFHE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
@@ -10012,8 +10027,9 @@
     var ff = r.ftfc ? ("bv-ftfc " + (sel.c === "up" ? "on-up" : "on-dn")) : "bv-ftfc off";
     var ffTxt = r.ftfc ? ("FTFC " + (sel.c === "up" ? "▲" : "▼")) : "—";
     var seq = sel.seq3d ? sel.seq3d : "—";
-    return '<div class="bv-trow" data-bvdrill="' + sym + '">' +
-      '<div class="bv-tid"><span class="bv-sym">' + sym + '</span><span class="bv-px" data-flick="bvpx-' + sym + '">' + (r.p != null ? r.p : "—") + '</span><span class="bv-chg ' + chgCls + '" data-flick="bvchg-' + sym + '">' + chgTxt + "</span></div>" +
+    var primed = sel.t === "1";   // inside bar at the selected TF = coiled setup, primed to break
+    return '<div class="bv-trow' + (primed ? " primed" : "") + '" data-bvdrill="' + sym + '">' +
+      '<div class="bv-tid"><span class="bv-sym">' + sym + '</span><span class="bv-px" data-flick="bvpx-' + sym + '">' + (r.p != null ? r.p : "—") + '</span><span class="bv-chg ' + chgCls + '" data-flick="bvchg-' + sym + '">' + chgTxt + '</span><span class="bv-seq2' + (primed ? " on" : "") + '">' + (primed ? "⚡ " : "") + seq + "</span></div>" +
       '<div class="bv-cndl" title="' + escAttr(title) + '">' + bvCandle(sel, r.p) + "</div>" +
       '<div class="bv-mtx">' + mtx + "</div>" +
       '<div class="' + ff + '">' + ffTxt + "</div></div>";
@@ -10059,7 +10075,8 @@
       '.bv-chg.dn{color:var(--red)}.bv-chg.up{color:var(--green)}' +
       '.bv-cndl{width:62px;height:52px;flex:0 0 auto;background:var(--soft2);border:1px solid var(--line);border-radius:8px}' +
       '.bv-cndl svg{width:100%;height:100%;display:block}' +
-      '.bv-seq{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:96px}.bv-seq b{color:var(--ink)}' +
+      '.bv-seq2{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.2px;white-space:nowrap}.bv-seq2.on{color:#eab308;font-weight:700}' +
+      '.bv-trow.primed{background:rgba(234,179,8,.07)}' +
       '.bv-mtx{display:flex;gap:5px;flex-wrap:wrap}' +
       '.bv-cell{width:34px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent}' +
       '.bv-tf{font-family:var(--mono);font-size:9px;color:var(--muted)}' +
