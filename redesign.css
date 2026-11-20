@@ -1829,7 +1829,10 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
    הפיך לחלוטין: מחיקת כל הבלוק הזה מחזירה את המצב הקודם. (2026-11-21)
    ======================================================================= */
 body[data-page="market"]{
-  --ed-card:#0f1626; --ed-line:rgba(255,255,255,.07); --ed-muted:#8a93a6; --ed-ink:#c7d0e2; --ed-accent:#2dd4bf;
+  --ed-card:#182138; --ed-line:rgba(255,255,255,.12); --ed-muted:#8b96ad; --ed-ink:#d4dcec; --ed-accent:#2dd4bf;
+  /* calmer, less-neon semantic colours — the loud red/green bars become dusty & premium */
+  --red:#d2707a; --redbg:rgba(210,112,122,.15); --redbd:rgba(210,112,122,.55);
+  --green:#3fb894; --greenbg:rgba(63,184,148,.15); --greenbd:rgba(63,184,148,.55);
 }
 /* numbers align in columns */
 body[data-page="market"] .mkt-dash,

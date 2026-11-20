@@ -9835,14 +9835,23 @@
     if (tok === "2D") return { h: ph - size * 0.12, l: pl - size * 0.28, o: mid, c: pl - size * 0.18 };
     if (tok === "3") return { h: ph + size * 0.25, l: pl - size * 0.3, o: ph, c: pl - size * 0.1 };
     return { h: ph - size * 0.05, l: pl - size * 0.05, o: mid + size * 0.08, c: mid - size * 0.06 }; }
+  function bvSynthPrior(hi, lo, t) {   // when a cell has no ph/pl (daily/yearly): place the prior-candle levels so the current bar reads as its declared Strat type
+    var r = (hi - lo) || Math.abs(hi) * 0.04 || 1;
+    if (t === "3") return { prH: hi - r * 0.22, prL: lo + r * 0.22 };   // prior inside current → current breaks BOTH (outside)
+    if (t === "2U") return { prH: hi - r * 0.2, prL: lo - r * 0.18 };   // breaks high only
+    if (t === "2D") return { prH: hi + r * 0.18, prL: lo + r * 0.2 };   // breaks low only
+    if (t === "1") return { prH: hi + r * 0.22, prL: lo - r * 0.22 };   // prior engulfs current → inside
+    return { prH: hi + r * 0.1, prL: lo - r * 0.1 };
+  }
   function bvBuild3(cell, price) {
     var toks = bvParseSeq(cell.seq3d) || [cell.t, cell.t, cell.t];
     while (toks.length < 3) toks.unshift(toks[0]);
     toks = toks.slice(-3);
-    var hi = bvHi(cell), lo = bvLo(cell), o = cell.o, c = price;
-    var bar2 = { h: hi, l: lo, o: o, c: c }, prH, prL;
+    var hi = bvHi(cell), lo = bvLo(cell), o = cell.o, c = (price != null ? price : cell.o);
+    var hiC = Math.max(hi, c), loC = Math.min(lo, c);   // clamp so a live close never spills past the wick
+    var bar2 = { h: hiC, l: loC, o: o, c: c }, prH, prL;
     if (cell.ph != null && cell.pl != null) { prH = cell.ph; prL = cell.pl; }
-    else { var sz = (hi - lo) || Math.abs(hi) * 0.04 || 1; prH = hi + sz * 0.08; prL = lo + sz * 0.25; }
+    else { var sp = bvSynthPrior(hiC, loC, cell.t); prH = sp.prH; prL = sp.prL; }
     var b1 = bvBody(prH, prL, toks[1]), bar1 = { h: prH, l: prL, o: b1.o, c: b1.c };
     var bar0 = bvSchem(prH, prL, toks[0]);
     return { bars: [bar0, bar1, bar2], prH: prH, prL: prL };
@@ -9874,7 +9883,7 @@
     var ff = r.ftfc ? ("bv-ftfc " + (sel.c === "up" ? "on-up" : "on-dn")) : "bv-ftfc off";
     var ffTxt = r.ftfc ? ("FTFC " + (sel.c === "up" ? "▲" : "▼")) : "—";
     var seq = sel.seq3d ? sel.seq3d : "—";
-    return '<div class="bv-trow">' +
+    return '<div class="bv-trow" data-bvdrill="' + sym + '">' +
       '<div class="bv-tid"><span class="bv-sym">' + sym + '</span><span class="bv-px" data-flick="bvpx-' + sym + '">' + (r.p != null ? r.p : "—") + '</span><span class="bv-chg ' + chgCls + '" data-flick="bvchg-' + sym + '">' + chgTxt + "</span></div>" +
       '<div class="bv-cndl" title="' + escAttr(title) + '">' + bvCandle(sel, r.p) + "</div>" +
       '<div class="bv-seq">רצף <b>' + seq + "</b></div>" +
@@ -9912,7 +9921,7 @@
       '.bv-gchip.dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
       '.bv-gchip.up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
       '.bv-gchip.mix{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
-      '.bv-trow{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--line);flex-wrap:wrap}' +
+      '.bv-trow{display:flex;align-items:center;gap:12px;padding:9px 14px;border-top:1px solid var(--line);flex-wrap:wrap;cursor:pointer}' +
       '.bv-trow:hover{background:var(--soft2)}' +
       '.bv-tid{display:flex;flex-direction:column;gap:1px;min-width:66px}' +
       '.bv-sym{font-family:var(--mono);font-size:14px;font-weight:800;color:var(--ink)}' +
@@ -9962,6 +9971,67 @@
     document.querySelectorAll('#page [data-bvtf]').forEach(function (b) {
       b.onclick = function () { bvTf = b.getAttribute("data-bvtf"); reRender(); };
     });
+    document.querySelectorAll('#page [data-bvdrill]').forEach(function (row) {
+      row.onclick = function () { bvOpenDrill(row.getAttribute("data-bvdrill")); };
+    });
+  }
+  function bvTfIv(tf) { return ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M" })[tf] || "D"; }
+  function bvTfRange(tf) { return ({ D: "5D", W: "1M", M: "6M", Q: "12M", Y: "60M" })[tf] || "1M"; }
+  function bvPeers(r, tf) {
+    if (!(SCAN && SCAN.rows) || !r.sec) return "";
+    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && x[tf]; });
+    peers.sort(function (a, b) { return Math.abs(b.c || 0) - Math.abs(a.c || 0); });
+    peers = peers.slice(0, 18);
+    if (!peers.length) return "";
+    var secName = (typeof secHe === "function") ? secHe(r.sec) : r.sec;
+    var cells = peers.map(function (x) {
+      var c = x[tf] || {}, ch = (x.c != null ? x.c : 0);
+      return '<div class="bv-peer" data-bvpeer="' + x.s + '"><span class="bv-psym">' + x.s + '</span><span class="bv-pcell ' + bvCellClass(c) + '">' + bvGlyph(c.t) + '</span><span class="bv-ppx">' + (x.p != null ? x.p : "—") + '</span><span class="bv-pchg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + "%</span></div>";
+    }).join("");
+    return '<div class="bv-peers"><div class="bv-ph">🧩 מניות באותו סקטור — ' + secName + " (" + BV_TFHE[tf] + ")</div><div class=\"bv-pgrid\">" + cells + "</div></div>";
+  }
+  function bvDrillCss() {
+    return '<style>' +
+      '.bv-dhead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}' +
+      '.bv-dsym{font-family:var(--mono);font-size:20px;font-weight:800;color:var(--ink)}' +
+      '.bv-dpx{font-family:var(--mono);font-size:16px;color:var(--ink)}' +
+      '.bv-dchips{display:flex;gap:5px;flex-wrap:wrap}' +
+      '.bv-dinfo{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}' +
+      '.bv-dk{font-family:var(--mono);font-size:12.5px;color:var(--muted)}.bv-dk b{color:var(--ink)}' +
+      '.bv-dhint{font-size:11.5px;color:var(--muted);margin-top:6px;text-align:center}' +
+      '.bv-dfull{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}' +
+      '.bv-peers{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}' +
+      '.bv-ph{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:10px}' +
+      '.bv-pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:7px}' +
+      '.bv-peer{display:flex;align-items:center;gap:8px;background:var(--soft2);border:1px solid var(--line);border-radius:9px;padding:7px 10px;cursor:pointer}' +
+      '.bv-peer:hover{border-color:var(--accent)}' +
+      '.bv-psym{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--ink);min-width:46px}' +
+      '.bv-pcell{font-family:var(--mono);font-size:12px;font-weight:800;padding:1px 6px;border-radius:5px}' +
+      '.bv-pcell.up{color:var(--green);background:var(--greenbg)}.bv-pcell.dn{color:var(--red);background:var(--redbg)}.bv-pcell.ins{color:var(--muted);background:var(--soft)}.bv-pcell.out{box-shadow:inset 0 0 0 1.5px var(--accent)}' +
+      '.bv-ppx{font-family:var(--mono);font-size:12px;color:var(--muted);margin-inline-start:auto}' +
+      '.bv-pchg{font-family:var(--mono);font-size:11.5px;font-weight:700}.bv-pchg.up{color:var(--green)}.bv-pchg.dn{color:var(--red)}' +
+      '</style>';
+  }
+  function bvOpenDrill(sym) {
+    if (typeof modal !== "function") return;
+    var r = (SCAN && SCAN.rows) ? SCAN.rows.find(function (x) { return x.s === sym; }) : null;
+    if (!r) { if (typeof openChart === "function") openChart(sym, bvTf); return; }
+    var tf = bvTf, sel = r[tf] || {};
+    var chg = (r.c != null ? r.c : 0), chgCls = chg >= 0 ? "up" : "dn", chgTxt = (chg >= 0 ? "+" : "") + Number(chg).toFixed(2) + "%";
+    var chips = BV_TFS.map(function (tfx) { var c = r[tfx] || {}; return '<div class="bv-cell ' + bvCellClass(c) + (tfx === tf ? " sel" : "") + '"><span class="bv-tf">' + tfx + '</span><span class="bv-g">' + bvGlyph(c.t) + "</span></div>"; }).join("");
+    var ohl = (sel.o != null) ? ('<div class="bv-dk">פתיחה ' + sel.o + " · גבוה " + bvHi(sel) + " · נמוך " + bvLo(sel) + "</div>") : "";
+    var trig = (sel.ph != null) ? ('<div class="bv-dk">טריגר (נר קודם): נמוך <b style="color:var(--green)">' + sel.pl + '</b> · גבוה <b style="color:var(--red)">' + sel.ph + "</b></div>") : "";
+    var ff = r.ftfc ? (sel.c === "up" ? "▲ שורי" : "▼ דובי") : "— אין";
+    var info = '<div class="bv-dinfo">' + ohl + trig + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b> · המשכיות (FTFC): <b>" + ff + "</b></div></div>";
+    var base = "https://www.tradingview.com/widgetembed/?frameElementId=bvtv&symbol=" + encodeURIComponent(sym) + "&interval=" + bvTfIv(tf) + "&range=" + bvTfRange(tf) + "&theme=dark&style=1&hidesidetoolbar=1&saveimage=1&timezone=America%2FNew_York";
+    var chart = '<iframe src="' + base + '" style="width:100%;height:430px;border:0;border-radius:10px;background:#131722" allowfullscreen loading="lazy"></iframe>' +
+      '<div class="bv-dhint">↕️ גלגלת על הגרף = זום פנימה/החוצה (עוד נרות) · פותח על טווח קצר של ' + BV_TFHE[tf] + "</div>";
+    var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
+    var full = '<div class="bv-dfull"><button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
+    modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + head + info + chart + full + bvPeers(r, tf), "bv-drill");
+    var scope = document.querySelector(".modal.bv-drill") || document;
+    scope.querySelectorAll("[data-bvpeer]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvpeer")); }; });
+    var mtf = scope.querySelector("#bvMtf"); if (mtf) mtf.onclick = function () { if (typeof openMultiChart === "function") openMultiChart(sym); };
   }
 
   const PAGES = {
