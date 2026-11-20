@@ -1835,13 +1835,23 @@ body[data-page="market"]{
 body[data-page="market"] .mkt-dash,
 body[data-page="market"] .mf-radar{ font-variant-numeric:tabular-nums; }
 
-/* calmer, flatter cards — hairline border + soft shadow (was a heavy drop shadow) */
-body[data-page="market"] .mkt-dash .panel{
-  background:var(--ed-card);
-  border:1px solid var(--ed-line);
-  border-radius:16px;
-  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 4px 16px rgba(0,0,0,.22);
+/* ONE unified calm card for every block (cockpit + panels + sector-heat) — the big visible change.
+   Flat hairline card, soft shadow, consistent radius — instead of mixed heavy-shadow boxes. */
+body[data-page="market"] .cockpit,
+body[data-page="market"] .mkt-dash .panel,
+body[data-page="market"] .mkt-dash .mh-panel{
+  background:var(--ed-card)!important;
+  border:1px solid var(--ed-line)!important;
+  border-radius:16px!important;
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 4px 16px rgba(0,0,0,.22)!important;
 }
+/* cockpit internals → calmer, roomier */
+body[data-page="market"] .cockpit{ padding:16px 20px; gap:18px; }
+body[data-page="market"] .cockpit .k{ font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--ed-muted); font-weight:700; }
+body[data-page="market"] .cockpit .cp-sep{ background:var(--ed-line); }
+body[data-page="market"] .cp-brbar{ border-radius:999px; background:rgba(255,255,255,.05); overflow:hidden; }
+/* sector-heat panel header → match the editorial eyebrow tone */
+body[data-page="market"] .mh-head h3{ font-size:13px; font-weight:700; letter-spacing:.04em; color:var(--ed-ink); }
 
 /* section headers → quiet editorial eyebrows with a small accent tick */
 body[data-page="market"] .mkt-sec-title{
