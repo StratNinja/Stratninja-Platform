@@ -1327,11 +1327,12 @@
     const now = new Date(), p2 = x => String(x).padStart(2, "0");
     const timeStr = p2(now.getHours()) + ":" + p2(now.getMinutes()) + " · " + now.getDate() + "." + (now.getMonth() + 1);
     const _col = v => v == null ? "" : v > 0.05 ? "em-pos" : v < -0.05 ? "em-neg" : "";
+    const _vcol = v => v == null ? "" : v > 0.05 ? "em-neg" : v < -0.05 ? "em-pos" : "";   // VIX: rising = risk-off (red), falling = calm (green)
     const _pc = v => v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(Number(v)).toFixed(2) + "%";
     const idxTile = (sym, r) => { const px = r && r.price != null ? Number(r.price).toFixed(2) : "—"; const c = r ? r.chg : null;
       return '<div class="em-it"><div class="s">' + sym + '</div><div class="p num">' + px + '</div><div class="c num ' + _col(c) + '">' + _pc(c) + '</div></div>'; };
     const idxRow = '<div class="em-idx">' + idxTile("SPY", byS.SPY) + idxTile("QQQ", byS.QQQ) + idxTile("IWM", byS.IWM) + idxTile("DIA", byS.DIA) +
-      '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _col(vixChg) + '">' + _pc(vixChg) + '</div></div></div>';
+      '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _vcol(vixChg) + '">' + _pc(vixChg) + '</div></div></div>';
     const stkRow = x => { const sec = secHe((((SCAN && SCAN.rows) || []).find(r => r.s === x.s) || {}).sec || "");
       return '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span>' + (sec && sec !== "אחר" ? '<span class="sec">' + escHtml(sec) + '</span>' : '') + '</span><span class="v num ' + _col(x.c) + '">' + _pc(x.c) + '</span></div>'; };
     const secRow = x => { const etf = etfFor(x.name);
@@ -1356,7 +1357,7 @@
           '<div class="em-sbar"><i style="width:' + pct + '%;background:#2dd47c"></i><i style="width:' + (100 - pct) + '%;background:#ff6b7a"></i></div>' +
           '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:13px;color:#9aa6bd" class="num"><span class="em-pos">▲ ' + up + ' עולות</span><span class="em-neg">' + down + ' יורדות ▼</span></div></div>' +
         '<div class="em-stcard"><div class="k">מצב השוק</div><div class="big" style="color:' + riskCol + '">' + riskTxt + '</div><div style="color:#8a93a6;font-size:13px;margin-top:10px">' + (ms && ms.mode ? escHtml(ms.mode) : "—") + '</div></div>' +
-        '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _col(vixChg) + '" style="font-size:13px;margin-top:10px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
+        '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _vcol(vixChg) + '" style="font-size:13px;margin-top:10px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
       '</div>' +
       '<div class="em-secttl">מנועי השוק · הובלה</div>' +
       '<div class="em-cols">' +
