@@ -1370,6 +1370,7 @@
         '<div class="em-stcard"><div class="k">מצב השוק</div><div class="big" style="color:' + riskCol + '">' + riskTxt + '</div><div style="color:#8a93a6;font-size:12.5px;margin-top:8px">' + (ms && ms.mode ? escHtml(ms.mode) : "—") + '</div></div>' +
         '<div class="em-stcard"><div class="k">תנודתיות</div><div class="big num">' + vixLvl + '</div><div class="num ' + _vcol(vixChg) + '" style="font-size:12.5px;margin-top:8px">VIX ' + _pc(vixChg) + (vix && vix.level != null ? (vix.level < 18 ? " · נמוכה" : vix.level > 28 ? " · גבוהה" : " · בינונית") : "") + '</div></div>' +
       '</div>' +
+      '<div class="em-flowwrap">' + marketFlowRadar() + '</div>' +
       '<div class="em-bottom"><div class="em-main">' +
         '<div class="em-eyes"><div class="em-secttl">מנועי השוק · הובלה</div><div class="em-secttl">לחצי השוק · פיגור</div></div>' +
         '<div class="em-movers">' +
