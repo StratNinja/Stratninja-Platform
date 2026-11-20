@@ -1333,7 +1333,7 @@
     const idxTile = (sym, r) => { const px = r && r.price != null ? (sym === "BTC" ? "$" + Math.round(r.price).toLocaleString("en-US") : Number(r.price).toFixed(2)) : "—"; const c = r ? r.chg : null;
       return '<div class="em-it"><div class="s">' + sym + '</div><div class="p num">' + px + '</div><div class="c num ' + _col(c) + '">' + _pc(c) + '</div></div>'; };
     const idxRow = '<div class="em-idx">' + idxTile("SPY", byS.SPY) + idxTile("QQQ", byS.QQQ) + idxTile("IWM", byS.IWM) + idxTile("DIA", byS.DIA) +
-      '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _vcol(vixChg) + '">' + _pc(vixChg) + '</div></div>' + idxTile("BTC", byS.BTC) + '</div>';
+      '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _vcol(vixChg) + '">' + _pc(vixChg) + '</div></div>' + idxTile("BTC", byS.BTC || _btc) + '</div>';
     const stkRow = x => { const sec = secHe((((SCAN && SCAN.rows) || []).find(r => r.s === x.s) || {}).sec || "");
       return '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span>' + (sec && sec !== "אחר" ? '<span class="sec">' + escHtml(sec) + '</span>' : '') + '</span><span class="v num ' + _col(x.c) + '">' + _pc(x.c) + '</span></div>'; };
     const secRow = x => { const etf = etfFor(x.name);
@@ -1417,6 +1417,7 @@
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     { const eb = $("#emBreadth"); if (eb) eb.onclick = () => setPage("sp500"); }   // editorial breadth card → רוחב לפי סקטור
+    if (!_btc && typeof fetchBtc === "function") { fetchBtc().then(b => { if (b) reRender(); }); }   // editorial index row shows BTC (CoinGecko); fetch + one re-render when it lands
     document.querySelectorAll("#page [data-goto-heat]").forEach(el => el.onclick = () => setPage("sp500"));
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
