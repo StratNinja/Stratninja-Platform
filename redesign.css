@@ -1821,3 +1821,50 @@ html[data-theme="light"] .panel { box-shadow: 0 1px 2px rgba(29,23,38,.07), 0 12
 .ps-share-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ps-share-badge { font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 999px; color: var(--green, #26a69a); border: 1px solid var(--green, #26a69a); }
 .ps-share-badge.warn { color: var(--muted, #8b98a9); border-color: var(--line, #263042); }
+
+/* =======================================================================
+   EDITORIAL "עריכה · רגוע" RESKIN — סקירת שוק בלבד (body[data-page="market"]).
+   שומר על הפריסה הרוחבית (landscape) הקיימת — לא נוגע בעמודות/רוחב.
+   מנקה: צללים מרוככים · כרטיסים אחידים · כותרות שקטות · ריווח · טיפוגרפיה · צבע מדוד.
+   הפיך לחלוטין: מחיקת כל הבלוק הזה מחזירה את המצב הקודם. (2026-11-21)
+   ======================================================================= */
+body[data-page="market"]{
+  --ed-card:#0f1626; --ed-line:rgba(255,255,255,.07); --ed-muted:#8a93a6; --ed-ink:#c7d0e2; --ed-accent:#2dd4bf;
+}
+/* numbers align in columns */
+body[data-page="market"] .mkt-dash,
+body[data-page="market"] .mf-radar{ font-variant-numeric:tabular-nums; }
+
+/* calmer, flatter cards — hairline border + soft shadow (was a heavy drop shadow) */
+body[data-page="market"] .mkt-dash .panel{
+  background:var(--ed-card);
+  border:1px solid var(--ed-line);
+  border-radius:16px;
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 4px 16px rgba(0,0,0,.22);
+}
+
+/* section headers → quiet editorial eyebrows with a small accent tick */
+body[data-page="market"] .mkt-sec-title{
+  font-size:12px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ed-muted); margin:24px 2px 13px; display:flex; align-items:center; gap:9px;
+}
+body[data-page="market"] .mkt-sec-title::before{
+  content:""; width:16px; height:2px; border-radius:2px; background:var(--ed-accent); flex:none;
+}
+
+/* panel titles → calmer & consistent */
+body[data-page="market"] .mkt-dash .panel h3{
+  font-size:13px; font-weight:700; letter-spacing:.03em; color:var(--ed-ink);
+}
+
+/* mover rows → softer tint + a thin separator instead of a solid filled block */
+body[data-page="market"] .mkt-dash .lead-row{ border-radius:9px; }
+body[data-page="market"] .mkt-dash .lead-row.up{ background:rgba(45,212,124,.07); }
+body[data-page="market"] .mkt-dash .lead-row.down{ background:rgba(255,90,106,.07); }
+
+/* sector heat strip → flatter, calmer tiles (same colours, less heavy) */
+body[data-page="market"] .mh-tile{ border-radius:12px; border-color:var(--ed-line); }
+body[data-page="market"] .mh-tile:hover{ border-color:var(--ed-accent); }
+
+/* a touch more breathing room between the dash sections (stays wide) */
+body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
