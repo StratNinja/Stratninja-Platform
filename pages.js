@@ -10733,7 +10733,7 @@
       '.alc-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-content:start}' +
       '.alc-tile{background:#121a2c;border:1.5px solid #263349;border-radius:16px;padding:12px 12px 8px;display:flex;flex-direction:column}' +
       '.alc-ttop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}' +
-      '.alc-sym{font-size:22px;font-weight:900;color:#fff;font-family:Inter,Heebo,sans-serif}' +
+      '.alc-sym{font-size:22px;font-weight:900;color:#fff;font-family:Inter,Heebo,sans-serif;letter-spacing:1px}' +
       '.alc-you{color:' + accent + ';font-size:15px;vertical-align:middle}' +
       '.alc-chg{font-size:18px;font-weight:800;font-family:Inter,Heebo,sans-serif;direction:ltr;display:inline-block;unicode-bidi:isolate}' +
       '.alc-chart{height:84px}' +
