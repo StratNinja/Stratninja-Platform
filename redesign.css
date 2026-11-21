@@ -2000,7 +2000,7 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .em-movers .em-mv .nm .sec{ font-size:14px; }
 .em-after{ background:#121a2c; border:1px solid rgba(255,255,255,.05); border-radius:16px; padding:16px 18px; align-self:stretch; }
 .em-after-h{ font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:#7e8aa2; font-weight:700; margin-bottom:12px; }
-.em-after-grid{ display:grid; grid-template-columns:1fr; gap:16px; }
+.em-after-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
 .em-col-h{ font-size:14px; font-weight:700; margin-bottom:5px; }
 .em-after .em-mv{ padding:7px 0; font-size:16px; justify-content:flex-start; gap:12px; }
 @media (max-width:1200px){ .em-bottom{ grid-template-columns:1fr; } .em-after-grid{ grid-template-columns:1fr 1fr; } }
