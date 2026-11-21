@@ -3476,7 +3476,7 @@
   window._snOpenRequest = openRequestForm;
 
   // ========== COMMUNITY TICKERS (viewer-suggested scanner stocks) ==========
-  const SN_ADMIN_EMAIL = "koriatmanagement@gmail.com";
+  const SN_ADMIN_EMAIL = "koriat" + "management" + String.fromCharCode(64) + "gmail" + String.fromCharCode(46) + "com";
   function _snIsAdmin() {
     try { return ((window.SNAuth && SNAuth.user() || {}).email || "").toLowerCase() === SN_ADMIN_EMAIL; }
     catch (e) { return false; }
