@@ -6144,7 +6144,8 @@
         '<div style="font:700 22px Heebo,Arial;color:#9aa6bd">' + _TFHE[k] + '</div>' +
         '<div style="font:900 40px/1 Heebo,Arial;color:' + col + ';margin-top:7px">' + v + '</div></div>'; }).join("");
     const presetChips = names.map((nm, i) => { const icon = _acIcon(rawNames[i] || nm);
-      return '<span style="display:inline-flex;align-items:center;gap:8px;background:rgba(124,138,255,.1);border:1px solid rgba(124,138,255,.3);border-radius:999px;padding:9px 20px;font:700 25px Heebo,Arial;color:#dfe6f2">' + icon + ' ' + escHtml(nm) + '</span>'; }).join("");
+      // direction:ltr + isolate so English setup names render left-to-right in html2canvas (RTL card was reversing them)
+      return '<span style="display:inline-flex;align-items:center;gap:8px;direction:ltr;unicode-bidi:isolate;background:rgba(124,138,255,.1);border:1px solid rgba(124,138,255,.3);border-radius:999px;padding:9px 20px;font:700 25px Heebo,Arial;color:#dfe6f2"><span>' + icon + '</span><span dir="ltr">' + escHtml(nm) + '</span></span>'; }).join("");
     const photo = _heroSquare
       ? '<img src="' + _heroSquare + '" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(45,212,191,.5)">'
       : '<img src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(45,212,191,.5)">';
@@ -6166,7 +6167,7 @@
         (secHeTxt ? '<div style="flex:1;text-align:center;background:#111a2e;border:1px solid #2c3a56;border-radius:16px;padding:18px;font:800 32px Heebo,Arial;color:#eaf2ff">' + escHtml(secHeTxt) + (etf ? ' <span style="color:#8a93a6;font-size:26px">' + escHtml(etf) + '</span>' : '') + '</div>' : '') + '</div>' +
       '<div style="display:flex;gap:12px;direction:ltr;margin-bottom:20px">' + tfTiles + '</div>' +
       (presetChips ? '<div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:20px">' + presetChips + '</div>' : '') +
-      '<div style="text-align:center;background:linear-gradient(90deg,rgba(124,138,255,.14),rgba(45,212,191,.12));border:1px solid rgba(124,138,255,.3);border-radius:18px;padding:20px;font:800 30px Heebo,Arial;color:#fff;margin-bottom:18px">לעוד הזדמנויות — הצטרפו לקהילת StratNinja 🥷</div>' +
+      '<div style="text-align:center;background:linear-gradient(90deg,rgba(124,138,255,.14),rgba(45,212,191,.12));border:1px solid rgba(124,138,255,.3);border-radius:18px;padding:20px;font:800 30px Heebo,Arial;color:#fff;margin-bottom:18px">לעוד הזדמנויות — הצטרפו לקהילת StratNinja</div>' +
       '<div style="display:flex;justify-content:space-between;font:600 21px Heebo,Arial;color:#6b7686">' +
         '<span>Adi Koriat · @KoriatTrade · ' + _now.toLocaleDateString("he-IL") + '</span>' +
         '<span><b style="color:#cfd8e8">stratninja.win</b></span></div>';
