@@ -10076,7 +10076,7 @@
     var sel = r[tf] || {};
     var chg = (r.c != null ? r.c : 0), chgCls = chg >= 0 ? "up" : "dn", chgTxt = (chg >= 0 ? "+" : "") + Number(chg).toFixed(2) + "%";
     var title = sym + " " + BV_TFHE[tf] + " — פתיחה " + sel.o + " · גבוה " + bvHi(sel) + " · נמוך " + bvLo(sel) + (sel.ph != null ? " · טריגר " + sel.pl + "/" + sel.ph : "");
-    var mtx = BV_TFS.map(function (tfx) { var c = r[tfx] || {}; return '<div class="bv-cell ' + bvCellClass(c) + (tfx === tf ? " sel" : "") + '" title="' + tfx + " " + (c.t || "") + " " + (c.c || "") + '"><span class="bv-tf">' + tfx + '</span><span class="bv-g">' + bvGlyph(c.t) + "</span></div>"; }).join("");
+    var mtx = BV_TFS.map(function (tfx) { var c = r[tfx] || {}; return '<div class="bv-cell ' + bvCellClass(c) + (tfx === tf ? " sel" : "") + '" data-bvtfset="' + tfx + '" title="' + tfx + " " + (c.t || "") + " " + (c.c || "") + ' · לחץ להחלפת טיימפריים"><span class="bv-tf">' + tfx + '</span><span class="bv-g">' + bvGlyph(c.t) + "</span></div>"; }).join("");
     var ff = r.ftfc ? ("bv-ftfc " + (sel.c === "up" ? "on-up" : "on-dn")) : "bv-ftfc off";
     var ffTxt = r.ftfc ? ("FTFC " + (sel.c === "up" ? "▲" : "▼")) : "—";
     var primed = sel.t === "1";   // inside bar = coiled setup
@@ -10136,7 +10136,8 @@
       '.bv-seq2{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.2px;white-space:nowrap}.bv-seq2.on{color:#eab308;font-weight:700}' +
       '.bv-trow.primed{background:rgba(234,179,8,.07)}' +
       '.bv-mtx{display:flex;gap:5px;flex-wrap:wrap}' +
-      '.bv-cell{width:34px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent}' +
+      '.bv-cell{width:34px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent;cursor:pointer}' +
+      '.bv-cell:hover{filter:brightness(1.25)}' +
       '.bv-tf{font-family:var(--mono);font-size:9px;color:var(--muted)}' +
       '.bv-g{font-family:var(--mono);font-size:12.5px;font-weight:800}' +
       '.bv-cell.up{background:var(--greenbg)}.bv-cell.up .bv-g{color:var(--green)}' +
@@ -10182,6 +10183,9 @@
     });
     document.querySelectorAll('#page [data-bvpat]').forEach(function (b) {
       b.onclick = function () { bvPat = b.getAttribute("data-bvpat"); reRender(); };
+    });
+    document.querySelectorAll('#page [data-bvtfset]').forEach(function (c) {
+      c.onclick = function (e) { e.stopPropagation(); bvTf = c.getAttribute("data-bvtfset"); reRender(); };   // click a matrix TF cell → switch timeframe (don't open the drill)
     });
   }
   function bvExpected(sel) {
@@ -10241,13 +10245,15 @@
       '.bv-bigwrap{background:var(--soft2);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:4px}' +
       '.bv-bigsvg{width:100%;height:auto;display:block}' +
       '.bv-axl{font-family:var(--mono);font-size:8px}' +
-      '.bv-p2grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:7px}' +
+      '.bv-dwrap{display:flex;gap:16px;align-items:flex-start}.bv-dmain{flex:1 1 56%;min-width:0}.bv-dside{flex:1 1 40%;min-width:0}' +
+      '@media(max-width:780px){.bv-dwrap{flex-direction:column}.bv-dmain,.bv-dside{flex:1 1 auto;width:100%}}' +
+      '.bv-p2grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}' +
       '.bv-peer2{background:var(--soft2);border:1px solid var(--line);border-radius:9px;padding:6px 6px 4px;cursor:pointer}' +
       '.bv-peer2:hover{border-color:var(--accent)}' +
       '.bv-peer2.al.dn{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 0 10px var(--redbg)}' +
       '.bv-peer2.al.up{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 0 10px var(--greenbg)}' +
       '.bv-p2top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px}' +
-      '.bv-p2chart{height:40px}.bv-p2chart svg{width:100%;height:40px;display:block}' +
+      '.bv-p2chart{height:56px}.bv-p2chart svg{width:100%;height:56px;display:block}' +
       '.bv-ph b.dn,.bv-ph .dn{color:var(--red)}.bv-ph b.up,.bv-ph .up{color:var(--green)}' +
       '</style>';
   }
@@ -10266,7 +10272,7 @@
       '<div class="bv-dhint">3 הנרות האחרונים (' + BV_TFHE[tf] + ') · קו מקווקו = גבוה/נמוך הנר הקודם (רמות טריגר) · לגרף מלא עם גלגלת ← הכפתור למטה</div>';
     var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
     var full = '<div class="bv-dfull"><button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
-    modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + head + info + chart + full + bvPeers(r, tf), "bv-drill");
+    modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
     var scope = document.querySelector(".modal.bv-drill") || document;
     scope.querySelectorAll("[data-bvpeer]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvpeer")); }; });
     var mtf = scope.querySelector("#bvMtf"); if (mtf) mtf.onclick = function () { if (typeof openMultiChart === "function") openMultiChart(sym); };
