@@ -2076,13 +2076,12 @@
     const _MIN = 10;
     const subMap = {};
     secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
-    const subArr = ((LIVE && LIVE.subsectors && LIVE.subsectors.length) ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 }) : Object.keys(subMap).map(k => subMap[k]));
-    const secArr = secs.filter(s => s.name !== "אחר" && s.name !== "מדדים");
+    const subArr = ((LIVE && LIVE.subsectors && LIVE.subsectors.length) ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 }) : Object.keys(subMap).map(k => subMap[k])).filter(o => o.total >= _MIN);
+    const secArr = secs.filter(s => s.name !== "אחר" && s.name !== "מדדים" && (s.total || 0) >= _MIN);
     const _bp = o => o.total ? o.above / o.total * 100 : null;
-    // FIXED order (alphabetical) — identical to תזרים so the SAME tiles sit in the SAME positions; only the title/metric change
-    const _byHe = (a, c) => secHe(a.name) < secHe(c.name) ? -1 : secHe(a.name) > secHe(c.name) ? 1 : 0;
-    const _byNm = (a, c) => String(a.name) < String(c.name) ? -1 : String(a.name) > String(c.name) ? 1 : 0;
-    const secAlpha = secArr.slice().sort(_byHe), subAlpha = subArr.slice().sort(_byNm);
+    // sort by breadth, STRONGEST first → weakest (Adi: גבוה קודם ואז יורדים); the _MIN filter above drops 0/0 thematic ETFs (KRE/NLR/UFO…)
+    const sortB = arr => arr.slice().sort((a, c) => (_bp(c) || 0) - (_bp(a) || 0));
+    const secAlpha = sortB(secArr), subAlpha = sortB(subArr);
     const row = (o, isSub) => { const p = _bp(o); const etf = isSub ? (typeof subEtfFor === "function" ? subEtfFor(o.name) : "") : etfFor(o.name); const nm = isSub ? o.name : secHe(o.name);
       const cls = p == null ? "" : p >= 55 ? "em-pos" : p <= 45 ? "em-neg" : "";
       return '<div class="tf-row bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '">' +
@@ -2108,9 +2107,9 @@
         '<h1>רוחב השוק ' + tone + ' <span class="em-h1sep">·</span> <b>' + pct + '%</b> מעל הפתיחה</h1>' +
         '<div class="em-sub"><span class="em-pos">▲ ' + (b.above || 0) + ' מעל</span> · <span class="em-neg">' + (b.below || 0) + ' מתחת ▼</span> · לחץ אריח לכל המניות בסקטור.</div></div>' +
         '<div class="em-big"><div class="n num">' + pct + '<small>%</small></div><div class="cap">מעל הפתיחה</div></div></div>' +
-      '<div class="em-secttl2">🗂️ עוצמת סקטורים · רוחב</div>' +
+      '<div class="em-secttl2">🗂️ עוצמת סקטורים · מהחזק לחלש</div>' +
       '<div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => tile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
-      '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · רוחב</div>' +
+      '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · מהחזק לחלש</div>' +
       '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => tile(o, true)).join("") : '<div class="muted">—</div>') + '</div>' +
     '</div>';
   }
@@ -8642,10 +8641,10 @@
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">לאן הכסף זורם · ' + _mfRangeLbl(tf) + '</div>' +
         '<h1>הכסף נכנס ל<b>' + escHtml(upName) + '</b> <span class="em-h1sep">·</span> ויוצא מ<b style="color:#ff6b7a">' + escHtml(dnName) + '</b></h1>' +
         '<div class="em-sub">התנועה היומית בפועל של כל סקטור ותת-סקטור — לפי ' + (flowSecMode === "avg" ? "ממוצע המניות (רוחב)" : "תנועת תעודת-הסל") + '.</div></div></div>' +
-      '<div class="em-secttl2">🗂️ סקטורים</div>' +
-      '<div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
-      '<div class="em-secttl2">🏭 תתי-סקטורים</div>' +
-      '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🗂️ סקטורים · מהחזק לחלש</div>' +
+      '<div class="em-tilegrid">' + (sS.length ? sS.map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🏭 תתי-סקטורים · מהחזק לחלש</div>' +
+      '<div class="em-tilegrid">' + (subS.length ? subS.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
     '</div>';
   }
   // ===== "⚡ פעימה" — MERGED view: תזרים (money-flow) + רוחב (breadth) in ONE dual-metric tile =====
