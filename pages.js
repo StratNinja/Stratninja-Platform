@@ -1316,10 +1316,10 @@
     const vix = (LIVE && LIVE.vix) || null;
     const vixLvl = vix && vix.level != null ? Number(vix.level).toFixed(2) : (byS.VIX && byS.VIX.price != null ? Number(byS.VIX.price).toFixed(2) : "—");
     const vixChg = vix && vix.chg != null ? vix.chg : (byS.VIX ? byS.VIX.chg : null);
-    const secLead = (U.sectorLeaders || []).slice(0, 6);
-    const stkLead = (U.leaders || []).slice(0, 6);
-    const secLag = (U.sectorLaggards || []).slice(0, 6);
-    const stkLag = (U.laggards || []).slice(0, 6);
+    const secLead = (U.sectorLeaders || []).slice(0, 7);
+    const stkLead = (U.leaders || []).slice(0, 7);
+    const secLag = (U.sectorLaggards || []).slice(0, 7);
+    const stkLag = (U.laggards || []).slice(0, 7);
     const live = !!(LIVE && LIVE.updated);
     const topSecHe = secLead[0] ? secHe(secLead[0].name) : "השוק";
     const weakSecHe = secLag[0] ? secHe(secLag[0].name) : "";
@@ -9911,6 +9911,7 @@
 
   // ===== מהירות פריצה (Break Velocity) — live FTFC continuity board, 100% client-side off SCAN.rows =====
   let bvTf = "W";
+  let bvPat = "current";   // "current" = seq3d so far · "future" = expected next move
   const BV_GROUPS = [
     { he: "מדדים", note: 'S&P · נאסד"ק · דאו · ראסל', syms: ["SPY", "QQQ", "DIA", "IWM"] },
     { he: "טכנולוגיה", note: "סקטור · שבבים · תוכנה · NVDA", syms: ["XLK", "SMH", "IGV", "NVDA"] },
@@ -10026,10 +10027,11 @@
     var mtx = BV_TFS.map(function (tfx) { var c = r[tfx] || {}; return '<div class="bv-cell ' + bvCellClass(c) + (tfx === tf ? " sel" : "") + '" title="' + tfx + " " + (c.t || "") + " " + (c.c || "") + '"><span class="bv-tf">' + tfx + '</span><span class="bv-g">' + bvGlyph(c.t) + "</span></div>"; }).join("");
     var ff = r.ftfc ? ("bv-ftfc " + (sel.c === "up" ? "on-up" : "on-dn")) : "bv-ftfc off";
     var ffTxt = r.ftfc ? ("FTFC " + (sel.c === "up" ? "▲" : "▼")) : "—";
-    var seq = sel.seq3d ? sel.seq3d : "—";
-    var primed = sel.t === "1";   // inside bar at the selected TF = coiled setup, primed to break
+    var primed = sel.t === "1";   // inside bar = coiled setup
+    var patTxt = bvPat === "future" ? bvExpected(sel) : (sel.seq3d ? sel.seq3d : "—");
+    var patOn = bvPat === "future" ? (sel.t === "1" || !!sel.ifc) : primed;
     return '<div class="bv-trow' + (primed ? " primed" : "") + '" data-bvdrill="' + sym + '">' +
-      '<div class="bv-tid"><span class="bv-sym">' + sym + '</span><span class="bv-px" data-flick="bvpx-' + sym + '">' + (r.p != null ? r.p : "—") + '</span><span class="bv-chg ' + chgCls + '" data-flick="bvchg-' + sym + '">' + chgTxt + '</span><span class="bv-seq2' + (primed ? " on" : "") + '">' + (primed ? "⚡ " : "") + seq + "</span></div>" +
+      '<div class="bv-tid"><span class="bv-sym">' + sym + '</span><span class="bv-px" data-flick="bvpx-' + sym + '">' + (r.p != null ? r.p : "—") + '</span><span class="bv-chg ' + chgCls + '" data-flick="bvchg-' + sym + '">' + chgTxt + '</span><span class="bv-seq2' + (patOn ? " on" : "") + '">' + ((bvPat !== "future" && primed) ? "⚡ " : "") + patTxt + "</span></div>" +
       '<div class="bv-cndl" title="' + escAttr(title) + '">' + bvCandle(sel, r.p) + "</div>" +
       '<div class="bv-mtx">' + mtx + "</div>" +
       '<div class="' + ff + '">' + ffTxt + "</div></div>";
@@ -10100,7 +10102,9 @@
     var rows = (SCAN && SCAN.rows) ? SCAN.rows : null;
     var tf = bvTf;
     var head = '<div class="page-head"><h1>🚀 מהירות פריצה</h1><div class="sub">לוח המשכיות TheStrat — קבוצות ETF לפי סוג-נר ורצף · נתונים חיים</div></div>';
-    var tfbar = '<div class="bv-tfbar"><div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div><span class="bv-hint">בחר טיימפריים — הנר, הרצף והמטריצה מתעדכנים בזמן אמת</span></div>';
+    var tfbar = '<div class="bv-tfbar"><div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div>' +
+      '<div class="bv-tfseg"><button data-bvpat="current"' + (bvPat === "current" ? ' class="on"' : "") + '>תבנית נוכחית</button><button data-bvpat="future"' + (bvPat === "future" ? ' class="on"' : "") + '>תבנית עתידית</button></div>' +
+      '<span class="bv-hint">בחר טיימפריים ותבנית — הכל מתעדכן בזמן אמת</span></div>';
     if (!rows) { return bvCss() + head + tfbar + '<div class="bv-card" style="padding:26px;text-align:center;color:var(--muted)">⏳ טוען נתונים חיים…</div>'; }
     var idx = {}; rows.forEach(function (r) { if (r && r.s) idx[r.s] = r; });
     var uniq = {}; BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { uniq[s] = 1; }); });
@@ -10120,6 +10124,16 @@
     document.querySelectorAll('#page [data-bvdrill]').forEach(function (row) {
       row.onclick = function () { bvOpenDrill(row.getAttribute("data-bvdrill")); };
     });
+    document.querySelectorAll('#page [data-bvpat]').forEach(function (b) {
+      b.onclick = function () { bvPat = b.getAttribute("data-bvpat"); reRender(); };
+    });
+  }
+  function bvExpected(sel) {
+    if (!sel || !sel.t) return "—";
+    if (sel.t === "1") return "⚡ פריצה 2▲/2▼";                    // inside bar → break pending both ways
+    if (sel.t === "3") return "היפוך? " + (sel.c === "up" ? "2▲" : "2▼");
+    var g = sel.c === "up" ? "2▲" : sel.c === "down" ? "2▼" : "·";
+    return (sel.ifc ? "המשך " : "צפוי ") + g;                      // 2U/2D → continuation expected
   }
   function bvTfIv(tf) { return ({ D: "D", W: "W", M: "M", Q: "3M", Y: "12M" })[tf] || "D"; }
   function bvTfRange(tf) { return ({ D: "5D", W: "1M", M: "6M", Q: "12M", Y: "60M" })[tf] || "1M"; }
