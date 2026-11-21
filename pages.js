@@ -10728,8 +10728,8 @@
       '.alc-sec{font-size:40px;font-weight:900;margin-bottom:10px;white-space:nowrap}' +
       '.alc-badge{display:inline-block;direction:rtl;white-space:nowrap;font-size:24px;font-weight:900;color:' + accent + ';background:rgba(0,0,0,.25);border:1.5px solid ' + accent + ';border-radius:12px;padding:7px 16px}' +
       '.alc-badge .alc-ar{display:inline-block;unicode-bidi:isolate;margin-left:8px}.alc-badge .alc-dw{display:inline-block;unicode-bidi:isolate}' +
-      '.alc-anchor{font-size:21px;color:#c3cde0;font-weight:700;margin-top:12px;font-family:Inter,Heebo,sans-serif;white-space:nowrap}' +
-      '.alc-anchor b{color:#fff;font-weight:900}.alc-tf{color:#93a0b8}' +
+      '.alc-anchor{font-size:21px;color:#c3cde0;font-weight:700;margin-top:12px;font-family:Heebo,Inter,sans-serif;white-space:nowrap}' +   // Heebo FIRST — Inter has no Hebrew glyphs, so html2canvas breaks "יומי" per-letter on fallback
+      '.alc-anchor b{color:#fff;font-weight:900}.alc-tf{color:#93a0b8;display:inline-block;unicode-bidi:isolate}' +
       '.alc-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-content:start}' +
       '.alc-tile{background:#121a2c;border:1.5px solid #263349;border-radius:16px;padding:12px 12px 8px;display:flex;flex-direction:column}' +
       '.alc-ttop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}' +
