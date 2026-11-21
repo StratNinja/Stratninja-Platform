@@ -9947,9 +9947,9 @@
 
   // ===== "סקירת שוק" — one channel: market overview (first) + sector-breadth / sector-flow / continuity / breadth =====
   let pulseTab = "market";
-  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["merged", "⚡ פעימה"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];   /* "most2s / אנרגיה כיוונית" tab hidden 2026-11-21 — subsumed by the "תנועה אלגוריתמית" page (algo-pressure strip). renderMost2s kept, re-add the ["most2s",...] entry to restore. "merged" = ⚡ פעימה: תזרים+רוחב dual-metric (renderPulseMerged), reversible → delete entry to remove. */
-  const _pulseRender = { market: () => renderMarket(), merged: () => renderPulseMerged(), sp500: () => renderSp500(), today: () => renderToday(), most2s: () => renderMost2s(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
-  const _pulseWire = { market: () => wireMarket(), merged: () => wirePulseMerged(), sp500: () => wireSp500(), today: () => wireToday(), most2s: () => wireMost2s(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
+  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];   /* "most2s / אנרגיה כיוונית" tab hidden 2026-11-21 — subsumed by the "תנועה אלגוריתמית" page (algo-pressure strip). renderMost2s kept, re-add the ["most2s",...] entry to restore. ⚡ פעימה (merged תזרים+רוחב, renderPulseMerged) REMOVED from nav 2026-11-21 (Adi "פחות אהבתי") — fn+wire+CSS kept as dead code; to restore re-add ["merged","⚡ פעימה"] here + merged: entries in the two maps below. */
+  const _pulseRender = { market: () => renderMarket(), sp500: () => renderSp500(), today: () => renderToday(), most2s: () => renderMost2s(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
+  const _pulseWire = { market: () => wireMarket(), sp500: () => wireSp500(), today: () => wireToday(), most2s: () => wireMost2s(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
   function renderPulse() {
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     const bar = '<div class="pulse-tabs">' + PULSE_TABS.map(([k, l]) =>
