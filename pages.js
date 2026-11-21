@@ -10099,7 +10099,11 @@
   }
   function bvCss() {
     return '<style>' +
-      '.bv-tfbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 14px}' +
+      '.bv-tfbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 12px}' +
+      '.bv-breadth{flex:1 1 240px;display:flex;align-items:center;gap:10px;min-width:0}' +
+      '.bv-bnum{font-family:var(--mono);font-weight:800;font-size:16px;flex:0 0 auto}.bv-bnum.dn{color:var(--red)}.bv-bnum.up{color:var(--green)}' +
+      '.bv-btxt{font-size:11px;color:var(--muted);white-space:nowrap;flex:0 0 auto}' +
+      '@media(max-width:620px){.bv-btxt{display:none}}' +
       '.bv-tfseg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}' +
       '.bv-tfseg button{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:none;border:0;padding:7px 13px;border-radius:8px;cursor:pointer;min-width:42px}' +
       '.bv-tfseg button:hover{color:var(--ink)}' +
@@ -10154,20 +10158,20 @@
     var rows = (SCAN && SCAN.rows) ? SCAN.rows : null;
     var tf = bvTf;
     var head = '<div class="page-head"><h1>🤖 תנועה אלגוריתמית</h1><div class="sub">זיהוי מכירה/קנייה אלגוריתמית — יישור TheStrat רוחבי לפי סקטור · נתונים חיים</div></div>';
-    var tfbar = '<div class="bv-tfbar"><div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div>' +
-      '<div class="bv-tfseg"><button data-bvpat="current"' + (bvPat === "current" ? ' class="on"' : "") + '>תבנית נוכחית</button><button data-bvpat="future"' + (bvPat === "future" ? ' class="on"' : "") + '>תבנית עתידית</button></div>' +
-      '<span class="bv-hint">בחר טיימפריים ותבנית — הכל מתעדכן בזמן אמת</span></div>';
-    if (!rows) { return bvCss() + head + tfbar + '<div class="bv-card" style="padding:26px;text-align:center;color:var(--muted)">⏳ טוען נתונים חיים…</div>'; }
+    var ctrls = '<div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div>' +
+      '<div class="bv-tfseg"><button data-bvpat="current"' + (bvPat === "current" ? ' class="on"' : "") + '>תבנית נוכחית</button><button data-bvpat="future"' + (bvPat === "future" ? ' class="on"' : "") + '>תבנית עתידית</button></div>';
+    if (!rows) { return bvCss() + head + '<div class="bv-tfbar">' + ctrls + '<span class="bv-hint">בחר טיימפריים ותבנית</span></div>' + '<div class="bv-card" style="padding:26px;text-align:center;color:var(--muted)">⏳ טוען נתונים חיים…</div>'; }
     var idx = {}; rows.forEach(function (r) { if (r && r.s) idx[r.s] = r; });
     var uniq = {}; BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { uniq[s] = 1; }); });
     var all = Object.keys(uniq).filter(function (s) { return idx[s]; });
     var down = all.filter(function (s) { var c = idx[s][tf]; return c && c.c === "down"; }).length;
     var up = all.filter(function (s) { var c = idx[s][tf]; return c && c.c === "up"; }).length;
     var mid = all.length - down - up;
-    var summary = '<div class="bv-summary"><div class="bv-sbig ' + (down >= up ? "dn" : "up") + '">' + down + "/" + all.length + '</div><div class="bv-smeta"><b>' + down + ' ETF בירידה</b> (' + BV_TFHE[tf] + ") · " + up + " בעלייה · " + mid + ' פנימי/ניטרלי.</div><div class="bv-sbar"><i style="flex:' + down + ';background:var(--red)"></i><i style="flex:' + mid + ';background:var(--muted)"></i><i style="flex:' + up + ';background:var(--green)"></i></div></div>';
+    var breadth = '<div class="bv-breadth"><span class="bv-bnum ' + (down >= up ? "dn" : "up") + '">' + down + "/" + all.length + '</span><span class="bv-btxt">' + down + ' בירידה · ' + up + ' בעלייה · ' + mid + ' פנימי (' + BV_TFHE[tf] + ')</span><div class="bv-sbar"><i style="flex:' + down + ';background:var(--red)"></i><i style="flex:' + mid + ';background:var(--muted)"></i><i style="flex:' + up + ';background:var(--green)"></i></div></div>';
+    var ctrlRow = '<div class="bv-tfbar">' + ctrls + breadth + '</div>';
     var board = BV_GROUPS.map(function (g) { return bvGroup(g, idx, tf); }).join("");
     var note = '<div class="bv-note"><h4>איך קוראים את הלוח</h4><p>כל שורה היא טיקר עם <b>3 נרות</b>: הנר הנוכחי חי (OHLC), הקודם לפי הגבוה/נמוך האמיתיים (קווי הטריגר המקווקווים), והשלישי לפי סוג-הנר שברצף <b>seq3d</b>. מימין מטריצת סוג-הנר לכל טיימפריים (יומי→שנתי): <span style="color:var(--red)">2▼</span> שובר נמוך · <span style="color:var(--green)">2▲</span> שובר גבוה · <span style="color:var(--muted)">1</span> פנימי · <span style="color:var(--accent)">3</span> חיצוני. תג <b>FTFC</b> = יישור יומי+שבועי+חודשי לאותו כיוון.</p></div>';
-    return bvCss() + head + tfbar + summary + '<div class="bv-board">' + board + "</div>" + note;
+    return bvCss() + head + ctrlRow + '<div class="bv-board">' + board + "</div>" + note;
   }
   function wireBreakVel() {
     document.querySelectorAll('#page [data-bvtf]').forEach(function (b) {
