@@ -10218,7 +10218,6 @@
     // highlight box around the bar being classified
     var boxX = ncx - slot / 2 + 4, boxW = slot - 8;
     s += '<rect x="' + boxX.toFixed(1) + '" y="10" width="' + boxW.toFixed(1) + '" height="' + (H - 46) + '" rx="9" fill="var(--accent)" fill-opacity=".06" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 4"/>';
-    s += '<text x="' + ncx.toFixed(1) + '" y="20" class="bv-axl" fill="var(--accent)" text-anchor="middle" font-weight="800">הנר לסיווג</text>';
     // prior-high / prior-low trigger lines — crisp; value labels BIG, centred in the right gutter (text-anchor=middle +
     // direction=ltr so RTL bidi never pulls the text left into the candle)
     var lblX = (W - padR + W) / 2;
@@ -10569,13 +10568,113 @@
     var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' + cap +
       '<div class="bv-dhint">3 הנרות האחרונים (' + BV_TFHE[tf] + ') · הנר המלא = הנר לסיווג (' + BV_TFHE[tf] + ') · נרות חלולים = נרות קודמים · קו מקווקו = גבוה/נמוך הנר הקודם</div>';
     var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
-    var full = '<div class="bv-dfull"><button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
+    var full = '<div class="bv-dfull"><button class="btn ghost" id="bvShare" style="font-size:13px;font-weight:700">📷 כרטיס שיתוף</button> <button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
     modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
     var scope = document.querySelector(".modal.bv-drill") || document;
     scope.querySelectorAll("[data-bvpeer]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvpeer")); }; });
     scope.querySelectorAll("[data-bvdtf]").forEach(function (el) { el.onclick = function () { bvTf = el.getAttribute("data-bvdtf"); reRender(); bvOpenDrill(sym); }; });   // click a drill TF chip → switch timeframe + re-open drill
     var mtf = scope.querySelector("#bvMtf"); if (mtf) mtf.onclick = function () { if (typeof openMultiChart === "function") openMultiChart(sym); };
     var fb = scope.querySelector("#bvFull"); if (fb) fb.onclick = function () { if (typeof openChart === "function") openChart(sym, tf); };
+    var sb = scope.querySelector("#bvShare"); if (sb) sb.onclick = function () { _captureRedesignCard(function () { return buildAlgoMovementCardEl(sym, tf); }); };
+  }
+  // ===== 📷 "תנועה אלגוריתמית" share card — the sector IN FORCE board (1080×1080, flat self-contained) =====
+  function _algoMini(cell, price) {   // mini 3-candle, BAKED hex colours (html2canvas doesn't resolve var())
+    if (!cell || cell.o == null || price == null) return "";
+    var d = bvBuild3(cell, price), bars = d.bars, W = 92, H = 62, pad = 8;
+    var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
+    var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
+    function y(v) { return pad + (mx - v) / rg * (H - 2 * pad); }
+    var slot = W / 3, cw = Math.min(slot * 0.44, 13), yph = y(d.prH), ypl = y(d.prL);
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">';
+    s += '<line x1="2" y1="' + yph.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + yph.toFixed(1) + '" stroke="#ef4444" stroke-width="1" stroke-dasharray="3 2" opacity=".9"/>';
+    s += '<line x1="2" y1="' + ypl.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + ypl.toFixed(1) + '" stroke="#22c55e" stroke-width="1" stroke-dasharray="3 2" opacity=".9"/>';
+    bars.forEach(function (b, i) {
+      var now = i === 2, cx = slot * (i + 0.5), up = b.c >= b.o, col = up ? "#22c55e" : "#ef4444";
+      var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 1.8);
+      if (now) {
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="2.2"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.5" fill="' + col + '"/>';
+      } else {
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="#ffffff" stroke-width="1.3" opacity=".8"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="none" stroke="#ffffff" stroke-width="1.3" opacity=".9"/>';
+      }
+    });
+    return s + "</svg>";
+  }
+  function buildAlgoMovementCardEl(sym, tf) {
+    tf = tf || bvTf;
+    var rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
+    var r = rows.find(function (x) { return x.s === sym; }) || {};
+    var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
+    var peers = rows.filter(function (x) { return x.s !== sym && x.sec === r.sec && x[tf] && x[tf].o != null; });
+    peers.sort(function (a, b) {
+      var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
+      if (aa !== bb) return bb - aa;
+      return Math.abs(b.c || 0) - Math.abs(a.c || 0);
+    });
+    var aligned = peers.filter(function (x) { return refDir && x[tf].ifc === refDir; }).length;
+    var secName = (typeof secHe === "function") ? secHe(r.sec) : (r.sec || "");
+    var down = refDir === "down", up = refDir === "up";
+    var accent = down ? "#ef4444" : up ? "#22c55e" : "#6b7a93";
+    var accentBg = down ? "rgba(239,68,68,.12)" : up ? "rgba(34,197,94,.12)" : "rgba(107,122,147,.12)";
+    var dirWord = down ? "מכירה אלגוריתמית" : up ? "קנייה אלגוריתמית" : "ללא כיוון מובהק";
+    var dirArrow = down ? "▼" : up ? "▲" : "•";
+    // tiles: anchor first (highlighted), then peers — cap at 14 so the grid stays legible
+    var tiles = [{ x: r, anchor: true }].concat(peers.map(function (x) { return { x: x, anchor: false }; })).slice(0, 15);
+    var tileHtml = tiles.map(function (o) {
+      var x = o.x, pc = x[tf] || {}, ch = (x.c != null ? x.c : 0);
+      var al = o.anchor || (refDir && pc.ifc === refDir);
+      var bd = al ? accent : "#263349";
+      var glow = al ? ("box-shadow:0 0 0 1px " + accent + ",0 0 14px " + accentBg + ";") : "";
+      return '<div class="alc-tile" style="border-color:' + bd + ';' + glow + (o.anchor ? "background:" + accentBg + ";" : "") + '">' +
+        '<div class="alc-ttop"><span class="alc-sym">' + x.s + (o.anchor ? ' <span class="alc-you">●</span>' : "") + '</span>' +
+        '<span class="alc-chg" style="color:' + (ch >= 0 ? "#22c55e" : "#ef4444") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + '%</span></div>' +
+        '<div class="alc-chart">' + _algoMini(pc, x.p) + '</div></div>';
+    }).join("");
+    var total = tiles.length, alignFull = (aligned + 1);   // +1 for the anchor itself (it defines the direction)
+    var now = new Date(), _p2 = function (n) { return String(n).padStart(2, "0"); };
+    var dateStr = _p2(now.getHours()) + ":" + _p2(now.getMinutes()) + " · " + now.getDate() + "/" + (now.getMonth() + 1) + "/" + now.getFullYear();
+    var el = document.createElement("div");
+    el.className = "alc-card";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<style>' +
+      '.alc-card{width:1080px;height:1080px;box-sizing:border-box;background:radial-gradient(130% 120% at 85% 0%,#111a2e 0%,#0b1020 55%,#080c17 100%);color:#e8eefc;font-family:Heebo,Inter,Arial,sans-serif;direction:rtl;padding:54px 56px 44px;display:flex;flex-direction:column}' +
+      '.alc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:26px}' +
+      '.alc-brand{font-size:30px;font-weight:900;letter-spacing:.3px}.alc-brand span{color:' + accent + '}' +
+      '.alc-sub{font-size:19px;color:#93a0b8;font-weight:700;margin-top:3px}' +
+      '.alc-date{font-size:19px;color:#93a0b8;font-weight:700;text-align:left;font-family:Inter,Heebo,sans-serif}' +
+      '.alc-hero{display:flex;align-items:center;gap:26px;background:' + accentBg + ';border:1.5px solid ' + accent + ';border-radius:22px;padding:26px 30px;margin-bottom:26px}' +
+      '.alc-kpi{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:220px;padding-left:26px;border-left:1.5px solid rgba(255,255,255,.12)}' +
+      '.alc-kpi-n{font-size:72px;font-weight:900;line-height:1;color:' + accent + ';font-family:Inter,Heebo,sans-serif}' +
+      '.alc-kpi-n small{font-size:34px;color:#93a0b8;font-weight:800}' +
+      '.alc-kpi-l{font-size:20px;color:#c3cde0;font-weight:800;margin-top:8px}' +
+      '.alc-hmid{flex:1}' +
+      '.alc-sec{font-size:40px;font-weight:900;margin-bottom:10px}' +
+      '.alc-badge{display:inline-flex;align-items:center;gap:8px;font-size:24px;font-weight:900;color:' + accent + ';background:rgba(0,0,0,.25);border:1.5px solid ' + accent + ';border-radius:12px;padding:7px 16px}' +
+      '.alc-anchor{font-size:21px;color:#c3cde0;font-weight:700;margin-top:12px;font-family:Inter,Heebo,sans-serif}' +
+      '.alc-anchor b{color:#fff;font-weight:900}.alc-tf{color:#93a0b8}' +
+      '.alc-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-content:start}' +
+      '.alc-tile{background:#121a2c;border:1.5px solid #263349;border-radius:16px;padding:12px 12px 8px;display:flex;flex-direction:column}' +
+      '.alc-ttop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}' +
+      '.alc-sym{font-size:22px;font-weight:900;color:#fff;font-family:Inter,Heebo,sans-serif}' +
+      '.alc-you{color:' + accent + ';font-size:15px;vertical-align:middle}' +
+      '.alc-chg{font-size:18px;font-weight:800;font-family:Inter,Heebo,sans-serif}' +
+      '.alc-chart{height:84px}' +
+      '.alc-ft{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:20px;border-top:1.5px solid rgba(255,255,255,.1);font-size:20px;color:#93a0b8;font-weight:700}' +
+      '.alc-ft b{color:#e8eefc;font-weight:900}' +
+      '</style>' +
+      '<div class="alc-hd"><div><div class="alc-brand">Strat<span>Ninja</span></div><div class="alc-sub">🤖 תנועה אלגוריתמית · The Strat</div></div><div class="alc-date">🕐 ' + dateStr + '</div></div>' +
+      '<div class="alc-hero">' +
+        '<div class="alc-hmid"><div class="alc-sec">' + secName + '</div>' +
+          '<span class="alc-badge">' + dirArrow + ' ' + dirWord + '</span>' +
+          '<div class="alc-anchor">הסורק: <b>' + sym + '</b> ' + (r.p != null ? r.p : "—") + ' · <span class="alc-tf">' + (BV_TFHE[tf] || tf) + '</span></div></div>' +
+        '<div class="alc-kpi"><div class="alc-kpi-n">' + alignFull + '<small>/' + total + '</small></div><div class="alc-kpi-l">IN FORCE</div></div>' +
+      '</div>' +
+      '<div class="alc-grid">' + tileHtml + '</div>' +
+      '<div class="alc-ft"><span><b>stratninja.win</b> · זיהוי תנועה אלגוריתמית</span><span>Adi Koriat · @KoriatTrade</span></div>';
+    document.body.appendChild(el);
+    return el;
   }
 
   const PAGES = {
