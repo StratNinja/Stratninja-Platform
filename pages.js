@@ -9955,7 +9955,13 @@
     return bar + _pulseRender[tab]();
   }
   function wirePulse() {
-    document.querySelectorAll("[data-pulsetab]").forEach(b => b.onclick = () => { if (pulseTab === b.dataset.pulsetab) return; pulseTab = b.dataset.pulsetab; reRender(); try { window.scrollTo(0, 0); } catch (e) {} });
+    document.querySelectorAll("[data-pulsetab]").forEach(b => b.onclick = () => {
+      if (pulseTab === b.dataset.pulsetab) return;
+      pulseTab = b.dataset.pulsetab;
+      const go = () => { reRender(); try { window.scrollTo(0, 0); } catch (e) {} };
+      // smooth crossfade on tab switch only (never on the live-data refresh) when the browser supports it
+      if (document.startViewTransition) { try { document.startViewTransition(go); } catch (e) { go(); } } else go();
+    });
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     if (_pulseWire[tab]) _pulseWire[tab]();
   }

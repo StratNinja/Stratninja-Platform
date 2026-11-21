@@ -1963,6 +1963,27 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .et-pct .et-sub{ font-size:12.5px; font-weight:600; color:#7e8aa2; }
 .et-bar{ height:7px; border-radius:4px; background:rgba(255,255,255,.05); overflow:hidden; margin-top:8px; }
 .et-bar span{ display:block; height:100%; } .et-bar .up{ background:#2dd47c; } .et-bar .dn{ background:#ff6b7a; }
+/* ⚡ פעימה — dual-metric tile (תזרים + רוחב together) */
+.pm-dash .em-tilegrid{ grid-template-columns:repeat(auto-fill,minmax(214px,1fr)); }
+.pm-tile{ position:relative; padding:13px 15px 14px; }
+.pm-tile.pm-conf{ border-color:rgba(45,212,124,.5); box-shadow:inset 0 0 0 1px rgba(45,212,124,.22), 0 0 16px rgba(45,212,124,.10); }
+.pm-tile.pm-div{ border-color:rgba(246,198,83,.42); }
+.pm-badge{ position:absolute; top:9px; inset-inline-end:11px; font-size:10px; font-weight:800; padding:2px 7px; border-radius:999px; }
+.pm-badge.c{ background:rgba(45,212,124,.16); color:#86f0b8; }
+.pm-badge.d{ background:rgba(246,198,83,.16); color:#f6d98a; }
+.pm-m{ display:flex; align-items:center; gap:8px; margin-top:9px; }
+.pm-ic{ font-size:13px; width:17px; text-align:center; flex:none; }
+.pm-lbl{ font-size:10.5px; color:#7e8aa2; width:36px; flex:none; font-weight:700; }
+.pm-bar{ flex:1; height:7px; border-radius:4px; background:rgba(255,255,255,.06); overflow:hidden; min-width:0; }
+.pm-bar span{ display:block; height:100%; border-radius:4px; }
+.pm-bar .up{ background:#2dd4bf; } .pm-bar .dn{ background:#ff6b7a; } .pm-bar .mid{ background:#f6c653; }
+.pm-v{ font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; width:80px; text-align:left; flex:none; }
+.pm-v small{ font-size:10px; color:#7e8aa2; font-weight:600; }
+.pm-mid{ color:#f6c653; }
+/* smooth screen-to-screen transition between pulse tabs — View Transitions, fired ONLY on a tab click
+   (wirePulse wraps the switch in document.startViewTransition), so the live-data refresh never flickers. */
+::view-transition-old(root),::view-transition-new(root){ animation-duration:.24s; }
+@media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root){ animation:none; } }
 /* compact hero on the two tile pages so the grids fit above the fold */
 .tf-dash .em-top{ margin-bottom:12px; }
 .tf-dash .em-hero{ margin-bottom:12px; }
