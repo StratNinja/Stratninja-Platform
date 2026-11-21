@@ -10206,7 +10206,7 @@
   function bvCandleBig(cell, price) {   // StratSchool style: hollow PRIOR bars + solid glowing CURRENT bar in a "הנר לסיווג" box
     if (!cell || cell.o == null) return '<div class="bv-dk" style="text-align:center;padding:30px">אין נתוני נר לטיימפריים זה</div>';
     var d = bvBuild3(cell, price), bars = d.bars;
-    var W = 404, H = 200, padT = 26, padB = 24, padL = 16, padR = 150;
+    var W = 404, H = 210, padT = 26, padB = 36, padL = 16, padR = 150;
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
     var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
     mx += rg * 0.1; mn -= rg * 0.1; rg = mx - mn;
@@ -10218,18 +10218,19 @@
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="bv-bigsvg" preserveAspectRatio="xMidYMid meet">';
     // highlight box around the bar being classified
     var boxX = ncx - slot / 2 + 4, boxW = slot - 8;
-    s += '<rect x="' + boxX.toFixed(1) + '" y="10" width="' + boxW.toFixed(1) + '" height="' + (H - 20) + '" rx="9" fill="var(--accent)" fill-opacity=".06" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 4"/>';
+    s += '<rect x="' + boxX.toFixed(1) + '" y="10" width="' + boxW.toFixed(1) + '" height="' + (H - 46) + '" rx="9" fill="var(--accent)" fill-opacity=".06" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 4"/>';
     s += '<text x="' + ncx.toFixed(1) + '" y="20" class="bv-axl" fill="var(--accent)" text-anchor="middle" font-weight="800">הנר לסיווג</text>';
     // prior-high / prior-low trigger lines — crisp; value labels BIG, centred in the right gutter (text-anchor=middle +
     // direction=ltr so RTL bidi never pulls the text left into the candle)
     var lblX = (W - padR + W) / 2;
-    var lblA = ' text-anchor="middle" direction="ltr" style="font-family:var(--mono)"';
+    var lblH = ' text-anchor="middle" direction="ltr"';                        // Hebrew words → inherit the site font (NOT mono)
+    var lblV = lblH + ' style="font-family:var(--mono)"';                      // numeric values → mono
     s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
-    s += '<text x="' + lblX.toFixed(1) + '" y="' + (yph - 7).toFixed(1) + '" fill="var(--red)" font-size="15" font-weight="800"' + lblA + '>גבוה קודם</text>';
-    s += '<text x="' + lblX.toFixed(1) + '" y="' + (yph + 15).toFixed(1) + '" fill="var(--red)" font-size="19" font-weight="800"' + lblA + '>' + fmt(d.prH) + '</text>';
+    s += '<text x="' + lblX.toFixed(1) + '" y="' + (yph - 8).toFixed(1) + '" fill="var(--red)" font-size="15" font-weight="700"' + lblH + '>גבוה קודם</text>';
+    s += '<text x="' + lblX.toFixed(1) + '" y="' + (yph + 15).toFixed(1) + '" fill="var(--red)" font-size="19" font-weight="800"' + lblV + '>' + fmt(d.prH) + '</text>';
     s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
-    s += '<text x="' + lblX.toFixed(1) + '" y="' + (ypl - 7).toFixed(1) + '" fill="var(--green)" font-size="15" font-weight="800"' + lblA + '>נמוך קודם</text>';
-    s += '<text x="' + lblX.toFixed(1) + '" y="' + (ypl + 15).toFixed(1) + '" fill="var(--green)" font-size="19" font-weight="800"' + lblA + '>' + fmt(d.prL) + '</text>';
+    s += '<text x="' + lblX.toFixed(1) + '" y="' + (ypl - 8).toFixed(1) + '" fill="var(--green)" font-size="15" font-weight="700"' + lblH + '>נמוך קודם</text>';
+    s += '<text x="' + lblX.toFixed(1) + '" y="' + (ypl + 15).toFixed(1) + '" fill="var(--green)" font-size="19" font-weight="800"' + lblV + '>' + fmt(d.prL) + '</text>';
     var labels = ["קודם", "קודם", "עכשיו"];
     bars.forEach(function (b, i) {
       var now = i === 2;
@@ -10243,7 +10244,7 @@
         s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="#ffffff" stroke-width="1.8" opacity=".85"/>';
         s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="none" stroke="#ffffff" stroke-width="1.8" opacity=".95"/>';
       }
-      s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 7) + '" class="bv-axl" fill="' + (now ? "var(--ink)" : "var(--muted)") + '" text-anchor="middle"' + (now ? ' font-weight="700"' : '') + '>' + labels[i] + '</text>';
+      s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 9) + '" class="bv-botl" fill="' + (now ? "var(--ink)" : "var(--muted)") + '" text-anchor="middle" direction="ltr"' + (now ? ' font-weight="800"' : ' font-weight="600"') + '>' + labels[i] + '</text>';
     });
     return s + "</svg>";
   }
@@ -10540,6 +10541,7 @@
       '.bv-bigwrap{background:var(--soft2);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:4px}' +
       '.bv-bigsvg{width:100%;height:auto;display:block}' +
       '.bv-axl{font-family:var(--mono);font-size:11px}' +
+      '.bv-botl{font-size:22px;letter-spacing:.3px}' +
       '.bv-dwrap{display:flex;gap:16px;align-items:flex-start}.bv-dmain{flex:1 1 38%;min-width:0}.bv-dside{flex:1 1 58%;min-width:0}' +
       '@media(max-width:780px){.bv-dwrap{flex-direction:column}.bv-dmain,.bv-dside{flex:1 1 auto;width:100%}}' +
       '.bv-p2grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}' +
@@ -10562,7 +10564,7 @@
     var ohl = (sel.o != null) ? ('<div class="bv-dk">פתיחה ' + sel.o + " · גבוה " + bvHi(sel) + " · נמוך " + bvLo(sel) + "</div>") : "";
     var trig = (sel.ph != null) ? ('<div class="bv-dk">טריגר (נר קודם): נמוך <b style="color:var(--green)">' + sel.pl + '</b> · גבוה <b style="color:var(--red)">' + sel.ph + "</b></div>") : "";
     var ff = r.ftfc ? (sel.c === "up" ? "▲ שורי" : "▼ דובי") : "— אין";
-    var info = '<div class="bv-dinfo">' + ohl + trig + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b> · המשכיות (FTFC): <b>" + ff + "</b></div></div>";
+    var info = '<div class="bv-dinfo">' + ohl + trig + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b></div>" + '<div class="bv-dk">המשכיות (FTFC): <b>' + ff + "</b></div></div>";
     var ex = bvTypeExplain(sel);
     var cap = (sel.o != null) ? ('<div class="bv-dcap"><span class="bv-cell ' + ex.cls + ' bv-capbadge"><span class="bv-g">' + bvGlyph(sel.t) + '</span></span><span class="bv-captxt">' + ex.txt + '</span></div>') : "";
     var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' + cap +
