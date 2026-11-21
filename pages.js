@@ -8694,7 +8694,9 @@
       return '<div class="' + tcls + ' bc-clickable"' + drill + '>' + badge +
         '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
         '<div class="pm-m"><span class="pm-ic">💰</span><span class="pm-lbl">תזרים</span><span class="pm-bar"><span class="' + (v >= 0 ? "up" : "dn") + '" style="width:' + fw(v) + '%"></span></span><span class="pm-v ' + fcol + '">' + pc(v) + '</span></div>' +
-        '<div class="pm-m"><span class="pm-ic">📊</span><span class="pm-lbl">רוחב</span><span class="pm-bar"><span class="' + brbg + '" style="width:' + (hasBr ? Math.max(5, Math.round(br)) : 0) + '%"></span></span><span class="pm-v ' + brcol + '">' + (hasBr ? Math.round(br) + "%" : "—") + '<small> ' + ab[0] + "/" + ab[1] + '</small></span></div>' +
+        (hasBr
+          ? '<div class="pm-m"><span class="pm-ic">📊</span><span class="pm-lbl">רוחב</span><span class="pm-bar"><span class="' + brbg + '" style="width:' + Math.max(5, Math.round(br)) + '%"></span></span><span class="pm-v ' + brcol + '">' + Math.round(br) + '%<small> ' + ab[0] + "/" + ab[1] + '</small></span></div>'
+          : '<div class="pm-m pm-nobr"><span class="pm-ic">📊</span><span class="pm-lbl">רוחב</span><span class="pm-na" title="נכס תמטי — אין מניות S&P עם קריאת רוחב מעל/מתחת הפתיחה">נכס תמטי · ללא רוחב S&P</span></div>') +
       '</div>';
     };
     const confN = secAlpha.filter(s => { const v = vOf(s) || 0, b = brSec(s.name); return v > 0 && b != null && b >= 50; }).length;

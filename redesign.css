@@ -1980,6 +1980,7 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .pm-v{ font-size:15px; font-weight:800; font-variant-numeric:tabular-nums; width:80px; text-align:left; flex:none; }
 .pm-v small{ font-size:10px; color:#7e8aa2; font-weight:600; }
 .pm-mid{ color:#f6c653; }
+.pm-nobr{ opacity:.9; } .pm-na{ font-size:11px; font-weight:600; font-style:italic; color:#6b7689; }
 /* smooth screen-to-screen transition between pulse tabs — View Transitions, fired ONLY on a tab click
    (wirePulse wraps the switch in document.startViewTransition), so the live-data refresh never flickers. */
 ::view-transition-old(root),::view-transition-new(root){ animation-duration:.24s; }
