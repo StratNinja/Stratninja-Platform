@@ -1948,22 +1948,28 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .sp-dash .sp-view-row{ display:inline-flex; }
 .bc-clickable{ cursor:pointer; } .bc-clickable:hover{ background:rgba(255,255,255,.025); }
 
-/* ===== editorial TILES (אריחים) for תזרים + רוחב — all sectors/sub-sectors as cards ===== */
-.em-secttl2{ font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:#7e8aa2; font-weight:700; margin:4px 2px 12px; display:flex; align-items:center; gap:9px; }
-.em-secttl2::before{ content:""; width:16px; height:2px; border-radius:2px; background:#2dd4bf; flex:none; }
-.em-tilegrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:12px; margin-bottom:24px; }
-.em-tile{ background:#121a2c; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:14px 16px; cursor:pointer; transition:border-color .12s, transform .12s; min-width:0; }
-.em-tile:hover{ border-color:rgba(45,212,191,.45); transform:translateY(-2px); }
+/* ===== editorial TILES (אריחים) for תזרים + רוחב — COMPACT, fill the WIDTH so all fit one screen ===== */
+.em-secttl2{ font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:#7e8aa2; font-weight:700; margin:2px 2px 8px; display:flex; align-items:center; gap:8px; }
+.em-secttl2::before{ content:""; width:15px; height:2px; border-radius:2px; background:#2dd4bf; flex:none; }
+.em-tilegrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(142px,1fr)); gap:9px; margin-bottom:14px; }
+.em-tile{ background:#121a2c; border:1px solid rgba(255,255,255,.06); border-radius:12px; padding:9px 12px; cursor:pointer; transition:border-color .12s, transform .12s; min-width:0; }
+.em-tile:hover{ border-color:rgba(45,212,191,.45); transform:translateY(-1px); }
 .em-tile.pos{ border-inline-start:3px solid #2dd47c; }
 .em-tile.neg{ border-inline-start:3px solid #ff6b7a; }
-.et-top{ display:flex; align-items:center; gap:8px; margin-bottom:9px; min-width:0; }
-.et-etf{ font-size:12px; font-weight:700; color:#8a93a6; background:rgba(255,255,255,.06); padding:2px 8px; border-radius:6px; flex:none; }
-.et-nm{ font-weight:700; font-size:15px; color:#eaf0fb; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.et-pct{ font-size:25px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:8px; color:#eaf0fb; }
-.et-pct .et-sub{ font-size:13px; font-weight:600; color:#7e8aa2; }
-.et-bar{ height:6px; border-radius:4px; background:rgba(255,255,255,.05); overflow:hidden; margin-top:9px; }
+.et-top{ display:flex; align-items:center; gap:7px; margin-bottom:5px; min-width:0; }
+.et-etf{ font-size:10.5px; font-weight:700; color:#8a93a6; background:rgba(255,255,255,.06); padding:1px 6px; border-radius:5px; flex:none; }
+.et-nm{ font-weight:700; font-size:13px; color:#eaf0fb; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.et-pct{ font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:7px; color:#eaf0fb; }
+.et-pct .et-sub{ font-size:11px; font-weight:600; color:#7e8aa2; }
+.et-bar{ height:5px; border-radius:3px; background:rgba(255,255,255,.05); overflow:hidden; margin-top:6px; }
 .et-bar span{ display:block; height:100%; } .et-bar .up{ background:#2dd47c; } .et-bar .dn{ background:#ff6b7a; }
-@media (max-width:620px){ .em-tilegrid{ grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); } }
+/* compact hero on the two tile pages so the grids fit above the fold */
+.tf-dash .em-top{ margin-bottom:12px; }
+.tf-dash .em-hero{ margin-bottom:12px; }
+.tf-dash .em-hero h1{ font-size:clamp(19px,2.1vw,27px); }
+.tf-dash .em-sub{ font-size:13.5px; margin-top:6px; }
+.tf-dash .em-big .n{ font-size:clamp(38px,4.4vw,54px); }
+@media (max-width:620px){ .em-tilegrid{ grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); } }
 .em-it{ background:#0c1120; padding:18px 14px; text-align:center; }
 .em-it .s{ font-size:12px; letter-spacing:.1em; color:#7e8aa2; font-weight:700; }
 .em-it .p{ font-size:22px; font-weight:600; margin:6px 0 3px; }
