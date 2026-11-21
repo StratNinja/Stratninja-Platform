@@ -145,6 +145,8 @@ window.Prefs = (function () {
     setPushSchedule(on) { const d = read(); d.pushSchedule = !!on; write(d); },
     sqzAlert() { return !!read().sqzAlert; },                         // 🧨 push when a favorite's TTM Squeeze FIRES (opt-in, default off)
     setSqzAlert(on) { const d = read(); d.sqzAlert = !!on; write(d); },
+    algoAlert() { return !!read().algoAlert; },                       // 🤖 push when a whole group goes IN FORCE the same way together (opt-in, default off)
+    setAlgoAlert(on) { const d = read(); d.algoAlert = !!on; write(d); },
     onChange(f) { listeners.push(f); },
     notify() { listeners.forEach(f => { try { f(); } catch (e) {} }); },  // used by cloudsync after a pull
   };

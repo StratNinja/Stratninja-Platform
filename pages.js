@@ -8648,6 +8648,86 @@
       '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
     '</div>';
   }
+  // ===== "⚡ פעימה" — MERGED view: תזרים (money-flow) + רוחב (breadth) in ONE dual-metric tile =====
+  // Same FIXED tile positions as the תזרים/רוחב pages — only now each tile shows BOTH metrics, so Adi
+  // reads CONFLUENCE at a glance: 🔥 money-in AND wide breadth = real strength · ⚠️ ETF up but internals weak.
+  // Fully additive & reversible: it's just a 6th pulse tab; delete the ["merged",…] entry + this fn to remove.
+  function renderPulseMerged() {
+    const rows = scanSource().filter(t => t.ninja != null);
+    if (!rows.length) return '<div class="em-dash em-tight"><div class="em-hero"><div class="em-htx"><div class="em-eye">פעימת סקטורים · תזרים + רוחב</div><h1>הנתונים נטענים מהסורק…</h1></div></div></div>';
+    const ms = todayMarketState();
+    const tf = flowTf;
+    const vOf = s => _bcellVal(s, tf);
+    const _named = s => s && s.name && s.name !== "אחר" && s.name !== "—" && s.name !== "" && s.name !== "מדדים";
+    const _clean = s => (typeof _mfClean === "function" ? _mfClean(s) : String(s || ""));
+    // FLOW set (same source & fixed order as תזרים)
+    const fSecs = (typeof _gicsSecs === "function" ? _gicsSecs(todaySectors(rows) || []) : (todaySectors(rows) || [])).filter(s => vOf(s) != null && _named(s));
+    const fSubs = (todaySubsectors(rows) || []).filter(s => vOf(s) != null && _named(s));
+    const _byHe = (a, b) => secHe(a.name) < secHe(b.name) ? -1 : secHe(a.name) > secHe(b.name) ? 1 : 0;
+    const _byNm = (a, b) => String(a.name) < String(b.name) ? -1 : String(a.name) > String(b.name) ? 1 : 0;
+    const secAlpha = fSecs.slice().sort(_byHe), subAlpha = fSubs.slice().sort(_byNm);
+    // BREADTH maps (same source as רוחב): LIVE.sectors above/total + per-industry tallies
+    const bSecMap = {}, subMap = {};
+    if (LIVE && LIVE.sectors) LIVE.sectors.forEach(s => { bSecMap[s.name] = s; (s.stocks || []).forEach(x => { const ind = (x.ind || "").trim(); if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }); });
+    const brSec = n => { const o = bSecMap[n]; return (o && o.total) ? o.above / o.total * 100 : null; };
+    const brSub = n => { const o = subMap[n]; return (o && o.total) ? o.above / o.total * 100 : null; };
+    const abSec = n => { const o = bSecMap[n]; return o ? [o.above || 0, o.total || 0] : [0, 0]; };
+    const abSub = n => { const o = subMap[n]; return o ? [o.above || 0, o.total || 0] : [0, 0]; };
+    // flow bar normalised to the global max (so bars are comparable), like the תזרים page
+    let gmax = 0.01; secAlpha.concat(subAlpha).forEach(s => { gmax = Math.max(gmax, Math.abs(vOf(s) || 0)); });
+    const fw = v => Math.max(5, Math.round(Math.abs(v || 0) / gmax * 100));
+    const pc = v => (v < 0 ? "−" : "+") + Math.abs(Number(v) || 0).toFixed(2) + "%";
+    const tile = (s, isSub) => {
+      const v = vOf(s) || 0, nm = isSub ? _clean(s.name) : secHe(s.name);
+      const etf = isSub ? (typeof subEtfFor === "function" ? (subEtfFor(s.name) || "") : "") : (etfFor(s.name) || "");
+      const br = isSub ? brSub(s.name) : brSec(s.name);
+      const ab = isSub ? abSub(s.name) : abSec(s.name);
+      const hasBr = br != null;
+      const conf = v > 0 && hasBr && br >= 50;
+      const div = (v > 0.05 && hasBr && br <= 25) || (v < -0.05 && hasBr && br >= 55);
+      const tcls = "em-tile pm-tile" + (conf ? " pm-conf" : div ? " pm-div" : "");
+      const badge = conf ? '<span class="pm-badge c">🔥 קונפלואנס</span>' : div ? '<span class="pm-badge d">⚠️ סטייה</span>' : "";
+      const fcol = v > 0.05 ? "em-pos" : v < -0.05 ? "em-neg" : "";
+      const brcol = !hasBr ? "" : br >= 55 ? "em-pos" : br <= 35 ? "em-neg" : "pm-mid";
+      const brbg = !hasBr ? "" : br >= 55 ? "up" : br <= 35 ? "dn" : "mid";
+      const drill = isSub ? (' data-mgsub="' + encodeURIComponent(s.name) + '"') : (' data-mgsec="' + encodeURIComponent(s.name) + '"');
+      return '<div class="' + tcls + ' bc-clickable"' + drill + '>' + badge +
+        '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
+        '<div class="pm-m"><span class="pm-ic">💰</span><span class="pm-lbl">תזרים</span><span class="pm-bar"><span class="' + (v >= 0 ? "up" : "dn") + '" style="width:' + fw(v) + '%"></span></span><span class="pm-v ' + fcol + '">' + pc(v) + '</span></div>' +
+        '<div class="pm-m"><span class="pm-ic">📊</span><span class="pm-lbl">רוחב</span><span class="pm-bar"><span class="' + brbg + '" style="width:' + (hasBr ? Math.max(5, Math.round(br)) : 0) + '%"></span></span><span class="pm-v ' + brcol + '">' + (hasBr ? Math.round(br) + "%" : "—") + '<small> ' + ab[0] + "/" + ab[1] + '</small></span></div>' +
+      '</div>';
+    };
+    const confN = secAlpha.filter(s => { const v = vOf(s) || 0, b = brSec(s.name); return v > 0 && b != null && b >= 50; }).length;
+    const topIn = secAlpha.slice().sort((a, b) => (vOf(b) || 0) - (vOf(a) || 0))[0];
+    const upName = topIn ? secHe(topIn.name) : "—";
+    const topBr = topIn ? brSec(topIn.name) : null;
+    const confirmTxt = (topBr != null && topBr >= 50) ? "והרוחב מאשר" : "אבל הרוחב עדיין צר";
+    const modeBtns = [["etf", "תעודת סל"], ["avg", "ממוצע ענף"]].map(x => '<button class="tf-chip' + (x[0] === flowSecMode ? " on" : "") + '" data-flowsecmode="' + x[0] + '">' + x[1] + '</button>').join("");
+    const tfBtns = FLOW_TF_DEF.map(d => '<button class="tf-chip' + (d[0] === flowTf ? " on" : "") + '" data-flowtf="' + d[0] + '">' + d[1] + '</button>').join("");
+    const riskTxt = ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—";
+    const riskCls = ms ? ms.cls : "zero";
+    return '<div class="em-dash em-tight tf-dash pm-dash" data-pulse-merged="1">' +
+      '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">פעימת סקטורים</span>' +
+        '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span>' +
+        '<span class="em-sep"></span>' +
+        '<span class="tf-ctrl"><span class="tf-ctrl-lbl">מדד תזרים:</span>' + modeBtns + '<span class="tf-ctrl-lbl">טווח:</span>' + tfBtns + '</span></div>' +
+      '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">תזרים + רוחב במסך אחד · ' + _mfRangeLbl(tf) + '</div>' +
+        '<h1>הכסף נכנס ל<b>' + escHtml(upName) + '</b> <span class="em-h1sep">·</span> ' + confirmTxt + '</h1>' +
+        '<div class="em-sub">כל אריח: <span class="em-pos">💰 תזרים</span> (תנועת ETF) + <span class="em-pos">📊 רוחב</span> (% מעל הפתיחה). <b style="color:#86f0b8">🔥 קונפלואנס</b> = גם כסף נכנס וגם רוחב רחב · <b style="color:#f6d98a">⚠️ סטייה</b> = ה-ETF עולה אבל הפנים חלשים.</div></div>' +
+        '<div class="em-big"><div class="n num">' + confN + '<small>/' + secAlpha.length + '</small></div><div class="cap">סקטורים בקונפלואנס</div></div></div>' +
+      '<div class="em-secttl2">🗂️ סקטורים · תזרים + רוחב</div>' +
+      '<div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🏭 תתי-סקטורים · תזרים + רוחב</div>' +
+      '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+    '</div>';
+  }
+  function wirePulseMerged() {
+    document.querySelectorAll(".pm-dash [data-flowtf]").forEach(b => b.onclick = () => { flowTf = b.dataset.flowtf; reRender(); });
+    document.querySelectorAll(".pm-dash [data-flowsecmode]").forEach(b => b.onclick = () => { flowSecMode = b.dataset.flowsecmode; reRender(); });
+    document.querySelectorAll(".pm-dash [data-mgsec]").forEach(c => c.onclick = e => { if (e.target.closest(".et-etf")) return; openSectorDrillLive(decodeURIComponent(c.dataset.mgsec)); });
+    document.querySelectorAll(".pm-dash [data-mgsub]").forEach(c => c.onclick = e => { if (e.target.closest(".et-etf")) return; openSubDrillLive(decodeURIComponent(c.dataset.mgsub)); });
+    wireCharts(document);
+  }
   function renderToday() {
     if (_TODAY_EDITORIAL) return renderTodayEditorial();
     const head = '<div class="page-head"><h1>תזרים סקטוריאלי · לאן הכסף זורם</h1><div class="sub">התנועה היומית בפועל של כל נכס (תעודת הסל) — <b>לאן הכסף נכנס והיכן הוא יוצא</b>, עם ניתוח AI.</div></div>';
@@ -9168,11 +9248,13 @@
     if (on && permOk) {
       const schedOn = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true;
       const sqzOn = (window.Prefs && Prefs.sqzAlert) ? Prefs.sqzAlert() : false;
+      const algoOn = (window.Prefs && Prefs.algoAlert) ? Prefs.algoAlert() : false;
       return '<div class="panel fav-pushbar on"><span>✅ <b>התראות לפלאפון פעילות</b> — תקבל התראה כשמניה מהמועדפים נכנסת לסריקה עם התראה מופעלת, גם כשהאתר סגור. <span class="muted" style="font-size:11px">לא מגיעות התראות? לחץ «חדש מנוי».</span></span>' +
         '<span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
           '<button class="btn ghost" id="pushRenew" title="לא מקבל התראות בפלאפון? זה מוחק את המנוי הישן ורושם מנוי חדש ובריא — הפתרון ל״השרת שולח אבל הטלפון לא מציג״" style="font-size:12px;font-weight:700">🔄 חדש מנוי</button>' +
           '<button class="btn ghost" id="pushSchedTgl" title="תזכורות יומיות קבועות: 11:30 פרה-מרקט · 16:30 פתיחה · 17:30 + 22:00 מניות מהמועדפים · 22:50 לפני סגירה · 23:00 סגירה · לחץ להפעלה/כיבוי" style="font-size:12px;font-weight:600">⏰ תזכורות יומיות: ' + (schedOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + '</button>' +
           '<button class="btn ghost" id="sqzAlertTgl" title="קבל דחיפה לפלאפון כשמניה מהמעקב משחררת דחיסת TTM Squeeze (קפיץ דרוך שמשתחרר) — פעם ביום לכל מניה" style="font-size:12px;font-weight:600">🧨 שחרור Squeeze: ' + (sqzOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + '</button>' +
+          '<button class="btn ghost" id="algoAlertTgl" title="קבל דחיפה לפלאפון כשסקטור/קבוצה שלמה הולכת IN FORCE באותו כיוון יחד (תנועה אלגוריתמית/מוסדית מתואמת) — פעם ביום לכל קבוצה" style="font-size:12px;font-weight:600">🤖 תנועה אלגוריתמית: ' + (algoOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + '</button>' +
           '<button class="btn ghost" id="favAlertsCenter" style="font-size:12px;font-weight:600">🔔 מרכז ההתראות</button>' +
         '</span></div>';
     }
@@ -9213,6 +9295,7 @@
     document.querySelectorAll("[data-favdir]").forEach(b => b.onclick = () => { const d = b.dataset.favdir; favDirFilter = (favDirFilter === d) ? "all" : d; reRender(); });
     { const st = $("#pushSchedTgl"); if (st) st.onclick = () => { const now = (window.Prefs && Prefs.pushSchedule) ? Prefs.pushSchedule() : true; Prefs.setPushSchedule(!now); snToast(!now ? "⏰ התזכורות היומיות הופעלו" : "תזכורות מתוזמנות כובו"); reRender(); }; }
     { const sq = $("#sqzAlertTgl"); if (sq) sq.onclick = () => { const now = (window.Prefs && Prefs.sqzAlert) ? Prefs.sqzAlert() : false; Prefs.setSqzAlert(!now); snToast(!now ? "🧨 התרעת שחרור Squeeze הופעלה — תקבל דחיפה כשמניה מהמעקב משחררת דחיסה" : "התרעת שחרור Squeeze כובתה"); reRender(); }; }
+    { const ag = $("#algoAlertTgl"); if (ag) ag.onclick = () => { const now = (window.Prefs && Prefs.algoAlert) ? Prefs.algoAlert() : false; Prefs.setAlgoAlert(!now); requestNotifyPerm(); snToast(!now ? "🤖 התרעות תנועה אלגוריתמית הופעלו — דחיפה כשסקטור שלם זז יחד" : "התרעות תנועה אלגוריתמית כובו"); reRender(); }; }
     // click the red alert badge to remove the marking (dismissed for today; re-arms next day)
     document.querySelectorAll("[data-favdismiss]").forEach(b => b.onclick = e => { e.stopPropagation(); _dismissFavAlert(b.dataset.favdismiss); reRender(); });
     document.querySelectorAll("[data-shalert]").forEach(b => b.onclick = e => { e.stopPropagation(); const sym = b.dataset.shalert, names = (favAlertMatches()[sym] || []); if (names.length <= 3) shareAlertCard(sym, names); else chooseAlertPresets(sym, names); });
@@ -9862,9 +9945,9 @@
 
   // ===== "סקירת שוק" — one channel: market overview (first) + sector-breadth / sector-flow / continuity / breadth =====
   let pulseTab = "market";
-  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];   /* "most2s / אנרגיה כיוונית" tab hidden 2026-11-21 — subsumed by the "תנועה אלגוריתמית" page (algo-pressure strip). renderMost2s kept, re-add the ["most2s",...] entry to restore. */
-  const _pulseRender = { market: () => renderMarket(), sp500: () => renderSp500(), today: () => renderToday(), most2s: () => renderMost2s(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
-  const _pulseWire = { market: () => wireMarket(), sp500: () => wireSp500(), today: () => wireToday(), most2s: () => wireMost2s(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
+  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["merged", "⚡ פעימה"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];   /* "most2s / אנרגיה כיוונית" tab hidden 2026-11-21 — subsumed by the "תנועה אלגוריתמית" page (algo-pressure strip). renderMost2s kept, re-add the ["most2s",...] entry to restore. "merged" = ⚡ פעימה: תזרים+רוחב dual-metric (renderPulseMerged), reversible → delete entry to remove. */
+  const _pulseRender = { market: () => renderMarket(), merged: () => renderPulseMerged(), sp500: () => renderSp500(), today: () => renderToday(), most2s: () => renderMost2s(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
+  const _pulseWire = { market: () => wireMarket(), merged: () => wirePulseMerged(), sp500: () => wireSp500(), today: () => wireToday(), most2s: () => wireMost2s(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
   function renderPulse() {
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     const bar = '<div class="pulse-tabs">' + PULSE_TABS.map(([k, l]) =>
