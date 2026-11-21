@@ -1316,10 +1316,10 @@
     const vix = (LIVE && LIVE.vix) || null;
     const vixLvl = vix && vix.level != null ? Number(vix.level).toFixed(2) : (byS.VIX && byS.VIX.price != null ? Number(byS.VIX.price).toFixed(2) : "—");
     const vixChg = vix && vix.chg != null ? vix.chg : (byS.VIX ? byS.VIX.chg : null);
-    const secLead = (U.sectorLeaders || []).slice(0, 7);
-    const stkLead = (U.leaders || []).slice(0, 7);
-    const secLag = (U.sectorLaggards || []).slice(0, 7);
-    const stkLag = (U.laggards || []).slice(0, 7);
+    const secLead = (U.sectorLeaders || []).slice(0, 6);
+    const stkLead = (U.leaders || []).slice(0, 6);
+    const secLag = (U.sectorLaggards || []).slice(0, 6);
+    const stkLag = (U.laggards || []).slice(0, 6);
     const live = !!(LIVE && LIVE.updated);
     const topSecHe = secLead[0] ? secHe(secLead[0].name) : "השוק";
     const weakSecHe = secLag[0] ? secHe(secLag[0].name) : "";
