@@ -1331,7 +1331,7 @@
     const _vcol = v => v == null ? "" : v > 0.05 ? "em-neg" : v < -0.05 ? "em-pos" : "";   // VIX: rising = risk-off (red), falling = calm (green)
     const _pc = v => v == null ? "—" : (v >= 0 ? "+" : "−") + Math.abs(Number(v)).toFixed(2) + "%";
     const idxTile = (sym, r) => { const px = r && r.price != null ? (sym === "BTC" ? "$" + Math.round(r.price).toLocaleString("en-US") : Number(r.price).toFixed(2)) : "—"; const c = r ? r.chg : null;
-      return '<div class="em-it"><div class="s">' + sym + '</div><div class="p num">' + px + '</div><div class="c num ' + _col(c) + '">' + _pc(c) + '</div></div>'; };
+      return '<div class="em-it"' + (sym === "BTC" ? ' id="emBtcTile"' : "") + '><div class="s">' + sym + '</div><div class="p num">' + px + '</div><div class="c num ' + _col(c) + '">' + _pc(c) + '</div></div>'; };
     const idxRow = '<div class="em-idx">' + idxTile("SPY", byS.SPY) + idxTile("QQQ", byS.QQQ) + idxTile("IWM", byS.IWM) + idxTile("DIA", byS.DIA) +
       '<div class="em-it"><div class="s">VIX</div><div class="p num">' + vixLvl + '</div><div class="c num ' + _vcol(vixChg) + '">' + _pc(vixChg) + '</div></div>' + idxTile("BTC", byS.BTC || _btc) + '</div>';
     const stkRow = x => { const sec = secHe((((SCAN && SCAN.rows) || []).find(r => r.s === x.s) || {}).sec || "");
@@ -1349,7 +1349,7 @@
     else if (_mins >= 11 * 60 && _mins < 16 * 60 + 30) { amHead = "🌅 Pre-Market · תנועות לפני הפתיחה"; amData = UA.premovers || (LIVE && LIVE.premovers) || { up: [], down: [] }; }
     else { amHead = "🌙 After-Hours · תנועות אחרי הסגירה"; amData = UA.aftermovers || (LIVE && LIVE.aftermovers) || { up: [], down: [] }; }
     const amRow = x => '<div class="em-mv"><span class="nm"><span class="sym tsym clickable" data-chart="' + escAttr(x.s) + '" data-tf="D">' + escHtml(x.s) + '</span></span><span class="v num ' + _col(x.gp) + '">' + _pc(x.gp) + '</span></div>';
-    const amCol = arr => (arr && arr.length) ? arr.slice(0, 4).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
+    const amCol = arr => (arr && arr.length) ? arr.slice(0, 3).map(amRow).join("") : '<div class="muted" style="font-size:13px;padding:6px 2px">אין כרגע</div>';
     const mvCard = (title, rowsHtml) => '<div class="em-card"><h3>' + title + '</h3>' + rowsHtml + '</div>';
     // money-flow band: which sector money is entering / leaving + the stocks driving it
     const _flowStocks = (secObj, dir) => { if (!secObj) return []; const he = secHe(secObj.name);
@@ -1429,7 +1429,12 @@
   function wireMarket() {
     const bb = $("#breadthBar"); if (bb) bb.onclick = () => setPage("sp500");
     { const eb = $("#emBreadth"); if (eb) eb.onclick = () => setPage("sp500"); }   // editorial breadth card → רוחב לפי סקטור
-    if (!_btc && typeof fetchBtc === "function") { fetchBtc().then(b => { if (b) reRender(); }); }   // editorial index row shows BTC (CoinGecko); fetch + one re-render when it lands
+    if (!_btc && typeof fetchBtc === "function") { fetchBtc().then(b => {   // editorial BTC tile: update IN PLACE (no full re-render → no font-race flicker in the top strip)
+      if (!b) return; const el = document.getElementById("emBtcTile"); if (!el) return;
+      const p = el.querySelector(".p"), c = el.querySelector(".c");
+      if (p) p.textContent = "$" + Math.round(b.price).toLocaleString("en-US");
+      if (c) { c.textContent = (b.chg >= 0 ? "+" : "−") + Math.abs(b.chg).toFixed(2) + "%"; c.className = "c num " + (b.chg > 0.05 ? "em-pos" : b.chg < -0.05 ? "em-neg" : ""); }
+    }); }
     document.querySelectorAll("#page [data-goto-heat]").forEach(el => el.onclick = () => setPage("sp500"));
     { const pb = $("#pulseBreadth"); if (pb) pb.onclick = () => setPage("sp500"); }
     { const cb = $("#cockpitBreadth"); if (cb) cb.onclick = () => setPage("sp500"); }
@@ -2081,7 +2086,13 @@
         '<span class="tf-nm">' + (etf ? '<span class="sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span> ' : '') + escHtml(nm) + '</span>' +
         '<span class="tf-bar"><span class="' + (p != null && p >= 50 ? "up" : "dn") + '" style="width:' + (p == null ? 0 : Math.max(4, Math.min(100, p))).toFixed(0) + '%"></span></span>' +
         '<span class="tf-v num ' + cls + '">' + (p == null ? "—" : p.toFixed(0) + "%") + '</span><span class="tf-sub">' + o.above + "/" + o.total + '</span></div>'; };
-    const col = (title, arr, isSub) => '<div class="em-card tf-col"><h3>' + title + '</h3>' + (arr.length ? sortB(arr).map(o => row(o, isSub)).join("") : '<div class="muted" style="padding:8px 2px">—</div>') + '</div>';
+    const tile = (o, isSub) => { const p = _bp(o); const etf = isSub ? (typeof subEtfFor === "function" ? subEtfFor(o.name) : "") : etfFor(o.name); const nm = isSub ? o.name : secHe(o.name);
+      const pcls = p == null ? "" : p >= 55 ? "pos" : p <= 45 ? "neg" : "";
+      const vc = p == null ? "" : p >= 55 ? "em-pos" : p <= 45 ? "em-neg" : "";
+      return '<div class="em-tile ' + pcls + ' bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '">' +
+        '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
+        '<div class="et-pct ' + vc + '">' + (p == null ? "—" : p.toFixed(0) + "%") + '<span class="et-sub">' + o.above + "/" + o.total + '</span></div>' +
+        '<div class="et-bar"><span class="' + (p != null && p >= 50 ? "up" : "dn") + '" style="width:' + (p == null ? 0 : Math.max(4, Math.min(100, p))).toFixed(0) + '%"></span></div></div>'; };
     const ms = todayMarketState();
     const riskTxt = ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—";
     const riskCls = ms ? ms.cls : "zero";
@@ -2094,10 +2105,10 @@
         '<h1>רוחב השוק ' + tone + ' <span class="em-h1sep">·</span> <b>' + pct + '%</b> מעל הפתיחה</h1>' +
         '<div class="em-sub"><span class="em-pos">▲ ' + (b.above || 0) + ' מעל</span> · <span class="em-neg">' + (b.below || 0) + ' מתחת ▼</span> · מדורג מהחזק לחלש · לחץ שורה לכל המניות.</div></div>' +
         '<div class="em-big"><div class="n num">' + pct + '<small>%</small></div><div class="cap">מעל הפתיחה</div></div></div>' +
-      '<div class="tf-grid tf-grid2">' +
-        col("🗂️ עוצמת סקטורים · רוחב", secArr, false) +
-        col("🏭 עוצמת תתי-סקטורים · רוחב", subArr, true) +
-      '</div>' +
+      '<div class="em-secttl2">🗂️ עוצמת סקטורים · רוחב</div>' +
+      '<div class="em-tilegrid">' + (secArr.length ? sortB(secArr).map(o => tile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
+      '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · רוחב</div>' +
+      '<div class="em-tilegrid">' + (subArr.length ? sortB(subArr).map(o => tile(o, true)).join("") : '<div class="muted">—</div>') + '</div>' +
     '</div>';
   }
   function renderSp500() {
@@ -8568,7 +8579,12 @@
       return '<div class="tf-row"><span class="tf-nm">' + (etf ? '<span class="sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span> ' : '') + escHtml(nm) + '</span>' +
         '<span class="tf-bar"><span class="' + (v >= 0 ? "up" : "dn") + '" style="width:' + w(v) + '%"></span></span>' +
         '<span class="tf-v num ' + col(v) + '">' + pc(v) + '</span></div>'; };
-    const col4 = (title, arr, isSub) => '<div class="em-card tf-col"><h3>' + title + '</h3>' + (arr.length ? arr.map(s => row(s, isSub)).join("") : '<div class="muted" style="padding:8px 2px;font-size:14px">אין תנועה משמעותית</div>') + '</div>';
+    const tile = (s, isSub) => { const v = vOf(s), nm = isSub ? _clean(s.name) : secHe(s.name), etf = (!isSub && etfFor(s.name)) ? etfFor(s.name) : "";
+      const pcls = v > 0.05 ? "pos" : v < -0.05 ? "neg" : "";
+      return '<div class="em-tile ' + pcls + '">' +
+        '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
+        '<div class="et-pct ' + col(v) + '">' + pc(v) + '</div>' +
+        '<div class="et-bar"><span class="' + (v >= 0 ? "up" : "dn") + '" style="width:' + w(v) + '%"></span></div></div>'; };
     const modeBtns = [["etf", "תעודת סל"], ["avg", "ממוצע ענף"]].map(x => '<button class="tf-chip' + (x[0] === flowSecMode ? " on" : "") + '" data-flowsecmode="' + x[0] + '">' + x[1] + '</button>').join("");
     const tfBtns = FLOW_TF_DEF.map(d => '<button class="tf-chip' + (d[0] === flowTf ? " on" : "") + '" data-flowtf="' + d[0] + '">' + d[1] + '</button>').join("");
     const riskTxt = ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—";
@@ -8581,12 +8597,10 @@
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">לאן הכסף זורם · ' + _mfRangeLbl(tf) + '</div>' +
         '<h1>הכסף נכנס ל<b>' + escHtml(upName) + '</b> <span class="em-h1sep">·</span> ויוצא מ<b style="color:#ff6b7a">' + escHtml(dnName) + '</b></h1>' +
         '<div class="em-sub">התנועה היומית בפועל של כל סקטור ותת-סקטור — לפי ' + (flowSecMode === "avg" ? "ממוצע המניות (רוחב)" : "תנועת תעודת-הסל") + '.</div></div></div>' +
-      '<div class="tf-grid">' +
-        col4("💰 כניסת כסף · סקטורים", secUp, false) +
-        col4("📉 יציאת כסף · סקטורים", secDn, false) +
-        col4("💰 כניסת כסף · תתי-סקטורים", subUp, true) +
-        col4("📉 יציאת כסף · תתי-סקטורים", subDn, true) +
-      '</div>' +
+      '<div class="em-secttl2">🗂️ סקטורים · מדורג לפי תזרים</div>' +
+      '<div class="em-tilegrid">' + (sS.length ? sS.map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🏭 תתי-סקטורים · מדורג לפי תזרים</div>' +
+      '<div class="em-tilegrid">' + (subS.length ? subS.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
     '</div>';
   }
   function renderToday() {
