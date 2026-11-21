@@ -10662,7 +10662,7 @@
       '.alc-ttop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}' +
       '.alc-sym{font-size:22px;font-weight:900;color:#fff;font-family:Inter,Heebo,sans-serif}' +
       '.alc-you{color:' + accent + ';font-size:15px;vertical-align:middle}' +
-      '.alc-chg{font-size:18px;font-weight:800;font-family:Inter,Heebo,sans-serif}' +
+      '.alc-chg{font-size:18px;font-weight:800;font-family:Inter,Heebo,sans-serif;direction:ltr;display:inline-block;unicode-bidi:isolate}' +
       '.alc-chart{height:84px}' +
       '.alc-ft{display:flex;justify-content:space-between;align-items:center;margin-top:24px;padding-top:20px;border-top:1.5px solid rgba(255,255,255,.1);font-size:20px;color:#93a0b8;font-weight:700}' +
       '.alc-ft b{color:#e8eefc;font-weight:900}' +
