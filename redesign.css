@@ -1921,6 +1921,26 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .em-fchips{ display:flex; gap:10px; flex-wrap:wrap; }
 .em-fchip{ display:inline-flex; align-items:center; gap:7px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:5px 12px; font-size:15px; font-weight:600; }
 @media (max-width:860px){ .em-flow{ grid-template-columns:1fr; } }
+
+/* ===== EDITORIAL תזרים סקטוריאלי (renderTodayEditorial) ===== */
+.tf-ctrl{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.tf-ctrl-lbl{ font-size:12px; color:#7e8aa2; font-weight:700; margin-inline-start:8px; }
+.tf-chip{ background:#111a2e; border:1px solid rgba(255,255,255,.08); color:#9aa6bd; border-radius:10px; padding:6px 13px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+.tf-chip:hover{ border-color:#27324a; }
+.tf-chip.on{ border-color:#2dd4bf; color:#2dd4bf; background:rgba(45,212,191,.1); }
+.tf-hero{ margin-bottom:22px; }
+.tf-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+.tf-col h3{ margin:0 0 12px; font-size:15px; font-weight:700; color:#aeb9cd; }
+.tf-row{ display:grid; grid-template-columns:1fr 72px auto; align-items:center; gap:12px; padding:9px 0; border-top:1px solid rgba(255,255,255,.05); font-size:15px; }
+.tf-row:first-of-type{ border-top:none; }
+.tf-nm{ font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tf-nm .sym{ font-weight:700; }
+.tf-bar{ height:7px; border-radius:4px; background:rgba(255,255,255,.05); overflow:hidden; }
+.tf-bar span{ display:block; height:100%; }
+.tf-bar .up{ background:#2dd47c; } .tf-bar .dn{ background:#ff6b7a; }
+.tf-v{ font-weight:700; font-variant-numeric:tabular-nums; text-align:left; }
+@media (max-width:1100px){ .tf-grid{ grid-template-columns:1fr 1fr; } }
+@media (max-width:620px){ .tf-grid{ grid-template-columns:1fr; } .tf-ctrl{ gap:4px; } }
 .em-it{ background:#0c1120; padding:18px 14px; text-align:center; }
 .em-it .s{ font-size:12px; letter-spacing:.1em; color:#7e8aa2; font-weight:700; }
 .em-it .p{ font-size:22px; font-weight:600; margin:6px 0 3px; }

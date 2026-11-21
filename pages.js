@@ -8503,7 +8503,54 @@
     const vixCard = ms.vix ? '<div class="td-ixc vix"><span class="td-ixc-sym">VIX</span><span class="td-ixc-chg">' + ms.vix.level.toFixed(1) + "</span></div>" : "";
     return '<h3 class="td-ix-h">📈 מדדים ראשיים <span class="muted" style="font-size:12px">· ' + lbl + '</span></h3><div class="td-ixc-row">' + ms.idx.map(ixCard).join("") + vixCard + "</div>";
   }
+  // EDITORIAL "תזרים סקטוריאלי" page — reversible: set false to restore the classic page.
+  const _TODAY_EDITORIAL = true;
+  function renderTodayEditorial() {
+    const rows = scanSource().filter(t => t.ninja != null);
+    if (!rows.length) return '<div class="em-dash em-tight"><div class="em-hero"><div class="em-htx"><div class="em-eye">תזרים סקטוריאלי · The Strat</div><h1>הנתונים נטענים מהסורק…</h1></div></div></div>';
+    const ms = todayMarketState();
+    const tf = flowTf;
+    const vOf = s => _bcellVal(s, tf);
+    const _named = s => s && s.name && s.name !== "אחר" && s.name !== "—" && s.name !== "" && s.name !== "מדדים";
+    const secs = (todaySectors(rows) || []).filter(s => vOf(s) != null && _named(s));
+    const subs = (todaySubsectors(rows) || []).filter(s => vOf(s) != null && _named(s));
+    const sS = secs.slice().sort((a, b) => vOf(b) - vOf(a)), subS = subs.slice().sort((a, b) => vOf(b) - vOf(a));
+    const secUp = sS.filter(s => vOf(s) > 0).slice(0, 6), secDn = sS.filter(s => vOf(s) < 0).slice(-6).reverse();
+    const subUp = subS.filter(s => vOf(s) > 0).slice(0, 6), subDn = subS.filter(s => vOf(s) < 0).slice(-6).reverse();
+    const _clean = s => (typeof _mfClean === "function" ? _mfClean(s) : String(s || ""));
+    const upName = secUp[0] ? secHe(secUp[0].name) : (subUp[0] ? _clean(subUp[0].name) : "—");
+    const dnName = secDn[0] ? secHe(secDn[0].name) : (subDn[0] ? _clean(subDn[0].name) : "—");
+    let gmax = 0.01; [secUp, secDn, subUp, subDn].forEach(a => a.forEach(s => { gmax = Math.max(gmax, Math.abs(vOf(s) || 0)); }));
+    const w = v => Math.max(6, Math.round(Math.abs(v || 0) / gmax * 100));
+    const pc = v => (v < 0 ? "−" : "+") + Math.abs(Number(v) || 0).toFixed(2) + "%";
+    const col = v => v > 0.05 ? "em-pos" : v < -0.05 ? "em-neg" : "";
+    const row = (s, isSub) => { const v = vOf(s), nm = isSub ? _clean(s.name) : secHe(s.name), etf = (!isSub && etfFor(s.name)) ? etfFor(s.name) : "";
+      return '<div class="tf-row"><span class="tf-nm">' + (etf ? '<span class="sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span> ' : '') + escHtml(nm) + '</span>' +
+        '<span class="tf-bar"><span class="' + (v >= 0 ? "up" : "dn") + '" style="width:' + w(v) + '%"></span></span>' +
+        '<span class="tf-v num ' + col(v) + '">' + pc(v) + '</span></div>'; };
+    const col4 = (title, arr, isSub) => '<div class="em-card tf-col"><h3>' + title + '</h3>' + (arr.length ? arr.map(s => row(s, isSub)).join("") : '<div class="muted" style="padding:8px 2px;font-size:14px">אין תנועה משמעותית</div>') + '</div>';
+    const modeBtns = [["etf", "תעודת סל"], ["avg", "ממוצע ענף"]].map(x => '<button class="tf-chip' + (x[0] === flowSecMode ? " on" : "") + '" data-flowsecmode="' + x[0] + '">' + x[1] + '</button>').join("");
+    const tfBtns = FLOW_TF_DEF.map(d => '<button class="tf-chip' + (d[0] === flowTf ? " on" : "") + '" data-flowtf="' + d[0] + '">' + d[1] + '</button>').join("");
+    const riskTxt = ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—";
+    const riskCls = ms ? ms.cls : "zero";
+    return '<div class="em-dash em-tight tf-dash" data-today-editorial="1">' +
+      '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">תזרים סקטוריאלי</span>' +
+        '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span>' +
+        '<span class="em-sep"></span>' +
+        '<span class="tf-ctrl"><span class="tf-ctrl-lbl">מדד:</span>' + modeBtns + '<span class="tf-ctrl-lbl">טווח:</span>' + tfBtns + '</span></div>' +
+      '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">לאן הכסף זורם · ' + _mfRangeLbl(tf) + '</div>' +
+        '<h1>הכסף נכנס ל<b>' + escHtml(upName) + '</b> <span class="em-h1sep">·</span> ויוצא מ<b style="color:#ff6b7a">' + escHtml(dnName) + '</b></h1>' +
+        '<div class="em-sub">התנועה היומית בפועל של כל סקטור ותת-סקטור — לפי ' + (flowSecMode === "avg" ? "ממוצע המניות (רוחב)" : "תנועת תעודת-הסל") + '.</div></div></div>' +
+      '<div class="tf-grid">' +
+        col4("💰 כניסת כסף · סקטורים", secUp, false) +
+        col4("📉 יציאת כסף · סקטורים", secDn, false) +
+        col4("💰 כניסת כסף · תתי-סקטורים", subUp, true) +
+        col4("📉 יציאת כסף · תתי-סקטורים", subDn, true) +
+      '</div>' +
+    '</div>';
+  }
   function renderToday() {
+    if (_TODAY_EDITORIAL) return renderTodayEditorial();
     const head = '<div class="page-head"><h1>תזרים סקטוריאלי · לאן הכסף זורם</h1><div class="sub">התנועה היומית בפועל של כל נכס (תעודת הסל) — <b>לאן הכסף נכנס והיכן הוא יוצא</b>, עם ניתוח AI.</div></div>';
     const isLive = !!(SCAN && SCAN.rows && SCAN.rows.length);
     const rows = scanSource().filter(t => t.ninja != null);
@@ -8565,6 +8612,11 @@
   }
   function wireToday() {
     wireCharts($("#page")); wireStars($("#page"));
+    if (_TODAY_EDITORIAL && document.querySelector('[data-today-editorial]')) {   // editorial page: chips set the metric/timeframe + re-render
+      document.querySelectorAll("[data-flowtf]").forEach(b => b.onclick = () => { if (flowTf !== b.dataset.flowtf) { flowTf = b.dataset.flowtf; reRender(); } });
+      document.querySelectorAll("[data-flowsecmode]").forEach(b => b.onclick = () => { if (flowSecMode !== b.dataset.flowsecmode) { flowSecMode = b.dataset.flowsecmode; reRender(); } });
+      return;
+    }
     // ETF ticker → choice menu (analyze the ETF · or open all sector charts)
     document.querySelectorAll(".flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
     document.querySelectorAll("[data-compdrill]").forEach(el => el.onclick = e => { if (e.target.closest(".flow-etf")) return; openCompositeDrill(el.dataset.compname, el.dataset.compdrill); });
