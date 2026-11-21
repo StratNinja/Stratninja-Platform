@@ -7931,6 +7931,7 @@
     document.querySelectorAll(".modal .flow-etf[data-secetf]").forEach(el => el.onclick = e => { e.stopPropagation(); openSecMenu(el); });
     if (typeof wireCharts === "function") wireCharts(document);
   }
+  const _CONT_EDITORIAL = true;   // המשכיות זמנית → editorial "עריכה" layout (reversible: set false for the classic cont-layout)
   function renderSectors() {
     const TFS = _secFtfcTfs();
     const TFLBL = _secFtfcLbl();
@@ -8084,6 +8085,43 @@
       ? '<div class="panel td-flow cont-comp"><h3 class="tdf-head"><span>🧩 מדדים ושונות · המשכיות</span></h3>' +
         '<div class="bcell-list cont-secgrid" data-ftfcladder="macro">' + _ftfcLadder(macroArr) + "</div></div>"
       : "";
+    const ms = todayMarketState();
+    if (_CONT_EDITORIAL) {
+      const _byHe = (a, c) => secHe(a.rawname) < secHe(c.rawname) ? -1 : secHe(a.rawname) > secHe(c.rawname) ? 1 : 0;
+      const _byNm = (a, c) => String(a.name) < String(c.name) ? -1 : String(a.name) > String(c.name) ? 1 : 0;
+      const secAlpha = secArrG.slice().sort(_byHe);
+      const subAlpha = subArr.slice().sort(_byNm);   // 18 SPDR subs — same set & order as תזרים/רוחב
+      const etile = (o, isSub) => {
+        const fg = o.fg || 0, fr = o.fr || 0, tot = o.tot || 0;
+        const dom = Math.max(fg, fr), domShare = tot ? Math.round(dom / tot * 100) : 0;
+        const up = fg >= fr, has = tot > 0 && dom > 0;
+        const etf = o.etf || (isSub ? (typeof subEtfFor === "function" ? subEtfFor(o.rawname) : "") : etfFor(o.rawname));
+        const nm = isSub ? _cleanNm(o.name) : secHe(o.rawname);
+        const vc = !has ? "" : up ? "em-pos" : "em-neg";
+        const pcls = !has ? "" : up ? "pos" : "neg";
+        const drill = isSub ? (' data-subladder="' + encodeURIComponent(o.rawname) + '"') : (' data-secladder="' + encodeURIComponent(o.rawname) + '"');
+        return '<div class="em-tile ' + pcls + ' bc-clickable"' + drill + '>' +
+          '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
+          '<div class="et-pct ' + vc + '">' + (has ? (up ? "🟢 " : "🔴 ") + domShare + "%" : "—") + '<span class="et-sub">' + fg + "🟢 " + fr + "🔴</span></div>" +
+          '<div class="et-bar"><span class="' + (up ? "up" : "dn") + '" style="width:' + (has ? Math.max(4, domShare) : 0) + '%"></span></div></div>';
+      };
+      const upSec = secArrG.filter(o => (o.fg || 0) > (o.fr || 0)).length;
+      const dnSec = secArrG.filter(o => (o.fr || 0) > (o.fg || 0)).length;
+      const tone = upSec > dnSec ? "מוטה לונג" : dnSec > upSec ? "מוטה שורט" : "מאוזנת";
+      return '<div class="em-dash em-tight tf-dash sp-dash cont-dash" data-cont-editorial="1">' +
+        '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">המשכיות זמנית</span>' +
+          '<span class="em-pill ' + (ms ? ms.cls : "zero") + '" style="margin-inline-start:10px">' + (ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—") + '</span></div>' +
+        '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">FTFC · ' + escHtml(TFLBL) + ' · מסת המניות בהמשכיות</div>' +
+          '<h1>ההמשכיות ' + tone + ' <span class="em-h1sep">·</span> <b>' + upSec + '</b> סקטורים עולים <span class="em-h1sep">·</span> <b>' + dnSec + '</b> יורדים</h1>' +
+          '<div class="em-sub">בכל אריח: <b>%</b> מהמניות של אותו נכס בכיוון ההמשכיות הדומיננטי · <span class="em-pos">🟢 עולה</span> / <span class="em-neg">🔴 יורד</span> · לחץ אריח לרשימת המניות.</div></div>' +
+          '<div class="em-big"><div class="n num">' + upSec + '<small>/' + (upSec + dnSec) + '</small></div><div class="cap">סקטורים עולים</div></div></div>' +
+        '<div class="tf-ctrl cont-ctrl">' + ftfcSwitch + '</div>' +
+        '<div class="em-secttl2">🗂️ עוצמת סקטורים · המשכיות</div>' +
+        '<div class="cont-right"><div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => etile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
+        '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · המשכיות</div>' +
+        '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => etile(o, true)).join("") : '<div class="muted">—</div>') + '</div></div>' +
+      '</div>';
+    }
     return head + note + '<div class="cont-layout">' +
       '<div class="cont-left">' + candleMapPanelSide() + "</div>" +
       '<div class="cont-right">' + secGrid + compStrip + "</div>" +
