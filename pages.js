@@ -2093,7 +2093,7 @@
     const tile = (o, isSub) => { const p = _bp(o); const etf = isSub ? (typeof subEtfFor === "function" ? subEtfFor(o.name) : "") : etfFor(o.name); const nm = isSub ? o.name : secHe(o.name);
       const pcls = p == null ? "" : p >= 55 ? "pos" : p <= 45 ? "neg" : "";
       const vc = p == null ? "" : p >= 55 ? "em-pos" : p <= 45 ? "em-neg" : "";
-      return '<div class="em-tile ' + pcls + ' bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '">' +
+      return '<div class="em-tile ' + pcls + ' bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '"' + _vtAttr(o.name, isSub) + '>' +
         '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
         '<div class="et-pct ' + vc + '">' + (p == null ? "—" : p.toFixed(0) + "%") + '<span class="et-sub">' + o.above + "/" + o.total + '</span></div>' +
         '<div class="et-bar"><span class="' + (p != null && p >= 50 ? "up" : "dn") + '" style="width:' + (p == null ? 0 : Math.max(4, Math.min(100, p))).toFixed(0) + '%"></span></div></div>'; };
@@ -2104,7 +2104,7 @@
     return '<div class="em-dash em-tight tf-dash sp-dash" data-sp-editorial="1">' +
       '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">רוחב סקטוריאלי</span>' +
         '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span>' +
-        '<span class="em-sep"></span><span class="sp-view-row">' + sp500ViewSwitch() + '</span>' + _pulseSortToggle() + '</div>' +
+        '<span class="em-sep"></span><span class="sp-view-row">' + sp500ViewSwitch() + '</span></div>' +
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">S&P 500 · כמה מהמניות מעל הפתיחה</div>' +
         '<h1>רוחב השוק ' + tone + ' <span class="em-h1sep">·</span> <b>' + pct + '%</b> מעל הפתיחה</h1>' +
         '<div class="em-sub"><span class="em-pos">▲ ' + (b.above || 0) + ' מעל</span> · <span class="em-neg">' + (b.below || 0) + ' מתחת ▼</span> · לחץ אריח לכל המניות בסקטור.</div></div>' +
@@ -8106,8 +8106,8 @@
         const vc = !has ? "" : up ? "em-pos" : "em-neg";
         const pcls = !has ? "" : up ? "pos" : "neg";
         const drill = isSub ? (' data-subladder="' + encodeURIComponent(o.rawname) + '"') : (' data-secladder="' + encodeURIComponent(o.rawname) + '"');
-        return '<div class="em-tile ' + pcls + ' bc-clickable"' + drill + '>' +
-          '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
+        return '<div class="em-tile ' + pcls + ' bc-clickable"' + drill + _vtAttr(o.rawname, isSub) + '>' +
+          '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span>' + (tot ? '<span class="et-cnt" title="סך המניות בנכס (ללא קשר ל-FTFC)">(' + tot + ')</span>' : '') + '</div>' +
           '<div class="et-pct ' + vc + '">' + (has ? (up ? "🟢 " : "🔴 ") + domShare + "%" : "—") + '<span class="et-sub">' + fg + "🟢 " + fr + "🔴</span></div>" +
           '<div class="et-bar"><span class="' + (up ? "up" : "dn") + '" style="width:' + (has ? Math.max(4, domShare) : 0) + '%"></span></div></div>';
       };
@@ -8121,7 +8121,7 @@
           '<h1>ההמשכיות ' + tone + ' <span class="em-h1sep">·</span> <b>' + upSec + '</b> סקטורים עולים <span class="em-h1sep">·</span> <b>' + dnSec + '</b> יורדים</h1>' +
           '<div class="em-sub">בכל אריח: <b>%</b> מהמניות של אותו נכס בכיוון ההמשכיות הדומיננטי · <span class="em-pos">🟢 עולה</span> / <span class="em-neg">🔴 יורד</span> · לחץ אריח לרשימת המניות.</div></div>' +
           '<div class="em-big"><div class="n num">' + upSec + '<small>/' + (upSec + dnSec) + '</small></div><div class="cap">סקטורים עולים</div></div></div>' +
-        '<div class="tf-ctrl cont-ctrl">' + ftfcSwitch + _pulseSortToggle() + '</div>' +
+        '<div class="tf-ctrl cont-ctrl">' + ftfcSwitch + '</div>' +
         '<div class="em-secttl2">🗂️ עוצמת סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
         '<div class="cont-right"><div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => etile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
         '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
@@ -8632,7 +8632,7 @@
         '<span class="tf-v num ' + col(v) + '">' + pc(v) + '</span></div>'; };
     const tile = (s, isSub) => { const v = vOf(s), nm = isSub ? _clean(s.name) : secHe(s.name), etf = (!isSub && etfFor(s.name)) ? etfFor(s.name) : "";
       const pcls = v > 0.05 ? "pos" : v < -0.05 ? "neg" : "";
-      return '<div class="em-tile ' + pcls + '">' +
+      return '<div class="em-tile ' + pcls + '"' + _vtAttr(s.name, isSub) + '>' +
         '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
         '<div class="et-pct ' + col(v) + '">' + pc(v) + '</div>' +
         '<div class="et-bar"><span class="' + (v >= 0 ? "up" : "dn") + '" style="width:' + w(v) + '%"></span></div></div>'; };
@@ -8644,7 +8644,7 @@
       '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">תזרים סקטוריאלי</span>' +
         '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span>' +
         '<span class="em-sep"></span>' +
-        '<span class="tf-ctrl"><span class="tf-ctrl-lbl">מדד:</span>' + modeBtns + '<span class="tf-ctrl-lbl">טווח:</span>' + tfBtns + '</span>' + _pulseSortToggle() + '</div>' +
+        '<span class="tf-ctrl"><span class="tf-ctrl-lbl">מדד:</span>' + modeBtns + '<span class="tf-ctrl-lbl">טווח:</span>' + tfBtns + '</span></div>' +
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">לאן הכסף זורם · ' + _mfRangeLbl(tf) + '</div>' +
         '<h1>הכסף נכנס ל<b>' + escHtml(upName) + '</b> <span class="em-h1sep">·</span> ויוצא מ<b style="color:#ff6b7a">' + escHtml(dnName) + '</b></h1>' +
         '<div class="em-sub">התנועה היומית בפועל של כל סקטור ותת-סקטור — לפי ' + (flowSecMode === "avg" ? "ממוצע המניות (רוחב)" : "תנועת תעודת-הסל") + '.</div></div></div>' +
@@ -9965,6 +9965,14 @@
   }
   const _pulseByHe = (a, b) => { const x = secHe(a.name || a.rawname), y = secHe(b.name || b.rawname); return x < y ? -1 : x > y ? 1 : 0; };
   const _pulseByNm = (a, b) => { const x = String(a.name), y = String(b.name); return x < y ? -1 : x > y ? 1 : 0; };
+  // Stable per-tile identity (keyed by ETF) → the View-Transition on tab switch morphs each sector's tile from
+  // its old spot to its new spot, so the SAME tile animates to position instead of the grid hard-jumping (Adi).
+  function _vtName(name, isSub) {
+    let etf = isSub ? (typeof subEtfFor === "function" ? (subEtfFor(name) || "") : "") : (etfFor(name) || "");
+    let key = (etf || String(name || "")).replace(/[^A-Za-z0-9֐-׿]+/g, "_").replace(/^_+|_+$/g, "");
+    return key ? (isSub ? "pts_" : "pt_") + key : "";
+  }
+  function _vtAttr(name, isSub) { const n = _vtName(name, isSub); return n ? ' style="view-transition-name:' + n + '"' : ''; }
   function renderPulse() {
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     const bar = '<div class="pulse-tabs">' + PULSE_TABS.map(([k, l]) =>
@@ -10553,7 +10561,21 @@
       '.bv-psp{flex:1 1 auto;min-width:4px}' +
       '.bv-ppx{font-family:var(--mono);font-size:11.5px;color:var(--muted);flex:0 0 auto}' +
       '.bv-pchg{font-family:var(--mono);font-size:11px;font-weight:700;flex:0 0 auto;white-space:nowrap}.bv-pchg.up{color:var(--green)}.bv-pchg.dn{color:var(--red)}' +
-      '.bv-bigwrap{background:var(--soft2);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:4px}' +
+      // hero band — the sector "pinned on top" (like the share card): ETF + direction + IN FORCE KPI
+      '.bv-hero{display:flex;align-items:center;gap:20px;border-radius:16px;padding:16px 20px;margin-bottom:16px;background:var(--soft2);border:1.5px solid var(--line)}' +
+      '.bv-hero.dn{border-color:var(--red);background:var(--redbg)}.bv-hero.up{border-color:var(--green);background:var(--greenbg)}' +
+      '.bv-hero-mid{flex:1;min-width:0}' +
+      '.bv-hero-sec{font-size:26px;font-weight:900;color:var(--ink);margin-bottom:9px;white-space:nowrap}' +
+      '.bv-hero-etf{font-size:16px;color:var(--muted);font-family:var(--mono);font-weight:700}' +
+      '.bv-hero-badge{display:inline-block;direction:rtl;white-space:nowrap;font-size:17px;font-weight:900;border-radius:10px;padding:5px 13px;background:rgba(0,0,0,.2)}' +
+      '.bv-hero.dn .bv-hero-badge{color:var(--red);border:1.5px solid var(--red)}.bv-hero.up .bv-hero-badge{color:var(--green);border:1.5px solid var(--green)}' +
+      '.bv-hero-ar{display:inline-block;unicode-bidi:isolate;margin-left:7px}.bv-hero-badge span{unicode-bidi:isolate}' +
+      '.bv-hero-kpi{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:104px;padding-inline-start:20px;border-inline-start:1.5px solid rgba(255,255,255,.14)}' +
+      '.bv-hero-n{font-size:42px;font-weight:900;line-height:1;font-family:var(--mono);color:var(--ink)}' +
+      '.bv-hero.dn .bv-hero-n{color:var(--red)}.bv-hero.up .bv-hero-n{color:var(--green)}' +
+      '.bv-hero-n small{font-size:20px;color:var(--muted);font-weight:800}' +
+      '.bv-hero-l{font-size:12.5px;color:var(--ink);font-weight:800;letter-spacing:.5px;margin-top:5px}' +
+      '.bv-bigwrap{background:radial-gradient(120% 130% at 85% 0%,#111a2e 0%,#0b1020 60%,#080c17 100%);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-bottom:4px}' +
       '.bv-bigsvg{width:100%;height:auto;display:block}' +
       '.bv-axl{font-family:var(--mono);font-size:11px}' +
       '.bv-botl{font-size:22px;letter-spacing:.3px}' +
@@ -10568,6 +10590,24 @@
       '.bv-p2chart{height:50px}.bv-p2chart svg{width:100%;height:50px;display:block}' +
       '.bv-ph b.dn,.bv-ph .dn{color:var(--red)}.bv-ph b.up,.bv-ph .up{color:var(--green)}' +
       '</style>';
+  }
+  function bvHeroBand(r, tf) {   // sector "pinned on top" of the drill — same look as the 📷 share card
+    if (!(SCAN && SCAN.rows) || !r.sec) return "";
+    var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
+    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && x[tf] && x[tf].o != null; });
+    var aligned = peers.filter(function (x) { return refDir && x[tf].ifc === refDir; }).length;
+    var total = peers.length + 1, alignFull = aligned + 1;   // whole sector + the anchor
+    var secName = (typeof secHe === "function") ? secHe(r.sec) : (r.sec || "");
+    var etf = (typeof etfFor === "function") ? (etfFor(r.sec) || "") : "";
+    var down = refDir === "down", up = refDir === "up";
+    var dcls = down ? "dn" : up ? "up" : "";
+    var dirWord = down ? "מכירה אלגוריתמית" : up ? "קנייה אלגוריתמית" : "ללא כיוון מובהק";
+    var dirArrow = down ? "▼" : up ? "▲" : "•";
+    return '<div class="bv-hero ' + dcls + '">' +
+      '<div class="bv-hero-mid"><div class="bv-hero-sec">' + secName + (etf ? ' <span class="bv-hero-etf">' + etf + '</span>' : "") + '</div>' +
+        '<span class="bv-hero-badge"><span class="bv-hero-ar">' + dirArrow + '</span><span>' + dirWord + '</span></span></div>' +
+      '<div class="bv-hero-kpi"><span class="bv-hero-n">' + alignFull + '<small>/' + total + '</small></span><span class="bv-hero-l">IN FORCE</span></div>' +
+      '</div>';
   }
   function bvOpenDrill(sym) {
     if (typeof modal !== "function") return;
@@ -10586,7 +10626,7 @@
       '<div class="bv-dhint">3 הנרות האחרונים (' + BV_TFHE[tf] + ') · הנר המלא = הנר לסיווג (' + BV_TFHE[tf] + ') · נרות חלולים = נרות קודמים · קו מקווקו = גבוה/נמוך הנר הקודם</div>';
     var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
     var full = '<div class="bv-dfull"><button class="btn ghost" id="bvShare" style="font-size:13px;font-weight:700">📷 כרטיס שיתוף</button> <button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
-    modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
+    modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + bvHeroBand(r, tf) + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
     var scope = document.querySelector(".modal.bv-drill") || document;
     scope.querySelectorAll("[data-bvpeer]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvpeer")); }; });
     scope.querySelectorAll("[data-bvdtf]").forEach(function (el) { el.onclick = function () { bvTf = el.getAttribute("data-bvdtf"); reRender(); bvOpenDrill(sym); }; });   // click a drill TF chip → switch timeframe + re-open drill
@@ -10648,7 +10688,7 @@
         '<span class="alc-chg" style="color:' + (ch >= 0 ? "#22c55e" : "#ef4444") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + '%</span></div>' +
         '<div class="alc-chart">' + _algoMini(pc, x.p) + '</div></div>';
     }).join("");
-    var total = tiles.length, alignFull = (aligned + 1);   // +1 for the anchor itself (it defines the direction)
+    var total = peers.length + 1, alignFull = (aligned + 1);   // WHOLE sector (not just the shown tiles) + the anchor itself; grid shows the top 15
     var now = new Date(), _p2 = function (n) { return String(n).padStart(2, "0"); };
     var dateStr = _p2(now.getHours()) + ":" + _p2(now.getMinutes()) + " · " + now.getDate() + "/" + (now.getMonth() + 1) + "/" + now.getFullYear();
     var el = document.createElement("div");
@@ -10667,9 +10707,10 @@
       '.alc-kpi-n small{font-size:34px;color:#93a0b8;font-weight:800}' +
       '.alc-kpi-l{font-size:20px;color:#c3cde0;font-weight:800;margin-top:8px}' +
       '.alc-hmid{flex:1}' +
-      '.alc-sec{font-size:40px;font-weight:900;margin-bottom:10px}' +
-      '.alc-badge{display:inline-flex;align-items:center;gap:8px;font-size:24px;font-weight:900;color:' + accent + ';background:rgba(0,0,0,.25);border:1.5px solid ' + accent + ';border-radius:12px;padding:7px 16px}' +
-      '.alc-anchor{font-size:21px;color:#c3cde0;font-weight:700;margin-top:12px;font-family:Inter,Heebo,sans-serif}' +
+      '.alc-sec{font-size:40px;font-weight:900;margin-bottom:10px;white-space:nowrap}' +
+      '.alc-badge{display:inline-block;direction:rtl;white-space:nowrap;font-size:24px;font-weight:900;color:' + accent + ';background:rgba(0,0,0,.25);border:1.5px solid ' + accent + ';border-radius:12px;padding:7px 16px}' +
+      '.alc-badge .alc-ar{display:inline-block;unicode-bidi:isolate;margin-left:8px}.alc-badge .alc-dw{display:inline-block;unicode-bidi:isolate}' +
+      '.alc-anchor{font-size:21px;color:#c3cde0;font-weight:700;margin-top:12px;font-family:Inter,Heebo,sans-serif;white-space:nowrap}' +
       '.alc-anchor b{color:#fff;font-weight:900}.alc-tf{color:#93a0b8}' +
       '.alc-grid{flex:1;display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-content:start}' +
       '.alc-tile{background:#121a2c;border:1.5px solid #263349;border-radius:16px;padding:12px 12px 8px;display:flex;flex-direction:column}' +
@@ -10684,7 +10725,7 @@
       '<div class="alc-hd"><div><div class="alc-brand">Strat<span>Ninja</span></div><div class="alc-sub">🤖 תנועה אלגוריתמית · The Strat</div></div><div class="alc-date">🕐 ' + dateStr + '</div></div>' +
       '<div class="alc-hero">' +
         '<div class="alc-hmid"><div class="alc-sec">' + secName + '</div>' +
-          '<span class="alc-badge">' + dirArrow + ' ' + dirWord + '</span>' +
+          '<span class="alc-badge"><span class="alc-ar">' + dirArrow + '</span><span class="alc-dw">' + dirWord + '</span></span>' +
           '<div class="alc-anchor">הסורק: <b>' + sym + '</b> ' + (r.p != null ? r.p : "—") + ' · <span class="alc-tf">' + (BV_TFHE[tf] || tf) + '</span></div></div>' +
         '<div class="alc-kpi"><div class="alc-kpi-n">' + alignFull + '<small>/' + total + '</small></div><div class="alc-kpi-l">IN FORCE</div></div>' +
       '</div>' +

@@ -1957,6 +1957,7 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .em-tile.pos{ border-inline-start:3px solid #2dd47c; }
 .em-tile.neg{ border-inline-start:3px solid #ff6b7a; }
 .et-top{ display:flex; align-items:center; gap:7px; margin-bottom:5px; min-width:0; }
+.et-cnt{ font-size:10.5px; color:#6b7689; font-weight:600; flex:none; margin-inline-start:-2px; }   /* total stock count (ללא קשר ל-FTFC) */
 .et-etf{ font-size:12px; font-weight:700; color:#8a93a6; background:rgba(255,255,255,.06); padding:2px 7px; border-radius:5px; flex:none; }
 .et-nm{ font-weight:700; font-size:15px; color:#eaf0fb; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .et-pct{ font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; display:flex; align-items:baseline; gap:8px; color:#eaf0fb; margin-top:3px; }
@@ -1987,7 +1988,10 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 /* smooth screen-to-screen transition between pulse tabs — View Transitions, fired ONLY on a tab click
    (wirePulse wraps the switch in document.startViewTransition), so the live-data refresh never flickers. */
 ::view-transition-old(root),::view-transition-new(root){ animation-duration:.24s; }
-@media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root){ animation:none; } }
+/* each pulse tile is tagged view-transition-name:pt_<ETF> → the SAME sector's tile morphs from its old spot to its
+   new spot when you switch pages (sorted by strength, but the frame animates to position instead of hard-jumping). */
+::view-transition-group(*){ animation-duration:.34s; animation-timing-function:cubic-bezier(.4,0,.2,1); }
+@media (prefers-reduced-motion:reduce){ ::view-transition-old(root),::view-transition-new(root),::view-transition-group(*){ animation:none; } }
 /* compact hero on the two tile pages so the grids fit above the fold */
 .tf-dash .em-top{ margin-bottom:12px; }
 .tf-dash .em-hero{ margin-bottom:12px; }
