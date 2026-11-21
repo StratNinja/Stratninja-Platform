@@ -10408,8 +10408,10 @@
     var rows = (SCAN && SCAN.rows) ? SCAN.rows : null;
     var tf = bvTf;
     var head = '<div class="page-head"><h1>🤖 תנועה אלגוריתמית</h1><div class="sub">זיהוי מכירה/קנייה אלגוריתמית — יישור TheStrat רוחבי לפי סקטור · נתונים חיים</div></div>';
+    var algoOn = (window.Prefs && Prefs.algoAlert) ? Prefs.algoAlert() : false;
     var ctrls = '<div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div>' +
-      '<div class="bv-tfseg"><button data-bvpat="current"' + (bvPat === "current" ? ' class="on"' : "") + '>תבנית נוכחית</button><button data-bvpat="future"' + (bvPat === "future" ? ' class="on"' : "") + '>תבנית עתידית</button></div>';
+      '<div class="bv-tfseg"><button data-bvpat="current"' + (bvPat === "current" ? ' class="on"' : "") + '>תבנית נוכחית</button><button data-bvpat="future"' + (bvPat === "future" ? ' class="on"' : "") + '>תבנית עתידית</button></div>' +
+      '<button class="btn ghost" id="bvAlgoAlert" title="קבל דחיפה לפלאפון כשסקטור/קבוצה שלמה הולכת IN FORCE באותו כיוון יחד — תנועה אלגוריתמית מתואמת" style="font-size:12px;font-weight:600;flex:0 0 auto">🔔 התראות אלגו: ' + (algoOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + "</button>";
     if (!rows) { return bvCss() + head + '<div class="bv-tfbar">' + ctrls + '<span class="bv-hint">בחר טיימפריים ותבנית</span></div>' + '<div class="bv-card" style="padding:26px;text-align:center;color:var(--muted)">⏳ טוען נתונים חיים…</div>'; }
     var idx = {}; rows.forEach(function (r) { if (r && r.s) idx[r.s] = r; });
     var uniq = {}; BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { uniq[s] = 1; }); });
@@ -10437,6 +10439,7 @@
     document.querySelectorAll('#page [data-bvtfset]').forEach(function (c) {
       c.onclick = function (e) { e.stopPropagation(); bvTf = c.getAttribute("data-bvtfset"); reRender(); };   // click a matrix TF cell → switch timeframe (don't open the drill)
     });
+    { var ab = document.getElementById("bvAlgoAlert"); if (ab) ab.onclick = function () { var now = (window.Prefs && Prefs.algoAlert) ? Prefs.algoAlert() : false; if (!now) { if (window.Prefs) Prefs.setAlgoAlert(true); if (typeof subscribeToPush === "function") subscribeToPush(); } else { if (window.Prefs) Prefs.setAlgoAlert(false); if (typeof snToast === "function") snToast("התראות תנועה אלגוריתמית כובו"); } reRender(); }; }
   }
   function bvExpected(sel) {
     if (!sel || !sel.t) return "—";
