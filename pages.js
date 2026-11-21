@@ -10203,38 +10203,52 @@
     if (t1 === "3") return { h: h - r * 0.26, l: l + r * 0.26 };   // bar1 OUTSIDE → prior inside bar1
     return { h: h + r * 0.1, l: l - r * 0.1 };
   }
-  function bvCandleBig(cell, price) {
+  function bvCandleBig(cell, price) {   // StratSchool style: hollow PRIOR bars + solid glowing CURRENT bar in a "הנר לסיווג" box
     if (!cell || cell.o == null) return '<div class="bv-dk" style="text-align:center;padding:30px">אין נתוני נר לטיימפריים זה</div>';
     var d = bvBuild3(cell, price), bars = d.bars;
-    var W = 330, H = 178, padT = 14, padB = 22, padL = 12, padR = 58;
+    var W = 348, H = 200, padT = 26, padB = 24, padL = 16, padR = 98;
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
     var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
-    mx += rg * 0.08; mn -= rg * 0.08; rg = mx - mn;
+    mx += rg * 0.1; mn -= rg * 0.1; rg = mx - mn;
     function y(v) { return padT + (mx - v) / rg * (H - padT - padB); }
-    function fmt(v) { return Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(2); }
-    var innerW = W - padL - padR, slot = innerW / 3, cw = Math.min(slot * 0.46, 30), eps = rg * 0.002;
+    function fmt(v) { return v.toFixed(2); }
+    var innerW = W - padL - padR, slot = innerW / 3, cw = Math.min(slot * 0.5, 34);
     var yph = y(d.prH), ypl = y(d.prL);
+    var ncx = padL + slot * 2.5;   // the CURRENT (now) bar's centre
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="bv-bigsvg" preserveAspectRatio="xMidYMid meet">';
-    // prior-high / prior-low trigger lines — crisp & clear, labelled
-    s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.3" stroke-dasharray="4 2.5" opacity=".95"/>';
-    s += '<text x="' + (W - padR + 6) + '" y="' + (yph - 2.5).toFixed(1) + '" class="bv-axl" fill="var(--red)">▲ ' + fmt(d.prH) + '</text>';
-    s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.3" stroke-dasharray="4 2.5" opacity=".95"/>';
-    s += '<text x="' + (W - padR + 6) + '" y="' + (ypl + 9).toFixed(1) + '" class="bv-axl" fill="var(--green)">▼ ' + fmt(d.prL) + '</text>';
+    // highlight box around the bar being classified
+    var boxX = ncx - slot / 2 + 4, boxW = slot - 8;
+    s += '<rect x="' + boxX.toFixed(1) + '" y="10" width="' + boxW.toFixed(1) + '" height="' + (H - 20) + '" rx="9" fill="var(--accent)" fill-opacity=".06" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 4"/>';
+    s += '<text x="' + ncx.toFixed(1) + '" y="20" class="bv-axl" fill="var(--accent)" text-anchor="middle" font-weight="800">הנר לסיווג</text>';
+    // prior-high / prior-low trigger lines — crisp, labelled with the value
+    s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
+    s += '<text x="' + (W - padR + 7) + '" y="' + (yph + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--red)">גבוה קודם ' + fmt(d.prH) + '</text>';
+    s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
+    s += '<text x="' + (W - padR + 7) + '" y="' + (ypl + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--green)">נמוך קודם ' + fmt(d.prL) + '</text>';
     var labels = ["קודם", "קודם", "עכשיו"];
     bars.forEach(function (b, i) {
       var now = i === 2;
       var cx = padL + slot * (i + 0.5), up = b.c >= b.o, col = up ? "var(--green)" : "var(--red)";
-      var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 2);
-      var ww = now ? 3 : 2, op = now ? 1 : 0.5;
-      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="' + ww + '" opacity="' + op + '"/>';
-      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="2" fill="' + col + '" opacity="' + op + '"/>';
-      if (now) {   // arrows mark exactly where the live bar broke a trigger → ▲ top=2U, ▼ bottom=2D, both=3, none=1
-        if (b.h > d.prH + eps) s += '<path d="M' + (cx - 5).toFixed(1) + ' ' + (yph + 0.5).toFixed(1) + ' L' + (cx + 5).toFixed(1) + ' ' + (yph + 0.5).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (yph - 7).toFixed(1) + ' Z" fill="var(--green)"/>';
-        if (b.l < d.prL - eps) s += '<path d="M' + (cx - 5).toFixed(1) + ' ' + (ypl - 0.5).toFixed(1) + ' L' + (cx + 5).toFixed(1) + ' ' + (ypl - 0.5).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (ypl + 7).toFixed(1) + ' Z" fill="var(--red)"/>';
+      var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 3);
+      if (now) {   // the live bar — solid + glow
+        s += '<rect x="' + (cx - cw / 2 - 3).toFixed(1) + '" y="' + (top - 3).toFixed(1) + '" width="' + (cw + 6).toFixed(1) + '" height="' + (bh + 6).toFixed(1) + '" rx="5" fill="' + col + '" opacity=".22"/>';
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="3"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="' + col + '"/>';
+      } else {     // prior bars — hollow outline = context
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="var(--muted)" stroke-width="1.6" opacity=".6"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="none" stroke="var(--muted)" stroke-width="1.6" opacity=".8"/>';
       }
       s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 7) + '" class="bv-axl" fill="' + (now ? "var(--ink)" : "var(--muted)") + '" text-anchor="middle"' + (now ? ' font-weight="700"' : '') + '>' + labels[i] + '</text>';
     });
     return s + "</svg>";
+  }
+  function bvTypeExplain(cell) {   // StratSchool-style one-line classification caption + type badge
+    var t = cell && cell.t;
+    if (t === "2U") return { badge: "2U", cls: "up", txt: "הנר שבר את <b>הגבוה הקודם</b> ולא את הנמוך — נר <b>כיווני מעלה</b>." };
+    if (t === "2D") return { badge: "2D", cls: "dn", txt: "הנר שבר את <b>הנמוך הקודם</b> ולא את הגבוה — נר <b>כיווני מטה</b>." };
+    if (t === "3") return { badge: "3", cls: "out", txt: "הנר שבר <b>גם את הגבוה וגם את הנמוך</b> הקודמים — נר <b>חיצוני</b> (שני הכיוונים)." };
+    if (t === "1") return { badge: "1", cls: "ins", txt: "הנר נשאר <b>בתוך הטווח</b> של הנר הקודם — נר <b>פנימי</b> (התכנסות, בלי כיוון)." };
+    return { badge: "·", cls: "ins", txt: "אין סיווג לטיימפריים זה." };
   }
   function bvBuild3(cell, price) {
     var toks = bvParseSeq(cell.seq3d) || [cell.t, cell.t, cell.t];
@@ -10256,22 +10270,22 @@
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
     var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
     function y(v) { return pad + (mx - v) / rg * (H - 2 * pad); }
-    var slot = W / 3, cw = Math.min(slot * 0.4, 11), eps = rg * 0.002;
+    var slot = W / 3, cw = Math.min(slot * 0.44, 12);
     var yph = y(d.prH), ypl = y(d.prL);
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
     // prior-high / prior-low trigger lines — crisp & clear (thin but fully visible)
-    s += '<line x1="2" y1="' + yph.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1" stroke-dasharray="3 2" opacity=".95"/>';
-    s += '<line x1="2" y1="' + ypl.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 2" opacity=".95"/>';
+    s += '<line x1="2" y1="' + yph.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1" stroke-dasharray="3 2" opacity=".92"/>';
+    s += '<line x1="2" y1="' + ypl.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 2" opacity=".92"/>';
     bars.forEach(function (b, i) {
       var now = i === 2;
       var cx = slot * (i + 0.5), up = b.c >= b.o, col = up ? "var(--green)" : "var(--red)";
       var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 1.6);
-      var ww = now ? 2.1 : 1.3, op = now ? 1 : 0.55;
-      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="' + ww + '" opacity="' + op + '"/>';
-      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="' + col + '" opacity="' + op + '"/>';
-      if (now) {   // arrows poke through a trigger line exactly where the live bar broke it → bar type at a glance (▲=2U ▼=2D both=3 none=1)
-        if (b.h > d.prH + eps) s += '<path d="M' + (cx - 3.2).toFixed(1) + ' ' + (yph + 0.4).toFixed(1) + ' L' + (cx + 3.2).toFixed(1) + ' ' + (yph + 0.4).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (yph - 4.6).toFixed(1) + ' Z" fill="var(--green)"/>';
-        if (b.l < d.prL - eps) s += '<path d="M' + (cx - 3.2).toFixed(1) + ' ' + (ypl - 0.4).toFixed(1) + ' L' + (cx + 3.2).toFixed(1) + ' ' + (ypl - 0.4).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (ypl + 4.6).toFixed(1) + ' Z" fill="var(--red)"/>';
+      if (now) {   // the live bar — SOLID coloured (stands out as "now")
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="2"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.4" fill="' + col + '"/>';
+      } else {     // prior bars — HOLLOW outline = context
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="var(--muted)" stroke-width="1.2" opacity=".55"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="none" stroke="var(--muted)" stroke-width="1.2" opacity=".7"/>';
       }
     });
     return s + "</svg>";
@@ -10500,6 +10514,9 @@
       '.bv-dinfo{display:flex;flex-direction:column;gap:3px;margin-bottom:12px}' +
       '.bv-dk{font-family:var(--mono);font-size:12.5px;color:var(--muted)}.bv-dk b{color:var(--ink)}' +
       '.bv-dhint{font-size:11.5px;color:var(--muted);margin-top:6px;text-align:center}' +
+      '.bv-dcap{display:flex;align-items:center;gap:9px;justify-content:center;background:var(--soft2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:6px 0 2px}' +
+      '.bv-capbadge{width:30px;height:30px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:var(--mono)}' +
+      '.bv-captxt{font-size:13px;color:var(--ink);line-height:1.5;text-align:center}.bv-captxt b{font-weight:800}' +
       '.bv-dfull{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}' +
       '.bv-peers{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}' +
       '.bv-ph{font-size:13.5px;font-weight:700;color:var(--ink);margin-bottom:10px}' +
@@ -10538,8 +10555,10 @@
     var trig = (sel.ph != null) ? ('<div class="bv-dk">טריגר (נר קודם): נמוך <b style="color:var(--green)">' + sel.pl + '</b> · גבוה <b style="color:var(--red)">' + sel.ph + "</b></div>") : "";
     var ff = r.ftfc ? (sel.c === "up" ? "▲ שורי" : "▼ דובי") : "— אין";
     var info = '<div class="bv-dinfo">' + ohl + trig + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b> · המשכיות (FTFC): <b>" + ff + "</b></div></div>";
-    var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' +
-      '<div class="bv-dhint">3 הנרות האחרונים (' + BV_TFHE[tf] + ') · קו מקווקו = גבוה/נמוך הנר הקודם (רמות טריגר) · לגרף מלא עם גלגלת ← הכפתור למטה</div>';
+    var ex = bvTypeExplain(sel);
+    var cap = (sel.o != null) ? ('<div class="bv-dcap"><span class="bv-cell ' + ex.cls + ' bv-capbadge"><span class="bv-g">' + bvGlyph(sel.t) + '</span></span><span class="bv-captxt">' + ex.txt + '</span></div>') : "";
+    var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' + cap +
+      '<div class="bv-dhint">3 הנרות האחרונים (' + BV_TFHE[tf] + ') · הנר המלא = הנר לסיווג (' + BV_TFHE[tf] + ') · נרות חלולים = נרות קודמים · קו מקווקו = גבוה/נמוך הנר הקודם</div>';
     var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
     var full = '<div class="bv-dfull"><button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
     modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
