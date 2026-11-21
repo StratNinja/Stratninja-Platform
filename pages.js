@@ -10263,7 +10263,7 @@
     if (!r) { if (typeof openChart === "function") openChart(sym, bvTf); return; }
     var tf = bvTf, sel = r[tf] || {};
     var chg = (r.c != null ? r.c : 0), chgCls = chg >= 0 ? "up" : "dn", chgTxt = (chg >= 0 ? "+" : "") + Number(chg).toFixed(2) + "%";
-    var chips = BV_TFS.map(function (tfx) { var c = r[tfx] || {}; return '<div class="bv-cell ' + bvCellClass(c) + (tfx === tf ? " sel" : "") + '"><span class="bv-tf">' + tfx + '</span><span class="bv-g">' + bvGlyph(c.t) + "</span></div>"; }).join("");
+    var chips = BV_TFS.map(function (tfx) { var c = r[tfx] || {}; return '<div class="bv-cell ' + bvCellClass(c) + (tfx === tf ? " sel" : "") + '" data-bvdtf="' + tfx + '" title="' + tfx + ' · לחץ להחלפת טיימפריים"><span class="bv-tf">' + tfx + '</span><span class="bv-g">' + bvGlyph(c.t) + "</span></div>"; }).join("");
     var ohl = (sel.o != null) ? ('<div class="bv-dk">פתיחה ' + sel.o + " · גבוה " + bvHi(sel) + " · נמוך " + bvLo(sel) + "</div>") : "";
     var trig = (sel.ph != null) ? ('<div class="bv-dk">טריגר (נר קודם): נמוך <b style="color:var(--green)">' + sel.pl + '</b> · גבוה <b style="color:var(--red)">' + sel.ph + "</b></div>") : "";
     var ff = r.ftfc ? (sel.c === "up" ? "▲ שורי" : "▼ דובי") : "— אין";
@@ -10275,6 +10275,7 @@
     modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
     var scope = document.querySelector(".modal.bv-drill") || document;
     scope.querySelectorAll("[data-bvpeer]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvpeer")); }; });
+    scope.querySelectorAll("[data-bvdtf]").forEach(function (el) { el.onclick = function () { bvTf = el.getAttribute("data-bvdtf"); reRender(); bvOpenDrill(sym); }; });   // click a drill TF chip → switch timeframe + re-open drill
     var mtf = scope.querySelector("#bvMtf"); if (mtf) mtf.onclick = function () { if (typeof openMultiChart === "function") openMultiChart(sym); };
     var fb = scope.querySelector("#bvFull"); if (fb) fb.onclick = function () { if (typeof openChart === "function") openChart(sym, tf); };
   }
