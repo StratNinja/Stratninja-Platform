@@ -10212,20 +10212,27 @@
     mx += rg * 0.08; mn -= rg * 0.08; rg = mx - mn;
     function y(v) { return padT + (mx - v) / rg * (H - padT - padB); }
     function fmt(v) { return Math.abs(v) >= 100 ? v.toFixed(1) : v.toFixed(2); }
-    var innerW = W - padL - padR, slot = innerW / 3, cw = Math.min(slot * 0.46, 30);
+    var innerW = W - padL - padR, slot = innerW / 3, cw = Math.min(slot * 0.46, 30), eps = rg * 0.002;
     var yph = y(d.prH), ypl = y(d.prL);
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="bv-bigsvg" preserveAspectRatio="xMidYMid meet">';
-    s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--redbd)" stroke-width="1" stroke-dasharray="3 3"/>';
-    s += '<text x="' + (W - padR + 6) + '" y="' + (yph + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--red)">' + fmt(d.prH) + '</text>';
-    s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--greenbd)" stroke-width="1" stroke-dasharray="3 3"/>';
-    s += '<text x="' + (W - padR + 6) + '" y="' + (ypl + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--green)">' + fmt(d.prL) + '</text>';
+    // prior-high / prior-low trigger lines — bold, labelled "גבוה קודם / נמוך קודם"
+    s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.6" stroke-dasharray="5 3" opacity=".95"/>';
+    s += '<text x="' + (W - padR + 6) + '" y="' + (yph - 2.5).toFixed(1) + '" class="bv-axl" fill="var(--red)">▲ ' + fmt(d.prH) + '</text>';
+    s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.6" stroke-dasharray="5 3" opacity=".95"/>';
+    s += '<text x="' + (W - padR + 6) + '" y="' + (ypl + 9).toFixed(1) + '" class="bv-axl" fill="var(--green)">▼ ' + fmt(d.prL) + '</text>';
     var labels = ["קודם", "קודם", "עכשיו"];
     bars.forEach(function (b, i) {
+      var now = i === 2;
       var cx = padL + slot * (i + 0.5), up = b.c >= b.o, col = up ? "var(--green)" : "var(--red)";
       var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 2);
-      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="2"/>';
-      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="2" fill="' + col + '"/>';
-      s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 7) + '" class="bv-axl" fill="var(--muted)" text-anchor="middle">' + labels[i] + '</text>';
+      var ww = now ? 3 : 2, op = now ? 1 : 0.5;
+      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="' + ww + '" opacity="' + op + '"/>';
+      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="2" fill="' + col + '" opacity="' + op + '"/>';
+      if (now) {   // arrows mark exactly where the live bar broke a trigger → ▲ top=2U, ▼ bottom=2D, both=3, none=1
+        if (b.h > d.prH + eps) s += '<path d="M' + (cx - 5).toFixed(1) + ' ' + (yph + 0.5).toFixed(1) + ' L' + (cx + 5).toFixed(1) + ' ' + (yph + 0.5).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (yph - 7).toFixed(1) + ' Z" fill="var(--green)"/>';
+        if (b.l < d.prL - eps) s += '<path d="M' + (cx - 5).toFixed(1) + ' ' + (ypl - 0.5).toFixed(1) + ' L' + (cx + 5).toFixed(1) + ' ' + (ypl - 0.5).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (ypl + 7).toFixed(1) + ' Z" fill="var(--red)"/>';
+      }
+      s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 7) + '" class="bv-axl" fill="' + (now ? "var(--ink)" : "var(--muted)") + '" text-anchor="middle"' + (now ? ' font-weight="700"' : '') + '>' + labels[i] + '</text>';
     });
     return s + "</svg>";
   }
@@ -10249,15 +10256,23 @@
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
     var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
     function y(v) { return pad + (mx - v) / rg * (H - 2 * pad); }
-    var slot = W / 3, cw = Math.min(slot * 0.4, 11);
+    var slot = W / 3, cw = Math.min(slot * 0.4, 11), eps = rg * 0.002;
+    var yph = y(d.prH), ypl = y(d.prL);
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
-    s += '<line x1="2" y1="' + y(d.prH).toFixed(1) + '" x2="' + (W - 2) + '" y2="' + y(d.prH).toFixed(1) + '" stroke="var(--redbd)" stroke-width=".7" stroke-dasharray="2 2.5"/>';
-    s += '<line x1="2" y1="' + y(d.prL).toFixed(1) + '" x2="' + (W - 2) + '" y2="' + y(d.prL).toFixed(1) + '" stroke="var(--greenbd)" stroke-width=".7" stroke-dasharray="2 2.5"/>';
+    // prior-high / prior-low trigger lines — prominent (brighter + thicker than before)
+    s += '<line x1="2" y1="' + yph.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.1" stroke-dasharray="4 2" opacity=".92"/>';
+    s += '<line x1="2" y1="' + ypl.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.1" stroke-dasharray="4 2" opacity=".92"/>';
     bars.forEach(function (b, i) {
+      var now = i === 2;
       var cx = slot * (i + 0.5), up = b.c >= b.o, col = up ? "var(--green)" : "var(--red)";
       var top = y(Math.max(b.o, b.c)), bot = y(Math.min(b.o, b.c)), bh = Math.max(bot - top, 1.6);
-      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="1.5"/>';
-      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="' + col + '"/>';
+      var ww = now ? 2.1 : 1.3, op = now ? 1 : 0.55;
+      s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="' + ww + '" opacity="' + op + '"/>';
+      s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="' + col + '" opacity="' + op + '"/>';
+      if (now) {   // arrows poke through a trigger line exactly where the live bar broke it → bar type at a glance (▲=2U ▼=2D both=3 none=1)
+        if (b.h > d.prH + eps) s += '<path d="M' + (cx - 3.2).toFixed(1) + ' ' + (yph + 0.4).toFixed(1) + ' L' + (cx + 3.2).toFixed(1) + ' ' + (yph + 0.4).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (yph - 4.6).toFixed(1) + ' Z" fill="var(--green)"/>';
+        if (b.l < d.prL - eps) s += '<path d="M' + (cx - 3.2).toFixed(1) + ' ' + (ypl - 0.4).toFixed(1) + ' L' + (cx + 3.2).toFixed(1) + ' ' + (ypl - 0.4).toFixed(1) + ' L' + cx.toFixed(1) + ' ' + (ypl + 4.6).toFixed(1) + ' Z" fill="var(--red)"/>';
+      }
     });
     return s + "</svg>";
   }
