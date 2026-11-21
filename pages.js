@@ -10594,6 +10594,19 @@
       '.bv-hero.dn .bv-hero-n{color:var(--red)}.bv-hero.up .bv-hero-n{color:var(--green)}' +
       '.bv-hero-n small{font-size:20px;color:var(--muted);font-weight:800}' +
       '.bv-hero-l{font-size:12.5px;color:var(--ink);font-weight:800;letter-spacing:.5px;margin-top:5px}' +
+      '.bv-hero[data-bvlist]{cursor:pointer;transition:filter .12s,border-color .12s}.bv-hero[data-bvlist]:hover{filter:brightness(1.1)}' +
+      '.bv-hero-link{font-size:13px;color:var(--accent);font-weight:800;margin-top:11px}' +
+      // full sector in-force list (opened from the hero)
+      '.bvl-sub{font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px}.bvl-sub b.dn,.bvl-sub .dn{color:var(--red)}.bvl-sub b.up,.bvl-sub .up{color:var(--green)}' +
+      '.bvl-legend{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5}' +
+      '.bvl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:7px;max-height:60vh;overflow:auto;padding:2px}' +
+      '.bvl-item{display:flex;align-items:center;gap:8px;background:var(--soft2);border:1px solid var(--line);border-radius:8px;padding:7px 10px;cursor:pointer}' +
+      '.bvl-item:hover{border-color:var(--accent)}' +
+      '.bvl-item.al.dn{border-color:var(--red);box-shadow:inset 0 0 0 1px var(--red)}.bvl-item.al.up{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}' +
+      '.bvl-item.me{outline:2px solid var(--accent);outline-offset:1px}' +
+      '.bvl-g{font-family:var(--mono);font-size:12px;font-weight:800;min-width:26px;text-align:center}.bvl-g.up{color:var(--green)}.bvl-g.dn{color:var(--red)}.bvl-g.ins{color:var(--muted)}.bvl-g.out{color:#eab308}' +
+      '.bvl-sym{font-family:var(--mono);font-size:13.5px;font-weight:800;color:var(--ink);flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.bvl-chg{font-family:var(--mono);font-size:12px;font-weight:700;direction:ltr;flex:0 0 auto}.bvl-chg.up{color:var(--green)}.bvl-chg.dn{color:var(--red)}' +
       '.bv-bigwrap{background:radial-gradient(120% 130% at 85% 0%,#111a2e 0%,#0b1020 60%,#080c17 100%);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-bottom:4px}' +
       '.bv-bigsvg{width:100%;height:auto;display:block}' +
       '.bv-axl{font-family:var(--mono);font-size:11px}' +
@@ -10622,11 +10635,47 @@
     var dcls = down ? "dn" : up ? "up" : "";
     var dirWord = down ? "מכירה אלגוריתמית" : up ? "קנייה אלגוריתמית" : "ללא כיוון מובהק";
     var dirArrow = down ? "▼" : up ? "▲" : "•";
-    return '<div class="bv-hero ' + dcls + '">' +
+    return '<div class="bv-hero ' + dcls + '" data-bvlist="' + r.s + '" title="לחץ לרשימת כל המניות במגזר">' +
       '<div class="bv-hero-mid"><div class="bv-hero-sec">' + secName + (etf ? ' <span class="bv-hero-etf">' + etf + '</span>' : "") + '</div>' +
-        '<span class="bv-hero-badge"><span class="bv-hero-ar">' + dirArrow + '</span><span>' + dirWord + '</span></span></div>' +
+        '<span class="bv-hero-badge"><span class="bv-hero-ar">' + dirArrow + '</span><span>' + dirWord + '</span></span>' +
+        '<div class="bv-hero-link">📋 לחץ לרשימת כל ' + total + ' המניות ←</div></div>' +
       '<div class="bv-hero-kpi"><span class="bv-hero-n">' + alignFull + '<small>/' + total + '</small></span><span class="bv-hero-l">IN FORCE</span></div>' +
       '</div>';
+  }
+  function bvForceList(sym, tf) {   // full scrollable list of ALL sector stocks on this TF (in-force first), each clickable → its drill
+    if (typeof modal !== "function") return;
+    var r = (SCAN && SCAN.rows) ? SCAN.rows.find(function (x) { return x.s === sym; }) : null;
+    if (!r) return;
+    tf = tf || bvTf;
+    var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
+    var members = SCAN.rows.filter(function (x) { return x.sec === r.sec && x[tf] && x[tf].o != null; });
+    members.sort(function (a, b) {
+      var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
+      if (aa !== bb) return bb - aa;
+      return Math.abs(b.c || 0) - Math.abs(a.c || 0);
+    });
+    var aligned = members.filter(function (x) { return refDir && x[tf].ifc === refDir; }).length;
+    var secName = (typeof secHe === "function") ? secHe(r.sec) : (r.sec || "");
+    var dcls = refDir === "down" ? "dn" : refDir === "up" ? "up" : "";
+    var dirWord = refDir === "down" ? "מכירה" : refDir === "up" ? "קנייה" : "";
+    var itemsHtml = members.map(function (x) {
+      var pc = x[tf] || {}, ch = (x.c != null ? x.c : 0), al = (refDir && pc.ifc === refDir), me = (x.s === sym);
+      return '<div class="bvl-item ' + (al ? "al " + dcls : "") + (me ? " me" : "") + '" data-bvdrill="' + x.s + '" title="' + x.s + ' ' + (pc.t || "") + (pc.ifc ? " · IN FORCE " + pc.ifc : "") + '">' +
+        '<span class="bvl-g ' + bvCellClass(pc) + '">' + bvGlyph(pc.t) + '</span>' +
+        '<span class="bvl-sym">' + x.s + (me ? ' ●' : "") + '</span>' +
+        '<span class="bvl-chg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + '%</span></div>';
+    }).join("");
+    var head = '📡 <b>' + secName + '</b> — <b class="' + dcls + '">' + aligned + '/' + members.length + '</b> IN FORCE' + (dirWord ? ' <span class="' + dcls + '">(' + dirWord + ' אלגוריתמית)</span>' : "") + ' · ' + BV_TFHE[tf];
+    var body = bvDrillCss() +
+      '<div class="bvl-wrap">' +
+      '<button class="btn ghost" id="bvlBack" style="font-size:13px;font-weight:600;margin-bottom:12px">← חזרה ל-' + sym + '</button>' +
+      '<div class="bvl-sub">' + head + '</div>' +
+      '<div class="bvl-legend">מסגרת צבעונית = IN FORCE (זזה יחד עם האלגו) · ממוינות: המיושרות קודם · לחץ על מניה לכרטיס המלא שלה</div>' +
+      '<div class="bvl-grid">' + itemsHtml + '</div></div>';
+    modal(secName + " · רשימת IN FORCE · " + BV_TFHE[tf], body, "bv-drill");
+    var scope = document.querySelector(".modal.bv-drill") || document;
+    scope.querySelectorAll("[data-bvdrill]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvdrill")); }; });
+    var bk = scope.querySelector("#bvlBack"); if (bk) bk.onclick = function () { bvOpenDrill(sym); };
   }
   function bvOpenDrill(sym) {
     if (typeof modal !== "function") return;
@@ -10648,6 +10697,7 @@
     modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + bvHeroBand(r, tf) + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
     var scope = document.querySelector(".modal.bv-drill") || document;
     scope.querySelectorAll("[data-bvpeer]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvpeer")); }; });
+    scope.querySelectorAll("[data-bvlist]").forEach(function (el) { el.onclick = function () { bvForceList(el.getAttribute("data-bvlist"), tf); }; });   // click the sector hero → full in-force list
     scope.querySelectorAll("[data-bvdtf]").forEach(function (el) { el.onclick = function () { bvTf = el.getAttribute("data-bvdtf"); reRender(); bvOpenDrill(sym); }; });   // click a drill TF chip → switch timeframe + re-open drill
     var mtf = scope.querySelector("#bvMtf"); if (mtf) mtf.onclick = function () { if (typeof openMultiChart === "function") openMultiChart(sym); };
     var fb = scope.querySelector("#bvFull"); if (fb) fb.onclick = function () { if (typeof openChart === "function") openChart(sym, tf); };
