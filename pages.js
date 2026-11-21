@@ -9109,6 +9109,7 @@
     if (conflict) f.push({ i: "⚔️", t: "<b>" + conflict + "</b> נרות בקונפליקט (2U אדום / 2D ירוק) — היפוך אפשרי" });
     return f;
   }
+  const _FAV_EDITORIAL = true;   // מועדפים → editorial hero (same language as the pulse pages); reversible: set false for the classic page-head
   function renderFavorites() {
     const favs = window.Prefs ? window.Prefs.favorites() : [];
     const list = favs.map(sym => {
@@ -9246,6 +9247,23 @@
         const _favTablePanel = '<div class="panel"' + (favEmptyNote ? ' style="display:none"' : "") + '><h3><span>רשימת המעקב שלי <span class="muted" style="font-size:12px">' + favs.length + " מניות</span></span></h3><div class='tablewrap'><table class='scan-table'><thead><tr><th></th>" + favTh("סימבול", "sym", true) + favTh("🔔 התראה", "alert", true) + favTh("🕐 זמן", "atime", true) + favTh("סקטור", "sec", true) + favTh("תת-סקטור", "ind", true) + favTh("💼 עסקה", "trade", true) + favTh("מחיר", "price") + favTh("%", "chg") + favTh("Y", "Y") + favTh("Q", "Q") + favTh("M", "M") + favTh("W", "W") + favTh("D", "D") + "<th></th></tr></thead><tbody>" + rows + "</tbody></table></div>" + colorLegend() + "</div>";
         body = favToolbar + favEmptyNote + '<div class="scan-layout">' + _favTablePanel + favInsightsPanel + "</div>" + otherPanel;
       }
+    }
+    if (_FAV_EDITORIAL && favs.length) {
+      const nAlert = list.filter(t => (t._alertN || 0) > 0).length;
+      const nPos = list.filter(t => t._hasPos).length;
+      const ms = todayMarketState();
+      const riskTxt = ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—";
+      const riskCls = ms ? ms.cls : "zero";
+      const _tone = nAlert ? "<b>" + nAlert + "</b> באיתות עכשיו" : "שקט כרגע — אין איתות פעיל";
+      const hero = '<div class="em-dash em-tight fav-dash">' +
+        '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">מועדפים</span>' +
+          '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span></div>' +
+        '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">רשימת המעקב שלך · נשמרת בענן</div>' +
+          '<h1>' + favs.length + ' מניות במעקב <span class="em-h1sep">·</span> ' + _tone + '</h1>' +
+          '<div class="em-sub"><span class="em-pos">🔔 ' + nAlert + ' באיתות</span> · <span style="color:#a78bfa;font-weight:700">💼 ' + nPos + ' בפוזיציה</span> · <span class="muted">👀 ' + (favs.length - nAlert - list.filter(t => t._hasPos && (t._alertN || 0) === 0).length) + ' במעקב בלבד</span></div></div>' +
+          '<div class="em-big"><div class="n num">' + favs.length + '</div><div class="cap">במעקב</div></div></div>' +
+        '</div>';
+      return '<div class="fav-ed">' + hero + pushStatusBar() + body + '</div>';
     }
     return '<div class="page-head"><h1>מועדפים</h1><div class="sub">רשימת המעקב האישית שלך · נשמרת בענן</div></div>' + pushStatusBar() + body;
   }
