@@ -10085,7 +10085,7 @@
       '.bv-g{font-family:var(--mono);font-size:12.5px;font-weight:800}' +
       '.bv-cell.up{background:var(--greenbg)}.bv-cell.up .bv-g{color:var(--green)}' +
       '.bv-cell.dn{background:var(--redbg)}.bv-cell.dn .bv-g{color:var(--red)}' +
-      '.bv-cell.ins{background:var(--soft)}.bv-cell.ins .bv-g{color:var(--muted)}' +
+      '.bv-cell.ins{background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 0 8px rgba(255,255,255,.22)}.bv-cell.ins .bv-g{color:#fff;text-shadow:0 0 7px rgba(255,255,255,.7)}' +
       '.bv-cell.out{background:rgba(234,179,8,.14);box-shadow:inset 0 0 0 1.6px #eab308,0 0 8px rgba(234,179,8,.55)}.bv-cell.out .bv-g{color:#eab308}' +
       '.bv-cell.sel{outline:2px solid var(--accent);outline-offset:2px}' +
       '.bv-ftfc{font-family:var(--mono);font-size:11px;padding:5px 9px;border-radius:8px;white-space:nowrap;margin-inline-start:auto}' +
@@ -10101,7 +10101,7 @@
   function renderBreakVel() {
     var rows = (SCAN && SCAN.rows) ? SCAN.rows : null;
     var tf = bvTf;
-    var head = '<div class="page-head"><h1>🚀 מהירות פריצה</h1><div class="sub">לוח המשכיות TheStrat — קבוצות ETF לפי סוג-נר ורצף · נתונים חיים</div></div>';
+    var head = '<div class="page-head"><h1>🤖 תנועה אלגוריתמית</h1><div class="sub">זיהוי מכירה/קנייה אלגוריתמית — יישור TheStrat רוחבי לפי סקטור · נתונים חיים</div></div>';
     var tfbar = '<div class="bv-tfbar"><div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div>' +
       '<div class="bv-tfseg"><button data-bvpat="current"' + (bvPat === "current" ? ' class="on"' : "") + '>תבנית נוכחית</button><button data-bvpat="future"' + (bvPat === "future" ? ' class="on"' : "") + '>תבנית עתידית</button></div>' +
       '<span class="bv-hint">בחר טיימפריים ותבנית — הכל מתעדכן בזמן אמת</span></div>';
@@ -10139,16 +10139,27 @@
   function bvTfRange(tf) { return ({ D: "5D", W: "1M", M: "6M", Q: "12M", Y: "60M" })[tf] || "1M"; }
   function bvPeers(r, tf) {
     if (!(SCAN && SCAN.rows) || !r.sec) return "";
-    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && x[tf]; });
-    peers.sort(function (a, b) { return Math.abs(b.c || 0) - Math.abs(a.c || 0); });
+    var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";   // the clicked ticker's in-force direction
+    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && x[tf] && x[tf].o != null; });
+    peers.sort(function (a, b) {   // in-force-aligned first (sector moving together), then by |chg|
+      var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
+      if (aa !== bb) return bb - aa;
+      return Math.abs(b.c || 0) - Math.abs(a.c || 0);
+    });
     peers = peers.slice(0, 18);
     if (!peers.length) return "";
     var secName = (typeof secHe === "function") ? secHe(r.sec) : r.sec;
+    var aligned = peers.filter(function (x) { return refDir && x[tf].ifc === refDir; }).length;
+    var dirWord = refDir === "down" ? "מכירה" : refDir === "up" ? "קנייה" : "";
+    var dcls = refDir === "down" ? "dn" : refDir === "up" ? "up" : "";
     var cells = peers.map(function (x) {
-      var c = x[tf] || {}, ch = (x.c != null ? x.c : 0);
-      return '<div class="bv-peer" data-bvpeer="' + x.s + '"><span class="bv-psym">' + x.s + '</span><span class="bv-pcell ' + bvCellClass(c) + '">' + bvGlyph(c.t) + '</span><span class="bv-psp"></span><span class="bv-ppx">' + (x.p != null ? x.p : "—") + '</span><span class="bv-pchg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + "%</span></div>";
+      var pc = x[tf] || {}, ch = (x.c != null ? x.c : 0), al = (refDir && pc.ifc === refDir);
+      return '<div class="bv-peer2' + (al ? " al " + dcls : "") + '" data-bvpeer="' + x.s + '" title="' + x.s + " " + (pc.t || "") + (pc.ifc ? " · IN FORCE " + pc.ifc : "") + '">' +
+        '<div class="bv-p2top"><span class="bv-psym">' + x.s + '</span><span class="bv-pchg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + '%</span></div>' +
+        '<div class="bv-p2chart">' + bvCandle(pc, x.p) + '</div></div>';
     }).join("");
-    return '<div class="bv-peers"><div class="bv-ph">🧩 מניות באותו סקטור — ' + secName + " (" + BV_TFHE[tf] + ")</div><div class=\"bv-pgrid\">" + cells + "</div></div>";
+    var head = '📡 ' + secName + ' — <b class="' + dcls + '">' + aligned + '/' + peers.length + '</b> IN FORCE' + (dirWord ? ' <span class="' + dcls + '">(' + dirWord + ' אלגוריתמית)</span>' : "") + ' · ' + BV_TFHE[tf];
+    return '<div class="bv-peers"><div class="bv-ph">' + head + '</div><div class="bv-p2grid">' + cells + "</div></div>";
   }
   function bvDrillCss() {
     return '<style>' +
@@ -10174,6 +10185,14 @@
       '.bv-bigwrap{background:var(--soft2);border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:4px}' +
       '.bv-bigsvg{width:100%;height:auto;display:block}' +
       '.bv-axl{font-family:var(--mono);font-size:8px}' +
+      '.bv-p2grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(94px,1fr));gap:7px}' +
+      '.bv-peer2{background:var(--soft2);border:1px solid var(--line);border-radius:9px;padding:6px 6px 4px;cursor:pointer}' +
+      '.bv-peer2:hover{border-color:var(--accent)}' +
+      '.bv-peer2.al.dn{border-color:var(--red);box-shadow:0 0 0 1px var(--red),0 0 10px var(--redbg)}' +
+      '.bv-peer2.al.up{border-color:var(--green);box-shadow:0 0 0 1px var(--green),0 0 10px var(--greenbg)}' +
+      '.bv-p2top{display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px}' +
+      '.bv-p2chart{height:40px}.bv-p2chart svg{width:100%;height:40px;display:block}' +
+      '.bv-ph b.dn,.bv-ph .dn{color:var(--red)}.bv-ph b.up,.bv-ph .up{color:var(--green)}' +
       '</style>';
   }
   function bvOpenDrill(sym) {
