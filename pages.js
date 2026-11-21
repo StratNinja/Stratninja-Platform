@@ -10215,10 +10215,10 @@
     var innerW = W - padL - padR, slot = innerW / 3, cw = Math.min(slot * 0.46, 30), eps = rg * 0.002;
     var yph = y(d.prH), ypl = y(d.prL);
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="bv-bigsvg" preserveAspectRatio="xMidYMid meet">';
-    // prior-high / prior-low trigger lines — soft, labelled (the break-arrows carry the signal)
-    s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>';
+    // prior-high / prior-low trigger lines — crisp & clear, labelled
+    s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.3" stroke-dasharray="4 2.5" opacity=".95"/>';
     s += '<text x="' + (W - padR + 6) + '" y="' + (yph - 2.5).toFixed(1) + '" class="bv-axl" fill="var(--red)">▲ ' + fmt(d.prH) + '</text>';
-    s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>';
+    s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.3" stroke-dasharray="4 2.5" opacity=".95"/>';
     s += '<text x="' + (W - padR + 6) + '" y="' + (ypl + 9).toFixed(1) + '" class="bv-axl" fill="var(--green)">▼ ' + fmt(d.prL) + '</text>';
     var labels = ["קודם", "קודם", "עכשיו"];
     bars.forEach(function (b, i) {
@@ -10259,9 +10259,9 @@
     var slot = W / 3, cw = Math.min(slot * 0.4, 11), eps = rg * 0.002;
     var yph = y(d.prH), ypl = y(d.prL);
     var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
-    // prior-high / prior-low trigger lines — subtle (soft; the break-arrows carry the signal)
-    s += '<line x1="2" y1="' + yph.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width=".8" stroke-dasharray="3 2.5" opacity=".5"/>';
-    s += '<line x1="2" y1="' + ypl.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width=".8" stroke-dasharray="3 2.5" opacity=".5"/>';
+    // prior-high / prior-low trigger lines — crisp & clear (thin but fully visible)
+    s += '<line x1="2" y1="' + yph.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1" stroke-dasharray="3 2" opacity=".95"/>';
+    s += '<line x1="2" y1="' + ypl.toFixed(1) + '" x2="' + (W - 2) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 2" opacity=".95"/>';
     bars.forEach(function (b, i) {
       var now = i === 2;
       var cx = slot * (i + 0.5), up = b.c >= b.o, col = up ? "var(--green)" : "var(--red)";
