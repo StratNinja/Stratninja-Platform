@@ -1751,7 +1751,7 @@
   }
   // S&P 500 tab views, toggled by a button: "heat" (treemap) | "risk" (volatile map) | "sectors" (breadth ladder).
   // Default = HEAT MAP so landing on the page lands straight on the map (Adi) — and remembers the last choice.
-  let sp500View = "heat"; try { sp500View = localStorage.getItem("sn_sp_view") || "heat"; } catch (e) {}
+  let sp500View = "sectors"; try { sp500View = localStorage.getItem("sn_sp_view") || "sectors"; } catch (e) {}   // default → editorial רוחב ladder (heat map one click away)
   if (["heat", "risk", "sectors"].indexOf(sp500View) < 0) sp500View = "heat";
   function sp500ViewSwitch() {
     return '<div class="sp-view-switch">' +
@@ -2061,7 +2061,47 @@
     openMembersDrill(name + (etf ? " · " + etf : ""), members, etf, note);
   }
 
+  // EDITORIAL "רוחב סקטוריאלי" — the sector/sub breadth ladder view, reversible (set false to restore classic).
+  const _SP500_EDITORIAL = true;
+  function renderSp500Editorial() {
+    const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
+    if (!secs || !secs.length) return '<div class="em-dash em-tight"><div class="em-hero"><div class="em-htx"><div class="em-eye">רוחב סקטוריאלי · S&P 500</div><h1>ממתין לנתוני מסחר…</h1><div class="em-sub">המפה מחושבת בשעות המסחר (מעל/מתחת לפתיחת היום).</div></div></div>' + '<div class="sp-view-row" style="margin-top:16px">' + sp500ViewSwitch() + '</div></div>';
+    const b = LIVE.breadth || {};
+    const pct = b.total ? Math.round(b.above / b.total * 100) : 0;
+    const _MIN = 10;
+    const subMap = {};
+    secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
+    const subArr = ((LIVE && LIVE.subsectors && LIVE.subsectors.length) ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 }) : Object.keys(subMap).map(k => subMap[k])).filter(o => o.total >= _MIN);
+    const secArr = secs.filter(s => s.name !== "אחר" && s.name !== "מדדים" && (s.total || 0) >= _MIN);
+    const _bp = o => o.total ? o.above / o.total * 100 : null;
+    const sortB = arr => arr.slice().sort((a, c) => (_bp(c) || 0) - (_bp(a) || 0));
+    const row = (o, isSub) => { const p = _bp(o); const etf = isSub ? (typeof subEtfFor === "function" ? subEtfFor(o.name) : "") : etfFor(o.name); const nm = isSub ? o.name : secHe(o.name);
+      const cls = p == null ? "" : p >= 55 ? "em-pos" : p <= 45 ? "em-neg" : "";
+      return '<div class="tf-row bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '">' +
+        '<span class="tf-nm">' + (etf ? '<span class="sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span> ' : '') + escHtml(nm) + '</span>' +
+        '<span class="tf-bar"><span class="' + (p != null && p >= 50 ? "up" : "dn") + '" style="width:' + (p == null ? 0 : Math.max(4, Math.min(100, p))).toFixed(0) + '%"></span></span>' +
+        '<span class="tf-v num ' + cls + '">' + (p == null ? "—" : p.toFixed(0) + "%") + '</span><span class="tf-sub">' + o.above + "/" + o.total + '</span></div>'; };
+    const col = (title, arr, isSub) => '<div class="em-card tf-col"><h3>' + title + '</h3>' + (arr.length ? sortB(arr).map(o => row(o, isSub)).join("") : '<div class="muted" style="padding:8px 2px">—</div>') + '</div>';
+    const ms = todayMarketState();
+    const riskTxt = ms ? (ms.cls === "pos" ? "Risk-On" : ms.cls === "neg" ? "Risk-Off" : "מעורב") : "—";
+    const riskCls = ms ? ms.cls : "zero";
+    const tone = pct >= 55 ? "רחב וחזק" : pct <= 45 ? "צר וחלש" : "מעורב";
+    return '<div class="em-dash em-tight tf-dash sp-dash" data-sp-editorial="1">' +
+      '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">רוחב סקטוריאלי</span>' +
+        '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span>' +
+        '<span class="em-sep"></span><span class="sp-view-row">' + sp500ViewSwitch() + '</span></div>' +
+      '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">S&P 500 · כמה מהמניות מעל הפתיחה</div>' +
+        '<h1>רוחב השוק ' + tone + ' <span class="em-h1sep">·</span> <b>' + pct + '%</b> מעל הפתיחה</h1>' +
+        '<div class="em-sub"><span class="em-pos">▲ ' + (b.above || 0) + ' מעל</span> · <span class="em-neg">' + (b.below || 0) + ' מתחת ▼</span> · מדורג מהחזק לחלש · לחץ שורה לכל המניות.</div></div>' +
+        '<div class="em-big"><div class="n num">' + pct + '<small>%</small></div><div class="cap">מעל הפתיחה</div></div></div>' +
+      '<div class="tf-grid tf-grid2">' +
+        col("🗂️ עוצמת סקטורים · רוחב", secArr, false) +
+        col("🏭 עוצמת תתי-סקטורים · רוחב", subArr, true) +
+      '</div>' +
+    '</div>';
+  }
   function renderSp500() {
+    if (_SP500_EDITORIAL && sp500View !== "heat" && sp500View !== "risk") return renderSp500Editorial();
     const secs = (LIVE && LIVE.sectors) ? LIVE.sectors : null;
     if (!secs || !secs.length) {
       return '<div class="page-head"><h1>S&P 500 · מפת שוק</h1><div class="sub">מפת חום של המדד: כל ריבוע = מניה, הגודל = שווי השוק, הצבע = התנועה היום. מבט מהיר על מי מוביל ומי נופל.</div></div>' +
