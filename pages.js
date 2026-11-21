@@ -2081,7 +2081,9 @@
     const _bp = o => o.total ? o.above / o.total * 100 : null;
     // sort by breadth, STRONGEST first → weakest (Adi: גבוה קודם ואז יורדים); the _MIN filter above drops 0/0 thematic ETFs (KRE/NLR/UFO…)
     const sortB = arr => arr.slice().sort((a, c) => (_bp(c) || 0) - (_bp(a) || 0));
-    const secAlpha = sortB(secArr), subAlpha = sortB(subArr);
+    // "fixed" → shared alphabetical order (same positions across pages); "value" → by breadth (hierarchy)
+    const secAlpha = pulseSort === "fixed" ? secArr.slice().sort(_pulseByHe) : sortB(secArr);
+    const subAlpha = pulseSort === "fixed" ? subArr.slice().sort(_pulseByNm) : sortB(subArr);
     const row = (o, isSub) => { const p = _bp(o); const etf = isSub ? (typeof subEtfFor === "function" ? subEtfFor(o.name) : "") : etfFor(o.name); const nm = isSub ? o.name : secHe(o.name);
       const cls = p == null ? "" : p >= 55 ? "em-pos" : p <= 45 ? "em-neg" : "";
       return '<div class="tf-row bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '">' +
@@ -2102,14 +2104,14 @@
     return '<div class="em-dash em-tight tf-dash sp-dash" data-sp-editorial="1">' +
       '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">רוחב סקטוריאלי</span>' +
         '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span>' +
-        '<span class="em-sep"></span><span class="sp-view-row">' + sp500ViewSwitch() + '</span></div>' +
+        '<span class="em-sep"></span><span class="sp-view-row">' + sp500ViewSwitch() + '</span>' + _pulseSortToggle() + '</div>' +
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">S&P 500 · כמה מהמניות מעל הפתיחה</div>' +
         '<h1>רוחב השוק ' + tone + ' <span class="em-h1sep">·</span> <b>' + pct + '%</b> מעל הפתיחה</h1>' +
         '<div class="em-sub"><span class="em-pos">▲ ' + (b.above || 0) + ' מעל</span> · <span class="em-neg">' + (b.below || 0) + ' מתחת ▼</span> · לחץ אריח לכל המניות בסקטור.</div></div>' +
         '<div class="em-big"><div class="n num">' + pct + '<small>%</small></div><div class="cap">מעל הפתיחה</div></div></div>' +
-      '<div class="em-secttl2">🗂️ עוצמת סקטורים · מהחזק לחלש</div>' +
+      '<div class="em-secttl2">🗂️ עוצמת סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהחזק לחלש") + '</div>' +
       '<div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => tile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
-      '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · מהחזק לחלש</div>' +
+      '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהחזק לחלש") + '</div>' +
       '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => tile(o, true)).join("") : '<div class="muted">—</div>') + '</div>' +
     '</div>';
   }
@@ -8090,9 +8092,11 @@
       // drop empty tiles (0 stocks, e.g. thematic ETFs with no scanner members) so there are no blank "—" cards.
       const _net = o => (o.tot ? (o.fg - o.fr) / o.tot : -2);
       const _dom = o => Math.max(o.fg || 0, o.fr || 0);
-      const sortN = arr => arr.slice().filter(o => (o.tot || 0) > 0).sort((a, c) => _net(c) - _net(a) || _dom(c) - _dom(a));
-      const secAlpha = sortN(secArrG);
-      const subAlpha = sortN(subArr);
+      const _alive = arr => arr.filter(o => (o.tot || 0) > 0);   // drop empty (0-stock) tiles in both modes
+      const sortN = arr => _alive(arr).slice().sort((a, c) => _net(c) - _net(a) || _dom(c) - _dom(a));
+      // "fixed" → shared name order (same spot across pages; sec .name is already secHe'd); "value" → net continuity hierarchy
+      const secAlpha = pulseSort === "fixed" ? _alive(secArrG).slice().sort((a, c) => a.name < c.name ? -1 : a.name > c.name ? 1 : 0) : sortN(secArrG);
+      const subAlpha = pulseSort === "fixed" ? _alive(subArr).slice().sort((a, c) => String(a.name) < String(c.name) ? -1 : String(a.name) > String(c.name) ? 1 : 0) : sortN(subArr);
       const etile = (o, isSub) => {
         const fg = o.fg || 0, fr = o.fr || 0, tot = o.tot || 0;
         const dom = Math.max(fg, fr), domShare = tot ? Math.round(dom / tot * 100) : 0;
@@ -8117,10 +8121,10 @@
           '<h1>ההמשכיות ' + tone + ' <span class="em-h1sep">·</span> <b>' + upSec + '</b> סקטורים עולים <span class="em-h1sep">·</span> <b>' + dnSec + '</b> יורדים</h1>' +
           '<div class="em-sub">בכל אריח: <b>%</b> מהמניות של אותו נכס בכיוון ההמשכיות הדומיננטי · <span class="em-pos">🟢 עולה</span> / <span class="em-neg">🔴 יורד</span> · לחץ אריח לרשימת המניות.</div></div>' +
           '<div class="em-big"><div class="n num">' + upSec + '<small>/' + (upSec + dnSec) + '</small></div><div class="cap">סקטורים עולים</div></div></div>' +
-        '<div class="tf-ctrl cont-ctrl">' + ftfcSwitch + '</div>' +
-        '<div class="em-secttl2">🗂️ עוצמת סקטורים · מהכי עולה לכי יורד</div>' +
+        '<div class="tf-ctrl cont-ctrl">' + ftfcSwitch + _pulseSortToggle() + '</div>' +
+        '<div class="em-secttl2">🗂️ עוצמת סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
         '<div class="cont-right"><div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => etile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
-        '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · מהכי עולה לכי יורד</div>' +
+        '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
         '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => etile(o, true)).join("") : '<div class="muted">—</div>') + '</div></div>' +
       '</div>';
     }
@@ -8640,14 +8644,14 @@
       '<div class="em-top"><span class="em-logo" style="font:900 26px Heebo,sans-serif">תזרים סקטוריאלי</span>' +
         '<span class="em-pill ' + riskCls + '" style="margin-inline-start:10px">' + riskTxt + '</span>' +
         '<span class="em-sep"></span>' +
-        '<span class="tf-ctrl"><span class="tf-ctrl-lbl">מדד:</span>' + modeBtns + '<span class="tf-ctrl-lbl">טווח:</span>' + tfBtns + '</span></div>' +
+        '<span class="tf-ctrl"><span class="tf-ctrl-lbl">מדד:</span>' + modeBtns + '<span class="tf-ctrl-lbl">טווח:</span>' + tfBtns + '</span>' + _pulseSortToggle() + '</div>' +
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">לאן הכסף זורם · ' + _mfRangeLbl(tf) + '</div>' +
         '<h1>הכסף נכנס ל<b>' + escHtml(upName) + '</b> <span class="em-h1sep">·</span> ויוצא מ<b style="color:#ff6b7a">' + escHtml(dnName) + '</b></h1>' +
         '<div class="em-sub">התנועה היומית בפועל של כל סקטור ותת-סקטור — לפי ' + (flowSecMode === "avg" ? "ממוצע המניות (רוחב)" : "תנועת תעודת-הסל") + '.</div></div></div>' +
-      '<div class="em-secttl2">🗂️ סקטורים · מהחזק לחלש</div>' +
-      '<div class="em-tilegrid">' + (sS.length ? sS.map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
-      '<div class="em-secttl2">🏭 תתי-סקטורים · מהחזק לחלש</div>' +
-      '<div class="em-tilegrid">' + (subS.length ? subS.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🗂️ סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהחזק לחלש") + '</div>' +
+      '<div class="em-tilegrid">' + ((pulseSort === "fixed" ? secAlpha : sS).length ? (pulseSort === "fixed" ? secAlpha : sS).map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🏭 תתי-סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהחזק לחלש") + '</div>' +
+      '<div class="em-tilegrid">' + ((pulseSort === "fixed" ? subAlpha : subS).length ? (pulseSort === "fixed" ? subAlpha : subS).map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
     '</div>';
   }
   // ===== "⚡ פעימה" — MERGED view: תזרים (money-flow) + רוחב (breadth) in ONE dual-metric tile =====
@@ -9952,6 +9956,15 @@
   const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];   /* "most2s / אנרגיה כיוונית" tab hidden 2026-11-21 — subsumed by the "תנועה אלגוריתמית" page (algo-pressure strip). renderMost2s kept, re-add the ["most2s",...] entry to restore. ⚡ פעימה (merged תזרים+רוחב, renderPulseMerged) REMOVED from nav 2026-11-21 (Adi "פחות אהבתי") — fn+wire+CSS kept as dead code; to restore re-add ["merged","⚡ פעימה"] here + merged: entries in the two maps below. */
   const _pulseRender = { market: () => renderMarket(), sp500: () => renderSp500(), today: () => renderToday(), most2s: () => renderMost2s(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
   const _pulseWire = { market: () => wireMarket(), sp500: () => wireSp500(), today: () => wireToday(), most2s: () => wireMost2s(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
+  // tile ordering across תזרים/רוחב/המשכיות: "value" = each page sorted by its own metric (hierarchy);
+  // "fixed" = shared alphabetical order so the SAME sector sits in the SAME spot across pages (Adi wanted both at different times → give a toggle).
+  let pulseSort = "value"; try { pulseSort = localStorage.getItem("sn_pulse_sort") || "value"; } catch (e) {}
+  function _pulseSortToggle() {
+    return '<span class="tf-ctrl pulse-sort"><span class="tf-ctrl-lbl">סדר:</span>' +
+      [["value", "📊 עוצמה"], ["fixed", "📌 קבוע"]].map(x => '<button class="tf-chip' + (pulseSort === x[0] ? " on" : "") + '" data-pulsesort="' + x[0] + '" title="' + (x[0] === "value" ? "מיון מהחזק לחלש בכל עמוד" : "מיקום קבוע — אותו סקטור באותו מקום בכל העמודים") + '">' + x[1] + '</button>').join("") + '</span>';
+  }
+  const _pulseByHe = (a, b) => { const x = secHe(a.name || a.rawname), y = secHe(b.name || b.rawname); return x < y ? -1 : x > y ? 1 : 0; };
+  const _pulseByNm = (a, b) => { const x = String(a.name), y = String(b.name); return x < y ? -1 : x > y ? 1 : 0; };
   function renderPulse() {
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     const bar = '<div class="pulse-tabs">' + PULSE_TABS.map(([k, l]) =>
@@ -9966,6 +9979,7 @@
       // smooth crossfade on tab switch only (never on the live-data refresh) when the browser supports it
       if (document.startViewTransition) { try { document.startViewTransition(go); } catch (e) { go(); } } else go();
     });
+    document.querySelectorAll("[data-pulsesort]").forEach(b => b.onclick = () => { pulseSort = b.dataset.pulsesort; try { localStorage.setItem("sn_pulse_sort", pulseSort); } catch (e) {} reRender(); });
     const tab = _pulseRender[pulseTab] ? pulseTab : "market";
     if (_pulseWire[tab]) _pulseWire[tab]();
   }
