@@ -8086,10 +8086,13 @@
       : "";
     const ms = todayMarketState();
     if (_CONT_EDITORIAL) {
-      const _byHe = (a, c) => secHe(a.rawname) < secHe(c.rawname) ? -1 : secHe(a.rawname) > secHe(c.rawname) ? 1 : 0;
-      const _byNm = (a, c) => String(a.name) < String(c.name) ? -1 : String(a.name) > String(c.name) ? 1 : 0;
-      const secAlpha = secArrG.slice().sort(_byHe);
-      const subAlpha = subArr.slice().sort(_byNm);   // 18 SPDR subs — same set & order as תזרים/רוחב
+      // HIERARCHY (Adi): sort by net continuity — most green-dominant (bullish) first → most red-dominant last;
+      // drop empty tiles (0 stocks, e.g. thematic ETFs with no scanner members) so there are no blank "—" cards.
+      const _net = o => (o.tot ? (o.fg - o.fr) / o.tot : -2);
+      const _dom = o => Math.max(o.fg || 0, o.fr || 0);
+      const sortN = arr => arr.slice().filter(o => (o.tot || 0) > 0).sort((a, c) => _net(c) - _net(a) || _dom(c) - _dom(a));
+      const secAlpha = sortN(secArrG);
+      const subAlpha = sortN(subArr);
       const etile = (o, isSub) => {
         const fg = o.fg || 0, fr = o.fr || 0, tot = o.tot || 0;
         const dom = Math.max(fg, fr), domShare = tot ? Math.round(dom / tot * 100) : 0;
@@ -8115,9 +8118,9 @@
           '<div class="em-sub">בכל אריח: <b>%</b> מהמניות של אותו נכס בכיוון ההמשכיות הדומיננטי · <span class="em-pos">🟢 עולה</span> / <span class="em-neg">🔴 יורד</span> · לחץ אריח לרשימת המניות.</div></div>' +
           '<div class="em-big"><div class="n num">' + upSec + '<small>/' + (upSec + dnSec) + '</small></div><div class="cap">סקטורים עולים</div></div></div>' +
         '<div class="tf-ctrl cont-ctrl">' + ftfcSwitch + '</div>' +
-        '<div class="em-secttl2">🗂️ עוצמת סקטורים · המשכיות</div>' +
+        '<div class="em-secttl2">🗂️ עוצמת סקטורים · מהכי עולה לכי יורד</div>' +
         '<div class="cont-right"><div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => etile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
-        '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · המשכיות</div>' +
+        '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · מהכי עולה לכי יורד</div>' +
         '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => etile(o, true)).join("") : '<div class="muted">—</div>') + '</div></div>' +
       '</div>';
     }
