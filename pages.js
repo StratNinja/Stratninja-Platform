@@ -2076,10 +2076,13 @@
     const _MIN = 10;
     const subMap = {};
     secs.forEach(s => (s.stocks || []).forEach(x => { const ind = x.ind; if (!ind || ind === "אחר" || ind === "מדדים") return; const o = subMap[ind] = subMap[ind] || { name: ind, above: 0, total: 0 }; o.total++; if (x.ao) o.above++; }));
-    const subArr = ((LIVE && LIVE.subsectors && LIVE.subsectors.length) ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 }) : Object.keys(subMap).map(k => subMap[k])).filter(o => o.total >= _MIN);
-    const secArr = secs.filter(s => s.name !== "אחר" && s.name !== "מדדים" && (s.total || 0) >= _MIN);
+    const subArr = ((LIVE && LIVE.subsectors && LIVE.subsectors.length) ? LIVE.subsectors.map(ss => subMap[ss.ind] || { name: ss.ind, above: 0, total: 0 }) : Object.keys(subMap).map(k => subMap[k]));
+    const secArr = secs.filter(s => s.name !== "אחר" && s.name !== "מדדים");
     const _bp = o => o.total ? o.above / o.total * 100 : null;
-    const sortB = arr => arr.slice().sort((a, c) => (_bp(c) || 0) - (_bp(a) || 0));
+    // FIXED order (alphabetical) — identical to תזרים so the SAME tiles sit in the SAME positions; only the title/metric change
+    const _byHe = (a, c) => secHe(a.name) < secHe(c.name) ? -1 : secHe(a.name) > secHe(c.name) ? 1 : 0;
+    const _byNm = (a, c) => String(a.name) < String(c.name) ? -1 : String(a.name) > String(c.name) ? 1 : 0;
+    const secAlpha = secArr.slice().sort(_byHe), subAlpha = subArr.slice().sort(_byNm);
     const row = (o, isSub) => { const p = _bp(o); const etf = isSub ? (typeof subEtfFor === "function" ? subEtfFor(o.name) : "") : etfFor(o.name); const nm = isSub ? o.name : secHe(o.name);
       const cls = p == null ? "" : p >= 55 ? "em-pos" : p <= 45 ? "em-neg" : "";
       return '<div class="tf-row bc-clickable" data-spdrill="' + encodeURIComponent(o.name) + '" data-spsub="' + (isSub ? "1" : "") + '">' +
@@ -2103,12 +2106,12 @@
         '<span class="em-sep"></span><span class="sp-view-row">' + sp500ViewSwitch() + '</span></div>' +
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">S&P 500 · כמה מהמניות מעל הפתיחה</div>' +
         '<h1>רוחב השוק ' + tone + ' <span class="em-h1sep">·</span> <b>' + pct + '%</b> מעל הפתיחה</h1>' +
-        '<div class="em-sub"><span class="em-pos">▲ ' + (b.above || 0) + ' מעל</span> · <span class="em-neg">' + (b.below || 0) + ' מתחת ▼</span> · מדורג מהחזק לחלש · לחץ שורה לכל המניות.</div></div>' +
+        '<div class="em-sub"><span class="em-pos">▲ ' + (b.above || 0) + ' מעל</span> · <span class="em-neg">' + (b.below || 0) + ' מתחת ▼</span> · לחץ אריח לכל המניות בסקטור.</div></div>' +
         '<div class="em-big"><div class="n num">' + pct + '<small>%</small></div><div class="cap">מעל הפתיחה</div></div></div>' +
       '<div class="em-secttl2">🗂️ עוצמת סקטורים · רוחב</div>' +
-      '<div class="em-tilegrid">' + (secArr.length ? sortB(secArr).map(o => tile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
+      '<div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => tile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
       '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · רוחב</div>' +
-      '<div class="em-tilegrid">' + (subArr.length ? sortB(subArr).map(o => tile(o, true)).join("") : '<div class="muted">—</div>') + '</div>' +
+      '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => tile(o, true)).join("") : '<div class="muted">—</div>') + '</div>' +
     '</div>';
   }
   function renderSp500() {
@@ -8563,11 +8566,15 @@
     const tf = flowTf;
     const vOf = s => _bcellVal(s, tf);
     const _named = s => s && s.name && s.name !== "אחר" && s.name !== "—" && s.name !== "" && s.name !== "מדדים";
-    const secs = (todaySectors(rows) || []).filter(s => vOf(s) != null && _named(s));
+    const secs = (typeof _gicsSecs === "function" ? _gicsSecs(todaySectors(rows) || []) : (todaySectors(rows) || [])).filter(s => vOf(s) != null && _named(s));
     const subs = (todaySubsectors(rows) || []).filter(s => vOf(s) != null && _named(s));
     const sS = secs.slice().sort((a, b) => vOf(b) - vOf(a)), subS = subs.slice().sort((a, b) => vOf(b) - vOf(a));
     const secUp = sS.filter(s => vOf(s) > 0).slice(0, 6), secDn = sS.filter(s => vOf(s) < 0).slice(-6).reverse();
     const subUp = subS.filter(s => vOf(s) > 0).slice(0, 6), subDn = subS.filter(s => vOf(s) < 0).slice(-6).reverse();
+    // FIXED order (alphabetical) so the tiles stay in the SAME positions across pages & refreshes — only the title/metric change
+    const _byHe = (a, b) => secHe(a.name) < secHe(b.name) ? -1 : secHe(a.name) > secHe(b.name) ? 1 : 0;
+    const _byNm = (a, b) => String(a.name) < String(b.name) ? -1 : String(a.name) > String(b.name) ? 1 : 0;
+    const secAlpha = secs.slice().sort(_byHe), subAlpha = subs.slice().sort(_byNm);
     const _clean = s => (typeof _mfClean === "function" ? _mfClean(s) : String(s || ""));
     const upName = secUp[0] ? secHe(secUp[0].name) : (subUp[0] ? _clean(subUp[0].name) : "—");
     const dnName = secDn[0] ? secHe(secDn[0].name) : (subDn[0] ? _clean(subDn[0].name) : "—");
@@ -8597,10 +8604,10 @@
       '<div class="em-hero tf-hero"><div class="em-htx"><div class="em-eye">לאן הכסף זורם · ' + _mfRangeLbl(tf) + '</div>' +
         '<h1>הכסף נכנס ל<b>' + escHtml(upName) + '</b> <span class="em-h1sep">·</span> ויוצא מ<b style="color:#ff6b7a">' + escHtml(dnName) + '</b></h1>' +
         '<div class="em-sub">התנועה היומית בפועל של כל סקטור ותת-סקטור — לפי ' + (flowSecMode === "avg" ? "ממוצע המניות (רוחב)" : "תנועת תעודת-הסל") + '.</div></div></div>' +
-      '<div class="em-secttl2">🗂️ סקטורים · מדורג לפי תזרים</div>' +
-      '<div class="em-tilegrid">' + (sS.length ? sS.map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
-      '<div class="em-secttl2">🏭 תתי-סקטורים · מדורג לפי תזרים</div>' +
-      '<div class="em-tilegrid">' + (subS.length ? subS.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🗂️ סקטורים</div>' +
+      '<div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(s => tile(s, false)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
+      '<div class="em-secttl2">🏭 תתי-סקטורים</div>' +
+      '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(s => tile(s, true)).join("") : '<div class="muted">אין נתונים</div>') + '</div>' +
     '</div>';
   }
   function renderToday() {
@@ -10158,6 +10165,16 @@
       '.bv-bnum{font-family:var(--mono);font-weight:800;font-size:16px;flex:0 0 auto}.bv-bnum.dn{color:var(--red)}.bv-bnum.up{color:var(--green)}' +
       '.bv-btxt{font-size:11px;color:var(--muted);white-space:nowrap;flex:0 0 auto}' +
       '@media(max-width:620px){.bv-btxt{display:none}}' +
+      '.bv-aprow{display:flex;align-items:center;gap:10px;margin:-2px 0 11px;min-width:0}' +
+      '.bv-aplabel{font-size:12px;color:var(--muted);font-weight:700;flex:0 0 auto;white-space:nowrap}' +
+      '.bv-apscroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:3px;min-width:0;scrollbar-width:thin}' +
+      '.bv-ap{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:999px;white-space:nowrap;flex:0 0 auto;border:1px solid var(--line);color:var(--muted)}' +
+      '.bv-ap b{font-weight:800}.bv-ap i{font-style:normal;opacity:.85}' +
+      '.bv-ap.dn{color:var(--red);background:var(--redbg);border-color:var(--redbd)}' +
+      '.bv-ap.up{color:var(--green);background:var(--greenbg);border-color:var(--greenbd)}' +
+      '.bv-ap.mix{color:var(--muted);background:var(--soft);border-color:var(--line)}' +
+      '.bv-ap.strong{box-shadow:inset 0 0 0 1px currentColor,0 0 7px -1px currentColor}' +
+      '@media(max-width:620px){.bv-aplabel{display:none}}' +
       '.bv-tfseg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}' +
       '.bv-tfseg button{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:none;border:0;padding:7px 13px;border-radius:8px;cursor:pointer;min-width:42px}' +
       '.bv-tfseg button:hover{color:var(--ink)}' +
@@ -10209,6 +10226,40 @@
       '@media(max-width:640px){.bv-cndl{display:none}.bv-seq{min-width:0}}' +
       '</style>';
   }
+  function bvStreak(cell) {   // trailing count of same-direction 2-bars in seq3d (0-3) = how long the move has been in force
+    if (!cell || !cell.seq3d) return 0;
+    var parts = cell.seq3d.split("-"), dir = cell.c === "up" ? "2U" : cell.c === "down" ? "2D" : null;
+    if (!dir) return 0;
+    var n = 0; for (var i = parts.length - 1; i >= 0; i--) { if (parts[i] === dir) n++; else break; } return n;
+  }
+  function bvAlgoStrip(idx, tf) {
+    var seen = {}, all = [];
+    BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { if (!seen[s] && idx[s] && idx[s][tf]) { seen[s] = 1; all.push(s); } }); });
+    var ifdn = all.filter(function (s) { return idx[s][tf].ifc === "down"; }).length;
+    var ifup = all.filter(function (s) { return idx[s][tf].ifc === "up"; }).length;
+    var tot = all.length || 1, reg, rcls;
+    if (ifdn / tot >= 0.6) { reg = "🔻 מכירה אלגו רוחבית"; rcls = "dn"; }
+    else if (ifup / tot >= 0.6) { reg = "🟢 קנייה אלגו רוחבית"; rcls = "up"; }
+    else { reg = "⚖️ שוק מעורב"; rcls = "mix"; }
+    var regChip = '<span class="bv-ap reg ' + rcls + '">' + reg + ' <b>' + Math.max(ifdn, ifup) + "/" + tot + '</b></span>';
+    var g2 = BV_GROUPS.map(function (g) {
+      var present = g.syms.filter(function (s) { return idx[s] && idx[s][tf]; });
+      if (!present.length) return null;
+      var dn = present.filter(function (s) { return idx[s][tf].ifc === "down"; });
+      var up = present.filter(function (s) { return idx[s][tf].ifc === "up"; });
+      var dir, al; if (dn.length >= up.length) { dir = "down"; al = dn; } else { dir = "up"; al = up; }
+      if (!al.length) return { name: g.he, dir: "mix", aligned: 0, total: present.length, pers: 0 };
+      var pers = al.reduce(function (m, s) { return Math.max(m, bvStreak(idx[s][tf])); }, 0);
+      return { name: g.he, dir: dir, aligned: al.length, total: present.length, pers: pers };
+    }).filter(Boolean);
+    g2.sort(function (a, b) { if (b.aligned !== a.aligned) return b.aligned - a.aligned; return b.pers - a.pers; });
+    var chips = g2.map(function (x) {
+      var cls = x.dir === "down" ? "dn" : x.dir === "up" ? "up" : "mix", arr = x.dir === "down" ? "▼" : x.dir === "up" ? "▲" : "·";
+      var strong = (x.aligned === x.total && x.total >= 3) ? " strong" : "";
+      return '<span class="bv-ap ' + cls + strong + '" title="' + x.name + ' · ' + x.aligned + '/' + x.total + ' IN FORCE' + (x.pers > 1 ? ' · ' + x.pers + ' נרות ברצף' : "") + '">' + x.name + ' <b>' + x.aligned + "/" + x.total + '</b> ' + arr + (x.pers > 1 ? ' <i>·' + x.pers + "</i>" : "") + "</span>";
+    }).join("");
+    return '<div class="bv-aprow"><span class="bv-aplabel">⚡ לחץ אלגו</span><div class="bv-apscroll">' + regChip + chips + "</div></div>";
+  }
   function renderBreakVel() {
     var rows = (SCAN && SCAN.rows) ? SCAN.rows : null;
     var tf = bvTf;
@@ -10224,9 +10275,10 @@
     var mid = all.length - down - up;
     var breadth = '<div class="bv-breadth"><span class="bv-bnum ' + (down >= up ? "dn" : "up") + '">' + down + "/" + all.length + '</span><span class="bv-btxt">' + down + ' בירידה · ' + up + ' בעלייה · ' + mid + ' פנימי (' + BV_TFHE[tf] + ')</span><div class="bv-sbar"><i style="flex:' + down + ';background:var(--red)"></i><i style="flex:' + mid + ';background:var(--muted)"></i><i style="flex:' + up + ';background:var(--green)"></i></div></div>';
     var ctrlRow = '<div class="bv-tfbar">' + ctrls + breadth + '</div>';
+    var algo = bvAlgoStrip(idx, tf);
     var board = BV_GROUPS.map(function (g) { return bvGroup(g, idx, tf); }).join("");
     var note = '<div class="bv-note"><h4>איך קוראים את הלוח</h4><p>כל שורה היא טיקר עם <b>3 נרות</b>: הנר הנוכחי חי (OHLC), הקודם לפי הגבוה/נמוך האמיתיים (קווי הטריגר המקווקווים), והשלישי לפי סוג-הנר שברצף <b>seq3d</b>. מימין מטריצת סוג-הנר לכל טיימפריים (יומי→שנתי): <span style="color:var(--red)">2▼</span> שובר נמוך · <span style="color:var(--green)">2▲</span> שובר גבוה · <span style="color:var(--muted)">1</span> פנימי · <span style="color:var(--accent)">3</span> חיצוני. תג <b>FTFC</b> = יישור יומי+שבועי+חודשי לאותו כיוון.</p></div>';
-    return bvCss() + head + ctrlRow + '<div class="bv-board">' + board + "</div>" + note;
+    return bvCss() + head + ctrlRow + algo + '<div class="bv-board">' + board + "</div>" + note;
   }
   function wireBreakVel() {
     document.querySelectorAll('#page [data-bvtf]').forEach(function (b) {
