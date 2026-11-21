@@ -9862,7 +9862,7 @@
 
   // ===== "סקירת שוק" — one channel: market overview (first) + sector-breadth / sector-flow / continuity / breadth =====
   let pulseTab = "market";
-  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["most2s", "⚡ אנרגיה כיוונית"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];
+  const PULSE_TABS = [["market", "🌐 סקירת שוק"], ["sp500", "📊 רוחב סקטוריאלי"], ["today", "💸 תזרים סקטוריאלי"], ["sectors", "🗂️ המשכיות"], ["breadth", "📉 רוחב שוק"]];   /* "most2s / אנרגיה כיוונית" tab hidden 2026-11-21 — subsumed by the "תנועה אלגוריתמית" page (algo-pressure strip). renderMost2s kept, re-add the ["most2s",...] entry to restore. */
   const _pulseRender = { market: () => renderMarket(), sp500: () => renderSp500(), today: () => renderToday(), most2s: () => renderMost2s(), sectors: () => renderSectors(), breadth: () => renderBreadth() };
   const _pulseWire = { market: () => wireMarket(), sp500: () => wireSp500(), today: () => wireToday(), most2s: () => wireMost2s(), sectors: () => wireSectors(), breadth: () => wireBreadth() };
   function renderPulse() {
@@ -10212,6 +10212,8 @@
       '.bv-ap.up{color:var(--green);background:var(--greenbg);border-color:var(--greenbd)}' +
       '.bv-ap.mix{color:var(--muted);background:var(--soft);border-color:var(--line)}' +
       '.bv-ap.strong{box-shadow:inset 0 0 0 1px currentColor,0 0 7px -1px currentColor}' +
+      '.bv-ap.mac{background:transparent;font-weight:700}' +
+      '.bv-apsep{width:1px;align-self:stretch;background:var(--line-2);flex:0 0 auto;margin:3px 1px}' +
       '@media(max-width:620px){.bv-aplabel{display:none}}' +
       '.bv-tfseg{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}' +
       '.bv-tfseg button{font-family:var(--mono);font-size:12.5px;color:var(--muted);background:none;border:0;padding:7px 13px;border-radius:8px;cursor:pointer;min-width:42px}' +
@@ -10270,6 +10272,21 @@
     if (!dir) return 0;
     var n = 0; for (var i = parts.length - 1; i >= 0; i--) { if (parts[i] === dir) n++; else break; } return n;
   }
+  function bvMacroChips(idx) {   // macro confirmation: Vol(VIX from LIVE) + Gold/Silver/Oil (from SCAN). Dollar/Bonds have no ETF in the feed.
+    var out = [];
+    try {
+      if (typeof LIVE !== "undefined" && LIVE && LIVE.vix && LIVE.vix.level != null) {
+        var vu = (LIVE.vix.chg || 0) >= 0;
+        out.push('<span class="bv-ap mac ' + (vu ? "dn" : "up") + '" title="VIX (תנודתיות) — עולה = פחד / risk-off">Vol ' + Number(LIVE.vix.level).toFixed(1) + ' ' + (vu ? "▲" : "▼") + "</span>");
+      }
+    } catch (e) {}
+    [["GLD", "זהב"], ["SLV", "כסף"], ["USO", "נפט"]].forEach(function (p) {
+      var r = idx[p[0]]; if (!r) return;
+      var ch = r.c != null ? r.c : 0, u = ch >= 0;
+      out.push('<span class="bv-ap mac ' + (u ? "up" : "dn") + '" title="' + p[0] + " " + (ch >= 0 ? "+" : "") + Number(ch).toFixed(2) + '%">' + p[1] + " " + (u ? "▲" : "▼") + "</span>");
+    });
+    return out.join("");
+  }
   function bvAlgoStrip(idx, tf) {
     var seen = {}, all = [];
     BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { if (!seen[s] && idx[s] && idx[s][tf]) { seen[s] = 1; all.push(s); } }); });
@@ -10296,7 +10313,7 @@
       var strong = (x.aligned === x.total && x.total >= 3) ? " strong" : "";
       return '<span class="bv-ap ' + cls + strong + '" title="' + x.name + ' · ' + x.aligned + '/' + x.total + ' IN FORCE' + (x.pers > 1 ? ' · ' + x.pers + ' נרות ברצף' : "") + '">' + x.name + ' <b>' + x.aligned + "/" + x.total + '</b> ' + arr + (x.pers > 1 ? ' <i>·' + x.pers + "</i>" : "") + "</span>";
     }).join("");
-    return '<div class="bv-aprow"><span class="bv-aplabel">⚡ לחץ אלגו</span><div class="bv-apscroll">' + regChip + chips + "</div></div>";
+    return '<div class="bv-aprow"><span class="bv-aplabel">⚡ לחץ אלגו</span><div class="bv-apscroll">' + regChip + bvMacroChips(idx) + '<span class="bv-apsep"></span>' + chips + "</div></div>";
   }
   function renderBreakVel() {
     var rows = (SCAN && SCAN.rows) ? SCAN.rows : null;
