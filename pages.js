@@ -10206,7 +10206,7 @@
   function bvCandleBig(cell, price) {   // StratSchool style: hollow PRIOR bars + solid glowing CURRENT bar in a "הנר לסיווג" box
     if (!cell || cell.o == null) return '<div class="bv-dk" style="text-align:center;padding:30px">אין נתוני נר לטיימפריים זה</div>';
     var d = bvBuild3(cell, price), bars = d.bars;
-    var W = 348, H = 200, padT = 26, padB = 24, padL = 16, padR = 98;
+    var W = 384, H = 200, padT = 26, padB = 24, padL = 16, padR = 132;
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
     var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
     mx += rg * 0.1; mn -= rg * 0.1; rg = mx - mn;
@@ -10220,11 +10220,14 @@
     var boxX = ncx - slot / 2 + 4, boxW = slot - 8;
     s += '<rect x="' + boxX.toFixed(1) + '" y="10" width="' + boxW.toFixed(1) + '" height="' + (H - 20) + '" rx="9" fill="var(--accent)" fill-opacity=".06" stroke="var(--accent)" stroke-width="1.3" stroke-dasharray="5 4"/>';
     s += '<text x="' + ncx.toFixed(1) + '" y="20" class="bv-axl" fill="var(--accent)" text-anchor="middle" font-weight="800">הנר לסיווג</text>';
-    // prior-high / prior-low trigger lines — crisp, labelled with the value
+    // prior-high / prior-low trigger lines — crisp; value labels BIG, pushed to the right margin so they clear the candle
+    var lblX = W - padR + 12;
     s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
-    s += '<text x="' + (W - padR + 7) + '" y="' + (yph + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--red)">גבוה קודם ' + fmt(d.prH) + '</text>';
+    s += '<text x="' + lblX + '" y="' + (yph - 4).toFixed(1) + '" fill="var(--red)" font-size="11" font-weight="700" style="font-family:var(--mono)">גבוה קודם</text>';
+    s += '<text x="' + lblX + '" y="' + (yph + 11).toFixed(1) + '" fill="var(--red)" font-size="13.5" font-weight="800" style="font-family:var(--mono)">' + fmt(d.prH) + '</text>';
     s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
-    s += '<text x="' + (W - padR + 7) + '" y="' + (ypl + 3.5).toFixed(1) + '" class="bv-axl" fill="var(--green)">נמוך קודם ' + fmt(d.prL) + '</text>';
+    s += '<text x="' + lblX + '" y="' + (ypl - 4).toFixed(1) + '" fill="var(--green)" font-size="11" font-weight="700" style="font-family:var(--mono)">נמוך קודם</text>';
+    s += '<text x="' + lblX + '" y="' + (ypl + 11).toFixed(1) + '" fill="var(--green)" font-size="13.5" font-weight="800" style="font-family:var(--mono)">' + fmt(d.prL) + '</text>';
     var labels = ["קודם", "קודם", "עכשיו"];
     bars.forEach(function (b, i) {
       var now = i === 2;
@@ -10234,9 +10237,9 @@
         s += '<rect x="' + (cx - cw / 2 - 3).toFixed(1) + '" y="' + (top - 3).toFixed(1) + '" width="' + (cw + 6).toFixed(1) + '" height="' + (bh + 6).toFixed(1) + '" rx="5" fill="' + col + '" opacity=".22"/>';
         s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="3"/>';
         s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="' + col + '"/>';
-      } else {     // prior bars — hollow outline = context
-        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="var(--muted)" stroke-width="1.6" opacity=".6"/>';
-        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="none" stroke="var(--muted)" stroke-width="1.6" opacity=".8"/>';
+      } else {     // prior bars — hollow WHITE outline = context (crisp)
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="#ffffff" stroke-width="1.8" opacity=".85"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="3" fill="none" stroke="#ffffff" stroke-width="1.8" opacity=".95"/>';
       }
       s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 7) + '" class="bv-axl" fill="' + (now ? "var(--ink)" : "var(--muted)") + '" text-anchor="middle"' + (now ? ' font-weight="700"' : '') + '>' + labels[i] + '</text>';
     });
@@ -10283,9 +10286,9 @@
       if (now) {   // the live bar — SOLID coloured (stands out as "now")
         s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="' + col + '" stroke-width="2"/>';
         s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.4" fill="' + col + '"/>';
-      } else {     // prior bars — HOLLOW outline = context
-        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="var(--muted)" stroke-width="1.2" opacity=".55"/>';
-        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="none" stroke="var(--muted)" stroke-width="1.2" opacity=".7"/>';
+      } else {     // prior bars — HOLLOW WHITE outline = context (crisp)
+        s += '<line x1="' + cx.toFixed(1) + '" y1="' + y(b.h).toFixed(1) + '" x2="' + cx.toFixed(1) + '" y2="' + y(b.l).toFixed(1) + '" stroke="#ffffff" stroke-width="1.3" opacity=".8"/>';
+        s += '<rect x="' + (cx - cw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + cw.toFixed(1) + '" height="' + bh.toFixed(1) + '" rx="1.3" fill="none" stroke="#ffffff" stroke-width="1.3" opacity=".9"/>';
       }
     });
     return s + "</svg>";
