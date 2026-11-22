@@ -304,7 +304,8 @@ window.Live = (function () {
     }
     if (vs === "soon") {
       var when = s && s.scheduled_at ? new Date(s.scheduled_at) : null;
-      var ts = _thumb(s);
+      var nxSoon = _nextSched();   // prefer the upcoming scheduled live's thumbnail (manual live_status is retired)
+      var ts = _thumb(nxSoon && nxSoon.thumbnail_url ? nxSoon : s);
       return '<div class="live-stage"' + ts.bg + '>' + ts.scrim + '<div class="live-off"><div class="lo-ico">⏳</div>' +
         '<h3>השידור יתחיל בקרוב</h3>' +
         (when ? '<div class="live-cd" id="liveCountdown">—</div>' : '<p>תכף מתחילים — הישאר בעמוד.</p>') +
@@ -315,7 +316,8 @@ window.Live = (function () {
       return '<div class="live-stage"><div class="live-off"><div class="lo-ico">🔄</div>' +
         '<h3>בודקים את מצב השידור…</h3><p>לא הצלחנו כרגע לקבל את סטטוס השידור מ-Cloudflare — מנסים שוב אוטומטית.</p></div></div>';
     }
-    var to = _thumb(s);
+    var nxOff = _nextSched();   // prefer the upcoming scheduled live's thumbnail (manual live_status is retired)
+    var to = _thumb(nxOff && nxOff.thumbnail_url ? nxOff : s);
     // COMMUNITY (private) live while offline: tell viewers it's a members-only live + show the readiness banner,
     // so they prepare (log in + verify) before it starts. Public lives keep the generic message.
     var offBody = _isCommunity(s)
@@ -332,8 +334,12 @@ window.Live = (function () {
         : vs === "unknown"
           ? '<span class="live-badge off"><span class="dot"></span>בודק…</span>'
           : '<span class="live-badge off"><span class="dot"></span>OFFLINE</span>';
-    var title = (s && s.title) ? '<h2>' + esc(s.title) + "</h2>" : "";
-    var desc = (s && s.description) ? '<div class="lm-desc">' + esc(s.description) + "</div>" : "";
+    // offline/soon → show the UPCOMING scheduled live's title+description (the manual live_status is retired);
+    // live/unknown keep the actual broadcast's own fields.
+    var nxMeta = (vs === "offline" || vs === "soon") ? _nextSched() : null;
+    var disp = (nxMeta && (nxMeta.title || nxMeta.description)) ? nxMeta : s;
+    var title = (disp && disp.title) ? '<h2>' + esc(disp.title) + "</h2>" : "";
+    var desc = (disp && disp.description) ? '<div class="lm-desc">' + esc(disp.description) + "</div>" : "";
     var plats = "";
     if (s && s.platforms && s.platforms.length) {
       plats = '<div class="live-plat live-row">צפה גם ב: ' + s.platforms.map(function (p) {
@@ -818,8 +824,11 @@ window.Live = (function () {
     // already a verified member — so they can "get ready" for the upcoming PRIVATE live.
     if (_isCommunity(s) && (vs === "soon" || vs === "offline")) _ensureReady();
     else if (_readyTried) _resetReady();
+    // offline/soon pull their thumbnail from the upcoming scheduled live → rebuild the player when that changes too
+    var nxSig = "";
+    if (vs === "offline" || vs === "soon") { var _nx = _nextSched(); nxSig = _nx ? (_nx.id + "|" + (_nx.thumbnail_url || "") + "|" + (_nx.title || "")) : ""; }
     var sig = vs + "|" + (s && s.playback && s.playback.uid || "") + "|" + (s && s.live_video_uid || "") +
-      "|" + (_isCommunity(s) ? "c" : "p") + "|" + _access + "|" + _ready;   // also rebuild when visibility / vault-access / readiness changes
+      "|" + (_isCommunity(s) ? "c" : "p") + "|" + _access + "|" + _ready + "|" + nxSig;   // also rebuild when visibility / vault-access / readiness / next-sched changes
     if (force || sig !== _playerSig) {
       _playerSig = sig;
       var pl = $("livePlayer"); if (pl) { pl.innerHTML = _playerHtml(s, vs); _wirePlayer(); }
@@ -891,7 +900,7 @@ window.Live = (function () {
     el.textContent = _fmtCd(new Date(s.scheduled_start).getTime() - Date.now());
   }
   function _refreshSched() {
-    _schedGet().then(function (r) { if (r && r.ok) { _sched = r.lives || []; _applySched(); } });
+    _schedGet().then(function (r) { if (r && r.ok) { _sched = r.lives || []; _applySched(); _apply(false); } });
   }
 
   // ===== live emoji reactions (float over the player for EVERYONE via Supabase Realtime broadcast) =====
