@@ -10263,8 +10263,12 @@
     { he: "תשלומים ובנקאות", note: "ויזה · מאסטרקארד · GS · אמקס", syms: ["V", "MA", "GS", "AXP"] },
     { he: "מתכות וסחורות", note: "זהב · כסף · אורניום · נפט", syms: ["GLD", "SLV", "URNM", "USO"] },
   ];
-  const BV_TFS = ["D", "W", "M", "Q", "Y"];
-  const BV_TFHE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+  const BV_TFS = ["60m", "D", "W", "M", "Q", "Y"];
+  const BV_TFHE = { "60m": "שעתי", D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
+  // Intraday Strat cells (resampled from 1-min RTH bars, server-side) carry t/c/ifc/seq3d but have NO
+  // price fields (o/h/l) — so "has data" for them = a bar type exists, not a non-null open price.
+  const BV_INTRA_TFS = { "60m": 1 };
+  function bvHasData(x, tf) { var c = x && x[tf]; if (!c) return false; return BV_INTRA_TFS[tf] ? !!c.t : (c.o != null); }
   function bvHi(c) { return c.h != null ? c.h : c.hi; }
   function bvLo(c) { return c.l != null ? c.l : c.lo; }
   function bvGlyph(t) { return t === "2U" ? "2▲" : t === "2D" ? "2▼" : t === "1" ? "1" : t === "3" ? "3" : "·"; }
@@ -10553,9 +10557,10 @@
     var breadth = '<div class="bv-breadth"><span class="bv-bnum ' + (down >= up ? "dn" : "up") + '">' + down + "/" + all.length + '</span><span class="bv-btxt">' + down + ' בירידה · ' + up + ' בעלייה · ' + mid + ' פנימי (' + BV_TFHE[tf] + ')</span><div class="bv-sbar"><i style="flex:' + down + ';background:var(--red)"></i><i style="flex:' + mid + ';background:var(--muted)"></i><i style="flex:' + up + ';background:var(--green)"></i></div></div>';
     var ctrlRow = '<div class="bv-tfbar">' + ctrls + breadth + '</div>';
     var algo = bvAlgoStrip(idx, tf);
+    var ivHint = BV_INTRA_TFS[tf] ? '<div class="bv-hint" style="margin:-4px 0 11px;color:var(--accent)">⏱️ מסגרת שעתית — מחושבת מנרות דקה בשעות המסחר (≈16:30–23:00 שעון ישראל). מחוץ לשעות המסחר ייתכנו פחות נתונים. גרף 3 הנרות בדריל זמין ביומי ומעלה; כאן רואים את המטריצה, היישור והרשימה.</div>' : "";
     var board = BV_GROUPS.map(function (g) { return bvGroup(g, idx, tf); }).join("");
     var note = '<div class="bv-note"><h4>איך קוראים את הלוח</h4><p>כל שורה היא טיקר עם <b>3 נרות</b>: הנר הנוכחי חי (OHLC), הקודם לפי הגבוה/נמוך האמיתיים (קווי הטריגר המקווקווים), והשלישי לפי סוג-הנר שברצף <b>seq3d</b>. מימין מטריצת סוג-הנר לכל טיימפריים (יומי→שנתי): <span style="color:var(--red)">2▼</span> שובר נמוך · <span style="color:var(--green)">2▲</span> שובר גבוה · <span style="color:var(--muted)">1</span> פנימי · <span style="color:var(--accent)">3</span> חיצוני. תג <b>FTFC</b> = יישור יומי+שבועי+חודשי לאותו כיוון.</p></div>';
-    return bvCss() + head + ctrlRow + algo + '<div class="bv-board">' + board + "</div>" + note;
+    return bvCss() + head + ctrlRow + ivHint + algo + '<div class="bv-board">' + board + "</div>" + note;
   }
   function wireBreakVel() {
     document.querySelectorAll('#page [data-bvtf]').forEach(function (b) {
@@ -10584,7 +10589,7 @@
   function bvPeers(r, tf) {
     if (!(SCAN && SCAN.rows) || !r.sec) return "";
     var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";   // the clicked ticker's in-force direction
-    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && x[tf] && x[tf].o != null; });
+    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && bvHasData(x, tf); });
     peers.sort(function (a, b) {   // in-force-aligned first (sector moving together), then by |chg|
       var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
       if (aa !== bb) return bb - aa;
@@ -10678,7 +10683,7 @@
   function bvHeroBand(r, tf) {   // sector "pinned on top" of the drill — same look as the 📷 share card
     if (!(SCAN && SCAN.rows) || !r.sec) return "";
     var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
-    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && x[tf] && x[tf].o != null; });
+    var peers = SCAN.rows.filter(function (x) { return x.s !== r.s && x.sec === r.sec && bvHasData(x, tf); });
     var aligned = peers.filter(function (x) { return refDir && x[tf].ifc === refDir; }).length;
     var total = peers.length + 1, alignFull = aligned + 1;   // whole sector + the anchor
     var secName = (typeof secHe === "function") ? secHe(r.sec) : (r.sec || "");
@@ -10700,7 +10705,7 @@
     if (!r) return;
     tf = tf || bvTf;
     var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
-    var members = SCAN.rows.filter(function (x) { return x.sec === r.sec && x[tf] && x[tf].o != null; });
+    var members = SCAN.rows.filter(function (x) { return x.sec === r.sec && bvHasData(x, tf); });
     members.sort(function (a, b) {
       var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
       if (aa !== bb) return bb - aa;
@@ -10743,7 +10748,9 @@
     var ex = bvTypeExplain(sel);
     var cap = (sel.o != null) ? ('<div class="bv-dcap"><span class="bv-cell ' + ex.cls + ' bv-capbadge"><span class="bv-g">' + bvGlyph(sel.t) + '</span></span><span class="bv-captxt">' + ex.txt + '</span></div>') : "";
     var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' + cap +
-      '<div class="bv-dhint">3 הנרות האחרונים (' + BV_TFHE[tf] + ') · הנר המלא = הנר לסיווג (' + BV_TFHE[tf] + ') · נרות חלולים = נרות קודמים · קו מקווקו = גבוה/נמוך הנר הקודם</div>';
+      '<div class="bv-dhint">' + (BV_INTRA_TFS[tf]
+        ? 'מסגרת שעתית — סוג-הנר, היישור והרצף מוצגים במטריצה ובמטריצת הטיימפריימים. גרף 3 הנרות המפורט זמין ביומי ומעלה.'
+        : '3 הנרות האחרונים (' + BV_TFHE[tf] + ') · הנר המלא = הנר לסיווג (' + BV_TFHE[tf] + ') · נרות חלולים = נרות קודמים · קו מקווקו = גבוה/נמוך הנר הקודם') + '</div>';
     var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
     var full = '<div class="bv-dfull"><button class="btn ghost" id="bvShare" style="font-size:13px;font-weight:700">📷 כרטיס שיתוף</button> <button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
     modal(sym + " · " + BV_TFHE[tf], bvDrillCss() + bvHeroBand(r, tf) + '<div class="bv-dwrap"><div class="bv-dmain">' + head + info + chart + full + '</div><div class="bv-dside">' + bvPeers(r, tf) + '</div></div>', "bv-drill");
@@ -10784,7 +10791,7 @@
     var rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
     var r = rows.find(function (x) { return x.s === sym; }) || {};
     var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
-    var peers = rows.filter(function (x) { return x.s !== sym && x.sec === r.sec && x[tf] && x[tf].o != null; });
+    var peers = rows.filter(function (x) { return x.s !== sym && x.sec === r.sec && bvHasData(x, tf); });
     peers.sort(function (a, b) {
       var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
       if (aa !== bb) return bb - aa;
