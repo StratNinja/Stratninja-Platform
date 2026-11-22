@@ -353,8 +353,12 @@ window.Live = (function () {
   }
 
   // the admin form fields (rendered inside the floating window, wrapped in .live-admin for styling)
+  // Adi 2026-11-22: the manual broadcast section ("ניהול שידור" top half) was removed — the workflow is now
+  // fully scheduled-lives only. Reversible: set _LIVE_ADMIN_MANUAL = true to bring the whole section back.
+  var _LIVE_ADMIN_MANUAL = false;
   function _adminFields(s) {
     if (s && s.preview) return '<div class="la-stat">🧪 מצב בדיקה (Preview) — עריכה וכתיבה מושבתות (קריאה-בלבד).</div>';
+    if (!_LIVE_ADMIN_MANUAL) return "";   // manual broadcast controls hidden (scheduled-lives only)
     var sch = s && s.scheduled_at ? new Date(s.scheduled_at) : null;
     var schVal = "";
     if (sch && !isNaN(sch)) { var off = sch.getTime() - sch.getTimezoneOffset() * 60000; schVal = new Date(off).toISOString().slice(0, 16); }
