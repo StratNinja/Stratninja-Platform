@@ -784,9 +784,16 @@
     const verdict = '<div class="cme-verdict">' +
       '<span class="cme-vi"><span class="cme-vk">מבנה דומיננטי</span><span class="cme-vv ' + domCls + '">' + _cmDomLabel(dom) + "</span></span>" +
       '<span class="cme-vi"><span class="cme-vk">טיימפריים חזק</span><span class="cme-vv">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span></div>";
+    // rotating "did you know" insights — criteria happening in the market right now (💡, cycles in wireSectors).
+    // Shares the same _cmFacts + #cmInsightText + _cmTimer pattern as the market page's candle map.
+    _cmFacts = candleMapFacts();
+    const firstFact = _cmFacts.length ? _cmFacts[Math.floor(Math.random() * _cmFacts.length)] : "";
+    const insight = _cmFacts.length
+      ? '<div class="cme-insight"><span class="cme-bulb">💡</span><span id="cmInsightText">' + firstFact + "</span></div>"
+      : "";
     return '<div class="cm-ed" data-cm-ed="1">' +
       '<div class="em-secttl2">🗺️ מפת נרות · התפלגות לפי טיימפריים <span class="cme-note">' + cmRows.length + " מניות · לחץ מספר לרשימה</span>" + _uniSwitchHtml("cme-uni") + "</div>" +
-      '<div class="cme-grid">' + head + body + "</div>" + verdict + "</div>";
+      '<div class="cme-grid">' + head + body + "</div>" + verdict + insight + "</div>";
   }
   let cmDrill = { bucket: null, tfk: null, col: null, dir: -1, favTop: false };
   function cmSortVal(r, col, tfk) {
@@ -8185,6 +8192,18 @@
       b.textContent = open ? "פחות ↑" : ("עוד " + col.querySelectorAll(".ss-extra").length + " ↓");
     });
     document.querySelectorAll(".cmap-side [data-cmb], .cmap-wide [data-cmb], .cm-ed [data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));   // candle-map pills → drill (incl. editorial)
+    // rotating 💡 insights on the editorial candle map (same _cmFacts/#cmInsightText/_cmTimer as the market page)
+    if (_cmTimer) { clearInterval(_cmTimer); _cmTimer = null; }
+    if (_cmFacts && _cmFacts.length > 1 && document.getElementById("cmInsightText")) {
+      let idx = _cmFacts.indexOf(document.getElementById("cmInsightText").innerHTML);
+      _cmTimer = setInterval(() => {
+        const el = document.getElementById("cmInsightText");
+        if (!el) { clearInterval(_cmTimer); _cmTimer = null; return; }
+        idx = (idx + 1) % _cmFacts.length;
+        el.style.opacity = "0";
+        setTimeout(() => { el.innerHTML = _cmFacts[idx]; el.style.opacity = "1"; }, 250);
+      }, 10000);
+    }
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }
   let secSort = { col: null, dir: -1 };

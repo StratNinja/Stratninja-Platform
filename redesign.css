@@ -2003,6 +2003,10 @@ body[data-page="market"] .mkt-dash.mkt-dash-tight{ gap:16px; }
 .cme-vk{ font-size:11px; color:#7e8aa2; font-weight:600; }
 .cme-vv{ font-size:16px; font-weight:800; color:#eaf0fb; unicode-bidi:isolate; }
 .cme-vv.em-pos{ color:#2dd47c; } .cme-vv.em-neg{ color:#ff6b7a; }
+/* rotating 💡 insight — criteria happening right now (cycles every 10s) */
+.cme-insight{ display:flex; align-items:flex-start; gap:9px; margin-top:10px; padding:11px 15px; background:rgba(45,212,191,.07); border:1px solid rgba(45,212,191,.18); border-radius:12px; font-size:13.5px; line-height:1.5; color:#cdd8ea; }
+.cme-insight .cme-bulb{ flex:none; font-size:15px; line-height:1.4; }
+.cme-insight #cmInsightText{ transition:opacity .25s ease; } .cme-insight b{ color:#eaf2ff; font-weight:800; }
 @media (max-width:620px){ .cme-row{ grid-template-columns:28px repeat(7,1fr); gap:4px; } .cm-ed .cm-pill{ padding:7px 0; font-size:12px; } }
 /* מועדפים editorial — hero + lightly-reskinned cards/toolbar (reversible: all scoped to .fav-ed) */
 .fav-ed .fav-dash{ margin-bottom:4px; }
