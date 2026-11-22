@@ -179,7 +179,9 @@ async function ytCreateBroadcast(title, description, scheduledStartISO, thumbUrl
     const insBody = {
       snippet: { title: (title || "StratNinja Live").slice(0, 100), description: (description || "").slice(0, 5000), scheduledStartTime: scheduledStartISO },
       status: { privacyStatus: priv, selfDeclaredMadeForKids: false },
-      contentDetails: { enableAutoStart: true, enableAutoStop: true, enableDvr: true },
+      // enableAutoStop=false: a brief OBS/network drop will NOT permanently end the YouTube broadcast
+      // (autoStop=true used to kill it after seconds → "the live ended after a minute"). Adi ends it manually.
+      contentDetails: { enableAutoStart: true, enableAutoStop: false, enableDvr: true },
     };
     const r = await ytApi(tok, "liveBroadcasts?part=snippet,status,contentDetails", { method: "POST", body: JSON.stringify(insBody) });
     const j = await r.json().catch(() => null);
