@@ -763,6 +763,31 @@
       '<div class="muted cms-note">' + cmRows.length + ' מניות · לחץ מספר לרשימה</div>' +
       '<div class="tablewrap"><table class="cmap-table cmap-table-side">' + head + body + "</table></div>" + verdict + "</div>";
   }
+  // EDITORIAL Candle Map (for the המשכיות-זמנית editorial page) — wide/short matrix rendered in the dark
+  // ".em" card look (NOT the classic .panel). Timeframes down the side (rows) × 7 bar-type buckets across the top.
+  // Reuses the same counts + verdict math as the classic maps; pills keep data-cmb/cm-click so the drill still works.
+  function candleMapEditorial() {
+    const cols = ["D", "W", "M", "Q", "Y"];
+    if (!(SCAN && SCAN.rows && SCAN.rows.length)) return "";
+    const cmRows = cmapRows();
+    const counts = {}; CMAP_ROWS.forEach(r => counts[r[0]] = { D: 0, W: 0, M: 0, Q: 0, Y: 0 });
+    cmRows.forEach(row => cols.forEach(tf => { const b = candleBucket(row[tf]); if (counts[b]) counts[b][tf]++; }));
+    const head = '<div class="cme-row cme-hdr"><div class="cme-tf"></div>' +
+      CMAP_ROWS.map(([key, desc]) => '<div class="cme-bh" title="' + escAttr(desc) + '">' + key + "</div>").join("") + "</div>";
+    const body = cols.map(tf =>
+      '<div class="cme-row"><div class="cme-tf" title="' + (TF_HE[tf] || tf) + '">' + tf + "</div>" +
+      CMAP_ROWS.map(([key, desc, cls]) => '<div class="cme-cell"><span class="cm-pill ' + cls + ' cm-click" data-cmb="' + key + '" data-cmtf="' + tf + '" title="' + escAttr(desc) + ' · לחץ לרשימת המניות">' + counts[key][tf] + "</span></div>").join("") + "</div>").join("");
+    const dom = _cmDomCell(counts, cols);   // single biggest cell (type × TF)
+    let bestTf = null, bestScore = -Infinity;
+    cols.forEach(tf => { const bull = (counts["2U"][tf] || 0) + (counts["3G"][tf] || 0) + (counts["F2D"][tf] || 0); const bear = (counts["2D"][tf] || 0) + (counts["3R"][tf] || 0) + (counts["F2U"][tf] || 0); if (bull - bear > bestScore) { bestScore = bull - bear; bestTf = tf; } });
+    const domCls = _cmBull(dom.b) ? "em-pos" : _cmBear(dom.b) ? "em-neg" : "";
+    const verdict = '<div class="cme-verdict">' +
+      '<span class="cme-vi"><span class="cme-vk">מבנה דומיננטי</span><span class="cme-vv ' + domCls + '">' + _cmDomLabel(dom) + "</span></span>" +
+      '<span class="cme-vi"><span class="cme-vk">טיימפריים חזק</span><span class="cme-vv">' + (bestTf ? (_CM_TF_HE[bestTf] || bestTf) : "—") + "</span></span></div>";
+    return '<div class="cm-ed" data-cm-ed="1">' +
+      '<div class="em-secttl2">🗺️ מפת נרות · התפלגות לפי טיימפריים <span class="cme-note">' + cmRows.length + " מניות · לחץ מספר לרשימה</span>" + _uniSwitchHtml("cme-uni") + "</div>" +
+      '<div class="cme-grid">' + head + body + "</div>" + verdict + "</div>";
+  }
   let cmDrill = { bucket: null, tfk: null, col: null, dir: -1, favTop: false };
   function cmSortVal(r, col, tfk) {
     if (col === "sym") return r.s;
@@ -8127,6 +8152,7 @@
         '<div class="cont-right"><div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => etile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
         '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
         '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => etile(o, true)).join("") : '<div class="muted">—</div>') + '</div></div>' +
+        candleMapEditorial() +
       '</div>';
     }
     return head + note + '<div class="cont-layout">' +
@@ -8158,7 +8184,7 @@
       const open = col.classList.toggle("expanded");
       b.textContent = open ? "פחות ↑" : ("עוד " + col.querySelectorAll(".ss-extra").length + " ↓");
     });
-    document.querySelectorAll(".cmap-side [data-cmb], .cmap-wide [data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));   // candle-map pills → drill
+    document.querySelectorAll(".cmap-side [data-cmb], .cmap-wide [data-cmb], .cm-ed [data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));   // candle-map pills → drill (incl. editorial)
     wireCharts(document); // ETF chips on sector + sub-sector cards
   }
   let secSort = { col: null, dir: -1 };
