@@ -9936,6 +9936,7 @@
   // ---------- router ----------
   // ---- admin usage-analytics dashboard ("מטריצת שימוש") ------------------------
   let _anaDays = 7;
+  let _anaReveal = false;   // user emails MASKED by default (so the matrix is safe to show on a livestream); 👁️ to reveal
   const _ANA_PAGE_HE = { market: "סקירת שוק", sp500: "S&P 500", sectors: "המשכיות זמנית", today: "לאן הכסף הולך", scanner: "סורק עסקאות", gappers: "גאפרים", favorites: "מועדפים", journal: "יומן מסחר", learn: "לימוד", draw: "שרטוט נרות", analytics: "אנליטיקס" };
   const _ANA_CLICK_HE = { share_alert: "שיתוף התראה", open_chart: "פתיחת גרף", fav_refresh: "רענון מועדפים", fav_chartgrid: "גרפים (מועדפים)", fav_copy: "העתקת מועדפים", journal_refresh_prices: "רענון מחירים (יומן)", journal_chartgrid: "גרפים (יומן)", news: "חדשות", share_screen: "שיתוף מסך", request_form: "טופס בקשות", suggest_ticker: "הצעת מניה", alerts_center: "מרכז התראות", fav_preset_filter: "סינון לפי סריקה", preset_save: "שמירת פריסט" };
   function _anaBars(counts, label, limit) {
@@ -9958,7 +9959,10 @@
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px">' +
         '<div class="panel"><h3>📄 עמודים הכי נצפים</h3><div id="anaPages">—</div></div>' +
         '<div class="panel"><h3>🖱️ פיצ׳רים הכי בשימוש</h3><div id="anaClicks">—</div></div>' +
-        '<div class="panel"><h3>👤 משתמשים פעילים</h3><div id="anaUsers">—</div></div>' +
+        '<div class="panel"><h3 style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">👤 משתמשים פעילים' +
+          '<button class="btn ghost" id="anaReveal" style="font-size:11px;padding:3px 9px;margin-inline-start:auto">' + (_anaReveal ? "🙈 הסתר מיילים" : "👁️ הצג מיילים") + '</button></h3>' +
+          '<div class="muted" style="font-size:11px;margin:-2px 0 8px">' + (_anaReveal ? "⚠️ המיילים גלויים כרגע — אל תשדר בלייב" : "🔒 המיילים מוסתרים — בטוח להצגה בלייב") + '</div>' +
+          '<div id="anaUsers">—</div></div>' +
         '<div class="panel"><h3>🎁 הטבת גולשים (קוד קהילה)</h3><div id="anaNinja">—</div></div>' +
       "</div>";
   }
@@ -9966,6 +9970,7 @@
     if (!_snIsAdmin()) return;
     document.querySelectorAll("[data-anarange]").forEach(b => b.onclick = () => { _anaDays = +b.dataset.anarange; reRender(); });
     { const rb = document.getElementById("anaRefresh"); if (rb) rb.onclick = () => reRender(); }
+    { const er = document.getElementById("anaReveal"); if (er) er.onclick = () => { _anaReveal = !_anaReveal; reRender(); }; }   // toggle email masking
     const setTxt = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
     let client = null; try { client = window.SNAuth && SNAuth.getClient && SNAuth.getClient(); } catch (e) {}
     if (!client) { setTxt("anaSummary", "צריך להיות מחובר כאדמין כדי לראות נתונים."); return; }
@@ -10012,7 +10017,9 @@
     setTxt("anaSummary", "<b>" + rows.length + "</b> אירועים · <b>" + Object.keys(users).length + "</b> משתמשים פעילים · טווח " + _anaDays + " ימים");
     setTxt("anaPages", _anaBars(pages, k => _ANA_PAGE_HE[k] || k));
     setTxt("anaClicks", _anaBars(clicks, k => _ANA_CLICK_HE[k] || k));
-    setTxt("anaUsers", _anaBars(users, k => emailMap[k] || ("…" + String(k).slice(0, 8)), 15));   // show email when known, else short id
+    // emails MASKED by default (safe to show on a livestream); the 👁️ button reveals them. The opaque user_id
+    // fragment shown when no email is known is not personal, so it stays visible either way.
+    setTxt("anaUsers", _anaBars(users, k => { const em = emailMap[k]; return _anaReveal ? (em || ("…" + String(k).slice(0, 8))) : (em ? _maskEmail(em) : ("…" + String(k).slice(0, 8))); }, 15));
   }
 
   // ===== "סקירת שוק" — one channel: market overview (first) + sector-breadth / sector-flow / continuity / breadth =====
