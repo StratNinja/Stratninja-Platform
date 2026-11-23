@@ -10264,6 +10264,7 @@
 
   // ===== מהירות פריצה (Break Velocity) — live FTFC continuity board, 100% client-side off SCAN.rows =====
   let bvTf = "W";
+  let bvListSort = "align";   // IN FORCE list sort: "align" (aligned first) | "type" (candle type) | "chg" (% change)
   let bvPat = "current";   // "current" = seq3d so far · "future" = expected next move
   const BV_GROUPS = [
     { he: "מדדים", note: 'S&P · נאסד"ק · דאו · ראסל', syms: ["SPY", "QQQ", "DIA", "IWM"] },
@@ -10289,6 +10290,10 @@
   function bvLo(c) { return c.l != null ? c.l : c.lo; }
   function bvGlyph(t) { return t === "2U" ? "2▲" : t === "2D" ? "2▼" : t === "1" ? "1" : t === "3" ? "3" : "·"; }
   function bvCellClass(c) { if (!c || !c.t) return "ins"; if (c.t === "1") return "ins"; var b = c.c === "up" ? "up" : c.c === "down" ? "dn" : "ins"; if (c.t === "3") b += " out"; return b; }
+  // "conflict" = a directional bar whose CLOSE fought its direction: 2U that closed below the open (red), or 2D that closed above the open (green = hidden buyers)
+  function bvIsConflict(c) { return !!(c && ((c.t === "2U" && c.c === "down") || (c.t === "2D" && c.c === "up"))); }
+  // candle-type sort rank: 2U regular → 2U conflict → 2D regular → 2D conflict → inside(1) → outside(3) → none
+  function bvTypeRank(c) { var t = c && c.t; if (t === "2U") return (c.c === "down") ? 1 : 0; if (t === "2D") return (c.c === "up") ? 3 : 2; if (t === "1") return 4; if (t === "3") return 5; return 6; }
   function bvParseSeq(s) { return (s && s.indexOf("-") >= 0) ? s.split("-") : null; }
   function bvBody(ph, pl, tok) { var size = (ph - pl) || 1, mid = (ph + pl) / 2;
     if (tok === "2U") return { o: pl + size * 0.2, c: ph - size * 0.08 };
@@ -10695,6 +10700,11 @@
       '.bvl-g{font-family:var(--mono);font-size:12px;font-weight:800;min-width:26px;text-align:center}.bvl-g.up{color:var(--green)}.bvl-g.dn{color:var(--red)}.bvl-g.ins{color:var(--muted)}.bvl-g.out{color:#eab308}' +
       '.bvl-sym{font-family:var(--mono);font-size:13.5px;font-weight:800;color:var(--ink);flex:1 1 auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.bvl-chg{font-family:var(--mono);font-size:12px;font-weight:700;direction:ltr;flex:0 0 auto}.bvl-chg.up{color:var(--green)}.bvl-chg.dn{color:var(--red)}' +
+      '.bvl-sorts{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px}' +
+      '.bvl-sortbtn{font-family:inherit;font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--soft2);color:var(--muted);cursor:pointer}' +
+      '.bvl-sortbtn:hover{border-color:var(--accent);color:var(--ink)}' +
+      '.bvl-sortbtn.on{border-color:var(--accent);color:var(--accent);background:var(--soft);box-shadow:inset 0 0 0 1px var(--accent)}' +
+      '.bvl-cf{font-size:11px;flex:0 0 auto;line-height:1;opacity:.85;cursor:help}' +
       '.bv-bigwrap{background:radial-gradient(120% 130% at 85% 0%,#111a2e 0%,#0b1020 60%,#080c17 100%);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-bottom:4px}' +
       '.bv-bigsvg{width:100%;height:auto;display:block}' +
       '.bv-axl{font-family:var(--mono);font-size:11px}' +
@@ -10738,6 +10748,12 @@
     var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
     var members = SCAN.rows.filter(function (x) { return x.sec === r.sec && bvHasData(x, tf); });
     members.sort(function (a, b) {
+      if (bvListSort === "type") {
+        var ra = bvTypeRank(a[tf]), rb = bvTypeRank(b[tf]);
+        if (ra !== rb) return ra - rb;
+        return (b.c || 0) - (a.c || 0);   // within a type: biggest gainer first
+      }
+      if (bvListSort === "chg") { return (b.c || 0) - (a.c || 0); }   // signed % change, highest first
       var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
       if (aa !== bb) return bb - aa;
       return Math.abs(b.c || 0) - Math.abs(a.c || 0);
@@ -10748,21 +10764,32 @@
     var dirWord = refDir === "down" ? "מכירה" : refDir === "up" ? "קנייה" : "";
     var itemsHtml = members.map(function (x) {
       var pc = x[tf] || {}, ch = (x.c != null ? x.c : 0), al = (refDir && pc.ifc === refDir), me = (x.s === sym);
-      return '<div class="bvl-item ' + (al ? "al " + dcls : "") + (me ? " me" : "") + '" data-bvdrill="' + x.s + '" title="' + x.s + ' ' + (pc.t || "") + (pc.ifc ? " · IN FORCE " + pc.ifc : "") + '">' +
+      var conf = bvIsConflict(pc), cfTxt = (pc.t === "2U") ? "נר 2▲ בקונפליקט — שבר גבוה חדש אך סגר מתחת לפתיחה" : "נר 2▼ בקונפליקט — שבר נמוך חדש אך סגר מעל הפתיחה (קונים סמויים)";
+      return '<div class="bvl-item ' + (al ? "al " + dcls : "") + (me ? " me" : "") + '" data-bvdrill="' + x.s + '" title="' + x.s + ' ' + (pc.t || "") + (pc.ifc ? " · IN FORCE " + pc.ifc : "") + (conf ? " · בקונפליקט" : "") + '">' +
         '<span class="bvl-g ' + bvCellClass(pc) + '">' + bvGlyph(pc.t) + '</span>' +
         '<span class="bvl-sym">' + x.s + (me ? ' ●' : "") + '</span>' +
+        (conf ? '<span class="bvl-cf" title="' + cfTxt + '">⚠️</span>' : "") +
         '<span class="bvl-chg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + '%</span></div>';
     }).join("");
+    var SORTS = [["align", "⚡ יישור"], ["type", "🕯️ סוג נר"], ["chg", "📈 % שינוי"]];
+    var sortChips = '<div class="bvl-sorts">' + SORTS.map(function (s) {
+      return '<button class="bvl-sortbtn' + (bvListSort === s[0] ? " on" : "") + '" data-bvsort="' + s[0] + '">' + s[1] + '</button>';
+    }).join("") + '</div>';
+    var sortNote = bvListSort === "type" ? "ממוינות לפי סוג-נר: 2▲ רגיל ← 2▲ בקונפליקט ← 2▼ ← 2▼ בקונפליקט ← פנימי (⚠️ = בקונפליקט)"
+      : bvListSort === "chg" ? "ממוינות לפי % שינוי (הגבוה קודם)"
+      : "ממוינות: המיושרות (IN FORCE) קודם";
     var head = '📡 <b>' + secName + '</b> — <b class="' + dcls + '">' + aligned + '/' + members.length + '</b> IN FORCE' + (dirWord ? ' <span class="' + dcls + '">(' + dirWord + ' אלגוריתמית)</span>' : "") + ' · ' + BV_TFHE[tf];
     var body = bvDrillCss() +
       '<div class="bvl-wrap">' +
       '<button class="btn ghost" id="bvlBack" style="font-size:13px;font-weight:600;margin-bottom:12px">← חזרה ל-' + sym + '</button>' +
       '<div class="bvl-sub">' + head + '</div>' +
-      '<div class="bvl-legend">מסגרת צבעונית = IN FORCE (זזה יחד עם האלגו) · ממוינות: המיושרות קודם · לחץ על מניה לכרטיס המלא שלה</div>' +
+      sortChips +
+      '<div class="bvl-legend">מסגרת צבעונית = IN FORCE (זזה יחד עם האלגו) · ' + sortNote + ' · לחץ על מניה לכרטיס המלא שלה</div>' +
       '<div class="bvl-grid">' + itemsHtml + '</div></div>';
     modal(secName + " · רשימת IN FORCE · " + BV_TFHE[tf], body, "bv-drill");
     var scope = document.querySelector(".modal.bv-drill") || document;
     scope.querySelectorAll("[data-bvdrill]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvdrill")); }; });
+    scope.querySelectorAll("[data-bvsort]").forEach(function (el) { el.onclick = function () { bvListSort = el.getAttribute("data-bvsort"); bvForceList(sym, tf); }; });   // click a sort chip → re-sort the list
     var bk = scope.querySelector("#bvlBack"); if (bk) bk.onclick = function () { bvOpenDrill(sym); };
   }
   function bvOpenDrill(sym) {
