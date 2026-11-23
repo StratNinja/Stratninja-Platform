@@ -10319,7 +10319,9 @@
     return { h: h + r * 0.1, l: l - r * 0.1 };
   }
   function bvCandleBig(cell, price) {   // StratSchool style: hollow PRIOR bars + solid glowing CURRENT bar in a "הנר לסיווג" box
-    if (!cell || cell.o == null) return '<div class="bv-dk" style="text-align:center;padding:30px">אין נתוני נר לטיימפריים זה</div>';
+    if (!cell || !cell.t) return '<div class="bv-dk" style="text-align:center;padding:30px">אין נתוני נר לטיימפריים זה</div>';
+    var schem = false;
+    if (bvIsIntra(cell)) { var sy = bvSynthCell(cell); cell = sy.cell; price = sy.price; schem = true; }   // intraday: schematic shape, no real prices
     var d = bvBuild3(cell, price), bars = d.bars;
     var W = 404, H = 210, padT = 26, padB = 36, padL = 16, padR = 150;
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
@@ -10341,10 +10343,10 @@
     var lblV = lblH + ' style="font-family:var(--mono)"';                      // numeric values → mono
     s += '<line x1="' + padL + '" y1="' + yph.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + yph.toFixed(1) + '" stroke="var(--red)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
     s += '<text x="' + lblX.toFixed(1) + '" y="' + (yph - 8).toFixed(1) + '" fill="var(--red)" font-size="15" font-weight="700"' + lblH + '>גבוה קודם</text>';
-    s += '<text x="' + lblX.toFixed(1) + '" y="' + (yph + 15).toFixed(1) + '" fill="var(--red)" font-size="19" font-weight="800"' + lblV + '>' + fmt(d.prH) + '</text>';
+    if (!schem) s += '<text x="' + lblX.toFixed(1) + '" y="' + (yph + 15).toFixed(1) + '" fill="var(--red)" font-size="19" font-weight="800"' + lblV + '>' + fmt(d.prH) + '</text>';
     s += '<line x1="' + padL + '" y1="' + ypl.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + ypl.toFixed(1) + '" stroke="var(--green)" stroke-width="1.4" stroke-dasharray="4 3" opacity=".95"/>';
     s += '<text x="' + lblX.toFixed(1) + '" y="' + (ypl - 8).toFixed(1) + '" fill="var(--green)" font-size="15" font-weight="700"' + lblH + '>נמוך קודם</text>';
-    s += '<text x="' + lblX.toFixed(1) + '" y="' + (ypl + 15).toFixed(1) + '" fill="var(--green)" font-size="19" font-weight="800"' + lblV + '>' + fmt(d.prL) + '</text>';
+    if (!schem) s += '<text x="' + lblX.toFixed(1) + '" y="' + (ypl + 15).toFixed(1) + '" fill="var(--green)" font-size="19" font-weight="800"' + lblV + '>' + fmt(d.prL) + '</text>';
     var labels = ["קודם", "קודם", "עכשיו"];
     bars.forEach(function (b, i) {
       var now = i === 2;
@@ -10384,8 +10386,21 @@
     var body0 = bvBody(p0.h, p0.l, toks[0]), bar0 = { h: p0.h, l: p0.l, o: body0.o, c: body0.c };
     return { bars: [bar0, bar1, bar2], prH: prH, prL: prL };
   }
+  // intraday (60m) cells carry only t/c/seq3d — NO price (o/h/l). Build a SCHEMATIC bar from the Strat
+  // type + direction over a unit range, so the candle renders the sequence SHAPE (prices are not real —
+  // the feed has no intraday OHLC). Same visual language the daily chart already uses for its prior bars.
+  function bvIsIntra(cell) { return !!(cell && cell.t && cell.o == null); }
+  function bvSynthCell(cell) {
+    var sc = bvSchem(1, 0, cell.t), rng = (sc.h - sc.l) || 1;
+    var up = cell.c === "up", dn = cell.c === "down";
+    var o = sc.l + rng * (up ? 0.28 : dn ? 0.72 : 0.55);
+    var c = sc.l + rng * (up ? 0.90 : dn ? 0.10 : 0.45);
+    return { cell: { t: cell.t, c: cell.c, seq3d: cell.seq3d, h: sc.h, l: sc.l, o: o, ph: null, pl: null }, price: c };
+  }
   function bvCandle(cell, price) {
-    if (!cell || cell.o == null || price == null) return "";
+    if (!cell || !cell.t) return "";
+    if (bvIsIntra(cell)) { var sy = bvSynthCell(cell); cell = sy.cell; price = sy.price; }
+    else if (cell.o == null || price == null) return "";
     var d = bvBuild3(cell, price), bars = d.bars, W = 88, H = 58, pad = 7;
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
     var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
@@ -10475,19 +10490,19 @@
       '.bv-gchip.dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
       '.bv-gchip.up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
       '.bv-gchip.mix{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
-      '.bv-trow{display:flex;align-items:center;gap:7px;padding:8px 11px;border-top:1px solid var(--line);flex-wrap:nowrap;cursor:pointer}' +
+      '.bv-trow{position:relative;display:flex;align-items:center;gap:7px;padding:8px 11px;padding-inline-end:64px;border-top:1px solid var(--line);flex-wrap:nowrap;cursor:pointer}' +
       '.bv-trow:hover{background:var(--soft2)}' +
       '.bv-tid{display:flex;flex-direction:column;gap:1px;min-width:66px}' +
       '.bv-sym{font-family:var(--mono);font-size:14px;font-weight:800;color:var(--ink)}' +
       '.bv-px{font-family:var(--mono);font-size:12px;color:var(--ink)}' +
       '.bv-chg{font-family:var(--mono);font-size:11.5px;font-weight:700}' +
       '.bv-chg.dn{color:var(--red)}.bv-chg.up{color:var(--green)}' +
-      '.bv-cndl{width:52px;height:52px;flex:0 0 auto;background:var(--soft2);border:1px solid var(--line);border-radius:8px}' +
+      '.bv-cndl{width:56px;height:52px;flex:0 0 auto;background:var(--soft2);border:1px solid var(--line);border-radius:8px}' +
       '.bv-cndl svg{width:100%;height:100%;display:block}' +
       '.bv-seq2{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.2px;white-space:nowrap}.bv-seq2.on{color:#eab308;font-weight:700}' +
       '.bv-trow.primed{background:rgba(234,179,8,.07)}' +
       '.bv-mtx{display:flex;gap:4px;flex-wrap:wrap;flex:0 1 auto;min-width:0}' +
-      '.bv-cell{width:29px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent;cursor:pointer}' +
+      '.bv-cell{width:31px;flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 0 3px;border-radius:7px;border:1px solid transparent;cursor:pointer}' +
       '.bv-cell:hover{filter:brightness(1.25)}' +
       '.bv-tf{font-family:var(--mono);font-size:9px;color:var(--muted)}' +
       '.bv-g{font-family:var(--mono);font-size:12.5px;font-weight:800}' +
@@ -10496,7 +10511,7 @@
       '.bv-cell.ins{background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 0 8px rgba(255,255,255,.22)}.bv-cell.ins .bv-g{color:#fff;text-shadow:0 0 7px rgba(255,255,255,.7)}' +
       '.bv-cell.out{background:rgba(234,179,8,.14);box-shadow:inset 0 0 0 1.6px #eab308,0 0 8px rgba(234,179,8,.55)}.bv-cell.out .bv-g{color:#eab308}' +
       '.bv-cell.sel{outline:2px solid var(--accent);outline-offset:2px}' +
-      '.bv-ftfc{font-family:var(--mono);font-size:10.5px;padding:5px 8px;border-radius:8px;white-space:nowrap;flex:0 0 auto;margin-inline-start:auto}' +
+      '.bv-ftfc{position:absolute;inset-inline-end:11px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10.5px;padding:5px 8px;border-radius:8px;white-space:nowrap}' +
       '.bv-ftfc.on-dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
       '.bv-ftfc.on-up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
       '.bv-ftfc.off{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
@@ -10573,7 +10588,7 @@
     var breadth = '<div class="bv-breadth"><span class="bv-bnum ' + (down >= up ? "dn" : "up") + '">' + down + "/" + all.length + '</span><span class="bv-btxt">' + down + ' בירידה · ' + up + ' בעלייה · ' + mid + ' פנימי (' + BV_TFHE[tf] + ')</span><div class="bv-sbar"><i style="flex:' + down + ';background:var(--red)"></i><i style="flex:' + mid + ';background:var(--muted)"></i><i style="flex:' + up + ';background:var(--green)"></i></div></div>';
     var ctrlRow = '<div class="bv-tfbar">' + ctrls + breadth + '</div>';
     var algo = bvAlgoStrip(idx, tf);
-    var ivHint = BV_INTRA_TFS[tf] ? '<div class="bv-hint" style="margin:-4px 0 11px;color:var(--accent)">⏱️ מסגרת שעתית — מחושבת מנרות דקה בשעות המסחר (≈16:30–23:00 שעון ישראל). מחוץ לשעות המסחר ייתכנו פחות נתונים. גרף 3 הנרות בדריל זמין ביומי ומעלה; כאן רואים את המטריצה, היישור והרשימה.</div>' : "";
+    var ivHint = BV_INTRA_TFS[tf] ? '<div class="bv-hint" style="margin:-4px 0 11px;color:var(--accent)">⏱️ מסגרת שעתית — מחושבת מנרות דקה בשעות המסחר (≈16:30–23:00 שעון ישראל). מחוץ לשעות המסחר ייתכנו פחות נתונים. גרף הנרות בשעתי הוא סכמטי (סוג-הנר והרצף) — אין מחירי נרות תוך-יומיים בפיד.</div>' : "";
     var board = BV_GROUPS.map(function (g) { return bvGroup(g, idx, tf); }).join("");
     var note = '<div class="bv-note"><h4>איך קוראים את הלוח</h4><p>כל שורה היא טיקר עם <b>3 נרות</b>: הנר הנוכחי חי (OHLC), הקודם לפי הגבוה/נמוך האמיתיים (קווי הטריגר המקווקווים), והשלישי לפי סוג-הנר שברצף <b>seq3d</b>. מימין מטריצת סוג-הנר לכל טיימפריים (יומי→שנתי): <span style="color:var(--red)">2▼</span> שובר נמוך · <span style="color:var(--green)">2▲</span> שובר גבוה · <span style="color:var(--muted)">1</span> פנימי · <span style="color:var(--accent)">3</span> חיצוני. תג <b>FTFC</b> = יישור יומי+שבועי+חודשי לאותו כיוון.</p></div>';
     return bvCss() + head + ctrlRow + ivHint + algo + '<div class="bv-board">' + board + "</div>" + note;
@@ -10762,10 +10777,10 @@
     var ff = r.ftfc ? (sel.c === "up" ? "▲ שורי" : "▼ דובי") : "— אין";
     var info = '<div class="bv-dinfo">' + ohl + trig + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b></div>" + '<div class="bv-dk">המשכיות (FTFC): <b>' + ff + "</b></div></div>";
     var ex = bvTypeExplain(sel);
-    var cap = (sel.o != null) ? ('<div class="bv-dcap"><span class="bv-cell ' + ex.cls + ' bv-capbadge"><span class="bv-g">' + bvGlyph(sel.t) + '</span></span><span class="bv-captxt">' + ex.txt + '</span></div>') : "";
+    var cap = (sel.t) ? ('<div class="bv-dcap"><span class="bv-cell ' + ex.cls + ' bv-capbadge"><span class="bv-g">' + bvGlyph(sel.t) + '</span></span><span class="bv-captxt">' + ex.txt + '</span></div>') : "";
     var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' + cap +
       '<div class="bv-dhint">' + (BV_INTRA_TFS[tf]
-        ? 'מסגרת שעתית — סוג-הנר, היישור והרצף מוצגים במטריצה ובמטריצת הטיימפריימים. גרף 3 הנרות המפורט זמין ביומי ומעלה.'
+        ? 'מסגרת שעתית — גרף הנרות כאן <b>סכמטי</b>: הוא מצייר את <b>סוג-הנר והרצף</b> (הפיד לא כולל מחירי נרות תוך-יומיים, ולכן אין מספרי מחיר). הסוג, הכיוון והיישור מדויקים.'
         : '3 הנרות האחרונים (' + BV_TFHE[tf] + ') · הנר המלא = הנר לסיווג (' + BV_TFHE[tf] + ') · נרות חלולים = נרות קודמים · קו מקווקו = גבוה/נמוך הנר הקודם') + '</div>';
     var head = '<div class="bv-dhead"><div><span class="bv-dsym">' + sym + '</span> <span class="bv-dpx">' + (r.p != null ? r.p : "—") + '</span> <span class="bv-chg ' + chgCls + '">' + chgTxt + '</span></div><div class="bv-dchips">' + chips + "</div></div>";
     var full = '<div class="bv-dfull"><button class="btn ghost" id="bvShare" style="font-size:13px;font-weight:700">📷 כרטיס שיתוף</button> <button class="btn ghost" id="bvFull" style="font-size:13px;font-weight:600">📈 גרף מלא (עוד נרות + גלגלת)</button> <button class="btn ghost" id="bvMtf" style="font-size:13px;font-weight:600">🖼️ כל הטיימפריימים</button> <a href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(sym) + '" target="_blank" rel="noopener">פתח ב-TradingView ↗</a></div>';
@@ -10780,7 +10795,9 @@
   }
   // ===== 📷 "תנועה אלגוריתמית" share card — the sector IN FORCE board (1080×1080, flat self-contained) =====
   function _algoMini(cell, price) {   // mini 3-candle, BAKED hex colours (html2canvas doesn't resolve var())
-    if (!cell || cell.o == null || price == null) return "";
+    if (!cell || !cell.t) return "";
+    if (bvIsIntra(cell)) { var sy = bvSynthCell(cell); cell = sy.cell; price = sy.price; }
+    else if (cell.o == null || price == null) return "";
     var d = bvBuild3(cell, price), bars = d.bars, W = 92, H = 62, pad = 8;
     var vals = [d.prH, d.prL]; bars.forEach(function (b) { vals.push(b.h, b.l); });
     var mx = Math.max.apply(null, vals), mn = Math.min.apply(null, vals), rg = (mx - mn) || 1;
