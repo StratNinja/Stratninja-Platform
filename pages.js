@@ -8694,7 +8694,9 @@
         '<span class="tf-v num ' + col(v) + '">' + pc(v) + '</span></div>'; };
     const tile = (s, isSub) => { const v = vOf(s), nm = isSub ? _clean(s.name) : secHe(s.name), etf = (!isSub && etfFor(s.name)) ? etfFor(s.name) : "";
       const pcls = v > 0.05 ? "pos" : v < -0.05 ? "neg" : "";
-      return '<div class="em-tile ' + pcls + '"' + _vtAttr(s.name, isSub) + '>' +
+      // clickable → live stock drill (which stocks are in this sector/sub-sector). ETF chip keeps its own chart click.
+      const drill = isSub ? (' data-flsub="' + encodeURIComponent(s.name) + '"') : (' data-flsec="' + encodeURIComponent(s.name) + '"');
+      return '<div class="em-tile bc-clickable ' + pcls + '"' + drill + _vtAttr(s.name, isSub) + ' title="לחץ לרשימת המניות">' +
         '<div class="et-top">' + (etf ? '<span class="et-etf sym tsym clickable" data-chart="' + escAttr(etf) + '" data-tf="D">' + escHtml(etf) + '</span>' : '') + '<span class="et-nm">' + escHtml(nm) + '</span></div>' +
         '<div class="et-pct ' + col(v) + '">' + pc(v) + '</div>' +
         '<div class="et-bar"><span class="' + (v >= 0 ? "up" : "dn") + '" style="width:' + w(v) + '%"></span></div></div>'; };
@@ -8864,6 +8866,9 @@
     if (_TODAY_EDITORIAL && document.querySelector('[data-today-editorial]')) {   // editorial page: chips set the metric/timeframe + re-render
       document.querySelectorAll("[data-flowtf]").forEach(b => b.onclick = () => { if (flowTf !== b.dataset.flowtf) { flowTf = b.dataset.flowtf; reRender(); } });
       document.querySelectorAll("[data-flowsecmode]").forEach(b => b.onclick = () => { if (flowSecMode !== b.dataset.flowsecmode) { flowSecMode = b.dataset.flowsecmode; reRender(); } });
+      // sector / sub-sector tile → live stock drill (which stocks are in it). ETF chip keeps its own chart menu.
+      document.querySelectorAll('[data-today-editorial] [data-flsec]').forEach(c => c.onclick = e => { if (e.target.closest('.et-etf')) return; openSectorDrillLive(decodeURIComponent(c.dataset.flsec)); });
+      document.querySelectorAll('[data-today-editorial] [data-flsub]').forEach(c => c.onclick = e => { if (e.target.closest('.et-etf')) return; openSubDrillLive(decodeURIComponent(c.dataset.flsub)); });
       return;
     }
     // ETF ticker → choice menu (analyze the ETF · or open all sector charts)
