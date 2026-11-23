@@ -7966,6 +7966,7 @@
     if (typeof wireCharts === "function") wireCharts(document);
   }
   const _CONT_EDITORIAL = true;   // המשכיות זמנית → editorial "עריכה" layout (reversible: set false for the classic cont-layout)
+  let _contTab = "sectors";       // editorial continuity: which tab is open — "sectors" | "candles" (no scrolling between them, per Adi)
   function renderSectors() {
     const TFS = _secFtfcTfs();
     const TFLBL = _secFtfcLbl();
@@ -8155,11 +8156,20 @@
           '<div class="em-sub">בכל אריח: <b>%</b> מהמניות של אותו נכס בכיוון ההמשכיות הדומיננטי · <span class="em-pos">🟢 עולה</span> / <span class="em-neg">🔴 יורד</span> · לחץ אריח לרשימת המניות.</div></div>' +
           '<div class="em-big"><div class="n num">' + upSec + '<small>/' + (upSec + dnSec) + '</small></div><div class="cap">סקטורים עולים</div></div></div>' +
         '<div class="tf-ctrl cont-ctrl">' + ftfcSwitch + '</div>' +
-        '<div class="em-secttl2">🗂️ עוצמת סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
-        '<div class="cont-right"><div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => etile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
-        '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
-        '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => etile(o, true)).join("") : '<div class="muted">—</div>') + '</div></div>' +
-        candleMapEditorial() +
+        // Tabs (Adi): switch between sectors and candle map instead of scrolling to the bottom. _contTab remembers the choice across re-renders.
+        '<div class="cont-tabs" role="tablist">' +
+          '<button class="cont-tab' + (_contTab === "sectors" ? " active" : "") + '" data-conttab="sectors">🗂️ סקטורים</button>' +
+          '<button class="cont-tab' + (_contTab === "candles" ? " active" : "") + '" data-conttab="candles">🗺️ מפת נרות</button>' +
+        '</div>' +
+        '<div class="cont-pane" data-conttab-pane="sectors"' + (_contTab === "sectors" ? "" : " hidden") + '>' +
+          '<div class="em-secttl2">🗂️ עוצמת סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
+          '<div class="cont-right"><div class="em-tilegrid">' + (secAlpha.length ? secAlpha.map(o => etile(o, false)).join("") : '<div class="muted">—</div>') + '</div>' +
+          '<div class="em-secttl2">🏭 עוצמת תתי-סקטורים · ' + (pulseSort === "fixed" ? "סדר קבוע" : "מהכי עולה לכי יורד") + '</div>' +
+          '<div class="em-tilegrid">' + (subAlpha.length ? subAlpha.map(o => etile(o, true)).join("") : '<div class="muted">—</div>') + '</div></div>' +
+        '</div>' +
+        '<div class="cont-pane" data-conttab-pane="candles"' + (_contTab === "candles" ? "" : " hidden") + '>' +
+          candleMapEditorial() +
+        '</div>' +
       '</div>';
     }
     return head + note + '<div class="cont-layout">' +
@@ -8190,6 +8200,12 @@
       const col = b.closest(".ss-col"); if (!col) return;
       const open = col.classList.toggle("expanded");
       b.textContent = open ? "פחות ↑" : ("עוד " + col.querySelectorAll(".ss-extra").length + " ↓");
+    });
+    // editorial continuity tabs → switch panes in place (no scroll, no full re-render; _contTab persists the choice)
+    document.querySelectorAll(".cont-tabs .cont-tab").forEach(btn => btn.onclick = () => {
+      _contTab = btn.dataset.conttab;
+      document.querySelectorAll(".cont-tabs .cont-tab").forEach(b => b.classList.toggle("active", b.dataset.conttab === _contTab));
+      document.querySelectorAll("[data-conttab-pane]").forEach(p => { p.hidden = p.dataset.conttabPane !== _contTab; });
     });
     document.querySelectorAll(".cmap-side [data-cmb], .cmap-wide [data-cmb], .cm-ed [data-cmb]").forEach(el => el.onclick = () => openCandleMapDrill(el.dataset.cmb, el.dataset.cmtf));   // candle-map pills → drill (incl. editorial)
     // rotating 💡 insights on the editorial candle map (same _cmFacts/#cmInsightText/_cmTimer as the market page)
