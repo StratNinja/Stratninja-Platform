@@ -6709,7 +6709,7 @@
             : "") + "</div></div>" +
         // ── universe / identity row (Adi's row 2): forced onto its own line by enhanceFilterBar via .fgrp-uni ──
         '<div class="fgrp fgrp-uni"><label>יקום · רשימה</label><div class="chips" style="align-items:center">' + uniBtn("all", "הכל") + uniBtn("sp500", "S&P 500") + uniBtn("etf", "📜 תעודות סל") + uniBtn("comm", "⭐ קהילה") + '<button class="chip" id="scanSuggest" title="הצע מניה חדשה לסורק — עוברת בדיקה ואישור">➕ הצע מניה</button></div></div>' +
-        '<div class="fgrp fgrp-uni"><label>סימבול</label><input id="scanSym" placeholder="AAPL" value="' + scanState.sym + '"></div>' +
+        '<div class="fgrp fgrp-uni"><label>סימבול <span class="muted" style="font-size:10px">· רשימה עם פסיקים</span></label><input id="scanSym" placeholder="AAPL · או AAPL, MSFT, NVDA" value="' + scanState.sym + '"></div>' +
         '<div class="fgrp fgrp-uni"><label>סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSector", sectors.map(s => ({ val: s, label: s + (etfFor(s) ? " (" + etfFor(s) + ")" : "") })), scanState.sector, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp fgrp-uni"><label>תת-סקטור <span class="muted" style="font-size:10px">· רב-בחירה</span></label>' + multiComboHtml("scanSubsec", subsectors.map(s => ({ val: s, label: s + (subEtfFor(s) ? " (" + subEtfFor(s) + ")" : "") })), scanState.subsec, "הכל · הקלד לחיפוש") + "</div>" +
         '<div class="fgrp fgrp-uni"><label>מחיר ($)</label><div class="chips" style="align-items:center"><input id="scanPmin" type="number" min="0" step="1" placeholder="מ-" style="width:74px" value="' + scanState.priceMin + '"><span class="muted">–</span><input id="scanPmax" type="number" min="0" step="1" placeholder="עד" style="width:74px" value="' + scanState.priceMax + '"></div></div>' +
@@ -7030,7 +7030,16 @@
       if (scanState.universe === "comm" && !t.comm) return false;
       if (scanState.sector.length && scanState.sector.indexOf(t.sector) < 0) return false;
       if (scanState.subsec.length && scanState.subsec.indexOf(t.ind) < 0 && !(t.tech && t.tech.subx && t.tech.subx.some(x => scanState.subsec.indexOf(x) >= 0))) return false;   // match primary ind OR a secondary composite membership (e.g. Mag 7)
-      if (scanState.sym && t.sym.indexOf(scanState.sym.toUpperCase()) < 0) return false;
+      if (scanState.sym) {
+        // one free-typed token → substring (keeps live partial-typing, e.g. "AAP"→AAPL);
+        // comma-separated list → exact ticker match per token (batch mode: "AAPL, MSFT, NVDA")
+        const _toks = scanState.sym.toUpperCase().split(",").map(x => x.trim()).filter(Boolean);
+        if (_toks.length) {
+          const _s = t.sym.toUpperCase();
+          const _hit = _toks.length === 1 ? _s.indexOf(_toks[0]) >= 0 : _toks.indexOf(_s) >= 0;
+          if (!_hit) return false;
+        }
+      }
       if (scanState.ftfc && !t.ftfc) return false;
       if (scanState.priceMin !== "" || scanState.priceMax !== "") {
         const px = t.price || (t.tech ? t.tech.px : 0);
