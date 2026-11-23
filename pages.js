@@ -8506,7 +8506,12 @@
       const d = m[s], base = { name: s, n: d.n, greenPct: d.green / d.n * 100, top: d.top };
       const tfv = _aggTfv(d);   // {tf: equal-weight avg %}
       if (flowSecMode !== "avg") {
-        // ETF move (cap-weighted) for 1D/1W/1M when live data is loaded; extended TFs stay stock-average.
+        // CONSISTENT BASIS (Adi): EVERY timeframe = the sector ETF's OWN move, so only the timeframe changes,
+        // not the method. Use the ETF ticker's scanner tech (c5/cwtd/c20/cmtd/c63/cqtd/c252/cytd + chg) for the
+        // calendar/rolling TFs too — NOT the equal-weight stock average. Falls back to the average only where
+        // the ETF row/field is missing. The live feed (fresher, same cap-weighted ETF) still wins for 1D/1W/1M.
+        const _etf = etfFor(s), _et = _etf ? _hmSMap()[_etf] : null;
+        if (_et) { FLOW_TF_DEF.forEach(d => { if (d[3] && _et[d[3]] != null) tfv[d[0]] = _et[d[3]]; }); if (_et.chg != null) tfv["1d"] = _et.chg; }
         if (liveChg[s] != null) tfv["1d"] = liveChg[s];
         if (live5d[s] != null) tfv["5d"] = live5d[s];
         if (live20d[s] != null) tfv["20d"] = live20d[s];
@@ -8538,7 +8543,11 @@
     const subs = (LIVE && LIVE.subsectors) ? LIVE.subsectors : [];
     if (!subs.length) return [];
     return subs.map(s => {
-      const tfv = agg[s.ind] ? _aggTfv(agg[s.ind]) : {};   // extended TFs = equal-weight stock average
+      const tfv = agg[s.ind] ? _aggTfv(agg[s.ind]) : {};   // base = equal-weight stock average (fallback only)
+      // CONSISTENT BASIS (Adi): use the sub-sector ETF's OWN tech for every timeframe (same as the sector grid),
+      // so WTD/MTD/… measure the same ETF as 1D rather than the stock average. Live wins for 1D/1W/1M below.
+      const _et = s.etf ? _hmSMap()[s.etf] : null;
+      if (_et) { FLOW_TF_DEF.forEach(d => { if (d[3] && _et[d[3]] != null) tfv[d[0]] = _et[d[3]]; }); if (_et.chg != null) tfv["1d"] = _et.chg; }
       if (s.chg != null) tfv["1d"] = s.chg;                // ETF cap-weighted move for 1D/1W/1M when available
       if (s.chg5d != null) tfv["5d"] = s.chg5d;
       if (s.chg20d != null) tfv["20d"] = s.chg20d;
@@ -10454,11 +10463,13 @@
   }
   function bvGroup(g, idx, tf) {
     var present = g.syms.filter(function (s) { return idx[s]; });
-    var downs = present.filter(function (s) { var c = idx[s][tf]; return c && c.c === "down"; }).length;
-    var ups = present.filter(function (s) { var c = idx[s][tf]; return c && c.c === "up"; }).length;
-    var chipCls = downs > ups ? "dn" : ups > downs ? "up" : "mix";
-    var chipTxt = (downs >= ups ? downs + "/" + present.length + " ▼" : ups + "/" + present.length + " ▲");
-    return '<div class="bv-card"><div class="bv-chead"><span class="bv-cname">' + g.he + '</span><span class="bv-cnote">' + g.note + '</span><span class="bv-sp"></span><span class="bv-gchip ' + chipCls + '">' + chipTxt + " · " + BV_TFHE[tf] + "</span></div>" +
+    // direction by CANDLE TYPE (Strat-honest): 2U = up, 2D = down. Inside(1)/outside(3) have no single direction → not counted.
+    var ups = present.filter(function (s) { var c = idx[s][tf]; return c && c.t === "2U"; }).length;
+    var downs = present.filter(function (s) { var c = idx[s][tf]; return c && c.t === "2D"; }).length;
+    var chipCls = ups > downs ? "up" : downs > ups ? "dn" : "mix";
+    var chipTxt = ups > downs ? "עולה" : downs > ups ? "יורד" : "מעורב";
+    var chipTitle = ups + " נרות 2▲ · " + downs + " נרות 2▼ · הכיוון לפי סוג-הנר (נר פנימי לא נספר)";
+    return '<div class="bv-card"><div class="bv-chead"><span class="bv-cname">' + g.he + '</span><span class="bv-cnote">' + g.note + '</span><span class="bv-sp"></span><span class="bv-gchip ' + chipCls + '" title="' + escAttr(chipTitle) + '">' + chipTxt + "</span></div>" +
       g.syms.map(function (s) { return bvRow(s, idx, tf); }).join("") + "</div>";
   }
   function bvCss() {
