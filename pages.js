@@ -10805,6 +10805,9 @@
         (conf ? '<span class="bvl-cf" title="' + cfTxt + '">⚠️</span>' : "") +
         '<span class="bvl-chg ' + (ch >= 0 ? "up" : "dn") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + '%</span></div>';
     }).join("");
+    var ifSyms = members.filter(function (x) { return refDir && (x[tf] || {}).ifc === refDir; }).map(function (x) { return x.s; });
+    var _copyLbl = "📋 העתק " + ifSyms.length + " מניות IN FORCE (מופרד בפסיקים)";
+    var copyBtn = ifSyms.length ? '<button class="btn ghost" id="bvlCopy" title="מעתיק את המניות שב-IN FORCE מופרדות בפסיקים — מוכן להדבקה בטריידינג-ויו" style="font-size:12.5px;font-weight:700;margin:0 0 11px">' + _copyLbl + '</button>' : "";
     var SORTS = [["align", "⚡ יישור"], ["type", "🕯️ סוג נר"], ["chg", "📈 % שינוי"]];
     var sortChips = '<div class="bvl-sorts">' + SORTS.map(function (s) {
       return '<button class="bvl-sortbtn' + (bvListSort === s[0] ? " on" : "") + '" data-bvsort="' + s[0] + '">' + s[1] + '</button>';
@@ -10817,6 +10820,7 @@
       '<div class="bvl-wrap">' +
       '<button class="btn ghost" id="bvlBack" style="font-size:13px;font-weight:600;margin-bottom:12px">← חזרה ל-' + sym + '</button>' +
       '<div class="bvl-sub">' + head + '</div>' +
+      copyBtn +
       sortChips +
       '<div class="bvl-legend">מסגרת צבעונית = IN FORCE (זזה יחד עם האלגו) · ' + sortNote + ' · לחץ על מניה לכרטיס המלא שלה</div>' +
       '<div class="bvl-grid">' + itemsHtml + '</div></div>';
@@ -10825,6 +10829,8 @@
     scope.querySelectorAll("[data-bvdrill]").forEach(function (el) { el.onclick = function () { bvOpenDrill(el.getAttribute("data-bvdrill")); }; });
     scope.querySelectorAll("[data-bvsort]").forEach(function (el) { el.onclick = function () { bvListSort = el.getAttribute("data-bvsort"); bvForceList(sym, tf); }; });   // click a sort chip → re-sort the list
     var bk = scope.querySelector("#bvlBack"); if (bk) bk.onclick = function () { bvOpenDrill(sym); };
+    var cpy = scope.querySelector("#bvlCopy");
+    if (cpy) cpy.onclick = function () { copyToClipboard(ifSyms.join(","), function () { cpy.textContent = "✓ הועתקו " + ifSyms.length + " מניות"; setTimeout(function () { cpy.textContent = _copyLbl; }, 1700); }); };
   }
   function bvOpenDrill(sym) {
     if (typeof modal !== "function") return;
