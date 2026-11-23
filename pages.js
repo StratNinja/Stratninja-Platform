@@ -5738,13 +5738,13 @@
     } catch (e) {}
     setTimeout(run, 260);
   }
-  function _captureRedesignCard(builder) {
+  function _captureRedesignCard(builder, capOverride) {
     if (typeof html2canvas !== "function") { snToast("כלי הצילום עדיין נטען — נסה שוב בעוד רגע"); return; }
     snToast("מכין כרטיס…");
     _prepHeroSquare(() => {
       const el = builder();
       const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
-        .then(cv => { el.remove(); showShareModal(cv); })
+        .then(cv => { el.remove(); showShareModal(cv, capOverride); })
         .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
       // wait for the embedded Heebo/Inter to be ready so the PNG isn't rendered with a fallback font
       _awaitCardFonts(run);
@@ -10580,21 +10580,32 @@
     else if (ifup / tot >= 0.6) { reg = "🟢 קנייה אלגו רוחבית"; rcls = "up"; }
     else { reg = "⚖️ שוק מעורב"; rcls = "mix"; }
     var regChip = '<span class="bv-ap reg ' + rcls + '">' + reg + ' <b>' + Math.max(ifdn, ifup) + "/" + tot + '</b></span>';
+    var allRows = (SCAN && SCAN.rows) ? SCAN.rows : [];
     var g2 = BV_GROUPS.map(function (g) {
-      var present = g.syms.filter(function (s) { return idx[s] && idx[s][tf]; });
-      if (!present.length) return null;
-      var dn = present.filter(function (s) { return idx[s][tf].ifc === "down"; });
-      var up = present.filter(function (s) { return idx[s][tf].ifc === "up"; });
-      var dir, al; if (dn.length >= up.length) { dir = "down"; al = dn; } else { dir = "up"; al = up; }
-      if (!al.length) return { name: g.he, dir: "mix", aligned: 0, total: present.length, pers: 0 };
-      var pers = al.reduce(function (m, s) { return Math.max(m, bvStreak(idx[s][tf])); }, 0);
-      return { name: g.he, dir: dir, aligned: al.length, total: present.length, pers: pers };
+      // % over the WHOLE sector when the card is a real GICS sector (≥5 members via secHe); else the group's reps
+      var pool = [];
+      if (allRows.length && typeof secHe === "function") {
+        pool = allRows.filter(function (x) { return x && x.sec && secHe(x.sec) === g.he && x[tf]; });
+      }
+      var whole = pool.length >= 5;
+      if (!whole) pool = g.syms.filter(function (s) { return idx[s] && idx[s][tf]; }).map(function (s) { return idx[s]; });
+      var total = pool.length; if (!total) return null;
+      var upN = pool.filter(function (x) { return (x[tf] || {}).ifc === "up"; }).length;
+      var dnN = pool.filter(function (x) { return (x[tf] || {}).ifc === "down"; }).length;
+      var insN = pool.filter(function (x) { return (x[tf] || {}).t === "1"; }).length;
+      var dir = upN > dnN ? "up" : dnN > upN ? "down" : "mix";
+      return { name: g.he, dir: dir, up: upN, dn: dnN, ins: insN, total: total, whole: whole };
     }).filter(Boolean);
-    g2.sort(function (a, b) { if (b.aligned !== a.aligned) return b.aligned - a.aligned; return b.pers - a.pers; });
+    g2.sort(function (a, b) { return (Math.max(b.up, b.dn) / b.total) - (Math.max(a.up, a.dn) / a.total); });
+    var _pct = function (n, t) { return Math.round(n / t * 100); };
     var chips = g2.map(function (x) {
-      var cls = x.dir === "down" ? "dn" : x.dir === "up" ? "up" : "mix", arr = x.dir === "down" ? "▼" : x.dir === "up" ? "▲" : "·";
-      var strong = (x.aligned === x.total && x.total >= 3) ? " strong" : "";
-      return '<span class="bv-ap ' + cls + strong + '" title="' + x.name + ' · ' + x.aligned + '/' + x.total + ' IN FORCE' + (x.pers > 1 ? ' · ' + x.pers + ' נרות ברצף' : "") + '">' + x.name + ' <b>' + x.aligned + "/" + x.total + '</b> ' + arr + (x.pers > 1 ? ' <i>·' + x.pers + "</i>" : "") + "</span>";
+      var cls = x.dir === "down" ? "dn" : x.dir === "up" ? "up" : "mix";
+      var up = _pct(x.up, x.total), dn = _pct(x.dn, x.total), ins = _pct(x.ins, x.total);
+      var insDom = x.ins > x.up && x.ins > x.dn;   // inside bars dominate the sector → show their % too
+      var strong = (Math.max(x.up, x.dn) / x.total >= 0.6) ? " strong" : "";
+      var body = x.name + ' <b>' + up + '%▲ ' + dn + '%▼</b>' + (insDom ? ' <i>· ' + ins + '% פנימי</i>' : "");
+      var tip = x.name + ' · IN FORCE מעלה ' + up + '% · מטה ' + dn + '% · נרות פנימיים ' + ins + '% · מתוך ' + x.total + (x.whole ? ' מניות הסקטור' : ' בקבוצה');
+      return '<span class="bv-ap ' + cls + strong + '" title="' + escAttr(tip) + '">' + body + "</span>";
     }).join("");
     return '<div class="bv-aprow"><span class="bv-aplabel">⚡ לחץ אלגו</span><div class="bv-apscroll">' + regChip + bvMacroChips(idx) + '<span class="bv-apsep"></span>' + chips + "</div></div>";
   }
@@ -10846,7 +10857,7 @@
     scope.querySelectorAll("[data-bvdtf]").forEach(function (el) { el.onclick = function () { bvTf = el.getAttribute("data-bvdtf"); reRender(); bvOpenDrill(sym); }; });   // click a drill TF chip → switch timeframe + re-open drill
     var mtf = scope.querySelector("#bvMtf"); if (mtf) mtf.onclick = function () { if (typeof openMultiChart === "function") openMultiChart(sym); };
     var fb = scope.querySelector("#bvFull"); if (fb) fb.onclick = function () { if (typeof openChart === "function") openChart(sym, tf); };
-    var sb = scope.querySelector("#bvShare"); if (sb) sb.onclick = function () { _captureRedesignCard(function () { return buildAlgoMovementCardEl(sym, tf); }); };
+    var sb = scope.querySelector("#bvShare"); if (sb) sb.onclick = function () { _captureRedesignCard(function () { return buildAlgoMovementCardEl(sym, tf); }, _algoShareCaption(sym, tf)); };
   }
   // ===== 📷 "תנועה אלגוריתמית" share card — the sector IN FORCE board (1080×1080, flat self-contained) =====
   function _algoMini(cell, price) {   // mini 3-candle, BAKED hex colours (html2canvas doesn't resolve var())
@@ -10873,6 +10884,27 @@
       }
     });
     return s + "</svg>";
+  }
+  function _algoShareCaption(sym, tf) {   // caption matched to the algo-movement share card (sector + direction + its own tickers)
+    tf = tf || bvTf;
+    var rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
+    var r = rows.find(function (x) { return x.s === sym; }) || {};
+    var ref = r[tf] || {}, refDir = ref.ifc || ref.c || "";
+    var peers = rows.filter(function (x) { return x.s !== sym && x.sec === r.sec && bvHasData(x, tf); });
+    peers.sort(function (a, b) {
+      var aa = (refDir && a[tf].ifc === refDir ? 1 : 0), bb = (refDir && b[tf].ifc === refDir ? 1 : 0);
+      if (aa !== bb) return bb - aa;
+      return Math.abs(b.c || 0) - Math.abs(a.c || 0);
+    });
+    var aligned = peers.filter(function (x) { return refDir && x[tf].ifc === refDir; }).length;
+    var secName = (typeof secHe === "function") ? secHe(r.sec) : (r.sec || "");
+    var total = peers.length + 1, alignFull = aligned + 1;
+    var dirWord = refDir === "down" ? "▼ מכירה אלגוריתמית" : refDir === "up" ? "▲ קנייה אלגוריתמית" : "• ללא כיוון מובהק";
+    var tfHe = (typeof BV_TFHE !== "undefined" && BV_TFHE[tf]) ? BV_TFHE[tf] : tf;
+    var syms = [sym].concat(peers.map(function (x) { return x.s; })).filter(Boolean).slice(0, 6);
+    var tagStr = syms.map(function (s) { return "$" + s; }).join(" ");
+    var cap = "🤖 תנועה אלגוריתמית · " + secName + " · " + tfHe + "\n" + dirWord + " · " + alignFull + "/" + total + " IN FORCE";
+    return cap + (tagStr ? "\n\n" + tagStr : "") + "\n\n" + SHARE_HASHTAGS + "\n\nstratninja.win";
   }
   function buildAlgoMovementCardEl(sym, tf) {
     tf = tf || bvTf;
