@@ -10630,9 +10630,16 @@
     var idx = {}; rows.forEach(function (r) { if (r && r.s) idx[r.s] = r; });
     var uniq = {}; BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { uniq[s] = 1; }); });
     var all = Object.keys(uniq).filter(function (s) { return idx[s]; });
-    var down = all.filter(function (s) { var c = idx[s][tf]; return c && c.c === "down"; }).length;
-    var up = all.filter(function (s) { var c = idx[s][tf]; return c && c.c === "up"; }).length;
-    var mid = all.length - down - up;
+    // count by candle TYPE (not body colour): 2U = בעלייה · 2D = בירידה · 1 = פנימי (inside) · 3 = outside → by close
+    var down = 0, up = 0, mid = 0;
+    all.forEach(function (s) {
+      var c = idx[s][tf] || {}, t = c.t;
+      if (t === "1") mid++;
+      else if (t === "2U") up++;
+      else if (t === "2D") down++;
+      else if (t === "3") { if (c.c === "down") down++; else up++; }
+      else mid++;
+    });
     var breadth = '<div class="bv-breadth"><span class="bv-bnum ' + (down >= up ? "dn" : "up") + '">' + down + "/" + all.length + '</span><span class="bv-btxt">' + down + ' בירידה · ' + up + ' בעלייה · ' + mid + ' פנימי (' + BV_TFHE[tf] + ')</span><div class="bv-sbar"><i style="flex:' + down + ';background:var(--red)"></i><i style="flex:' + mid + ';background:var(--muted)"></i><i style="flex:' + up + ';background:var(--green)"></i></div></div>';
     var ctrlRow = '<div class="bv-tfbar">' + ctrls + breadth + '</div>';
     var algo = bvAlgoStrip(idx, tf);
