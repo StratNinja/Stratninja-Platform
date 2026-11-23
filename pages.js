@@ -10462,13 +10462,20 @@
       '<div class="' + ff + '">' + ffTxt + "</div></div>";
   }
   function bvGroup(g, idx, tf) {
-    var present = g.syms.filter(function (s) { return idx[s]; });
-    // direction by CANDLE TYPE (Strat-honest): 2U = up, 2D = down. Inside(1)/outside(3) have no single direction → not counted.
-    var ups = present.filter(function (s) { var c = idx[s][tf]; return c && c.t === "2U"; }).length;
-    var downs = present.filter(function (s) { var c = idx[s][tf]; return c && c.t === "2D"; }).length;
+    // Direction by IN FORCE majority over the WHOLE sector (not just the shown reps): count how many of the
+    // sector's stocks are IN FORCE up vs down on this TF; the larger side wins (not-in-force / inside bars don't vote).
+    // Real sector cards (טכנולוגיה/פיננסים/…) use the whole sector; thematic groups (מדדים/מגה-קאפ/קריפטו) use their reps.
+    var pool = [];
+    if (SCAN && SCAN.rows && typeof secHe === "function") {
+      pool = SCAN.rows.filter(function (x) { return x && x.sec && secHe(x.sec) === g.he && x[tf]; });
+    }
+    var whole = pool.length >= 5;
+    if (!whole) pool = g.syms.map(function (s) { return idx[s]; }).filter(function (x) { return x && x[tf]; });
+    var ups = pool.filter(function (x) { return (x[tf] || {}).ifc === "up"; }).length;
+    var downs = pool.filter(function (x) { return (x[tf] || {}).ifc === "down"; }).length;
     var chipCls = ups > downs ? "up" : downs > ups ? "dn" : "mix";
     var chipTxt = ups > downs ? "עולה" : downs > ups ? "יורד" : "מעורב";
-    var chipTitle = ups + " נרות 2▲ · " + downs + " נרות 2▼ · הכיוון לפי סוג-הנר (נר פנימי לא נספר)";
+    var chipTitle = "IN FORCE: " + ups + " מעלה · " + downs + " מטה · מתוך " + pool.length + (whole ? " מניות הסקטור" : " בקבוצה") + " — הרוב קובע (לא-IN-FORCE לא נספר)";
     return '<div class="bv-card"><div class="bv-chead"><span class="bv-cname">' + g.he + '</span><span class="bv-cnote">' + g.note + '</span><span class="bv-sp"></span><span class="bv-gchip ' + chipCls + '" title="' + escAttr(chipTitle) + '">' + chipTxt + "</span></div>" +
       g.syms.map(function (s) { return bvRow(s, idx, tf); }).join("") + "</div>";
   }
@@ -10507,9 +10514,9 @@
       '.bv-chead{display:flex;align-items:center;gap:10px;padding:11px 14px 9px}' +
       '.bv-cname{font-size:15px;font-weight:800;color:var(--ink)}' +
       '.bv-cnote{font-size:11.5px;color:var(--muted)}.bv-sp{flex:1}' +
-      '.bv-gchip{font-family:var(--mono);font-size:11px;padding:4px 9px;border-radius:999px;white-space:nowrap}' +
-      '.bv-gchip.dn{color:var(--red);background:var(--redbg);border:1px solid var(--redbd)}' +
-      '.bv-gchip.up{color:var(--green);background:var(--greenbg);border:1px solid var(--greenbd)}' +
+      '.bv-gchip{font-size:13px;font-weight:800;letter-spacing:.3px;padding:5px 14px;border-radius:999px;white-space:nowrap}' +
+      '.bv-gchip.dn{color:#2a0810;background:var(--red)}' +
+      '.bv-gchip.up{color:#04201a;background:var(--green)}' +
       '.bv-gchip.mix{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
       '.bv-trow{position:relative;display:flex;align-items:center;gap:7px;padding:8px 11px;padding-inline-end:64px;border-top:1px solid var(--line);flex-wrap:nowrap;cursor:pointer}' +
       '.bv-trow:hover{background:var(--soft2)}' +
@@ -10818,7 +10825,12 @@
     var ohl = (sel.o != null) ? ('<div class="bv-dk">פתיחה ' + sel.o + " · גבוה " + bvHi(sel) + " · נמוך " + bvLo(sel) + "</div>") : "";
     var trig = (sel.ph != null) ? ('<div class="bv-dk">טריגר (נר קודם): נמוך <b style="color:var(--green)">' + sel.pl + '</b> · גבוה <b style="color:var(--red)">' + sel.ph + "</b></div>") : "";
     var ff = r.ftfc ? (sel.c === "up" ? "▲ שורי" : "▼ דובי") : "— אין";
-    var info = '<div class="bv-dinfo">' + ohl + trig + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b></div>" + '<div class="bv-dk">המשכיות (FTFC): <b>' + ff + "</b></div></div>";
+    var ifcTxt = sel.ifc === "up" ? '<b style="color:var(--green)">▲ כן — הסגירה מעל הגבוה הקודם</b>'
+      : sel.ifc === "down" ? '<b style="color:var(--red)">▼ כן — הסגירה מתחת לנמוך הקודם</b>'
+      : '<b style="color:var(--muted)">— לא (הסגירה לא מעבר לקצה הנר הקודם)</b>';
+    var ifcLine = '<div class="bv-dk">IN FORCE: ' + ifcTxt + "</div>";
+    var confNote = bvIsConflict(sel) ? '<div class="bv-dk" style="color:#eab308">⚠️ בקונפליקט — ' + (sel.t === "2U" ? "שבר גבוה חדש אך סגר מתחת לפתיחה (גוף אדום)" : "שבר נמוך חדש אך סגר מעל הפתיחה — קונים סמויים") + "</div>" : "";
+    var info = '<div class="bv-dinfo">' + ohl + trig + ifcLine + confNote + '<div class="bv-dk">רצף: <b>' + (sel.seq3d || "—") + "</b></div>" + '<div class="bv-dk">המשכיות (FTFC): <b>' + ff + "</b></div></div>";
     var ex = bvTypeExplain(sel);
     var cap = (sel.t) ? ('<div class="bv-dcap"><span class="bv-cell ' + ex.cls + ' bv-capbadge"><span class="bv-g">' + bvGlyph(sel.t) + '</span></span><span class="bv-captxt">' + ex.txt + '</span></div>') : "";
     var chart = '<div class="bv-bigwrap">' + bvCandleBig(sel, r.p) + '</div>' + cap +
