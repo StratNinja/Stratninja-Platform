@@ -532,6 +532,8 @@
     const GCAP = 60; // lazy-loaded, but cap DOM to keep it snappy
     // remembered column density (fewer columns = fewer charts loading at once = faster). default 3.
     let cgDensity = (function () { try { const d = localStorage.getItem("sn_cg_density"); if (["2", "3", "4", "5"].indexOf(d) >= 0) return d; } catch (e) {} return "3"; })();
+    // price-scale mode for the NATIVE charts: false = linear (arithmetic), true = logarithmic. Remembered.
+    let cgLogScale = (function () { try { return localStorage.getItem("sn_cg_log") === "1"; } catch (e) { return false; } })();
     let cgSort = "table"; // default: keep the scanner table's current order (rows come in already sorted)
     let cgFavTop = false; // optional: pull favorited stocks to the front (off by default each time)
     function cgSorted() {
@@ -581,7 +583,9 @@
       '<option value="table">לפי הטבלה</option><option value="chg">עולה %</option><option value="chgAsc">יורד %</option><option value="sym">סימבול</option></select></div>';
     const favBtn = '<button class="chip cg-favtop' + (cgFavTop ? " on" : "") + '" id="cgFavTop" title="הבא את המניות מהמועדפים לראש הרשימה">⭐ מועדפים ראשונים</button>';
     const shotBtn = '<button class="btn ghost" id="cgShot" style="font-size:12px;font-weight:600" title="צילום מסך של תצוגת הגרפים">🖼️ צילום מסך</button>';
-    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + favBtn + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-' + cgDensity + '" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
+    // linear ↔ logarithmic price-scale toggle (native charts only — TV iframes keep their own controls)
+    const scaleBtn = '<button class="chip cg-logtoggle' + (cgLogScale ? " on" : "") + '" id="cgLogBtn" title="החלף סקאלת מחיר: לינארית (אריתמטית) ↔ לוגריתמית">📏 ' + (cgLogScale ? "לוגריתמי" : "לינארי") + "</button>";
+    modal("📊 תצוגת גרפים" + (opts.title ? " · " + opts.title : ""), '<div class="cg-bar">' + tfSel + sortSel + dens + scaleBtn + favBtn + shotBtn + "</div>" + maBarHtml() + '<div class="cg-grid cg-' + cgDensity + '" id="cgGrid">' + cellsHtml(curRange) + "</div>", "chartgrid");
     const grid = $("#cgGrid");
     const scroller = document.querySelector(".modal.chartgrid");
 
@@ -606,7 +610,7 @@
         const chart = LWC.createChart(ph, {
           layout: { background: { type: "solid", color: "transparent" }, textColor: "#8a93a6", fontFamily: "Heebo,Rubik,sans-serif" },
           grid: { vertLines: { color: "rgba(255,255,255,.04)" }, horzLines: { color: "rgba(255,255,255,.04)" } },
-          rightPriceScale: { borderColor: "rgba(255,255,255,.08)" },
+          rightPriceScale: { borderColor: "rgba(255,255,255,.08)", mode: cgLogScale ? 1 : 0 },   // 1=logarithmic, 0=linear(arithmetic)
           timeScale: { borderColor: "rgba(255,255,255,.08)", rightOffset: 5 },
           // mouse wheel ZOOMS (not pans) so it doesn't fight page scroll; drag to pan; dbl-click axis resets.
           handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
@@ -660,6 +664,14 @@
       if (grid) grid.className = "cg-grid cg-" + cgDensity;
       document.querySelectorAll("[data-cg]").forEach(x => x.classList.toggle("on", x === b));
     });
+    // linear ↔ logarithmic price-scale toggle — applies LIVE to every open native chart (no rebuild)
+    { const lb = $("#cgLogBtn"); if (lb) lb.onclick = () => {
+        cgLogScale = !cgLogScale;
+        try { localStorage.setItem("sn_cg_log", cgLogScale ? "1" : "0"); } catch (e) {}
+        lb.classList.toggle("on", cgLogScale);
+        lb.textContent = "📏 " + (cgLogScale ? "לוגריתמי" : "לינארי");
+        _cgCharts.forEach(c => { try { c.priceScale("right").applyOptions({ mode: cgLogScale ? 1 : 0 }); } catch (e) {} });
+      }; }
     // manual range (lookback) selector — rebuilds the charts in place (re-observes for lazy loading)
     document.querySelectorAll("[data-cgrange]").forEach(b => b.onclick = () => {
       curRange = b.dataset.cgrange;
