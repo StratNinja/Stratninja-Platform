@@ -10482,7 +10482,7 @@
     if (!whole) pool = g.syms.map(function (s) { return idx[s]; }).filter(function (x) { return x && x[tf]; });
     var ups = pool.filter(function (x) { return (x[tf] || {}).ifc === "up"; }).length;
     var downs = pool.filter(function (x) { return (x[tf] || {}).ifc === "down"; }).length;
-    var chipCls = ups > downs ? "up" : downs > ups ? "dn" : "mix";
+    var chipCls = ups > downs ? "gu" : downs > ups ? "gd" : "gm";   // gu/gd/gm (NOT up/dn — a global .scanner-app .up{color:var(--green)!important} would paint the word same as the pill → invisible)
     var chipTxt = ups > downs ? "עולה" : downs > ups ? "יורד" : "מעורב";
     var chipTitle = "IN FORCE: " + ups + " מעלה · " + downs + " מטה · מתוך " + pool.length + (whole ? " מניות הסקטור" : " בקבוצה") + " — הרוב קובע (לא-IN-FORCE לא נספר)";
     return '<div class="bv-card"><div class="bv-chead"><span class="bv-cname">' + g.he + '</span><span class="bv-cnote">' + g.note + '</span><span class="bv-sp"></span><span class="bv-gchip ' + chipCls + '" title="' + escAttr(chipTitle) + '">' + chipTxt + "</span></div>" +
@@ -10524,9 +10524,9 @@
       '.bv-cname{font-size:15px;font-weight:800;color:var(--ink)}' +
       '.bv-cnote{font-size:11.5px;color:var(--muted)}.bv-sp{flex:1}' +
       '.bv-gchip{font-size:13px;font-weight:800;letter-spacing:.3px;padding:5px 14px;border-radius:999px;white-space:nowrap}' +
-      '.bv-gchip.dn{color:#2a0810;background:var(--red)}' +
-      '.bv-gchip.up{color:#04201a;background:var(--green)}' +
-      '.bv-gchip.mix{color:var(--muted);background:var(--soft);border:1px solid var(--line)}' +
+      '.bv-gchip.gd{color:#2a0810!important;background:var(--red)}' +
+      '.bv-gchip.gu{color:#04201a!important;background:var(--green)}' +
+      '.bv-gchip.gm{color:var(--muted)!important;background:var(--soft);border:1px solid var(--line)}' +
       '.bv-trow{position:relative;display:flex;align-items:center;gap:7px;padding:8px 11px;padding-inline-end:64px;border-top:1px solid var(--line);flex-wrap:nowrap;cursor:pointer}' +
       '.bv-trow:hover{background:var(--soft2)}' +
       '.bv-tid{display:flex;flex-direction:column;gap:1px;min-width:66px}' +
