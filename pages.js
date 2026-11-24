@@ -2040,6 +2040,55 @@
         '" style="left:' + left.toFixed(3) + "%;top:" + top.toFixed(3) + "%;width:" + w.toFixed(3) + "%;height:" + h.toFixed(3) + "%;" + _glowVars(cv) + '">' + lbl + "</span>";
     }).join("");
   }
+  // ── Auto-fit heat-map ticker text to each tile ───────────────────────────────────────────────
+  // Every tile shows the ticker at a FIXED CSS font, so in a narrow cell (share card, thin sectors)
+  // a 4–5 letter ticker overflows and gets clipped by overflow:hidden, while in a big zoom tile it
+  // looks tiny with lots of empty space. This measures each tile's real pixel box after layout and
+  // scales the ticker (and % line) to the largest size that still fits both width AND height — so
+  // short tickers grow, long ones shrink, nothing ever clips. Runs post-render + on resize.
+  function _hmFitTiles(root, maxPx) {
+    try {
+      root = root || document; maxPx = maxPx || 46;
+      const tiles = root.querySelectorAll(".hm-tile");
+      tiles.forEach(t => {
+        const sym = t.querySelector(".hm-t-sym"); if (!sym) return;
+        const chg = t.querySelector(".hm-t-chg");
+        const w = t.clientWidth, h = t.clientHeight;
+        if (w < 6 || h < 6) return;
+        const availW = Math.max(6, w - 8), availH = Math.max(6, h - 6);
+        const BASE = 20;
+        sym.style.whiteSpace = "nowrap"; sym.style.fontSize = BASE + "px";
+        const symNat = sym.scrollWidth || 1;
+        let byW = availW / symNat * BASE;                       // sym must fit the width
+        let byH;
+        if (chg) {
+          chg.style.whiteSpace = "nowrap"; chg.style.fontSize = BASE + "px";
+          const chgNat = chg.scrollWidth || 1;
+          byW = Math.min(byW, (availW / chgNat * BASE) / 0.62);  // % line (≈0.62×sym) must fit too
+          byH = availH / (1.05 * 1.62);                          // two stacked lines
+        } else {
+          byH = availH / 1.1;                                    // ticker only
+        }
+        let size = Math.max(8, Math.min(maxPx, byW, byH));
+        sym.style.fontSize = size.toFixed(1) + "px";
+        sym.style.lineHeight = "1.05";
+        if (chg) chg.style.fontSize = Math.max(7, size * 0.62).toFixed(1) + "px";
+      });
+    } catch (e) {}
+  }
+  // debounced re-fit of every heat map on the live page (resize / zoom in-out)
+  let _hmFitRaf = null;
+  function _hmFitSite() {
+    if (_hmFitRaf) cancelAnimationFrame(_hmFitRaf);
+    _hmFitRaf = requestAnimationFrame(() => {
+      document.querySelectorAll(".sp-heat").forEach(el => _hmFitTiles(el, 48));
+    });
+  }
+  let _hmFitResizeBound = false;
+  function _hmFitBindResize() {
+    if (_hmFitResizeBound) return; _hmFitResizeBound = true;
+    try { window.addEventListener("resize", _hmFitSite); } catch (e) {}
+  }
   function _hmFrame(name, stocks, opts) {
     opts = opts || {};
     const en = opts.en ? ' <span class="hm-sec-en">' + escHtml(opts.en) + "</span>" : "";
@@ -2484,6 +2533,10 @@
   }
   function wireSp500() {
     wireCharts(document);
+    // auto-fit every heat-map ticker to its tile (full map + sector zoom) — after layout & on resize
+    _hmFitBindResize();
+    _hmFitSite();
+    try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(_hmFitSite); } catch (e) {}
     document.querySelectorAll("[data-spview]").forEach(b => b.onclick = () => {
       if (sp500View === b.dataset.spview) return;
       sp500View = b.dataset.spview; spHeatSector = null; riskZoomSec = null;
@@ -5881,9 +5934,12 @@
     snToast("מכין כרטיס…");
     _prepHeroSquare(() => {
       const el = builder();
-      const run = () => html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
-        .then(cv => { el.remove(); showShareModal(cv, capOverride); })
-        .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
+      const run = () => {
+        _hmFitTiles(el);   // heat-map cards: scale each ticker to its tile (fonts are loaded now → accurate). No-op for other cards.
+        return html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
+          .then(cv => { el.remove(); showShareModal(cv, capOverride); })
+          .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
+      };
       // wait for the embedded Heebo/Inter to be ready so the PNG isn't rendered with a fallback font
       _awaitCardFonts(run);
     });
