@@ -429,10 +429,9 @@
   // load) falls back to a TV iframe for THAT cell — so partial coverage / intraday ranges are safe.
   const _CG_NATIVE = true;
   const _cgBarsCache = {};                  // sym -> bars[] | null (persists across grid opens)
-  // range key -> how many DAILY bars to show. Intraday ranges (1D/5D) return undefined → stay on TV.
-  // 60M ("5 שנים") is special: it renders WEEKLY candles aggregated from the 5y daily store (clean ~260 bars,
-  // matching TradingView's weekly 60M view) — see _cgToWeekly + _realizeNative. Its value here (1300 = whole
-  // store) is only the gate/daily-fallback count; the weekly path plots every aggregated week.
+  // range key -> how many DAILY bars to show (each candle = ONE day). Intraday ranges (1D/5D) return
+  // undefined → stay on TV. 60M ("5 שנים") = the whole ~5y daily store (1300 cap ≈ 1260 trading days),
+  // daily like the shorter ranges. (_cgToWeekly is kept available but currently unused.)
   const _CG_NBARS = { "1M": 21, "3M": 63, "6M": 126, "12M": 252, "24M": 504, "36M": 756, "60M": 1300 };
   async function _cgFetchBars(sym) {
     if (sym in _cgBarsCache) return _cgBarsCache[sym];
@@ -526,7 +525,7 @@
       { k: "12M", he: "שנה", iv: "D", rng: "12M" },
       { k: "24M", he: "שנתיים", iv: "D", rng: "60M" },   // native: DAILY candles; TV fallback → 60M
       { k: "36M", he: "3 שנים", iv: "D", rng: "60M" },   // native: DAILY candles; TV fallback → 60M
-      { k: "60M", he: "5 שנים", iv: "W", rng: "60M" },   // native: WEEKLY candles (aggregated)
+      { k: "60M", he: "5 שנים", iv: "D", rng: "60M" },   // native: DAILY candles (each = 1 day)
     ];
     // default lookback per TF. D → a full YEAR so candles render DAILY (a short 6M range makes
     // TradingView auto-switch to intraday 2h candles, which Adi doesn't want).
@@ -622,10 +621,9 @@
           width: ph.clientWidth || 300, height: ph.clientHeight || 220,
         });
         const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
-        // 60M ("5 שנים") → weekly candles (clean, like TV); other ranges → last N daily bars.
-        const weekly = (rangeKey === "60M");
-        const series = weekly ? _cgToWeekly(bars) : bars;                 // full plotted series (for MA seeding)
-        const nbars = weekly ? series.length : (_CG_NBARS[rangeKey] || series.length);
+        // every range renders DAILY candles (each candle = one day) — 1M..5Y show the last N daily bars.
+        const series = bars;                                             // full daily series (for MA seeding)
+        const nbars = _CG_NBARS[rangeKey] || series.length;
         const startIdx = Math.max(0, series.length - nbars);
         const lwcData = series.slice(startIdx).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
         s.setData(lwcData); _cgAddMAs(chart, series, startIdx); _cgFitRange(chart, lwcData.length, 5);
