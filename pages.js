@@ -423,14 +423,17 @@
     } catch (e) { return {}; }
   };
   // ---- native chart-grid support (lightweight-charts) ──────────────────────────────────────────
-  // Render OUR OWN candles from the pre-built 2y DAILY OHLC store (scanner_data id='ohlc:<SYM>' via
+  // Render OUR OWN candles from the pre-built 5y DAILY OHLC store (scanner_data id='ohlc:<SYM>' via
   // /api/ohlc) instead of a slow TradingView iframe per cell. Reversible: set _CG_NATIVE=false to
   // force the old TV grid. Any symbol without a stored row (or if the lightweight-charts lib didn't
   // load) falls back to a TV iframe for THAT cell — so partial coverage / intraday ranges are safe.
   const _CG_NATIVE = true;
   const _cgBarsCache = {};                  // sym -> bars[] | null (persists across grid opens)
   // range key -> how many DAILY bars to show. Intraday ranges (1D/5D) return undefined → stay on TV.
-  const _CG_NBARS = { "1M": 21, "3M": 63, "6M": 126, "12M": 252, "60M": 520 };
+  // 60M ("5 שנים") is special: it renders WEEKLY candles aggregated from the 5y daily store (clean ~260 bars,
+  // matching TradingView's weekly 60M view) — see _cgToWeekly + _realizeNative. Its value here (1300 = whole
+  // store) is only the gate/daily-fallback count; the weekly path plots every aggregated week.
+  const _CG_NBARS = { "1M": 21, "3M": 63, "6M": 126, "12M": 252, "60M": 1300 };
   async function _cgFetchBars(sym) {
     if (sym in _cgBarsCache) return _cgBarsCache[sym];
     let bars = null;
@@ -451,13 +454,38 @@
     try { chart.timeScale().setVisibleLogicalRange({ from: 0, to: (count - 1) + (margin || 5) }); }
     catch (e) { try { chart.timeScale().fitContent(); } catch (_e) {} }
   }
-  // draw the currently-active MAs (chartMA) as line series on a native cell. `bars` = FULL OHLC array
-  // (so the MA is seeded with history before the visible window); only points inside the last `nbars` plot.
-  function _cgAddMAs(chart, bars, nbars) {
+  // aggregate compact DAILY bars [date,o,h,l,c,v] → WEEKLY bars (ISO week, Mon-anchored). Used for the 60M
+  // ("5 שנים") view so 5 years render as ~260 clean weekly candles instead of a 1260-daily wall in a tiny cell
+  // (mirrors TradingView, which also switches 60M to a weekly interval). Each weekly bar: open=first day's open,
+  // high/low=week extremes, close=last day's close, date=last trading day in the week (unique & ascending).
+  function _cgToWeekly(bars) {
+    const out = []; let cur = null, curKey = null;
+    for (let i = 0; i < bars.length; i++) {
+      const b = bars[i], d = new Date(b[0] + "T00:00:00Z");
+      const dow = (d.getUTCDay() + 6) % 7;                 // 0=Mon … 6=Sun
+      const mon = new Date(d); mon.setUTCDate(d.getUTCDate() - dow);
+      const key = mon.toISOString().slice(0, 10);
+      if (key !== curKey) { if (cur) out.push(cur); cur = [b[0], b[1], b[2], b[3], b[4], b[5] || 0]; curKey = key; }
+      else {
+        if (b[2] > cur[2]) cur[2] = b[2];                  // high
+        if (b[3] < cur[3]) cur[3] = b[3];                  // low
+        cur[4] = b[4];                                     // close = latest
+        cur[0] = b[0];                                     // date = latest day in the week
+        cur[5] = (cur[5] || 0) + (b[5] || 0);              // volume = sum
+      }
+    }
+    if (cur) out.push(cur);
+    return out;
+  }
+  // draw the currently-active MAs (chartMA) as line series on a native cell. `series` = the FULL OHLC array
+  // actually plotted (daily OR weekly), so the MA is seeded with history before the visible window; only
+  // points from `startIdx` onward are plotted (MA length is in BARS of that series — e.g. weekly bars for 60M).
+  function _cgAddMAs(chart, series, startIdx) {
     const active = MA_DEFS.filter(m => chartMA[m.k]);
     if (!active.length || !chart.addLineSeries) return;
+    const bars = series;
     const n = bars.length, close = bars.map(b => b[4]), time = bars.map(b => b[0]);
-    const start = Math.max(0, n - nbars);
+    const start = Math.max(0, startIdx || 0);
     active.forEach(m => {
       const len = m.len;
       if (n < len) return;                                   // not enough history for this length
@@ -569,7 +597,7 @@
       f.setAttribute("loading", "lazy");
       ph.replaceWith(f);
     }
-    function _realizeNative(ph, sym, nbars) {
+    function _realizeNative(ph, sym, rangeKey) {
       const LWC = window.LightweightCharts;
       _cgFetchBars(sym).then(bars => {
         if (ph.dataset.done !== "1") return;                 // grid was rebuilt before data arrived
@@ -588,8 +616,13 @@
           width: ph.clientWidth || 300, height: ph.clientHeight || 220,
         });
         const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
-        const lwcData = bars.slice(-nbars).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
-        s.setData(lwcData); _cgAddMAs(chart, bars, nbars); _cgFitRange(chart, lwcData.length, 5);
+        // 60M ("5 שנים") → weekly candles (clean, like TV); other ranges → last N daily bars.
+        const weekly = (rangeKey === "60M");
+        const series = weekly ? _cgToWeekly(bars) : bars;                 // full plotted series (for MA seeding)
+        const nbars = weekly ? series.length : (_CG_NBARS[rangeKey] || series.length);
+        const startIdx = Math.max(0, series.length - nbars);
+        const lwcData = series.slice(startIdx).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
+        s.setData(lwcData); _cgAddMAs(chart, series, startIdx); _cgFitRange(chart, lwcData.length, 5);
         // double-click ANYWHERE in the cell (date row, price axis, or the chart) → reset to the default
         // view: all bars + the 5-bar right margin, price autoscaled. A DOM listener on the container catches
         // clicks on the axis canvases too (chart.subscribeDblClick fires only inside the price pane).
@@ -603,7 +636,7 @@
       ph.dataset.done = "1";
       const sym = ph.dataset.sym ? decodeURIComponent(ph.dataset.sym) : "";
       const nbars = _CG_NBARS[curRange];
-      if (_CG_NATIVE && sym && nbars) { _realizeNative(ph, sym, nbars); return; }   // daily ranges → native (fast)
+      if (_CG_NATIVE && sym && nbars) { _realizeNative(ph, sym, curRange); return; }   // daily/weekly ranges → native (fast)
       _realizeTv(ph);                                                               // intraday / fallback → TV
     }
     function observeGrid() {
