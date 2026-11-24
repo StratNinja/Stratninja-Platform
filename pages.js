@@ -576,12 +576,14 @@
           timeScale: { borderColor: "rgba(255,255,255,.08)", fixRightEdge: true },
           // mouse wheel ZOOMS (not pans) so it doesn't fight page scroll; drag to pan; dbl-click axis resets.
           handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-          handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
+          handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: { time: true, price: true } },
           width: ph.clientWidth || 300, height: ph.clientHeight || 220,
         });
         const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
         const lwcData = bars.slice(-nbars).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
         s.setData(lwcData); _cgAddMAs(chart, bars, nbars); chart.timeScale().fitContent();
+        // double-click (date row, any axis, or the chart itself) → reset to the default fitted view
+        try { chart.subscribeDblClick(() => { try { chart.timeScale().fitContent(); chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} }); } catch (e) {}
         if (window.ResizeObserver) { const ro = new ResizeObserver(() => { try { chart.applyOptions({ width: ph.clientWidth, height: ph.clientHeight }); } catch (e) {} }); ro.observe(ph); }
         _cgCharts.push(chart);
       });
