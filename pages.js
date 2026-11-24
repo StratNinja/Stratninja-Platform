@@ -582,14 +582,18 @@
           timeScale: { borderColor: "rgba(255,255,255,.08)", rightOffset: 5 },
           // mouse wheel ZOOMS (not pans) so it doesn't fight page scroll; drag to pan; dbl-click axis resets.
           handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
-          handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: { time: true, price: true } },
+          // disable the built-in axis dbl-click reset (it only resets bar-spacing, glued right); we handle
+          // dbl-click ourselves below so it resets to the FULL default view (+right margin) everywhere.
+          handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: false },
           width: ph.clientWidth || 300, height: ph.clientHeight || 220,
         });
         const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
         const lwcData = bars.slice(-nbars).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
         s.setData(lwcData); _cgAddMAs(chart, bars, nbars); _cgFitRange(chart, lwcData.length, 5);
-        // double-click (date row, any axis, or the chart itself) → reset to the default view (+right margin)
-        try { chart.subscribeDblClick(() => { try { _cgFitRange(chart, lwcData.length, 5); chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} }); } catch (e) {}
+        // double-click ANYWHERE in the cell (date row, price axis, or the chart) → reset to the default
+        // view: all bars + the 5-bar right margin, price autoscaled. A DOM listener on the container catches
+        // clicks on the axis canvases too (chart.subscribeDblClick fires only inside the price pane).
+        ph.addEventListener("dblclick", () => { try { _cgFitRange(chart, lwcData.length, 5); chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} });
         if (window.ResizeObserver) { const ro = new ResizeObserver(() => { try { chart.applyOptions({ width: ph.clientWidth, height: ph.clientHeight }); } catch (e) {} }); ro.observe(ph); }
         _cgCharts.push(chart);
       });
