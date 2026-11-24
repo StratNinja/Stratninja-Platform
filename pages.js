@@ -440,6 +440,37 @@
     } catch (e) { bars = null; }
     _cgBarsCache[sym] = bars; return bars;
   }
+  // one colour per MA (matches the toggle order; SMA warm, EMA cool). sma150 = StratNinja teal.
+  const _CG_MA_COLORS = {
+    sma20: "#f6c453", sma50: "#ff8f5a", sma150: "#2dd4bf", sma200: "#e05a8a",
+    ema20: "#7aa2ff", ema50: "#9d7cff", ema150: "#4ade80", ema200: "#f87171",
+  };
+  // draw the currently-active MAs (chartMA) as line series on a native cell. `bars` = FULL OHLC array
+  // (so the MA is seeded with history before the visible window); only points inside the last `nbars` plot.
+  function _cgAddMAs(chart, bars, nbars) {
+    const active = MA_DEFS.filter(m => chartMA[m.k]);
+    if (!active.length || !chart.addLineSeries) return;
+    const n = bars.length, close = bars.map(b => b[4]), time = bars.map(b => b[0]);
+    const start = Math.max(0, n - nbars);
+    active.forEach(m => {
+      const len = m.len;
+      if (n < len) return;                                   // not enough history for this length
+      const vals = new Array(n).fill(null);
+      if (m.type === "SMA") {
+        let sum = 0;
+        for (let i = 0; i < n; i++) { sum += close[i]; if (i >= len) sum -= close[i - len]; if (i >= len - 1) vals[i] = sum / len; }
+      } else {                                               // EMA seeded with the SMA at index len-1
+        const k = 2 / (len + 1);
+        let seed = 0; for (let i = 0; i < len; i++) seed += close[i]; vals[len - 1] = seed / len;
+        for (let i = len; i < n; i++) vals[i] = close[i] * k + vals[i - 1] * (1 - k);
+      }
+      const pts = [];
+      for (let i = start; i < n; i++) if (vals[i] != null) pts.push({ time: time[i], value: +vals[i].toFixed(2) });
+      if (!pts.length) return;
+      const ls = chart.addLineSeries({ color: _CG_MA_COLORS[m.k] || "#8a93a6", lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false });
+      ls.setData(pts);
+    });
+  }
 
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M", "15m": "15", "30m": "30", "60m": "60", "65m": "65", "2H": "120", "130m": "130", "3H": "180", "195m": "195", "4H": "240" };
@@ -548,7 +579,7 @@
         });
         const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
         const lwcData = bars.slice(-nbars).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
-        s.setData(lwcData); chart.timeScale().fitContent();
+        s.setData(lwcData); _cgAddMAs(chart, bars, nbars); chart.timeScale().fitContent();
         if (window.ResizeObserver) { const ro = new ResizeObserver(() => { try { chart.applyOptions({ width: ph.clientWidth, height: ph.clientHeight }); } catch (e) {} }); ro.observe(ph); }
         _cgCharts.push(chart);
       });
