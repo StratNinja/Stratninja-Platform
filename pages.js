@@ -2046,11 +2046,13 @@
   // looks tiny with lots of empty space. This measures each tile's real pixel box after layout and
   // scales the ticker (and % line) to the largest size that still fits both width AND height — so
   // short tickers grow, long ones shrink, nothing ever clips. Runs post-render + on resize.
-  function _hmFitTiles(root, maxPx) {
+  function _hmFitTiles(root, maxPx, factor, uniform) {
     try {
-      root = root || document; maxPx = maxPx || 46;
-      const tiles = root.querySelectorAll(".hm-tile");
-      tiles.forEach(t => {
+      root = root || document; maxPx = maxPx || 46; factor = factor || 1;   // factor<1 → trim the fitted size (full map reads calmer at 0.8)
+      // uniform=true (share card): ONE font size for every ticker — the largest that still fits the
+      // smallest cell — so the card reads clean/consistent instead of a jumble of per-tile sizes (Adi).
+      const recs = [];
+      root.querySelectorAll(".hm-tile").forEach(t => {
         const sym = t.querySelector(".hm-t-sym"); if (!sym) return;
         const chg = t.querySelector(".hm-t-chg");
         const w = t.clientWidth, h = t.clientHeight;
@@ -2069,11 +2071,17 @@
         } else {
           byH = availH / 1.1;                                    // ticker only
         }
-        let size = Math.max(8, Math.min(maxPx, byW, byH));
-        sym.style.fontSize = size.toFixed(1) + "px";
-        sym.style.lineHeight = "1.05";
-        if (chg) chg.style.fontSize = Math.max(7, size * 0.62).toFixed(1) + "px";
+        recs.push({ sym, chg, fit: Math.min(maxPx, byW, byH) });
       });
+      if (!recs.length) return;
+      const apply = (r, size) => { r.sym.style.fontSize = size.toFixed(1) + "px"; r.sym.style.lineHeight = "1.05"; if (r.chg) r.chg.style.fontSize = Math.max(7, size * 0.62).toFixed(1) + "px"; };
+      if (uniform) {
+        let u = maxPx; recs.forEach(r => { if (r.fit < u) u = r.fit; });   // smallest cell dictates the shared size → nothing clips
+        u = Math.max(8, u * factor);
+        recs.forEach(r => apply(r, u));
+      } else {
+        recs.forEach(r => apply(r, Math.max(8, r.fit * factor)));
+      }
     } catch (e) {}
   }
   // debounced re-fit of every heat map on the live page (resize / zoom in-out)
@@ -2081,7 +2089,10 @@
   function _hmFitSite() {
     if (_hmFitRaf) cancelAnimationFrame(_hmFitRaf);
     _hmFitRaf = requestAnimationFrame(() => {
-      document.querySelectorAll(".sp-heat").forEach(el => _hmFitTiles(el, 48));
+      // full map = many small tiles → the fitted ticker looks oversized, so trim 20% (0.8). The sector
+      // ZOOM (one sector's sub-sectors, bigger tiles) reads well at full size → keep 1.0 there.
+      const zoom = !!document.querySelector(".hm-zoom-bar");
+      document.querySelectorAll(".sp-heat").forEach(el => _hmFitTiles(el, 48, zoom ? 1 : 0.8));
     });
   }
   let _hmFitResizeBound = false;
@@ -5935,7 +5946,7 @@
     _prepHeroSquare(() => {
       const el = builder();
       const run = () => {
-        _hmFitTiles(el);   // heat-map cards: scale each ticker to its tile (fonts are loaded now → accurate). No-op for other cards.
+        _hmFitTiles(el, 46, 1, true);   // heat-map cards: ONE uniform ticker size (fits the smallest cell, nothing clips, clean look). No-op for other cards.
         return html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
           .then(cv => { el.remove(); showShareModal(cv, capOverride); })
           .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
