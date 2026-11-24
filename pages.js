@@ -2089,10 +2089,11 @@
   function _hmFitSite() {
     if (_hmFitRaf) cancelAnimationFrame(_hmFitRaf);
     _hmFitRaf = requestAnimationFrame(() => {
-      // full map = many small tiles → the fitted ticker looks oversized, so trim 20% (0.8). The sector
-      // ZOOM (one sector's sub-sectors, bigger tiles) reads well at full size → keep 1.0 there.
+      // full map = tiles of many different sizes → per-tile fit gives a jumble of ticker sizes, which
+      // reads as noise. Use ONE uniform size for the whole map (fits the smallest tile → nothing clips).
+      // The sector ZOOM (one sector, evenly-sized sub-sector tiles) reads well with per-tile fit → keep it.
       const zoom = !!document.querySelector(".hm-zoom-bar");
-      document.querySelectorAll(".sp-heat").forEach(el => _hmFitTiles(el, 48, zoom ? 1 : 0.8));
+      document.querySelectorAll(".sp-heat").forEach(el => _hmFitTiles(el, 48, 1, !zoom));
     });
   }
   let _hmFitResizeBound = false;
