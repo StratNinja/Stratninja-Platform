@@ -574,7 +574,9 @@
           grid: { vertLines: { color: "rgba(255,255,255,.04)" }, horzLines: { color: "rgba(255,255,255,.04)" } },
           rightPriceScale: { borderColor: "rgba(255,255,255,.08)" },
           timeScale: { borderColor: "rgba(255,255,255,.08)", fixRightEdge: true },
-          handleScroll: false, handleScale: false,
+          // mouse wheel ZOOMS (not pans) so it doesn't fight page scroll; drag to pan; dbl-click axis resets.
+          handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
+          handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: true },
           width: ph.clientWidth || 300, height: ph.clientHeight || 220,
         });
         const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
