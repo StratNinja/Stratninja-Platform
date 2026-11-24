@@ -1859,6 +1859,15 @@
   let hmStyle = "neon"; try { hmStyle = localStorage.getItem("sn_hm_style") || "neon"; } catch (e) {}
   let _hmShareClean = false;   // when true (share card): sector tabs show only Hebrew name + ETF (no English / breadth% / 🔍)
   let _hmShareGrid = false;    // when true (share card): each sector body is a UNIFORM grid → equal, clean tiles
+  let _hmShareTopN = 0;        // when >0 (share card): keep only the N biggest gainers + N biggest losers per sector →
+  //                              fewer, bigger tiles, so the uniform ticker font comes out large & readable (Adi)
+  // top-N gainers + top-N losers of a stock list, by % move over the active heat-map timeframe
+  function _hmCapTopN(st, n) {
+    const w = (st || []).filter(x => _hmChg(x) != null);
+    const ups = w.filter(x => _hmChg(x) > 0).sort((a, b) => _hmChg(b) - _hmChg(a)).slice(0, n);
+    const downs = w.filter(x => _hmChg(x) < 0).sort((a, b) => _hmChg(a) - _hmChg(b)).slice(0, n);
+    return ups.concat(downs);
+  }
   function _heatNeon() { return hmStyle === "neon" ? " hm-neon" : ""; }
   function _heatStyleBtn() { return '<button class="uni-btn hm-style-toggle' + (hmStyle === "neon" ? " on" : "") + '" id="hmStyleToggle" title="מראה אפי (ניאון/זוהר) או קלאסי">' + (hmStyle === "neon" ? "✨ אפי" : "◻️ קלאסי") + "</button>"; }
   // per-tile CSS vars for the neon look: --bg = fill color, --gi = glow intensity (0..1 by |move|), --gc = glow color
@@ -2153,7 +2162,7 @@
     }
     // FULL view: all sectors framed, stocks inside (ATR% filter removes low-volatility names when active)
     const _hmFiltered = spHeatAtr || spHeatUp !== "" || spHeatDown !== "";
-    const list = secs.filter(s => s.name !== "מדדים").map(s => { const st = (s.stocks || []).filter(_hmPass); return { sec: s, stocks: st, value: _hmShareGrid ? Math.max(st.length, 1.8) : st.length }; }).filter(o => o.stocks.length);
+    const list = secs.filter(s => s.name !== "מדדים").map(s => { let st = (s.stocks || []).filter(_hmPass); if (_hmShareTopN) st = _hmCapTopN(st, _hmShareTopN); return { sec: s, stocks: st, value: _hmShareGrid ? Math.max(st.length, 1.8) : st.length }; }).filter(o => o.stocks.length);
     const frames = squarify(list, 0, 0, 1000, 600).map(r => {
       const s = r.item.sec, st = r.item.stocks;
       const above = _hmFiltered ? st.filter(x => x.ao).length : s.above, totl = _hmFiltered ? st.length : s.total;
@@ -4465,16 +4474,17 @@
       : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : "")) : "תמונת מצב סקטוריאלית");
     // SHARE map = only the SIGNIFICANT movers (≥2% up / down) → clean + meaningful (Adi). In "מיצוע" mode keep
     // the true full-sector average (no move filter). Rendered in the EPIC/neon look. Restore state after.
+    // SHARE map = the TOP movers per sector (4 biggest gainers + 4 biggest losers), NOT a %-threshold list.
+    // Capping each sector to ≤8 tiles keeps the tiles big → the uniform ticker font stays large & readable (Adi).
+    const _TOPN = 4;
     const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
     spHeatSector = null; spHeatAtr = 0; _hmShareClean = true; _hmShareGrid = true;
-    if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
-    else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "3"; spHeatDown = "3"; }   // default: ≥3% movers (cleaner)
-    const upThr = spHeatUp, dnThr = spHeatDown;   // thresholds actually used (for the legend note)
+    if (!spHeatAvg) { spHeatUp = ""; spHeatDown = ""; _hmShareTopN = _TOPN; }   // top-N mode → no threshold; pick biggest movers
     const mapHtml = spHeatmap();
-    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false;
+    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false; _hmShareTopN = 0;
     const noteText = spHeatAvg
       ? "הצבע = תנועת תעודת-הסל של כל סקטור"
-      : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
+      : ("המובילות בכל סקטור · 🟢 " + _TOPN + " עולות · 🔴 " + _TOPN + " יורדות");
     const box = (lbl, nm, chg) => { const chCls = chg == null ? "" : (chg >= 0 ? " hmsh-pos" : " hmsh-neg"); return '<div class="hmsh-box"><div class="hmsh-bx-cap"><span class="hmsh-bx-lbl">' + lbl + '</span> ' + escHtml(nm) + '</div><div class="hmsh-bx-ch' + chCls + '">' + _sgn(chg) + "</div></div>"; };
     const el = document.createElement("div"); el.className = "hmsh-card"; el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
     el.innerHTML =
