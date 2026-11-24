@@ -5958,7 +5958,12 @@
     _prepHeroSquare(() => {
       const el = builder();
       const run = () => {
-        _hmFitTiles(el, 46, 1, true);   // heat-map cards: ONE uniform ticker size (fits the smallest cell, nothing clips, clean look). No-op for other cards.
+        // heat-map cards: uniform ticker size PER SECTOR (not globally) — each sector's font fills its own
+        // tiles, so big sectors get big text and there's far less empty space, while each block stays clean &
+        // uniform. (Global-uniform let the narrowest sector shrink everyone.) No-op for cards without .hm-sec.
+        const _hmSecs = el.querySelectorAll(".hm-sec");
+        if (_hmSecs.length) _hmSecs.forEach(s => _hmFitTiles(s, 56, 1, true));
+        else _hmFitTiles(el, 46, 1, true);
         return html2canvas(el, { backgroundColor: "#0B1020", scale: _shotScale(), useCORS: true, logging: false })
           .then(cv => { el.remove(); showShareModal(cv, capOverride); })
           .catch(() => { el.remove(); snToast("שגיאה בצילום — נסה שוב"); });
