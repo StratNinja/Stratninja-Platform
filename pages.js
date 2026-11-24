@@ -4522,16 +4522,17 @@
     const insight = (pct != null)
       ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : ""))
       : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : "")) : "תמונת מצב סקטוריאלית");
+    // SHARE map = the TOP movers per sector: 4 biggest gainers + 4 biggest losers (NOT a %-threshold list).
+    // Capping each sector to ≤8 tiles keeps the tiles big → the uniform ticker font stays large & readable (Adi).
+    const _TOPN = 4;
     const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
     spHeatSector = null; spHeatAtr = 0; _hmShareClean = true; _hmShareGrid = true;
-    if (spHeatAvg) { spHeatUp = ""; spHeatDown = ""; }
-    else if (spHeatUp === "" && spHeatDown === "") { spHeatUp = "3"; spHeatDown = "3"; }
-    const upThr = spHeatUp, dnThr = spHeatDown;
+    if (!spHeatAvg) { spHeatUp = ""; spHeatDown = ""; _hmShareTopN = _TOPN; }   // top-N mode → no threshold; pick the biggest movers
     const mapHtml = spHeatmap();
-    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false;
+    spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false; _hmShareTopN = 0;
     const noteText = spHeatAvg
       ? "הצבע = תנועת תעודת-הסל של כל סקטור"
-      : ("מוצגות רק מניות שזזו" + (upThr ? " · 🟢 עלו " + upThr + "%+" : "") + (dnThr ? " · 🔴 ירדו " + dnThr + "%+" : ""));
+      : ("המובילות בכל סקטור · 🟢 " + _TOPN + " עולות · 🔴 " + _TOPN + " יורדות");
     const box = (lbl, nm, chg) => { const col = chg == null ? "#eaf2ff" : (chg >= 0 ? "#22e39b" : "#ff6b7a");
       return '<div style="flex:1 1 0;min-width:0;box-sizing:border-box;border-radius:14px;padding:16px 18px;background:#111a2e;border:1px solid #223049">' +
         '<div style="font:900 24px Heebo,Arial;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:17px;font-weight:700;color:#9fb3c7">' + lbl + '</span> ' + escHtml(nm) + '</div>' +
