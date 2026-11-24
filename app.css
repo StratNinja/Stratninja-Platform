@@ -2348,6 +2348,10 @@ html[data-theme="light"] .fav-alert-chip.fav-alert-stale { color:#64748b; backgr
 .cg-grid.cg-4 .cg-frame { height: 270px; }
 .cg-grid.cg-5 .cg-frame { height: 230px; }
 .cg-ph { display: flex; align-items: center; justify-content: center; }
+/* native (lightweight-charts) cell — keeps .cg-frame sizing, hosts our own candles instead of a TV iframe */
+.cg-native { position: relative; background: #0e1526; }
+.cg-native > div { width: 100% !important; height: 100% !important; }
+.cg-native a#tv-link { display: none; }
 /* loading indicator = our ninja icon, gently pulsing (was a plain spinner ring) */
 .cg-spin { width: 60px; height: 60px; border-radius: 15px;
   background: url("ninja-icon.png") center / contain no-repeat;

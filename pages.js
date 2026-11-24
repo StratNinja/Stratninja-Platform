@@ -422,6 +422,25 @@
       return res;
     } catch (e) { return {}; }
   };
+  // ---- native chart-grid support (lightweight-charts) ──────────────────────────────────────────
+  // Render OUR OWN candles from the pre-built 2y DAILY OHLC store (scanner_data id='ohlc:<SYM>' via
+  // /api/ohlc) instead of a slow TradingView iframe per cell. Reversible: set _CG_NATIVE=false to
+  // force the old TV grid. Any symbol without a stored row (or if the lightweight-charts lib didn't
+  // load) falls back to a TV iframe for THAT cell — so partial coverage / intraday ranges are safe.
+  const _CG_NATIVE = true;
+  const _cgBarsCache = {};                  // sym -> bars[] | null (persists across grid opens)
+  // range key -> how many DAILY bars to show. Intraday ranges (1D/5D) return undefined → stay on TV.
+  const _CG_NBARS = { "1M": 21, "3M": 63, "6M": 126, "12M": 252, "60M": 520 };
+  async function _cgFetchBars(sym) {
+    if (sym in _cgBarsCache) return _cgBarsCache[sym];
+    let bars = null;
+    try {
+      const r = await fetch("/api/ohlc?sym=" + encodeURIComponent(sym));
+      if (r.ok) { const j = await r.json(); bars = (j && j[0] && j[0].data && j[0].data.bars) || null; }
+    } catch (e) { bars = null; }
+    _cgBarsCache[sym] = bars; return bars;
+  }
+
   // ---- scanner chart-grid view (TradingView-style, filtered symbols at the selected TF) ----
   const CG_IV = { D: "D", W: "W", M: "M", Q: "3M", Y: "12M", "15m": "15", "30m": "30", "60m": "60", "65m": "65", "2H": "120", "130m": "130", "3H": "180", "195m": "195", "4H": "240" };
   const CG_TF_HE = { D: "יומי", W: "שבועי", M: "חודשי", Q: "רבעוני", Y: "שנתי" };
@@ -483,7 +502,7 @@
             '<span class="cg-price">' + money(t.price) + " " + pct(t.chg) + "</span>" +
             '<a class="cg-tv" href="https://www.tradingview.com/chart/?symbol=' + encodeURIComponent(t.sym) + '" target="_blank" rel="noopener" title="פתח ב-TradingView">↗</a>' +
           "</div>" +
-          '<div class="cg-frame cg-ph" data-src="' + cgSrc(t.sym, rk) + '"><span class="cg-spin"></span></div>' +
+          '<div class="cg-frame cg-ph" data-sym="' + encodeURIComponent(t.sym) + '" data-src="' + cgSrc(t.sym, rk) + '"><span class="cg-spin"></span></div>' +
         "</div>";
       }).join("");
     }
@@ -505,13 +524,42 @@
     // Visible charts load IN PARALLEL (no artificial stagger) — the first iframe downloads the
     // TradingView library, the rest reuse it from cache, so the whole visible screen fills quickly.
     let io = null;
-    function realizePh(ph) {
-      if (!ph || ph.dataset.done) return;
-      ph.dataset.done = "1";
+    const _cgCharts = [];   // live lightweight-charts instances for THIS grid (removed on rebuild)
+    function _cgReset() { _cgCharts.splice(0).forEach(c => { try { c.remove(); } catch (e) {} }); }
+    function _realizeTv(ph) {
       const f = document.createElement("iframe");
       f.className = "cg-frame"; f.src = ph.dataset.src; f.setAttribute("allowfullscreen", "");
       f.setAttribute("loading", "lazy");
       ph.replaceWith(f);
+    }
+    function _realizeNative(ph, sym, nbars) {
+      const LWC = window.LightweightCharts;
+      _cgFetchBars(sym).then(bars => {
+        if (ph.dataset.done !== "1") return;                 // grid was rebuilt before data arrived
+        if (!LWC || !bars || !bars.length) { _realizeTv(ph); return; }
+        ph.classList.remove("cg-ph"); ph.classList.add("cg-native"); ph.innerHTML = "";
+        const chart = LWC.createChart(ph, {
+          layout: { background: { type: "solid", color: "transparent" }, textColor: "#8a93a6", fontFamily: "Heebo,Rubik,sans-serif" },
+          grid: { vertLines: { color: "rgba(255,255,255,.04)" }, horzLines: { color: "rgba(255,255,255,.04)" } },
+          rightPriceScale: { borderColor: "rgba(255,255,255,.08)" },
+          timeScale: { borderColor: "rgba(255,255,255,.08)", fixRightEdge: true },
+          handleScroll: false, handleScale: false,
+          width: ph.clientWidth || 300, height: ph.clientHeight || 220,
+        });
+        const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
+        const lwcData = bars.slice(-nbars).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
+        s.setData(lwcData); chart.timeScale().fitContent();
+        if (window.ResizeObserver) { const ro = new ResizeObserver(() => { try { chart.applyOptions({ width: ph.clientWidth, height: ph.clientHeight }); } catch (e) {} }); ro.observe(ph); }
+        _cgCharts.push(chart);
+      });
+    }
+    function realizePh(ph) {
+      if (!ph || ph.dataset.done) return;
+      ph.dataset.done = "1";
+      const sym = ph.dataset.sym ? decodeURIComponent(ph.dataset.sym) : "";
+      const nbars = _CG_NBARS[curRange];
+      if (_CG_NATIVE && sym && nbars) { _realizeNative(ph, sym, nbars); return; }   // daily ranges → native (fast)
+      _realizeTv(ph);                                                               // intraday / fallback → TV
     }
     function observeGrid() {
       if (io) io.disconnect();
@@ -525,7 +573,7 @@
     }
     observeGrid();
     // moving-average toggles → rebuild the grid cells with the new studies (keeps range/sort/density)
-    wireMaChips(scroller || document, () => { grid.innerHTML = cellsHtml(curRange); observeGrid(); });
+    wireMaChips(scroller || document, () => { _cgReset(); grid.innerHTML = cellsHtml(curRange); observeGrid(); });
 
     // density toggle
     document.querySelectorAll("[data-cg]").forEach(b => b.onclick = () => {
@@ -537,13 +585,13 @@
     // manual range (lookback) selector — rebuilds the charts in place (re-observes for lazy loading)
     document.querySelectorAll("[data-cgrange]").forEach(b => b.onclick = () => {
       curRange = b.dataset.cgrange;
-      if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); }
+      if (grid) { _cgReset(); grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); }
       document.querySelectorAll("[data-cgrange]").forEach(x => x.classList.toggle("on", x === b));
     });
     // sort selector — re-orders the charts (like sorting the scanner table)
-    { const ss = $("#cgSortSel"); if (ss) ss.onchange = () => { cgSort = ss.value; shown = cgSorted(); if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); } }; }
+    { const ss = $("#cgSortSel"); if (ss) ss.onchange = () => { cgSort = ss.value; shown = cgSorted(); if (grid) { _cgReset(); grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); } }; }
     // "⭐ מועדפים ראשונים" — bring favorited stocks to the front (keeps the current sort within groups)
-    { const fb = $("#cgFavTop"); if (fb) fb.onclick = () => { cgFavTop = !cgFavTop; fb.classList.toggle("on", cgFavTop); shown = cgSorted(); if (grid) { grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); } }; }
+    { const fb = $("#cgFavTop"); if (fb) fb.onclick = () => { cgFavTop = !cgFavTop; fb.classList.toggle("on", cgFavTop); shown = cgSorted(); if (grid) { _cgReset(); grid.innerHTML = cellsHtml(curRange); wireStars(grid); wireCharts(grid); observeGrid(); } }; }
     // full screenshot of the chart grid (captures the live TradingView charts)
     { const sh = $("#cgShot"); if (sh) sh.onclick = () => captureFullShot(); }
   }
