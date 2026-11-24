@@ -445,6 +445,12 @@
     sma20: "#f6c453", sma50: "#ff8f5a", sma150: "#2dd4bf", sma200: "#e05a8a",
     ema20: "#7aa2ff", ema50: "#9d7cff", ema150: "#4ade80", ema200: "#f87171",
   };
+  // show all `count` bars with a right-edge margin (empty space of ~`margin` bars after the last candle,
+  // so the newest candle isn't glued to the right edge). Used on first render AND on double-click reset.
+  function _cgFitRange(chart, count, margin) {
+    try { chart.timeScale().setVisibleLogicalRange({ from: 0, to: (count - 1) + (margin || 5) }); }
+    catch (e) { try { chart.timeScale().fitContent(); } catch (_e) {} }
+  }
   // draw the currently-active MAs (chartMA) as line series on a native cell. `bars` = FULL OHLC array
   // (so the MA is seeded with history before the visible window); only points inside the last `nbars` plot.
   function _cgAddMAs(chart, bars, nbars) {
@@ -573,7 +579,7 @@
           layout: { background: { type: "solid", color: "transparent" }, textColor: "#8a93a6", fontFamily: "Heebo,Rubik,sans-serif" },
           grid: { vertLines: { color: "rgba(255,255,255,.04)" }, horzLines: { color: "rgba(255,255,255,.04)" } },
           rightPriceScale: { borderColor: "rgba(255,255,255,.08)" },
-          timeScale: { borderColor: "rgba(255,255,255,.08)", fixRightEdge: true },
+          timeScale: { borderColor: "rgba(255,255,255,.08)", rightOffset: 5 },
           // mouse wheel ZOOMS (not pans) so it doesn't fight page scroll; drag to pan; dbl-click axis resets.
           handleScroll: { mouseWheel: false, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
           handleScale: { mouseWheel: true, pinch: true, axisPressedMouseMove: true, axisDoubleClickReset: { time: true, price: true } },
@@ -581,9 +587,9 @@
         });
         const s = chart.addCandlestickSeries({ upColor: "#2dd47c", downColor: "#f6567a", borderVisible: false, wickUpColor: "#2dd47c", wickDownColor: "#f6567a" });
         const lwcData = bars.slice(-nbars).map(b => ({ time: b[0], open: b[1], high: b[2], low: b[3], close: b[4] }));
-        s.setData(lwcData); _cgAddMAs(chart, bars, nbars); chart.timeScale().fitContent();
-        // double-click (date row, any axis, or the chart itself) → reset to the default fitted view
-        try { chart.subscribeDblClick(() => { try { chart.timeScale().fitContent(); chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} }); } catch (e) {}
+        s.setData(lwcData); _cgAddMAs(chart, bars, nbars); _cgFitRange(chart, lwcData.length, 5);
+        // double-click (date row, any axis, or the chart itself) → reset to the default view (+right margin)
+        try { chart.subscribeDblClick(() => { try { _cgFitRange(chart, lwcData.length, 5); chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} }); } catch (e) {}
         if (window.ResizeObserver) { const ro = new ResizeObserver(() => { try { chart.applyOptions({ width: ph.clientWidth, height: ph.clientHeight }); } catch (e) {} }); ro.observe(ph); }
         _cgCharts.push(chart);
       });
