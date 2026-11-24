@@ -433,7 +433,7 @@
   // 60M ("5 שנים") is special: it renders WEEKLY candles aggregated from the 5y daily store (clean ~260 bars,
   // matching TradingView's weekly 60M view) — see _cgToWeekly + _realizeNative. Its value here (1300 = whole
   // store) is only the gate/daily-fallback count; the weekly path plots every aggregated week.
-  const _CG_NBARS = { "1M": 21, "3M": 63, "6M": 126, "12M": 252, "60M": 1300 };
+  const _CG_NBARS = { "1M": 21, "3M": 63, "6M": 126, "12M": 252, "24M": 504, "36M": 756, "60M": 1300 };
   async function _cgFetchBars(sym) {
     if (sym in _cgBarsCache) return _cgBarsCache[sym];
     let bars = null;
@@ -524,7 +524,9 @@
       { k: "3M", he: "רבעון", iv: "D", rng: "3M" },
       { k: "6M", he: "חצי שנה", iv: "D", rng: "6M" },
       { k: "12M", he: "שנה", iv: "D", rng: "12M" },
-      { k: "60M", he: "5 שנים", iv: "W", rng: "60M" },
+      { k: "24M", he: "שנתיים", iv: "D", rng: "60M" },   // native: DAILY candles; TV fallback → 60M
+      { k: "36M", he: "3 שנים", iv: "D", rng: "60M" },   // native: DAILY candles; TV fallback → 60M
+      { k: "60M", he: "5 שנים", iv: "W", rng: "60M" },   // native: WEEKLY candles (aggregated)
     ];
     // default lookback per TF. D → a full YEAR so candles render DAILY (a short 6M range makes
     // TradingView auto-switch to intraday 2h candles, which Adi doesn't want).
