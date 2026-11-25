@@ -478,7 +478,8 @@
         '<span class="cl-ico">' + ico + "</span>" +
         '<div class="cl-main"><div class="cl-title">' + esc(L.title) + "</div>" + (L.summary ? '<div class="cl-sum">' + esc(L.summary) + "</div>" : "") + "</div>" +
         (L.duration ? '<span class="cl-dur">' + fmtDur(L.duration) + "</span>" : "") +
-        (admin ? '<button type="button" class="vt-edit cl-ren" data-ren="' + esc(L.uid) + '" data-rtitle="' + esc(L.title) + '" data-rmod="' + esc(L.module || "") + '" data-rsort="' + (parseInt(L.sort, 10) || 0) + '" title="ערוך שם">✏️</button>' +
+        (admin ? '<button type="button" class="vt-edit cl-dl" data-dl="' + esc(L.uid) + '" data-dtitle="' + esc(L.title) + '" title="הורד למחשב">⬇️</button>' +
+          '<button type="button" class="vt-edit cl-ren" data-ren="' + esc(L.uid) + '" data-rtitle="' + esc(L.title) + '" data-rmod="' + esc(L.module || "") + '" data-rsort="' + (parseInt(L.sort, 10) || 0) + '" title="ערוך שם">✏️</button>' +
           '<button type="button" class="vt-edit cl-del" data-del="' + esc(L.uid) + '" title="מחק">🗑️</button>' : "") +
         "</div>";
     }
@@ -497,6 +498,8 @@
     for (var d = 0; d < dels.length; d++) dels[d].onclick = function (e) { e.stopPropagation(); _courseDelete(kind, this.getAttribute("data-del")); };
     var rens = wrap.querySelectorAll(".cl-ren");
     for (var rn = 0; rn < rens.length; rn++) rens[rn].onclick = function (e) { e.stopPropagation(); _courseRename(kind, this.getAttribute("data-ren"), this.getAttribute("data-rtitle"), this.getAttribute("data-rmod"), this.getAttribute("data-rsort")); };
+    var dls = wrap.querySelectorAll(".cl-dl");
+    for (var dn = 0; dn < dls.length; dn++) dls[dn].onclick = function (e) { e.stopPropagation(); _courseDownload(this.getAttribute("data-dl"), this.getAttribute("data-dtitle"), this); };
     var rows = wrap.querySelectorAll(".course-lesson");
     for (var i = 0; i < rows.length; i++) rows[i].onclick = function () {
       var uid = this.getAttribute("data-uid"), title = this.getAttribute("data-title");
@@ -660,6 +663,52 @@
         .then(function (r) { return r.json().catch(function () { return {}; }); })
         .then(function (j) { if (j && j.ok) { _loadCourse(kind, true); } else { alert("ההסרה נכשלה."); } }).catch(function () { alert("ההסרה נכשלה."); });
     });
+  }
+
+  // admin: download the original video to the computer. Cloudflare must first GENERATE an MP4
+  // (/api/course-download enables it); while it processes we poll, then trigger the file download.
+  // Gated videos get a short-lived signed token in the URL (handled server-side).
+  function _courseDownload(uid, title, btn) {
+    if (!uid) return;
+    var orig = btn ? btn.innerHTML : "";
+    function setBtn(txt, dis) { if (btn) { btn.innerHTML = txt; btn.disabled = !!dis; } }
+    _token().then(function (tok) {
+      if (!tok) { alert("צריך להיות מחובר כאדמין."); return; }
+      setBtn("⏳", true);
+      var tries = 0;
+      function poll() {
+        fetch("/api/course-download", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ uid: uid }) })
+          .then(function (r) { return r.json().catch(function () { return {}; }); })
+          .then(function (j) {
+            if (j && j.ok && j.status === "ready" && j.url) {
+              setBtn("⬇️", false);
+              _triggerDownload(j.url, title);
+            } else if (j && j.ok && j.status === "processing") {
+              tries++;
+              setBtn((j.percent != null ? j.percent + "%" : "⏳"), true);
+              if (tries < 75) setTimeout(poll, 4000);   // CF can take a while for long videos (~5 min budget)
+              else { setBtn("⬇️", false); alert("הכנת ההורדה אורכת זמן רב מהצפוי — נסה שוב בעוד דקה."); }
+            } else {
+              setBtn("⬇️", false);
+              var det = (j && j.error ? " · " + j.error : "") + (j && j.cf && j.cf.length ? "\n" + j.cf.join("\n") : "");
+              alert("לא ניתן להכין הורדה" + det);
+            }
+          }).catch(function () { setBtn("⬇️", false); alert("שגיאה בהכנת ההורדה."); });
+      }
+      poll();
+    });
+  }
+
+  // CF serves /downloads/default.mp4 with Content-Disposition: attachment, so the browser saves it.
+  // (The download attribute is ignored cross-origin, but CF's attachment header handles the save.)
+  function _triggerDownload(url, title) {
+    try {
+      var a = document.createElement("a");
+      a.href = url; a.target = "_blank"; a.rel = "noopener";
+      try { a.download = (String(title || "video").replace(/[^\w֐-׿ .-]/g, "").trim() || "video") + ".mp4"; } catch (e) {}
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { try { a.remove(); } catch (e) {} }, 0);
+    } catch (e) { try { window.open(url, "_blank", "noopener"); } catch (e2) {} }
   }
 
   // admin: reclaim orphaned "pendingupload" videos (failed uploads) that eat the Stream quota.
