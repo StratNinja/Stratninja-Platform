@@ -100,6 +100,28 @@ async function ytStreamInfo(tok, streamId) {
     return { stream_key: info.streamName || "", ingest_url: info.ingestionAddress || "" };
   } catch (e) { return null; }
 }
+// Read a broadcast's lifecycle state; END it (transition→complete, KEEPS the recording) if it's on air.
+// Returns "completed" | "already" | "skip" | "fail". Used to auto-stop a YouTube broadcast whose feed
+// has stopped, so it doesn't linger "live" (with no feed) until manually ended in YouTube Studio.
+async function ytBroadcastState(tok, broadcastId) {
+  try {
+    const r = await fetch("https://www.googleapis.com/youtube/v3/liveBroadcasts?part=status&id=" + encodeURIComponent(broadcastId), { headers: { Authorization: "Bearer " + tok } });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !Array.isArray(j.items) || !j.items[0]) return "";
+    return (j.items[0].status && j.items[0].status.lifeCycleStatus) || "";
+  } catch (e) { return ""; }
+}
+async function ytCompleteBroadcast(tok, broadcastId) {
+  try {
+    const st = await ytBroadcastState(tok, broadcastId);
+    if (st === "complete" || st === "revoked") return "already";
+    if (st !== "live" && st !== "liveStarting") return "skip";
+    const r = await fetch("https://www.googleapis.com/youtube/v3/liveBroadcasts/transition?part=status&broadcastStatus=complete&id=" + encodeURIComponent(broadcastId),
+      { method: "POST", headers: { Authorization: "Bearer " + tok, "Content-Type": "application/json" } });
+    if (!r.ok) { console.warn("[sched-cf] YT transition complete failed " + JSON.stringify({ http: r.status })); return "fail"; }
+    return "completed";
+  } catch (e) { console.warn("[sched-cf] YT complete threw"); return "fail"; }
+}
 async function cfCreateOutput(inputId, url, streamKey) {
   if (!(CF_ACCOUNT && CF_TOKEN && inputId && url && streamKey)) return null;
   try {
@@ -179,6 +201,37 @@ async function endFinishedLives(reconciledInput, inputIsLive) {
     }
     await sb(q, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "ended", updated_at: new Date().toISOString() }) });
   } catch (e) { /* best-effort — never breaks the reconcile */ }
+}
+
+// Auto-stop a scheduled live's YouTube broadcast once its FEED has really stopped, so it doesn't sit
+// "live" with no feed until manually ended in YouTube Studio. enableAutoStop=false on the broadcast
+// means YouTube never ends it itself — this is what ends it. GRACE-GUARDED: only fires after the public
+// input has been offline for YT_STOP_GRACE_MS, so a brief OBS/network reconnect never kills the stream
+// (the public live_status row's updated_at marks the offline flip, and a reconnect resets it). KEEPS the
+// recording (transition→complete, not delete). Best-effort; idempotent (clears youtube_broadcast_id once
+// stopped, and ytCompleteBroadcast re-checks state, so it never double-acts). Public input only — the
+// grace is measured from the public offline flip; community lives use the manual "סיים" button.
+const YT_STOP_GRACE_MS = 4 * 60000;
+async function autoStopStaleYouTube(reconciledInput, offlineMs) {
+  if (!CF_AUTO) return;
+  if (!(offlineMs >= YT_STOP_GRACE_MS)) return;
+  if (inputVisibility(reconciledInput) !== "public") return;
+  const lo = new Date(Date.now() - 6 * 3600000).toISOString();
+  const rows = await sb("scheduled_lives?select=id,youtube_broadcast_id&visibility=eq.public" +
+    "&status=in.(live,ended)&youtube_broadcast_id=not.is.null&scheduled_start=gte." + encodeURIComponent(lo) + "&limit=10")
+    .then(r => r.json()).catch(() => []);
+  if (!Array.isArray(rows) || !rows.length) return;
+  const tok = await ytAccessToken(); if (!tok) return;
+  for (const row of rows) {
+    if (!row.youtube_broadcast_id) continue;
+    const st = await ytCompleteBroadcast(tok, row.youtube_broadcast_id);
+    // once it's stopped (or already complete), clear the handle so later cycles don't re-check it.
+    // youtube_watch_url stays, so the VOD link is preserved; only the API handle is dropped.
+    if (st === "completed" || st === "already") {
+      await sb("scheduled_lives?id=eq." + row.id, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ youtube_broadcast_id: null, updated_at: new Date().toISOString() }) });
+      if (st === "completed") console.warn("[sched-cf] auto-stopped stale YouTube broadcast for " + row.id);
+    }
+  }
 }
 
 async function verifyAdmin(req) {
@@ -416,6 +469,13 @@ export default async function handler(req, res) {
           if (cf.live) await activateScheduledOutput(reconcileInput);
           else await cleanupScheduledOutputs(reconcileInput);
           await endFinishedLives(reconcileInput, cf.live);   // retire finished "live" rows (status-only, keeps recordings)
+          if (!cf.live) {
+            // auto-stop the YouTube broadcast once the feed has stayed offline past the grace window.
+            // row is the just-patched status: on the cycle it flips offline, updated_at=now (offMs≈0, no
+            // action yet); it grows across subsequent offline cycles, and a reconnect resets it.
+            const offMs = (!row.is_live && row.updated_at) ? (Date.now() - new Date(row.updated_at).getTime()) : 0;
+            await autoStopStaleYouTube(reconcileInput, offMs);
+          }
         } catch (e) { /* best-effort */ }
       } else {
         // unrecognized state OR a CF error — don't change is_live (keep last known), record why & back off

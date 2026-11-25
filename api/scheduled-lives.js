@@ -222,6 +222,29 @@ async function ytDeleteBroadcast(broadcastId) {
     await ytApi(tok, "liveBroadcasts?id=" + encodeURIComponent(broadcastId), { method: "DELETE" });
   } catch (e) { /* best-effort */ }
 }
+// Read a broadcast's lifecycle state ("ready"|"testing"|"live"|"liveStarting"|"complete"|"revoked"|"").
+async function ytBroadcastState(tok, broadcastId) {
+  try {
+    const r = await ytApi(tok, "liveBroadcasts?part=status&id=" + encodeURIComponent(broadcastId));
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !Array.isArray(j.items) || !j.items[0]) return "";
+    return (j.items[0].status && j.items[0].status.lifeCycleStatus) || "";
+  } catch (e) { return ""; }
+}
+// END a live broadcast WITHOUT deleting it: transition → complete. YouTube stops the "live"
+// state but KEEPS the recording (it becomes a normal VOD) — unlike ytDeleteBroadcast, which erases it.
+// Checks the current state first so we never send an invalid transition (only live/liveStarting →
+// complete is allowed). Returns "completed" | "already" | "skip" | "fail".
+async function ytCompleteBroadcast(tok, broadcastId) {
+  try {
+    const st = await ytBroadcastState(tok, broadcastId);
+    if (st === "complete" || st === "revoked") return "already";
+    if (st !== "live" && st !== "liveStarting") return "skip";   // ready/testing never went live, or unknown
+    const r = await ytApi(tok, "liveBroadcasts/transition?part=status&broadcastStatus=complete&id=" + encodeURIComponent(broadcastId), { method: "POST" });
+    if (!r.ok) { console.warn("[sched-lives] YT transition complete failed " + JSON.stringify({ http: r.status })); return "fail"; }
+    return "completed";
+  } catch (e) { console.warn("[sched-lives] YT complete threw"); return "fail"; }
+}
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
@@ -272,15 +295,27 @@ export default async function handler(req, res) {
     return;
   }
 
-  // ---- end: mark a finished live "ended" so it leaves the list — WITHOUT deleting anything on
-  // YouTube or Cloudflare (unlike cancel/delete). For clearing a live whose 🔴 badge got stuck. ----
+  // ---- end: finish a live for good — STOPS the YouTube broadcast (transition→complete, which KEEPS
+  // the recording/VOD) and tears down the Cloudflare Output, then marks the row "ended" so it leaves
+  // the list. Unlike cancel/delete, nothing is erased — the YouTube VOD and the CF recording stay.
+  // This is the one-click "stop babysitting YouTube Studio" button. ----
   if (action === "end") {
     if (!RE_UUID.test(id)) { res.status(400).json({ error: "bad_id" }); return; }
+    const cur = await sb("scheduled_lives?id=eq." + id + "&select=youtube_broadcast_id,cf_output_id,visibility").then(r => r.json()).catch(() => []);
+    const ybid = Array.isArray(cur) && cur[0] ? cur[0].youtube_broadcast_id : null;
+    const cfid = Array.isArray(cur) && cur[0] ? cur[0].cf_output_id : null;
+    const cvis = Array.isArray(cur) && cur[0] ? cur[0].visibility : "public";
+    if (cfid && cfid !== "pending") await cfDeleteOutput(cfInputForVisibility(cvis), cfid);   // stop forwarding to YouTube
+    let ytStopped = false;
+    if (ybid && YT_READY) {
+      const tok = await ytAccessToken();
+      if (tok) { const st = await ytCompleteBroadcast(tok, ybid); ytStopped = (st === "completed" || st === "already"); }
+    }
     const r = await sb("scheduled_lives?id=eq." + id, {
       method: "PATCH", headers: { Prefer: "return=minimal" },
-      body: JSON.stringify({ status: "ended", updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ status: "ended", cf_output_id: null, updated_at: new Date().toISOString() }),
     });
-    res.status(r.ok ? 200 : 502).json(r.ok ? { ok: true } : { ok: false, error: "end_failed" });
+    res.status(r.ok ? 200 : 502).json(r.ok ? { ok: true, youtube_stopped: ytStopped } : { ok: false, error: "end_failed" });
     return;
   }
 
