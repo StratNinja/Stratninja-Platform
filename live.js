@@ -362,9 +362,21 @@ window.Live = (function () {
   // Adi 2026-11-22: the manual broadcast section ("ניהול שידור" top half) was removed — the workflow is now
   // fully scheduled-lives only. Reversible: set _LIVE_ADMIN_MANUAL = true to bring the whole section back.
   var _LIVE_ADMIN_MANUAL = false;
+  // Standalone 🌐/🔒 visibility switch — always shown (even in scheduled-lives-only mode), because the
+  // live_status "slot" still decides which Stream Key the site listens on + whether /live is gated.
+  // Posts ONLY { visibility } so it can never wipe the title/description the full manual save would.
+  function _visQuickHtml(s) {
+    var vis = (s && s.visibility === "community") ? "community" : "public";
+    function vopt(v, l) { return '<option value="' + v + '"' + (vis === v ? " selected" : "") + ">" + l + "</option>"; }
+    return '<label>👁️ נראות השידור הנוכחי</label>' +
+      '<select id="laVisQuick">' + vopt("public", "🌐 ציבורי — פתוח לכולם") + vopt("community", "🔒 קהילה בלבד — רק חברי הקהילה (כספת)") + "</select>" +
+      '<div class="la-stat">🌐 ציבורי = מה-Stream Key הפומבי, פתוח לכולם. 🔒 קהילה = מה-Key הסגור, רק חברי הדיסקורד רואים (קישור חתום). ⚠️ ודא ש-OBS משדר ל-Key המתאים.</div>' +
+      '<div class="live-row"><button class="btn primary" id="laVisSave" style="font-size:13px;padding:7px 14px">💾 שמור נראות</button>' +
+      '<span class="la-stat" id="laVisStat" style="margin-right:8px">מצב בפועל: <b>' + (s && s.is_live ? "🔴 חי" : "⚫ לא פעיל") + "</b></span></div>";
+  }
   function _adminFields(s) {
     if (s && s.preview) return '<div class="la-stat">🧪 מצב בדיקה (Preview) — עריכה וכתיבה מושבתות (קריאה-בלבד).</div>';
-    if (!_LIVE_ADMIN_MANUAL) return "";   // manual broadcast controls hidden (scheduled-lives only)
+    if (!_LIVE_ADMIN_MANUAL) return _visQuickHtml(s);   // scheduled-lives-only: show JUST the 🌐/🔒 switch
     var sch = s && s.scheduled_at ? new Date(s.scheduled_at) : null;
     var schVal = "";
     if (sch && !isNaN(sch)) { var off = sch.getTime() - sch.getTimezoneOffset() * 60000; schVal = new Date(off).toISOString().slice(0, 16); }
@@ -719,6 +731,17 @@ window.Live = (function () {
     var ab = $("liveAdminBtn"); if (ab) ab.onclick = openAdmin;   // 🎛️ open the floating admin window
   }
   function _wireAdmin() {
+    // standalone visibility switch — wired first, since it exists even when the full manual form does not.
+    var visSave = $("laVisSave");
+    if (visSave) visSave.onclick = function () {
+      var v = ($("laVisQuick") && $("laVisQuick").value) || "public";
+      visSave.disabled = true; visSave.textContent = "שומר…";
+      _post({ visibility: v }).then(function (r) {
+        visSave.disabled = false; visSave.textContent = "💾 שמור נראות";
+        if (r && r.ok) { _status = r; toast(v === "public" ? "הועבר לפומבי 🌐 ✓" : "הועבר לקהילה 🔒 ✓"); _apply(true); }
+        else { toast("שמירה נכשלה" + (r && r.error ? " · " + r.error : "")); }
+      });
+    };
     var save = $("laSave"); if (!save) return;
     save.onclick = function () {
       var sched = ($("laSched") && $("laSched").value) || "";
