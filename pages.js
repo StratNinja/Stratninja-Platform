@@ -5906,6 +5906,10 @@
   function _doCaptureSummaryCard() {
     // on the merged "דופק השוק" page state.page is "pulse"; the visible sub-tab is in pulseTab → resolve it
     const pg = (state.page === "pulse" && typeof pulseTab !== "undefined") ? pulseTab : state.page;
+    if (pg === "breakvel" || state.page === "breakvel") {   // 🤖 תנועה אלגוריתמית — whole-board card (indices + all sectors), per the selected TF
+      if (!(SCAN && SCAN.rows && SCAN.rows.length)) { snToast("נתוני הסורק עדיין נטענים — נסה שוב בעוד רגע"); return; }
+      _captureRedesignCard(function () { return buildAlgoBoardCardEl(bvTf); }, _algoBoardCaption(bvTf)); return;
+    }
     if (pg === "today") { _captureMoneyFlowCard(); return; }   // redesigned money-flow card
     if (pg === "sp500") { _captureRedesignCard((sp500View === "heat" || sp500View === "risk") ? buildHeatmapShareCardFlatEl : buildSpMapCardEl); return; }   // heat/risk → treemap card; breadth view → breadth-map card
     if (pg === "breadth") { _captureRedesignCard(buildBreadthCardFlatEl); return; }   // flat self-contained HTML card (no baked template PNG — robust to font/data)
