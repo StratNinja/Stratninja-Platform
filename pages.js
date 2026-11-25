@@ -11246,6 +11246,173 @@
     return el;
   }
 
+  // ===================== מחשבון פוזיציה (Position Size Calculator) =====================
+  // Pure client-side risk tool (no live data). Core message of the "capital preservation" lesson:
+  // size each trade by your risk %, never by feel. Supports long/short, stock/option (×100), R:R.
+  const PC_KEY = "sn_poscalc_v1";
+  function _pcLoad() { try { return JSON.parse(localStorage.getItem(PC_KEY) || "{}") || {}; } catch (e) { return {}; } }
+  function renderPosCalc() {
+    const sv = _pcLoad();
+    const dv = (k, d) => (sv[k] != null && sv[k] !== "") ? sv[k] : d;
+    const dir = dv("dir", "long"), inst = dv("inst", "stock"), cur = dv("cur", "$");
+    const seg = (id, cur, opts) => '<div class="pc-seg" id="' + id + '">' +
+      opts.map(o => '<button type="button" class="pc-seg-b' + (o[0] === cur ? " on" : "") + '" data-v="' + o[0] + '">' + o[1] + '</button>').join("") + '</div>';
+    const risk = dv("risk", "1");
+    const chip = v => '<button type="button" class="pc-chip' + (String(v) === String(risk) ? " on" : "") + '" data-v="' + v + '">' + v + '%</button>';
+    return '' +
+      '<div class="page-head"><h1>🧮 מחשבון פוזיציה</h1>' +
+      '<div class="sub">כמה להיכנס בכל עסקה — לפי אחוז הסיכון שלך, לא לפי תחושה. שמירת ההון לפני הכול.</div></div>' +
+      '<div class="poscalc-wrap" dir="rtl">' +
+        '<div class="pc-grid">' +
+          '<div class="card pc-card pc-inputs">' +
+            '<div class="pc-row2">' +
+              '<div class="fgrp"><label>כיוון העסקה</label>' + seg("pcDir", dir, [["long", "▲ לונג"], ["short", "▼ שורט"]]) + '</div>' +
+              '<div class="fgrp"><label>סוג מכשיר</label>' + seg("pcInst", inst, [["stock", "מניה"], ["option", "אופציה ×100"]]) + '</div>' +
+            '</div>' +
+            '<div class="pc-row2">' +
+              '<div class="fgrp"><label>גודל התיק / הון</label>' +
+                '<div class="pc-money"><select class="pc-cur" id="pcCur">' +
+                  ['$', '₪', '€'].map(c => '<option value="' + c + '"' + (c === cur ? " selected" : "") + '>' + c + '</option>').join("") +
+                '</select><input type="number" inputmode="decimal" min="0" step="100" id="pcAcct" placeholder="10000" value="' + escAttr(dv("acct", "10000")) + '"></div></div>' +
+              '<div class="fgrp"><label>סיכון לעסקה</label>' +
+                '<div class="pc-chips">' + chip("0.5") + chip("1") + chip("2") +
+                '<input type="number" inputmode="decimal" min="0" step="0.25" id="pcRisk" value="' + escAttr(risk) + '"><span class="pc-pct">%</span></div></div>' +
+            '</div>' +
+            '<div class="pc-row3">' +
+              '<div class="fgrp"><label>מחיר כניסה</label><input type="number" inputmode="decimal" min="0" step="0.01" id="pcEntry" placeholder="0.00" value="' + escAttr(dv("entry", "")) + '"></div>' +
+              '<div class="fgrp"><label>מחיר סטופ</label><input type="number" inputmode="decimal" min="0" step="0.01" id="pcStop" placeholder="0.00" value="' + escAttr(dv("stop", "")) + '"></div>' +
+              '<div class="fgrp"><label>יעד <span class="pc-opt">(רשות)</span></label><input type="number" inputmode="decimal" min="0" step="0.01" id="pcTarget" placeholder="0.00" value="' + escAttr(dv("target", "")) + '"></div>' +
+            '</div>' +
+            '<div class="pc-warn" id="pcWarn"></div>' +
+          '</div>' +
+          '<div class="card pc-card pc-results">' +
+            '<div class="pc-hero"><div class="pc-hero-n" id="pcQty">—</div><div class="pc-hero-l" id="pcQtyLbl">מניות לקנייה</div></div>' +
+            '<div class="pc-stats">' +
+              '<div class="pc-stat"><span class="pc-k">סיכון בכסף</span><span class="pc-v" id="pcRiskDollar">—</span></div>' +
+              '<div class="pc-stat"><span class="pc-k">סיכון ליחידה</span><span class="pc-v" id="pcPerUnit">—</span></div>' +
+              '<div class="pc-stat"><span class="pc-k">שווי הפוזיציה</span><span class="pc-v" id="pcPosVal">—</span></div>' +
+              '<div class="pc-stat"><span class="pc-k">% מהתיק</span><span class="pc-v" id="pcPosPct">—</span></div>' +
+              '<div class="pc-stat"><span class="pc-k">סיכון בפועל</span><span class="pc-v" id="pcActRisk">—</span></div>' +
+              '<div class="pc-stat"><span class="pc-k">יחס סיכוי/סיכון</span><span class="pc-v" id="pcRR">—</span></div>' +
+              '<div class="pc-stat pc-stat-wide"><span class="pc-k">רווח פוטנציאלי (ביעד)</span><span class="pc-v" id="pcReward">—</span></div>' +
+            '</div>' +
+            '<div class="pc-verdict" id="pcVerdict"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pc-note">💡 <b>תשואה היא אינדיקטור מאוחר.</b> מה שבאמת בשליטתך זה גודל הפוזיציה והסיכון לעסקה. ' +
+        'כלל אצבע: אל תסכן יותר מ‑1%–2% מהתיק על עסקה בודדת — כך גם רצף הפסדים לא מוציא אותך מהמשחק.</div>' +
+      '</div>' + _pcStyle();
+  }
+  function _pcStyle() {
+    return '<style>' +
+      '.poscalc-wrap{max-width:980px}' +
+      '.pc-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}' +
+      '@media(max-width:820px){.pc-grid{grid-template-columns:1fr}}' +
+      '.pc-card{padding:18px}' +
+      '.pc-row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}' +
+      '.pc-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}' +
+      '@media(max-width:520px){.pc-row2,.pc-row3{grid-template-columns:1fr 1fr}}' +
+      '.pc-seg{display:flex;gap:6px}' +
+      '.pc-seg-b{flex:1;padding:9px 6px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font-weight:700;font-size:13.5px;cursor:pointer;transition:.15s}' +
+      '.pc-seg-b:hover{border-color:var(--muted)}' +
+      '.pc-seg-b.on{color:var(--ink);border-color:var(--lux-g2,#5fe0cf);box-shadow:inset 0 -3px 0 var(--lux-g2,#5fe0cf);background:var(--cell,var(--panel2))}' +
+      '.pc-money{display:flex;gap:6px}.pc-money .pc-cur{flex:0 0 58px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 6px;font-weight:700}' +
+      '.pc-money input{flex:1;min-width:0}' +
+      '.pc-chips{display:flex;gap:6px;align-items:center;flex-wrap:wrap}' +
+      '.pc-chip{padding:7px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel2);color:var(--muted);font-weight:700;font-size:12.5px;cursor:pointer;transition:.15s}' +
+      '.pc-chip.on{color:#062018;background:var(--lux-g2,#5fe0cf);border-color:var(--lux-g2,#5fe0cf)}' +
+      '.pc-chips input{width:66px}.pc-pct{color:var(--muted);font-weight:700}' +
+      '.pc-opt{color:var(--muted);font-weight:400;font-size:10px}' +
+      '.pc-warn{margin-top:12px;color:var(--red,#ff726f);font-size:12.5px;font-weight:600;min-height:0}' +
+      '.pc-warn:empty{display:none}' +
+      '.pc-results{background:linear-gradient(180deg,var(--panel2),var(--panel))}' +
+      '.pc-hero{text-align:center;padding:10px 0 16px;border-bottom:1px solid var(--line);margin-bottom:14px}' +
+      '.pc-hero-n{font-size:52px;font-weight:900;line-height:1;color:var(--lux-g2,#5fe0cf);font-family:var(--mono,inherit);direction:ltr}' +
+      '.pc-hero-l{margin-top:7px;color:var(--muted);font-weight:700;font-size:13px}' +
+      '.pc-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}' +
+      '.pc-stat{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding-bottom:8px;border-bottom:1px dashed var(--line)}' +
+      '.pc-stat-wide{grid-column:1 / -1}' +
+      '.pc-k{color:var(--muted);font-size:12.5px;font-weight:600}' +
+      '.pc-v{font-weight:800;font-size:15px;direction:ltr;unicode-bidi:isolate}' +
+      '.pc-v.pos{color:var(--green,#39ff9a)}.pc-v.neg{color:var(--red,#ff726f)}' +
+      '.pc-verdict{margin-top:16px;padding:11px 14px;border-radius:11px;font-weight:700;font-size:13.5px;line-height:1.5;border:1px solid var(--line);background:var(--panel2)}' +
+      '.pc-verdict.good{border-color:rgba(43,186,126,.5);background:rgba(43,186,126,.12)}' +
+      '.pc-verdict.warn{border-color:rgba(255,114,111,.5);background:rgba(255,114,111,.12)}' +
+      '.pc-verdict:empty{display:none}' +
+      '.pc-note{margin-top:16px;padding:13px 16px;border-radius:12px;background:var(--accentbg,var(--panel2));color:var(--ink);font-size:13.5px;line-height:1.7;border:1px solid var(--line)}' +
+      '</style>';
+  }
+  function wirePosCalc() {
+    const page = $("#page");
+    const g = id => page.querySelector("#" + id);
+    const segVal = id => { const b = g(id) && g(id).querySelector(".pc-seg-b.on"); return b ? b.dataset.v : ""; };
+    function save(st) { try { localStorage.setItem(PC_KEY, JSON.stringify(st)); } catch (e) {} }
+    function num(id) { const v = parseFloat((g(id) && g(id).value) || ""); return isFinite(v) ? v : NaN; }
+    function calc() {
+      const dir = segVal("pcDir"), inst = segVal("pcInst"), cur = (g("pcCur") && g("pcCur").value) || "$";
+      const acct = num("pcAcct"), riskPct = num("pcRisk"), entry = num("pcEntry"), stop = num("pcStop"), target = num("pcTarget");
+      const mult = inst === "option" ? 100 : 1;
+      g("pcQtyLbl").textContent = inst === "option" ? "חוזים לקנייה" : (dir === "short" ? "מניות לשורט" : "מניות לקנייה");
+      const money = v => cur + Number(v).toLocaleString("he-IL", { maximumFractionDigits: 2 });
+      save({ dir: dir, inst: inst, cur: cur, acct: g("pcAcct").value, risk: g("pcRisk").value, entry: g("pcEntry").value, stop: g("pcStop").value, target: g("pcTarget").value });
+      // reset outputs
+      const set = (id, txt, cls) => { const el = g(id); if (!el) return; el.textContent = txt; el.classList.remove("pos", "neg"); if (cls) el.classList.add(cls); };
+      const warns = [];
+      // validation hints (non-blocking)
+      if (isFinite(entry) && isFinite(stop) && entry > 0 && stop > 0) {
+        if (dir === "long" && stop >= entry) warns.push("בלונג הסטופ אמור להיות מתחת למחיר הכניסה.");
+        if (dir === "short" && stop <= entry) warns.push("בשורט הסטופ אמור להיות מעל מחיר הכניסה.");
+      }
+      if (isFinite(entry) && isFinite(target) && target > 0) {
+        if (dir === "long" && target <= entry) warns.push("בלונג היעד אמור להיות מעל מחיר הכניסה.");
+        if (dir === "short" && target >= entry) warns.push("בשורט היעד אמור להיות מתחת למחיר הכניסה.");
+      }
+      g("pcWarn").textContent = warns.join(" ");
+      const riskDollars = (isFinite(acct) && isFinite(riskPct)) ? acct * riskPct / 100 : NaN;
+      const perUnitPx = (isFinite(entry) && isFinite(stop)) ? Math.abs(entry - stop) : NaN;
+      const perUnit = perUnitPx * mult;
+      if (!(isFinite(riskDollars) && riskDollars > 0 && isFinite(perUnit) && perUnit > 0)) {
+        set("pcQty", "—"); set("pcRiskDollar", isFinite(riskDollars) ? money(riskDollars) : "—");
+        ["pcPerUnit", "pcPosVal", "pcPosPct", "pcActRisk", "pcRR", "pcReward"].forEach(id => set(id, "—"));
+        const v = g("pcVerdict"); v.textContent = ""; v.className = "pc-verdict";
+        return;
+      }
+      const qty = Math.floor(riskDollars / perUnit);
+      const posVal = qty * entry * mult;
+      const posPct = (isFinite(acct) && acct > 0) ? posVal / acct * 100 : NaN;
+      const actRisk = qty * perUnit;
+      const actPct = (isFinite(acct) && acct > 0) ? actRisk / acct * 100 : NaN;
+      set("pcQty", qty.toLocaleString("en-US"));
+      set("pcRiskDollar", money(riskDollars));
+      set("pcPerUnit", money(perUnit));
+      set("pcPosVal", money(posVal));
+      set("pcPosPct", isFinite(posPct) ? posPct.toFixed(1) + "%" : "—");
+      set("pcActRisk", money(actRisk) + " · " + (isFinite(actPct) ? actPct.toFixed(2) + "%" : "—"));
+      if (isFinite(target) && target > 0) {
+        const rewardPx = Math.abs(target - entry), rr = perUnitPx > 0 ? rewardPx / perUnitPx : NaN;
+        const reward = qty * rewardPx * mult;
+        set("pcRR", isFinite(rr) ? "1 : " + rr.toFixed(2) : "—", rr >= 2 ? "pos" : (rr < 1 ? "neg" : null));
+        set("pcReward", money(reward) + (isFinite(rr) ? " (" + rr.toFixed(1) + "R)" : ""), "pos");
+      } else { set("pcRR", "—"); set("pcReward", "—"); }
+      // verdict — reinforce the discipline message
+      const v = g("pcVerdict");
+      if (qty <= 0) { v.className = "pc-verdict warn"; v.textContent = "⚠️ הסיכון ליחידה גדול מהסיכון הכולל — אין מקום אפילו ליחידה אחת. הקטן מרחק סטופ או הגדל הון/סיכון."; }
+      else if (riskPct > 2) { v.className = "pc-verdict warn"; v.innerHTML = "⚠️ אתה מסכן <b>" + riskPct + "%</b> לעסקה — מעל כלל ה‑2%. שקול להקטין כדי לשמור על ההון."; }
+      else if (isFinite(posPct) && posPct > 100) { v.className = "pc-verdict warn"; v.innerHTML = "⚠️ שווי הפוזיציה (<b>" + posPct.toFixed(0) + "%</b> מהתיק) דורש מינוף. הסיכון מחושב נכון, אבל שים לב לחשיפה."; }
+      else { v.className = "pc-verdict good"; v.innerHTML = "✅ ניהול סיכון ממושמע — " + money(actRisk) + " בסיכון (" + (isFinite(actPct) ? actPct.toFixed(2) + "%" : "") + " מהתיק). ככה נשארים במשחק."; }
+    }
+    // wire segmented controls + chips
+    page.querySelectorAll(".pc-seg").forEach(seg => seg.querySelectorAll(".pc-seg-b").forEach(b => b.onclick = () => {
+      seg.querySelectorAll(".pc-seg-b").forEach(x => x.classList.remove("on")); b.classList.add("on"); calc();
+    }));
+    page.querySelectorAll(".pc-chip").forEach(c => c.onclick = () => {
+      page.querySelectorAll(".pc-chip").forEach(x => x.classList.remove("on")); c.classList.add("on");
+      const ri = g("pcRisk"); if (ri) ri.value = c.dataset.v; calc();
+    });
+    ["pcAcct", "pcRisk", "pcEntry", "pcStop", "pcTarget", "pcCur"].forEach(id => { const el = g(id); if (el) el.addEventListener("input", () => { if (id === "pcRisk") page.querySelectorAll(".pc-chip").forEach(x => x.classList.toggle("on", String(x.dataset.v) === String(el.value))); calc(); }); });
+    calc();
+  }
+
   const PAGES = {
     // home: { render: renderHome, wire: wireHome },   // "מרכז בקרה" retired 2026-11-01 — nav removed, default landing is now סקירת שוק (market). renderHome/wireHome kept for easy revival.
     market: { render: renderMarket, wire: wireMarket },
@@ -11261,6 +11428,7 @@
     breadth: { render: renderBreadth, wire: wireBreadth },
     gappers: { render: renderGappers, wire: wireGappers },
     favorites: { render: renderFavorites, wire: wireFavorites },
+    poscalc: { render: renderPosCalc, wire: wirePosCalc },
     // Learn content moved to Strat School (school.stratninja.win). The old nav tab already links there;
     // this redirects any lingering #learn bookmark/link to the school instead of the stale in-app page.
     learn: { render: function () { try { window.location.replace("https://school.stratninja.win"); } catch (e) { try { window.location.href = "https://school.stratninja.win"; } catch (e2) {} } return '<div class="page-head"><h1>🎓 עובר ל-Strat School…</h1><div class="sub">תוכן הלימוד עבר לבית הספר. אם לא הועברת אוטומטית — <a href="https://school.stratninja.win" target="_blank" rel="noopener">כניסה ל-Strat School →</a></div></div>'; }, wire: function () {} },
