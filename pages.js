@@ -4533,10 +4533,12 @@
     const noteText = spHeatAvg
       ? "הצבע = תנועת תעודת-הסל של כל סקטור"
       : ("המובילות בכל סקטור · 🟢 " + _TOPN + " עולות · 🔴 " + _TOPN + " יורדות");
+    let subStrong = null, subWeak = null; subs.forEach(s => { if (!subStrong || s.chg > subStrong.chg) subStrong = s; if (!subWeak || s.chg < subWeak.chg) subWeak = s; });
+    const _subNm = x => x ? String(x.ind || x.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").replace(/\s+[A-Z]{2,6}\d?$/, "").trim() : "—";
     const box = (lbl, nm, chg) => { const col = chg == null ? "#eaf2ff" : (chg >= 0 ? "#22e39b" : "#ff6b7a");
-      return '<div style="flex:1 1 0;min-width:0;box-sizing:border-box;border-radius:14px;padding:16px 18px;background:#111a2e;border:1px solid #223049">' +
-        '<div style="font:900 24px Heebo,Arial;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:17px;font-weight:700;color:#9fb3c7">' + lbl + '</span> ' + escHtml(nm) + '</div>' +
-        '<div style="font:900 36px Heebo,Arial;direction:ltr;color:' + col + ';margin-top:4px">' + _sgn(chg) + '</div></div>'; };
+      return '<div style="flex:1 1 0;min-width:0;box-sizing:border-box;border-radius:14px;padding:14px 14px;background:#111a2e;border:1px solid #223049">' +
+        '<div style="font:900 22px Heebo,Arial;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:15px;font-weight:700;color:#9fb3c7">' + lbl + '</span> ' + escHtml(nm) + '</div>' +
+        '<div style="font:900 31px Heebo,Arial;direction:ltr;color:' + col + ';margin-top:4px">' + _sgn(chg) + '</div></div>'; };
     const photo = _heroSquare
       ? '<img src="' + _heroSquare + '" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(34,227,155,.5)">'
       : '<img src="hero.jpg" crossorigin="anonymous" onerror="this.style.display=\'none\'" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(34,227,155,.5)">';
@@ -4551,9 +4553,10 @@
         '<span style="font:700 24px Heebo,Arial;color:#cfe8df">' + escHtml(insight) + '</span></div>' +
       '<div style="font:700 19px Heebo,Arial;color:#bcd0e0;margin-bottom:18px">' + noteText + '</div>' +
       '<div class="hmsh-map" style="position:relative;width:100%;height:560px;border-radius:14px;overflow:hidden;margin-bottom:18px">' + mapHtml + '</div>' +
-      '<div style="display:flex;gap:14px;align-items:stretch;margin-bottom:22px">' +
-        box("תת-סקטור בולט", subNm, standout ? standout.chg : null) +
+      '<div style="display:flex;gap:12px;align-items:stretch;margin-bottom:22px">' +
+        box("תת-סקטור חלש", _subNm(subWeak), subWeak ? subWeak.chg : null) +
         box("הסקטור החלש", weakHe, weak ? weak.chg : null) +
+        box("תת-סקטור חזק", _subNm(subStrong), subStrong ? subStrong.chg : null) +
         box("הסקטור החזק", strongHe, strong ? strong.chg : null) + '</div>' +
       '<div style="display:flex;justify-content:space-between;font:600 21px Heebo,Arial;color:#6b7686">' +
         '<span>Adi Koriat · @KoriatTrade · ' + _now.toLocaleDateString("he-IL") + '</span>' +
@@ -6183,15 +6186,23 @@
         const dnStr = dn.length ? "🔴 יורדות: " + dn.map(t => "$" + t).join(" ") : "";
         customTagStr = [upStr, dnStr].filter(Boolean).join("\n") || null;
       } else {
-        // HEAT MAP / RISK card → one LEADING stock from EACH sector (the biggest gainer per sector)
+        // HEAT MAP / RISK card → sectors first (strong + weak by ETF move), then the 2 biggest
+        // gaining stocks + the 2 biggest losing stocks across the whole map (Adi).
         cap = "🔥 מפת החום של השוק · S&P 500 · StratNinja";
-        const picks = [];
-        ((LIVE && LIVE.sectors) || []).forEach(s => {
-          if (!etfFor(s.name)) return;
-          const top = (s.stocks || []).filter(x => x.c != null).sort((a, b) => b.c - a.c)[0];
-          if (top && top.c > 0) picks.push(top);
-        });
-        tags = picks.sort((a, b) => (b.c || 0) - (a.c || 0)).slice(0, 8).map(x => x.s);
+        const _hs = ((LIVE && LIVE.sectors) || []).filter(s => etfFor(s.name) && s.chg != null);
+        const _sUp = _hs.slice().sort((a, b) => b.chg - a.chg)[0];
+        const _sDn = _hs.slice().sort((a, b) => a.chg - b.chg)[0];
+        const _all = [];
+        ((LIVE && LIVE.sectors) || []).forEach(s => { if (!etfFor(s.name)) return; (s.stocks || []).forEach(x => { if (x.c != null) _all.push(x); }); });
+        const _gUp = _all.filter(x => x.c > 0).sort((a, b) => b.c - a.c).slice(0, 2);
+        const _gDn = _all.filter(x => x.c < 0).sort((a, b) => a.c - b.c).slice(0, 2);
+        const _p1 = c => (c >= 0 ? "+" : "") + Number(c).toFixed(1) + "%";
+        const _secLine = (_sUp && _sDn)
+          ? ("📊 סקטורים: 🟢 " + secHe(_sUp.name) + " " + _p1(_sUp.chg) + " · 🔴 " + secHe(_sDn.name) + " " + _p1(_sDn.chg))
+          : "";
+        const _upLine = _gUp.length ? ("📈 עולות: " + _gUp.map(x => "$" + x.s + " " + _p1(x.c)).join("  ")) : "";
+        const _dnLine = _gDn.length ? ("📉 יורדות: " + _gDn.map(x => "$" + x.s + " " + _p1(x.c)).join("  ")) : "";
+        customTagStr = [_secLine, _upLine, _dnLine].filter(Boolean).join("\n") || null;
       }
     } else if (page === "sp500") {
       // S&P 500 breadth-map card → the strong sector ETF, weak sector ETF + leading stocks it highlights
