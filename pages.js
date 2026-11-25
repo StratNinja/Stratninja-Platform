@@ -4522,22 +4522,23 @@
     const insight = (pct != null)
       ? ("רוחב " + pct + "% מעל הפתיחה · בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : ""))
       : (strong ? ("בהובלת " + strongHe + (weak ? " · " + weakHe + " מאחור" : "")) : "תמונת מצב סקטוריאלית");
-    // SHARE map = the TOP movers per sector: 4 biggest gainers + 4 biggest losers (NOT a %-threshold list).
-    // Capping each sector to ≤8 tiles keeps the tiles big → the uniform ticker font stays large & readable (Adi).
+    // SHARE map = the SIGNIFICANT movers: gainers ≥4% and losers ≥4% (a clear % threshold, labelled on the
+    // card as "עולות מעל 4% · יורדות מעל 4%"). Fewer tiles → the per-sector uniform ticker font stays large (Adi).
     const _TOPN = 4;
     const _saveSec = spHeatSector, _sA = spHeatAtr, _sU = spHeatUp, _sD = spHeatDown;
     spHeatSector = null; spHeatAtr = 0; _hmShareClean = true; _hmShareGrid = true;
-    if (!spHeatAvg) { spHeatUp = ""; spHeatDown = ""; _hmShareTopN = _TOPN; }   // top-N mode → no threshold; pick the biggest movers
+    if (!spHeatAvg) { spHeatUp = String(_TOPN); spHeatDown = String(_TOPN); }   // share map = the ±4% movers (gainers ≥4% / losers ≥4%)
     const mapHtml = spHeatmap();
     spHeatSector = _saveSec; spHeatAtr = _sA; spHeatUp = _sU; spHeatDown = _sD; _hmShareClean = false; _hmShareGrid = false; _hmShareTopN = 0;
     const noteText = spHeatAvg
       ? "הצבע = תנועת תעודת-הסל של כל סקטור"
-      : ("המובילות בכל סקטור · 🟢 " + _TOPN + " עולות · 🔴 " + _TOPN + " יורדות");
+      : ("🟢 עולות מעל " + _TOPN + "% · 🔴 יורדות מעל " + _TOPN + "%");
     let subStrong = null, subWeak = null; subs.forEach(s => { if (!subStrong || s.chg > subStrong.chg) subStrong = s; if (!subWeak || s.chg < subWeak.chg) subWeak = s; });
     const _subNm = x => x ? String(x.ind || x.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").replace(/\s+[A-Z]{2,6}\d?$/, "").trim() : "—";
     const box = (lbl, nm, chg) => { const col = chg == null ? "#eaf2ff" : (chg >= 0 ? "#22e39b" : "#ff6b7a");
-      return '<div style="flex:1 1 0;min-width:0;box-sizing:border-box;border-radius:14px;padding:14px 14px;background:#111a2e;border:1px solid #223049">' +
-        '<div style="font:900 22px Heebo,Arial;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="font-size:15px;font-weight:700;color:#9fb3c7">' + lbl + '</span> ' + escHtml(nm) + '</div>' +
+      return '<div style="flex:1 1 0;min-width:0;box-sizing:border-box;border-radius:14px;padding:14px 15px;background:#111a2e;border:1px solid #223049">' +
+        '<div style="font:700 15px Heebo,Arial;color:#9fb3c7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + lbl + '</div>' +
+        '<div style="font:900 24px Heebo,Arial;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px">' + escHtml(nm) + '</div>' +
         '<div style="font:900 31px Heebo,Arial;direction:ltr;color:' + col + ';margin-top:4px">' + _sgn(chg) + '</div></div>'; };
     const photo = _heroSquare
       ? '<img src="' + _heroSquare + '" style="width:88px;height:88px;border-radius:18px;object-fit:cover;border:2px solid rgba(34,227,155,.5)">'
@@ -6200,9 +6201,16 @@
         const _secLine = (_sUp && _sDn)
           ? ("📊 סקטורים: 🟢 " + secHe(_sUp.name) + " " + _p1(_sUp.chg) + " · 🔴 " + secHe(_sDn.name) + " " + _p1(_sDn.chg))
           : "";
+        const _subsC = ((LIVE && LIVE.subsectors) || []).filter(s => s.chg != null);
+        const _suUp = _subsC.slice().sort((a, b) => b.chg - a.chg)[0];
+        const _suDn = _subsC.slice().sort((a, b) => a.chg - b.chg)[0];
+        const _subNc = x => x ? String(x.ind || x.name || "").replace(/\s*·\s*[A-Za-z0-9].*$/, "").replace(/\s+[A-Z]{2,6}\d?$/, "").trim() : "";
+        const _subLine = (_suUp && _suDn)
+          ? ("🔬 תת-סקטורים: 🟢 " + _subNc(_suUp) + " " + _p1(_suUp.chg) + " · 🔴 " + _subNc(_suDn) + " " + _p1(_suDn.chg))
+          : "";
         const _upLine = _gUp.length ? ("📈 עולות: " + _gUp.map(x => "$" + x.s + " " + _p1(x.c)).join("  ")) : "";
         const _dnLine = _gDn.length ? ("📉 יורדות: " + _gDn.map(x => "$" + x.s + " " + _p1(x.c)).join("  ")) : "";
-        customTagStr = [_secLine, _upLine, _dnLine].filter(Boolean).join("\n") || null;
+        customTagStr = [_secLine, _subLine, _upLine, _dnLine].filter(Boolean).join("\n") || null;
       }
     } else if (page === "sp500") {
       // S&P 500 breadth-map card → the strong sector ETF, weak sector ETF + leading stocks it highlights
