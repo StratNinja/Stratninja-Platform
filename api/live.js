@@ -158,6 +158,29 @@ async function cleanupScheduledOutputs(inputId) {
   }
 }
 
+// Retire scheduled lives marked "live" (🔴) once their broadcast is over, so a finished live stops
+// lingering in the admin list with a stale "🔴 חי" badge. "Over" = the input for its visibility is
+// confirmed OFFLINE, or its start time is well in the past (backstop for the OTHER input / a missed
+// signal). A scheduled live that is actually on air is never auto-set to status "live", so this can
+// never end a broadcast in progress. Status-only — NEVER touches YouTube or Cloudflare, so recordings
+// are preserved (unlike cancel/delete). Best-effort: a failure never breaks the reconcile.
+const LIVE_STALE_MS = 3 * 3600000;
+async function endFinishedLives(reconciledInput, inputIsLive) {
+  try {
+    const vis = inputVisibility(reconciledInput);
+    const staleISO = new Date(Date.now() - LIVE_STALE_MS).toISOString();
+    let q = "scheduled_lives?status=eq.live";
+    if (vis && !inputIsLive) {
+      // this visibility's input is offline → ITS live rows are done; plus any 3h-stale live row (other input).
+      q += "&or=(visibility.eq." + vis + ",scheduled_start.lt." + encodeURIComponent(staleISO) + ")";
+    } else {
+      // this input is live (or unknown): only retire clearly-stale live rows (won't touch an on-air one).
+      q += "&scheduled_start=lt." + encodeURIComponent(staleISO);
+    }
+    await sb(q, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "ended", updated_at: new Date().toISOString() }) });
+  } catch (e) { /* best-effort — never breaks the reconcile */ }
+}
+
 async function verifyAdmin(req) {
   const auth = req.headers.authorization || req.headers.Authorization || "";
   if (!auth) return false;
@@ -392,6 +415,7 @@ export default async function handler(req, res) {
         try {
           if (cf.live) await activateScheduledOutput(reconcileInput);
           else await cleanupScheduledOutputs(reconcileInput);
+          await endFinishedLives(reconcileInput, cf.live);   // retire finished "live" rows (status-only, keeps recordings)
         } catch (e) { /* best-effort */ }
       } else {
         // unrecognized state OR a CF error — don't change is_live (keep last known), record why & back off

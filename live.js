@@ -467,12 +467,15 @@ window.Live = (function () {
       var yt = s.youtube_watch_url ? ' · <span class="sl-yt">YouTube ✓</span>' : "";
       var liveBadge = s.status === "live" ? ' · 🔴 חי' : "";
       var privBadge = (s.visibility === "community") ? ' · 🔒 קהילה' : "";
+      // "סיים" appears only on a row stuck on 🔴 חי — marks it ended WITHOUT deleting the YouTube/Cloudflare recording.
+      var endBtn = s.status === "live" ? '<button class="btn ghost" data-sl-end="' + esc(s.id) + '" style="color:#ffd27a" title="סמן כהסתיים — ההקלטה נשמרת">סיים</button>' : "";
       return '<div class="law-sl-row"><div class="sl-info">' +
         '<div class="sl-t">' + esc(s.title || "ללא כותרת") + "</div>" +
         '<div class="sl-w">⏰ ' + esc(_schedFmtWhen(s.scheduled_start)) + privBadge + yt + liveBadge + "</div>" +
         _schedKeyBoxHtml(s) +
         '</div><div class="sl-btns">' +
           '<button class="btn ghost" data-sl-edit="' + esc(s.id) + '">עריכה</button>' +
+          endBtn +
           '<button class="btn ghost" data-sl-cancel="' + esc(s.id) + '" style="color:#ff9b9b">ביטול</button>' +
         "</div></div>";
     }).join("") : '<div class="muted" style="font-size:12px">אין לייבים מתוזמנים.</div>';
@@ -543,6 +546,17 @@ window.Live = (function () {
       _schedPost({ action: "cancel", id: id }).then(function (r) {
         if (r && r.ok) { toast("הלייב בוטל ✓"); _loadSchedAdmin(); _refreshSched(); }
         else { btn.disabled = false; btn.textContent = "ביטול"; toast("הביטול נכשל" + (r && r.error ? " · " + r.error : "")); }
+      });
+    };
+    // "סיים" — marks a stuck 🔴 live as ended. Status-only: the YouTube / community-vault recording is kept.
+    var ens = box.querySelectorAll("[data-sl-end]");
+    for (var e = 0; e < ens.length; e++) ens[e].onclick = function () {
+      var id = this.getAttribute("data-sl-end");
+      if (!confirm("לסמן את הלייב כ'הסתיים'? הוא יירד מהרשימה. ההקלטה והשידור ב-YouTube נשמרים — שום דבר לא נמחק.")) return;
+      var btn = this; btn.disabled = true; btn.textContent = "מסיים…";
+      _schedPost({ action: "end", id: id }).then(function (r) {
+        if (r && r.ok) { toast("הלייב סומן כהסתיים ✓"); _loadSchedAdmin(); _refreshSched(); }
+        else { btn.disabled = false; btn.textContent = "סיים"; toast("הפעולה נכשלה" + (r && r.error ? " · " + r.error : "")); }
       });
     };
   }

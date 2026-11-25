@@ -272,6 +272,18 @@ export default async function handler(req, res) {
     return;
   }
 
+  // ---- end: mark a finished live "ended" so it leaves the list — WITHOUT deleting anything on
+  // YouTube or Cloudflare (unlike cancel/delete). For clearing a live whose 🔴 badge got stuck. ----
+  if (action === "end") {
+    if (!RE_UUID.test(id)) { res.status(400).json({ error: "bad_id" }); return; }
+    const r = await sb("scheduled_lives?id=eq." + id, {
+      method: "PATCH", headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({ status: "ended", updated_at: new Date().toISOString() }),
+    });
+    res.status(r.ok ? 200 : 502).json(r.ok ? { ok: true } : { ok: false, error: "end_failed" });
+    return;
+  }
+
   // ---- cancel: mark canceled + best-effort delete the YouTube broadcast ----
   if (action === "cancel" || action === "delete") {
     if (!RE_UUID.test(id)) { res.status(400).json({ error: "bad_id" }); return; }
