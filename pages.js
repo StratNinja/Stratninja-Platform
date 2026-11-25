@@ -10866,7 +10866,8 @@
     var algoOn = (window.Prefs && Prefs.algoAlert) ? Prefs.algoAlert() : false;
     var ctrls = '<div class="bv-tfseg">' + BV_TFS.map(function (t) { return '<button data-bvtf="' + t + '"' + (t === tf ? ' class="on"' : "") + '>' + BV_TFHE[t] + "</button>"; }).join("") + '</div>' +
       '<div class="bv-tfseg"><button data-bvpat="current"' + (bvPat === "current" ? ' class="on"' : "") + '>תבנית נוכחית</button><button data-bvpat="future"' + (bvPat === "future" ? ' class="on"' : "") + '>תבנית עתידית</button></div>' +
-      '<button class="btn ghost" id="bvAlgoAlert" title="קבל דחיפה לפלאפון כשסקטור/קבוצה שלמה הולכת IN FORCE באותו כיוון יחד — תנועה אלגוריתמית מתואמת" style="font-size:12px;font-weight:600;flex:0 0 auto">🔔 התראות אלגו: ' + (algoOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + "</button>";
+      '<button class="btn ghost" id="bvAlgoAlert" title="קבל דחיפה לפלאפון כשסקטור/קבוצה שלמה הולכת IN FORCE באותו כיוון יחד — תנועה אלגוריתמית מתואמת" style="font-size:12px;font-weight:600;flex:0 0 auto">🔔 התראות אלגו: ' + (algoOn ? '<span style="color:var(--green)">פעיל</span>' : '<span class="muted">כבוי</span>') + "</button>" +
+      '<button class="btn ghost" id="bvBoardShare" title="כרטיס שיתוף של מצב השוק כולו — מדדים + כל הסקטורים" style="font-size:12px;font-weight:600;flex:0 0 auto">📷 שתף לוח</button>';
     if (!rows) { return bvCss() + head + '<div class="bv-tfbar">' + ctrls + '<span class="bv-hint">בחר טיימפריים ותבנית</span></div>' + '<div class="bv-card" style="padding:26px;text-align:center;color:var(--muted)">⏳ טוען נתונים חיים…</div>'; }
     var idx = {}; rows.forEach(function (r) { if (r && r.s) idx[r.s] = r; });
     var uniq = {}; BV_GROUPS.forEach(function (g) { g.syms.forEach(function (s) { uniq[s] = 1; }); });
@@ -10903,6 +10904,7 @@
       c.onclick = function (e) { e.stopPropagation(); bvTf = c.getAttribute("data-bvtfset"); reRender(); };   // click a matrix TF cell → switch timeframe (don't open the drill)
     });
     { var ab = document.getElementById("bvAlgoAlert"); if (ab) ab.onclick = function () { var now = (window.Prefs && Prefs.algoAlert) ? Prefs.algoAlert() : false; if (!now) { if (window.Prefs) Prefs.setAlgoAlert(true); if (typeof subscribeToPush === "function") subscribeToPush(); } else { if (window.Prefs) Prefs.setAlgoAlert(false); if (typeof snToast === "function") snToast("התראות תנועה אלגוריתמית כובו"); } reRender(); }; }
+    { var bsh = document.getElementById("bvBoardShare"); if (bsh) bsh.onclick = function () { _captureRedesignCard(function () { return buildAlgoBoardCardEl(bvTf); }, _algoBoardCaption(bvTf)); }; }
   }
   function bvExpected(sel) {
     if (!sel || !sel.t) return "—";
@@ -11242,6 +11244,117 @@
       '</div>' +
       '<div class="alc-grid">' + tileHtml + '</div>' +
       '<div class="alc-ft"><span><b>stratninja.win</b> · זיהוי תנועה אלגוריתמית</span><span>Adi Koriat · @KoriatTrade</span></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  // Sector direction = IN FORCE majority over the WHOLE sector (same rule as the board chip bvGroup):
+  // count the sector's stocks that are IN FORCE up vs down on this TF; larger side wins (inside / not-in-force don't vote).
+  function bvGroupDir(g, idx, tf) {
+    var pool = [];
+    if (SCAN && SCAN.rows && typeof secHe === "function") {
+      pool = SCAN.rows.filter(function (x) { return x && x.sec && secHe(x.sec) === g.he && x[tf]; });
+    }
+    if (pool.length < 5) pool = g.syms.map(function (s) { return idx[s]; }).filter(function (x) { return x && x[tf]; });
+    var up = pool.filter(function (x) { return (x[tf] || {}).ifc === "up"; }).length;
+    var down = pool.filter(function (x) { return (x[tf] || {}).ifc === "down"; }).length;
+    return { dir: up > down ? "up" : down > up ? "down" : "mix", up: up, down: down, total: pool.length };
+  }
+  function _algoBoardStats(tf) {   // overall board verdict from the 12 sector groups
+    var rows = (SCAN && SCAN.rows) ? SCAN.rows : [];
+    var idx = {}; rows.forEach(function (r) { if (r && r.s) idx[r.s] = r; });
+    var dirs = BV_GROUPS.map(function (g) { return bvGroupDir(g, idx, tf); });
+    var upG = dirs.filter(function (d) { return d.dir === "up"; }).length;
+    var dnG = dirs.filter(function (d) { return d.dir === "down"; }).length;
+    var boardDir = upG > dnG ? "up" : dnG > upG ? "down" : "mix";
+    var ifUp = 0, ifDn = 0;
+    rows.forEach(function (r) { var c = r[tf] || {}; if (c.ifc === "up") ifUp++; else if (c.ifc === "down") ifDn++; });
+    return { idx: idx, dirs: dirs, upG: upG, dnG: dnG, boardDir: boardDir, ifUp: ifUp, ifDn: ifDn, total: BV_GROUPS.length };
+  }
+  function _algoBoardCaption(tf) {   // caption matched to the whole-board share card
+    tf = tf || bvTf;
+    var st = _algoBoardStats(tf);
+    var tfHe = (typeof BV_TFHE !== "undefined" && BV_TFHE[tf]) ? BV_TFHE[tf] : tf;
+    var dom = st.boardDir === "down" ? st.dnG : st.upG;
+    var dirWord = st.boardDir === "down" ? "▼ מכירה אלגוריתמית רחבה" : st.boardDir === "up" ? "▲ קנייה אלגוריתמית רחבה" : "• שוק מעורב — ללא כיוון רחב";
+    var secTxt = st.boardDir === "mix" ? (st.upG + " עולים · " + st.dnG + " יורדים מתוך " + st.total) : (dom + "/" + st.total + " סקטורים");
+    var cap = "🤖 תנועה אלגוריתמית · כל השוק · " + tfHe + "\n" + dirWord + " · " + secTxt;
+    var tagStr = BV_GROUPS[0].syms.map(function (s) { return "$" + s; }).join(" ");   // the 4 headline indices
+    return cap + "\n\n" + tagStr + "\n\n" + SHARE_HASHTAGS + "\n\nstratninja.win";
+  }
+  function buildAlgoBoardCardEl(tf) {
+    tf = tf || bvTf;
+    var st = _algoBoardStats(tf), idx = st.idx;
+    var up = st.boardDir === "up", down = st.boardDir === "down";
+    var accent = down ? "#ef4444" : up ? "#22c55e" : "#6b7a93";
+    var accentBg = down ? "rgba(239,68,68,.12)" : up ? "rgba(34,197,94,.12)" : "rgba(107,122,147,.12)";
+    var dirWord = down ? "מכירה אלגוריתמית רחבה" : up ? "קנייה אלגוריתמית רחבה" : "שוק מעורב";
+    var dirArrow = down ? "▼" : up ? "▲" : "•";
+    var dom = down ? st.dnG : st.upG, domLbl = down ? "סקטורים במכירה" : up ? "סקטורים בקנייה" : "עולים / יורדים";
+    var domN = st.boardDir === "mix" ? (st.upG + "·" + st.dnG) : (dom + "<small>/" + st.total + "</small>");
+    var tfHe = BV_TFHE[tf] || tf;
+    // דופק השוק — the 4 headline indices (SPY QQQ DIA IWM) with mini Strat candles
+    var idxHtml = BV_GROUPS[0].syms.map(function (s) {
+      var r = idx[s] || {}, pc = r[tf] || {}, ch = (r.c != null ? r.c : 0);
+      return '<div class="abc-idx"><div class="abc-itop"><span class="abc-isym">' + s + '</span>' +
+        '<span class="abc-ichg" style="color:' + (ch >= 0 ? "#22c55e" : "#ef4444") + '">' + (ch >= 0 ? "+" : "") + Number(ch).toFixed(1) + '%</span></div>' +
+        '<div class="abc-ichart">' + _algoMini(pc, r.p) + '</div></div>';
+    }).join("");
+    // 12 sector chips — direction only (▲ עולה / ▼ יורד / מעורב)
+    var chipHtml = BV_GROUPS.map(function (g, i) {
+      var d = st.dirs[i], du = d.dir === "up", dd = d.dir === "down";
+      var col = dd ? "#ef4444" : du ? "#22c55e" : "#8aa0ac", bd = dd ? "#ef4444" : du ? "#22c55e" : "#2b3542";
+      var bg = dd ? "rgba(239,68,68,.10)" : du ? "rgba(34,197,94,.10)" : "transparent";
+      var tx = dd ? "▼ יורד" : du ? "▲ עולה" : "מעורב";
+      return '<div class="abc-chip" style="border-color:' + bd + ';background:' + bg + '">' +
+        '<span class="abc-cdir" style="color:' + col + '">' + tx + '</span>' +
+        '<span class="abc-cname">' + g.he + '</span></div>';
+    }).join("");
+    var now = new Date(), _p2 = function (n) { return String(n).padStart(2, "0"); };
+    var dateStr = _p2(now.getHours()) + ":" + _p2(now.getMinutes()) + " · " + now.getDate() + "/" + (now.getMonth() + 1) + "/" + now.getFullYear();
+    var el = document.createElement("div");
+    el.className = "abc-card";
+    el.style.cssText = "position:fixed;left:-9999px;top:0;z-index:-1;";
+    el.innerHTML =
+      '<style>' +
+      '.abc-card{width:1080px;height:1080px;box-sizing:border-box;background:radial-gradient(130% 120% at 85% 0%,#111a2e 0%,#0b1020 55%,#080c17 100%);color:#e8eefc;font-family:Heebo,Inter,Arial,sans-serif;direction:rtl;padding:54px 56px 44px;display:flex;flex-direction:column}' +
+      '.abc-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:22px}' +
+      '.abc-brand{font-size:30px;font-weight:900;letter-spacing:.3px}.abc-brand span{color:' + accent + '}' +
+      '.abc-sub{font-size:19px;color:#93a0b8;font-weight:700;margin-top:3px}' +
+      '.abc-date{font-size:19px;color:#93a0b8;font-weight:700;text-align:left;font-family:Inter,Heebo,sans-serif}' +
+      '.abc-lbl{font-size:20px;color:#93a0b8;font-weight:800;letter-spacing:1px;margin:2px 0 12px}' +
+      '.abc-idxrow{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}' +
+      '.abc-idx{background:#121a2c;border:1.5px solid #22c55e55;border-radius:16px;padding:14px 14px 10px;display:flex;flex-direction:column}' +
+      '.abc-itop{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}' +
+      '.abc-isym{font-size:26px;font-weight:900;color:#fff;font-family:Inter,Heebo,sans-serif;letter-spacing:1px}' +
+      '.abc-ichg{font-size:20px;font-weight:800;font-family:Inter,Heebo,sans-serif;direction:ltr;display:inline-block;unicode-bidi:isolate}' +
+      '.abc-ichart{height:96px}' +
+      '.abc-hero{display:flex;align-items:center;gap:26px;background:' + accentBg + ';border:1.5px solid ' + accent + ';border-radius:22px;padding:24px 30px;margin-bottom:24px}' +
+      '.abc-hmid{flex:1}' +
+      '.abc-badge{display:inline-block;direction:rtl;white-space:nowrap;font-size:34px;font-weight:900;color:' + accent + ';background:rgba(0,0,0,.25);border:1.5px solid ' + accent + ';border-radius:14px;padding:10px 22px}' +
+      '.abc-badge .abc-ar{display:inline-block;unicode-bidi:isolate;margin-left:10px}.abc-badge .abc-dw{display:inline-block;unicode-bidi:isolate}' +
+      '.abc-tfl{font-size:20px;color:#c3cde0;font-weight:700;margin-top:12px;white-space:nowrap}.abc-tfl .abc-tf{color:#93a0b8;display:inline-block;unicode-bidi:isolate}' +
+      '.abc-kpi{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:230px;padding-left:26px;border-left:1.5px solid rgba(255,255,255,.12)}' +
+      '.abc-kpi-n{font-size:72px;font-weight:900;line-height:1;color:' + accent + ';font-family:Inter,Heebo,sans-serif}' +
+      '.abc-kpi-n small{font-size:34px;color:#93a0b8;font-weight:800}' +
+      '.abc-kpi-l{font-size:20px;color:#c3cde0;font-weight:800;margin-top:8px;white-space:nowrap}' +
+      '.abc-grid{flex:1;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:14px;align-content:stretch}' +
+      '.abc-chip{border:1.5px solid #2b3542;border-radius:16px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}' +
+      '.abc-cdir{font-size:24px;font-weight:900;direction:rtl;white-space:nowrap}' +
+      '.abc-cname{font-size:26px;font-weight:900;color:#fff}' +
+      '.abc-ft{display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:20px;border-top:1.5px solid rgba(255,255,255,.1);font-size:20px;color:#93a0b8;font-weight:700}' +
+      '.abc-ft b{color:#e8eefc;font-weight:900}' +
+      '</style>' +
+      '<div class="abc-hd"><div><div class="abc-brand">Strat<span>Ninja</span></div><div class="abc-sub">🤖 תנועה אלגוריתמית · The Strat</div></div><div class="abc-date">🕐 ' + dateStr + '</div></div>' +
+      '<div class="abc-lbl">דופק השוק · ' + tfHe + '</div>' +
+      '<div class="abc-idxrow">' + idxHtml + '</div>' +
+      '<div class="abc-hero"><div class="abc-hmid">' +
+        '<span class="abc-badge"><span class="abc-ar">' + dirArrow + '</span><span class="abc-dw">' + dirWord + '</span></span>' +
+        '<div class="abc-tfl">יישור TheStrat רוחבי · <span class="abc-tf">' + tfHe + '</span></div></div>' +
+        '<div class="abc-kpi"><div class="abc-kpi-n">' + domN + '</div><div class="abc-kpi-l">' + domLbl + '</div></div>' +
+      '</div>' +
+      '<div class="abc-grid">' + chipHtml + '</div>' +
+      '<div class="abc-ft"><span><b>stratninja.win</b> · זיהוי תנועה אלגוריתמית</span><span>Adi Koriat · @KoriatTrade</span></div>';
     document.body.appendChild(el);
     return el;
   }
